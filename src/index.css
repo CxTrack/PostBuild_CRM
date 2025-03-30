@@ -1,0 +1,408 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  @font-face {
+    font-family: 'Audiowide';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/s/audiowide/v16/l7gdbjpo0cum0ckerWCdlg_O.woff2) format('woff2');
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    @apply bg-white dark:bg-dark-950 text-dark-900 dark:text-gray-100;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+
+  .brand-logo {
+    font-family: 'Audiowide', cursive;
+  }
+  
+  input, textarea, select, button {
+    font-family: inherit;
+  }
+  
+  /* Improve mobile form inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    @apply appearance-none;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-950 focus:ring-primary-500 inline-flex items-center justify-center transform hover:scale-105 hover:shadow-lg;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 48px;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white hover:shadow-primary-500/20;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-700 hover:bg-dark-600 text-white hover:shadow-dark-500/20;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white hover:shadow-red-500/20;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-md text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500;
+    min-height: 48px;
+  }
+  
+  @media (max-width: 768px) {
+    .input {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+  }
+  
+  .card {
+    @apply bg-dark-900 rounded-lg shadow-lg p-4 md:p-6;
+  }
+  
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-dark-800 hover:text-white rounded-md transition-colors;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .sidebar-link.active {
+    @apply bg-primary-600 text-white;
+  }
+}
+
+/* Calendar styles */
+.calendar-dark {
+  @apply text-gray-300;
+}
+
+.calendar-dark .rbc-toolbar {
+  @apply mb-4;
+}
+
+.calendar-dark .rbc-month-view,
+.calendar-dark .rbc-time-view {
+  @apply bg-dark-800 border-dark-700 rounded-lg overflow-hidden;
+}
+
+.calendar-dark .rbc-header,
+.calendar-dark .rbc-time-header-cell {
+  @apply bg-dark-700 text-gray-300 py-2 border-dark-600;
+}
+
+.calendar-dark .rbc-day-bg {
+  @apply bg-dark-800 border-dark-700;
+}
+
+.calendar-dark .rbc-off-range-bg {
+  @apply bg-dark-900;
+}
+
+.calendar-dark .rbc-today {
+  @apply bg-primary-900/20;
+}
+
+.calendar-dark .rbc-event {
+  @apply rounded-md border-none shadow-sm;
+}
+
+.calendar-dark .rbc-event-content {
+  @apply text-sm font-medium;
+}
+
+.calendar-dark .rbc-show-more {
+  @apply text-primary-400 hover:text-primary-300;
+}
+
+.calendar-dark .rbc-time-slot {
+  @apply border-dark-700;
+}
+
+.calendar-dark .rbc-current-time-indicator {
+  @apply bg-primary-500;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-500;
+}
+
+/* Fix for iOS 100vh issue */
+.min-h-screen {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Mobile form improvements */
+@media (max-width: 768px) {
+  .input {
+    font-size: 1rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    min-height: 48px; /* Minimum height for better touch */
+  }
+  
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="search"],
+  input[type="url"],
+  textarea,
+  select {
+    @apply text-base;
+    font-size: 16px !important;
+  }
+  
+  /* Better spacing for mobile forms */
+  .form-row {
+    @apply mb-6;
+  }
+  
+  /* Full screen form on mobile */
+  .mobile-form-screen {
+    @apply fixed inset-0 z-50 bg-dark-950 overflow-y-auto;
+    min-height: -webkit-fill-available;
+  }
+  
+  .mobile-form-header {
+    @apply sticky top-0 z-10 bg-dark-900 border-b border-dark-700 px-4 py-3 flex items-center justify-between;
+  }
+  
+  .mobile-form-content {
+    @apply p-4 pb-24; /* Extra padding at bottom for fixed submit button */
+  }
+  
+  .mobile-form-footer {
+    @apply fixed bottom-0 left-0 right-0 bg-dark-900 border-t border-dark-700 p-4;
+  }
+  
+  /* Improve table handling on mobile */
+  .mobile-table {
+    @apply block w-full;
+  }
+  
+  .mobile-table thead {
+    @apply hidden;
+  }
+  
+  .mobile-table tbody {
+    @apply block w-full;
+  }
+  
+  .mobile-table tr {
+    @apply block w-full mb-4 bg-dark-800 rounded-lg p-4 border border-dark-700;
+  }
+  
+  .mobile-table td {
+    @apply block w-full mb-3 px-0 py-2 border-none;
+  }
+  
+  .mobile-table td:before {
+    @apply block text-sm font-medium text-gray-400 mb-1;
+    content: attr(data-label);
+  }
+}
+
+.h-screen {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Logo animation */
+@keyframes pulse-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.2));
+    transform: scale(1);
+  }
+  50% { 
+    filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.4));
+    transform: scale(1.05);
+  }
+}
+
+.logo-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Brand text animation */
+@keyframes text-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.brand-text {
+  background: linear-gradient(90deg, 
+    #4f46e5 0%, 
+    #818cf8 25%, 
+    #4f46e5 50%, 
+    #818cf8 75%, 
+    #4f46e5 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: text-shimmer 6s linear infinite;
+}
+
+/* Fixed header styles */
+.fixed-header {
+  @apply fixed top-0 left-0 right-0 z-50;
+}
+
+/* Remove purple highlight from AI Agents link when not selected */
+.sidebar-link:not(.active) {
+  @apply bg-transparent;
+}
+
+/* Feature section animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.feature-section {
+  opacity: 0;
+}
+
+.feature-section.animate {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.feature-section .feature-image {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.6s ease-out;
+}
+
+.feature-section.animate .feature-image {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.feature-section .feature-content {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease-out 0.2s;
+}
+
+.feature-section.animate .feature-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hover effects */
+.feature-image-container {
+  position: relative;
+  transition: transform 0.3s ease-out;
+}
+
+.feature-image-container:hover {
+  transform: translateY(-8px);
+}
+
+.feature-image-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  background: linear-gradient(to top right, rgba(99, 102, 241, 0.2), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.feature-image-container:hover::after {
+  opacity: 1;
+}
+
+/* Button hover animations */
+.btn-hover-glow {
+  @apply relative overflow-hidden;
+}
+
+.btn-hover-glow::after {
+  content: '';
+  @apply absolute inset-0 opacity-0 transition-opacity duration-300 rounded-md;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+}
+
+.btn-hover-glow:hover::after {
+  @apply opacity-100;
+}
+
+/* Gradient hover effect for primary buttons */
+.btn-primary.btn-gradient {
+  @apply bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400;
+}
+
+/* Subtle scale effect */
+.btn-scale {
+  @apply transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98];
+}
