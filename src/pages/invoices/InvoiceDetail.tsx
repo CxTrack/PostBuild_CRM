@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Edit, Printer, Download, Send, CreditCard, 
+import {
+  ArrowLeft, Edit, Printer, Download, Send, CreditCard,
   FileText, Calendar, Clock, User, DollarSign, Star,
   Mail, AlertCircle, Check, X, MoreHorizontal, Copy, MapPin
 } from 'lucide-react';
@@ -16,6 +16,20 @@ import MarkAsDropdown from '../../components/MarkAsDropdown';
 import FeatureGate from '../../components/FeatureGate';
 import { downloadInvoicePDF, printInvoicePDF } from '../../utils/pdfUtils';
 import { sendInvoiceEmail, sendPaymentReminder } from '../../utils/emailUtils';
+
+// Placeholder functions for missing imports
+const generatePublicLink = async (id: string): Promise<string> => `https://example.com/public/invoice/${id}`;
+const generatePaymentLink = async (id: string): Promise<string> => `https://example.com/pay/invoice/${id}`;
+const duplicateInvoice = async (id: string): Promise<Invoice> => {
+  // Simulate duplicating an invoice
+  const originalInvoice = await useInvoiceStore.getState().getInvoiceById(id);
+  if (!originalInvoice) throw new Error("Original invoice not found");
+  const newInvoice = { ...originalInvoice, id: crypto.randomUUID(), invoice_number: `${originalInvoice.invoice_number}-copy`, status: 'Draft' as InvoiceStatus };
+  // In a real scenario, you'd save this new invoice to the store/backend
+  console.log("Duplicated invoice:", newInvoice);
+  return newInvoice;
+};
+
 
 const InvoiceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,9 +48,9 @@ const InvoiceDetail: React.FC = () => {
   const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const { user } = useAuthStore();
-  
+
   // Check if user has access to premium features
-  const hasPremiumAccess = 
+  const hasPremiumAccess =
     // Check if user is admin
     user?.email === 'maniksharmawork@gmail.com' ||
     // Or has premium subscription
@@ -44,10 +58,9 @@ const InvoiceDetail: React.FC = () => {
 
   // Premium feature click handler
   const handlePremiumFeature = (feature: string, plan: string) => {
-    if (!hasPremiumAccess) {
-      const modal = document.createElement('div');
-      modal.className = 'fixed inset-0 bg-dark-900/80 backdrop-blur-sm flex items-center justify-center z-50';
-      modal.innerHTML = `
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-dark-900/80 backdrop-blur-sm flex items-center justify-center z-50';
+    modal.innerHTML = `
         <div class="bg-dark-800 rounded-lg p-8 max-w-md m-4 relative transform scale-100 transition-all duration-200">
           <div class="text-center">
             <div class="bg-gradient-to-r from-primary-600 to-primary-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -69,15 +82,14 @@ const InvoiceDetail: React.FC = () => {
           </button>
         </div>
       `;
-      
-      document.body.appendChild(modal);
-      
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target.closest('button')) {
-          modal.remove();
-        }
-      });
-    }
+
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || (e.target as Element).closest('button')) {
+        modal.remove();
+      }
+    });
   };
 
   useEffect(() => {
@@ -99,16 +111,17 @@ const InvoiceDetail: React.FC = () => {
         });
     }
   }, [id, getInvoiceById, navigate]);
-  
+
   const handleStatusChange = async (status: InvoiceStatus) => {
     if (!id || !invoice) return;
-    
+
     // Check if trying to mark as paid without premium access
     if (status === 'Paid' && !hasPremiumAccess) {
-      toast.error('Marking invoices as paid is a premium feature. Please upgrade to access this feature.');
+      handlePremiumFeature('Marking invoices as paid', 'Business or Enterprise');
+      // toast.error('Marking invoices as paid is a premium feature. Please upgrade to access this feature.');
       return;
     }
-    
+
     try {
       const updatedInvoice = await updateInvoiceStatus(id, status);
       setInvoice(updatedInvoice);
@@ -117,10 +130,10 @@ const InvoiceDetail: React.FC = () => {
       toast.error('Failed to update invoice status');
     }
   };
-  
+
   const handleDelete = async () => {
     if (!id) return;
-    
+
     if (window.confirm('Are you sure you want to delete this invoice?')) {
       try {
         await deleteInvoice(id);
@@ -131,45 +144,46 @@ const InvoiceDetail: React.FC = () => {
       }
     }
   };
-  
+
   const handleDuplicate = async () => {
     if (!id) return;
-    
+
     try {
       const duplicatedInvoice = await duplicateInvoice(id);
       toast.success('Invoice duplicated successfully');
       navigate(`/invoices/${duplicatedInvoice.id}`);
     } catch (error) {
+      console.error("Duplication Error:", error);
       toast.error('Failed to duplicate invoice');
     }
   };
-  
+
   const handleDownloadPDF = () => {
     if (!invoice) return;
     downloadInvoicePDF(invoice);
     toast.success('Invoice PDF downloaded');
   };
-  
+
   const handlePrintPDF = () => {
     if (!invoice) return;
     printInvoicePDF(invoice);
   };
-  
+
   const handleSendEmail = async () => {
     if (!invoice) return;
-    
+
     if (!invoice.customer_email) {
       toast.error('Customer email is not available');
       return;
     }
-    
+
     const success = await sendInvoiceEmail(invoice, emailMessage, true);
-    
+
     if (success) {
       toast.success('Invoice sent successfully');
       setShowEmailModal(false);
       setEmailMessage('');
-      
+
       // If the invoice is in draft status, update it to issued
       if (invoice.status === 'Draft') {
         handleStatusChange('Issued');
@@ -178,10 +192,10 @@ const InvoiceDetail: React.FC = () => {
       toast.error('Failed to send invoice');
     }
   };
-  
+
   const handleSetupReminder = async () => {
     if (!invoice) return;
-    
+
     if (!reminderEmail) {
       toast.error('Please enter an email address for the reminder');
       return;
@@ -189,7 +203,7 @@ const InvoiceDetail: React.FC = () => {
 
     try {
       const success = await sendPaymentReminder(invoice, reminderEmail, reminderDays);
-      
+
       if (success) {
         toast.success('Payment reminder scheduled');
         setShowReminderModal(false);
@@ -197,7 +211,7 @@ const InvoiceDetail: React.FC = () => {
     } catch (error: any) {
       // Show specific error message if available
       toast.error(error.message || 'Failed to schedule payment reminder');
-      
+
       // If error is about email settings, offer to redirect
       if (error.message.includes('configure your email settings')) {
         if (window.confirm('Would you like to configure your email settings now?')) {
@@ -206,10 +220,10 @@ const InvoiceDetail: React.FC = () => {
       }
     }
   };
-  
+
   const handleGeneratePublicLink = async () => {
     if (!id) return;
-    
+
     try {
       const link = await generatePublicLink(id);
       setPublicLink(link);
@@ -218,10 +232,13 @@ const InvoiceDetail: React.FC = () => {
       toast.error('Failed to generate public link');
     }
   };
-  
+
   const handleGeneratePaymentLink = async () => {
-    if (!id) return;
-    
+    if (!id || !hasPremiumAccess) {
+        handlePremiumFeature('Generating Payment Links', 'Business or Enterprise');
+        return;
+    }
+
     try {
       const link = await generatePaymentLink(id);
       setPaymentLink(link);
@@ -230,7 +247,7 @@ const InvoiceDetail: React.FC = () => {
       toast.error('Failed to generate payment link');
     }
   };
-  
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Link copied to clipboard');
@@ -238,7 +255,7 @@ const InvoiceDetail: React.FC = () => {
 
   // Check if the invoice is overdue
   const isOverdue = invoice && new Date(invoice.due_date) < new Date() && invoice.status !== 'Paid';
-  
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -247,7 +264,7 @@ const InvoiceDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -256,7 +273,7 @@ const InvoiceDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   if (!invoice) {
     return (
       <div className="text-center py-12">
@@ -265,7 +282,7 @@ const InvoiceDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -276,24 +293,24 @@ const InvoiceDetail: React.FC = () => {
           </Link>
           <h1 className="text-2xl font-bold text-white">Invoice {invoice.invoice_number}</h1>
         </div>
-        
+
         <div className="flex items-center space-x-2">
-          <MarkAsDropdown 
-            currentStatus={invoice.status} 
+          <MarkAsDropdown
+            currentStatus={invoice.status}
             onStatusChange={handleStatusChange}
           />
-          
+
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowActionsMenu(!showActionsMenu)}
               className="btn btn-secondary p-2"
             >
               <MoreHorizontal size={20} />
             </button>
-            
+
             {showActionsMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-md shadow-lg py-1 z-10 border border-dark-700">
-                <button 
+                <button
                   onClick={() => {
                     setShowActionsMenu(false);
                     handleDuplicate();
@@ -302,7 +319,7 @@ const InvoiceDetail: React.FC = () => {
                 >
                   Duplicate Invoice
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowActionsMenu(false);
                     handleDelete();
@@ -316,31 +333,28 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <Link to={`/invoices/${id}/edit`} className="btn btn-primary flex items-center space-x-2">
           <Edit size={16} />
           <span>Edit</span>
         </Link>
-        <button 
+        <button
           onClick={handlePrintPDF}
           className="btn btn-secondary flex items-center space-x-2"
         >
           <Printer size={16} />
           <span>Print</span>
         </button>
-        <button 
+        <button
           onClick={handleDownloadPDF}
           className="btn btn-secondary flex items-center space-x-2"
         >
           <Download size={16} />
           <span>PDF</span>
         </button>
-        <button 
-          onClick={() => setShowEmailModal(true)}
-          className="btn btn-secondary flex items-center space-x-2"
-          disabled={!invoice.customer_email}
+        <button
           onClick={() => {
             if (!hasPremiumAccess) {
               handlePremiumFeature('Email to Customer', 'Business or Enterprise');
@@ -348,6 +362,8 @@ const InvoiceDetail: React.FC = () => {
               setShowEmailModal(true);
             }
           }}
+          className="btn btn-secondary flex items-center space-x-2"
+          disabled={!invoice.customer_email && !hasPremiumAccess} // Still disable if no email AND no premium
         >
           <div className="relative flex items-center">
             <Send size={16} className="mr-2" />
@@ -357,11 +373,9 @@ const InvoiceDetail: React.FC = () => {
             )}
           </div>
         </button>
-        <button 
-          onClick={handleGeneratePaymentLink}
+        <button
+          onClick={handleGeneratePaymentLink} // This now internally checks for premium access
           className="btn btn-secondary flex items-center space-x-2"
-          disabled={!hasPremiumAccess}
-          onClick={() => handlePremiumFeature('Payment Link', 'Business or Enterprise')}
         >
           <div className="relative flex items-center">
             <CreditCard size={16} className="mr-2" />
@@ -372,12 +386,12 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </button>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Invoice status card */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Invoice Status</h2>
-          
+
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
@@ -388,7 +402,7 @@ const InvoiceDetail: React.FC = () => {
                 <InvoiceStatusBadge status={invoice.status} />
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Calendar size={18} />
@@ -398,7 +412,7 @@ const InvoiceDetail: React.FC = () => {
                 <p className="text-white">{new Date(invoice.date).toLocaleDateString()}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Clock size={18} />
@@ -408,7 +422,7 @@ const InvoiceDetail: React.FC = () => {
                 <p className="text-white">{new Date(invoice.due_date).toLocaleDateString()}</p>
               </div>
             </div>
-            
+
             {invoice.status === 'Paid' && invoice.payment_date && (
               <div className="flex items-start space-x-3">
                 <div className="text-gray-400">
@@ -420,7 +434,7 @@ const InvoiceDetail: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <DollarSign size={18} />
@@ -431,7 +445,7 @@ const InvoiceDetail: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Payment reminder section */}
           <div className="mt-6 pt-6 border-t border-dark-700">
             <h3 className="text-md font-medium text-white mb-2">Payment Reminder</h3>
@@ -446,21 +460,20 @@ const InvoiceDetail: React.FC = () => {
             <p className="text-sm text-gray-400 mb-3">
               Send an automatic reminder to the customer before the due date.
             </p>
-            <button 
+            <button
               onClick={() => setShowReminderModal(true)}
-              className={`btn w-full ${
-                !invoice?.customer_email || invoice?.status === 'Paid' || invoice?.status === 'Cancelled'
-                  ? 'btn-secondary opacity-50 cursor-not-allowed'
-                  : 'btn-primary'
-              }`}
+              className={`btn w-full ${!invoice?.customer_email || ['Paid', 'Cancelled'].includes(invoice?.status || '')
+                ? 'btn-secondary opacity-50 cursor-not-allowed'
+                : 'btn-primary'
+                }`}
               disabled={!invoice?.customer_email || ['Paid', 'Cancelled'].includes(invoice?.status || '')}
             >
-              {!invoice?.customer_email 
+              {!invoice?.customer_email
                 ? 'No Email Available'
                 : invoice?.status === 'Paid'
                 ? 'Invoice Paid'
                 : invoice?.status === 'Cancelled'
-                ? 'Invoice Cancelled' 
+                ? 'Invoice Cancelled'
                 : 'Schedule Reminder'}
             </button>
             {!invoice?.customer_email && (
@@ -470,11 +483,11 @@ const InvoiceDetail: React.FC = () => {
             )}
           </div>
         </div>
-        
+
         {/* Customer info */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
-          
+
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
@@ -485,7 +498,7 @@ const InvoiceDetail: React.FC = () => {
                 <p className="text-white font-medium">{invoice?.customer_name}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Mail size={18} />
@@ -495,7 +508,7 @@ const InvoiceDetail: React.FC = () => {
                 <p className="text-white">{invoice?.customer_email || 'No email provided'}</p>
               </div>
             </div>
-            
+
             {invoice?.customer_address && (
               <div className="flex items-start space-x-3">
                 <div className="text-gray-400">
@@ -509,12 +522,12 @@ const InvoiceDetail: React.FC = () => {
             )}
           </div>
         </div>
-        
+
         {/* Notes */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Notes</h2>
           <p className="text-gray-300">{invoice?.notes || 'No notes provided'}</p>
-          
+
           {/* Attachments section */}
           <div className="mt-6 pt-6 border-t border-dark-700">
             <h3 className="text-md font-medium text-white mb-2">Attachments</h3>
@@ -524,11 +537,11 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Invoice items */}
       <div className="card bg-dark-800 border border-dark-700">
         <h2 className="text-lg font-semibold text-white mb-4">Invoice Items</h2>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -564,7 +577,7 @@ const InvoiceDetail: React.FC = () => {
               </tr>
               <tr className="bg-dark-700/50">
                 <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">
-                  Tax ({(invoice?.tax_rate || 0 * 100).toFixed(2)}%)
+                  Tax ({((invoice?.tax_rate || 0) * 100).toFixed(2)}%)
                 </td>
                 <td className="px-4 py-3 text-right text-sm font-medium text-white">${invoice?.tax.toFixed(2)}</td>
               </tr>
@@ -576,13 +589,13 @@ const InvoiceDetail: React.FC = () => {
           </table>
         </div>
       </div>
-      
+
       {/* Email Modal */}
-      {showEmailModal && (
+      {showEmailModal && invoice && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-white mb-4">Send Invoice to Customer</h3>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 To
@@ -594,7 +607,7 @@ const InvoiceDetail: React.FC = () => {
                 disabled
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Subject
@@ -606,7 +619,7 @@ const InvoiceDetail: React.FC = () => {
                 disabled
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Message (Optional)
@@ -619,7 +632,7 @@ const InvoiceDetail: React.FC = () => {
                 placeholder="Add a personal message to the customer..."
               ></textarea>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowEmailModal(false)}
@@ -637,13 +650,13 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Reminder Modal */}
-      {showReminderModal && (
+      {showReminderModal && invoice && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-white mb-4">Schedule Payment Reminder</h3>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Send reminder to
@@ -656,7 +669,7 @@ const InvoiceDetail: React.FC = () => {
                 placeholder="customer@example.com"
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Days before due date
@@ -670,7 +683,7 @@ const InvoiceDetail: React.FC = () => {
                 max={30}
               />
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowReminderModal(false)}
@@ -689,13 +702,13 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Public Link Modal */}
       {showLinkModal && publicLink && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-white mb-4">Public Invoice Link</h3>
-            
+
             <div className="mb-4">
               <p className="text-sm text-gray-300 mb-2">
                 Share this link with anyone to view the invoice. No account required.
@@ -715,7 +728,7 @@ const InvoiceDetail: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex justify-end">
               <button
                 onClick={() => setShowLinkModal(false)}
@@ -727,7 +740,7 @@ const InvoiceDetail: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Payment Link Modal */}
       {showPaymentLinkModal && paymentLink && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -752,7 +765,7 @@ const InvoiceDetail: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex justify-end">
               <button
                 onClick={() => setShowPaymentLinkModal(false)}

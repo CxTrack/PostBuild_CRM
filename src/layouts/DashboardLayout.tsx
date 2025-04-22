@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  LayoutGrid, Users, Package, FileText, ShoppingCart, 
+import {
+  LayoutGrid, Users, Package, FileText, ShoppingCart,
   Settings, LogOut, Menu, X, ChevronDown, Bell, Search, DollarSign,
   CircleUser, BarChart3, Layers, ShoppingBag, FileText as Quote, Bot, Upload, Receipt, Star,
   Calendar, ChevronLeft, ChevronRight, Maximize2, ExternalLink
@@ -31,10 +31,10 @@ const DashboardLayout: React.FC = () => {
   const templateConfig = getConfig(activeTemplate);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Check if user has access to premium features
   const hasPremiumAccess = currentSubscription?.plan_id && ['business', 'enterprise'].includes(currentSubscription.plan_id);
-  
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -63,19 +63,19 @@ const DashboardLayout: React.FC = () => {
   }, [sidebarOpen]);
 
   const closeSidebar = () => setSidebarOpen(false);
-  
+
   // Close sidebar when route changes on mobile
   useEffect(() => {
     if (window.innerWidth < 768) {
       closeSidebar();
     }
   }, [location.pathname]);
-  
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
-  
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -92,7 +92,7 @@ const DashboardLayout: React.FC = () => {
       'CxTrack Calendar',
       'width=1024,height=768,menubar=no,toolbar=no,location=no,status=no'
     );
-    
+
     if (calendarWindow) {
       calendarWindow.document.write(`
         <!DOCTYPE html>
@@ -155,19 +155,19 @@ const DashboardLayout: React.FC = () => {
       calendarWindow.document.close();
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-dark-950 flex">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 md:hidden" 
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`fixed top-0 left-0 z-30 h-full bg-dark-900 transform transition-transform duration-200 ease-in-out md:relative ${
           sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:w-20'
         }`}
@@ -181,15 +181,15 @@ const DashboardLayout: React.FC = () => {
                 <span className="brand-logo text-2xl font-bold text-white brand-text">CxTrack</span>
               )}
             </Link>
-            <button 
-              onClick={toggleSidebar} 
+            <button
+              onClick={toggleSidebar}
               className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-dark-700 md:block"
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
               <ChevronLeft size={20} className={`transform transition-transform duration-200 ${sidebarOpen ? '' : 'rotate-180'}`} />
             </button>
           </div>
-          
+
           {/* Sidebar links */}
           <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
             {templateConfig.sidebarItems.map((item, index) => {
@@ -220,9 +220,9 @@ const DashboardLayout: React.FC = () => {
                   Icon = FileText;
               }
               return item.section ? null : (
-                <NavLink 
+                <NavLink
                   key={index}
-                  to={item.path} 
+                  to={item.path}
                   className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={20} />
@@ -230,22 +230,22 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               );
             })}
-            
+
             {sidebarOpen && (
-              <div 
+              <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('sales')}
               >
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sales</span>
-                <ChevronDown 
-                  size={14} 
+                <ChevronDown
+                  size={14}
                   className={`text-gray-400 transform transition-transform duration-200 ${
                     expandedSections.sales ? 'rotate-180' : ''
-                  }`} 
+                  }`}
                 />
               </div>
             )}
-            
+
             {(!sidebarOpen || expandedSections.sales) && (
               <>{templateConfig.sidebarItems
                 .filter(item => item.section === 'sales')
@@ -262,9 +262,9 @@ const DashboardLayout: React.FC = () => {
                       Icon = FileText;
                   }
                   return (
-                    <NavLink 
+                    <NavLink
                       key={index}
-                      to={item.path} 
+                      to={item.path}
                       className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}
                     >
                       <Icon size={20} />
@@ -273,31 +273,31 @@ const DashboardLayout: React.FC = () => {
                   );
                 })}</>
             )}
-            
+
             {sidebarOpen && (
-              <div 
+              <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('team')}
               >
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Team</span>
-                <ChevronDown 
-                  size={14} 
+                <ChevronDown
+                  size={14}
                   className={`text-gray-400 transform transition-transform duration-200 ${
                     expandedSections.team ? 'rotate-180' : ''
-                  }`} 
+                  }`}
                 />
               </div>
             )}
-            
+
             {(!sidebarOpen || expandedSections.team) && (
               <>
                 <NavLink to="/team" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Users size={20} />
                   {sidebarOpen && <span>Direct Reports</span>}
                 </NavLink>
-                
-                <NavLink 
-                  to="/settings?tab=ai-agents" 
+
+                <NavLink
+                  to="/settings?tab=ai-agents"
                   className={({isActive}) => `sidebar-link ${isActive && isAIAgentsActive ? 'active' : ''}`}
                 >
                   <Bot size={20} />
@@ -305,9 +305,9 @@ const DashboardLayout: React.FC = () => {
                     <div className="flex items-center">
                       <span className="ml-3">AI Agents</span>
                       {!hasPremiumAccess && (
-                        <Star 
-                          size={14} 
-                          className="ml-2 text-yellow-400 fill-yellow-400" 
+                        <Star
+                          size={14}
+                          className="ml-2 text-yellow-400 fill-yellow-400"
                           data-tooltip-id="premium-feature"
                           data-tooltip-content="Premium Feature"
                         />
@@ -317,22 +317,22 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               </>
             )}
-            
+
             {sidebarOpen && (
-              <div 
+              <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('finance')}
               >
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</span>
-                <ChevronDown 
-                  size={14} 
+                <ChevronDown
+                  size={14}
                   className={`text-gray-400 transform transition-transform duration-200 ${
                     expandedSections.finance ? 'rotate-180' : ''
-                  }`} 
+                  }`}
                 />
               </div>
             )}
-            
+
             {(!sidebarOpen || expandedSections.finance) && (
               <>
                 <NavLink to="/revenue" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
@@ -349,46 +349,46 @@ const DashboardLayout: React.FC = () => {
                   <Package size={20} />
                   {sidebarOpen && <span>Products</span>}
                 </NavLink>
-                
+
                 <NavLink to="/inventory" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Layers size={20} />
                   {sidebarOpen && <span>Inventory</span>}
                 </NavLink>
-                
+
                 <NavLink to="/purchases" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <ShoppingCart size={20} />
                   {sidebarOpen && <span>Purchases</span>}
                 </NavLink>
               </>
             )}
-            
+
             {sidebarOpen && (
-              <div 
+              <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('system')}
               >
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">System</span>
-                <ChevronDown 
-                  size={14} 
+                <ChevronDown
+                  size={14}
                   className={`text-gray-400 transform transition-transform duration-200 ${
                     expandedSections.system ? 'rotate-180' : ''
-                  }`} 
+                  }`}
                 />
               </div>
             )}
-            
+
             {(!sidebarOpen || expandedSections.system) && (
               <>
                 <NavLink to="/settings" end className={({isActive}) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Settings</span>}
                 </NavLink>
-                
+
                 <NavLink to="/settings?tab=integrations" className={({isActive}) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
                   <Upload size={20} />
                   {sidebarOpen && <span>Integrations</span>}
                 </NavLink>
-                
+
                 <NavLink to="/templates" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <FileText size={20} />
                   {sidebarOpen && <span>Templates</span>}
@@ -408,8 +408,8 @@ const DashboardLayout: React.FC = () => {
               <Calendar size={20} />
               {sidebarOpen && <span>Calendar</span>}
             </button>
-            
-            <button 
+
+            <button
               onClick={handleSignOut}
               className="sidebar-link text-red-400 hover:text-red-300 w-full text-left"
             >
@@ -419,7 +419,7 @@ const DashboardLayout: React.FC = () => {
           </nav>
         </div>
       </aside>
-      
+
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top navbar */}
@@ -427,32 +427,31 @@ const DashboardLayout: React.FC = () => {
           <div className="flex items-center justify-between h-16 px-4">
             {/* Left side - Toggle button & search */}
             <div className="flex items-center space-x-4">
-              <button 
-                onClick={toggleSidebar} 
+              <button
+                onClick={toggleSidebar}
                 className="text-gray-400 hover:text-white md:hidden"
                 aria-label="Toggle menu"
               >
                 <Menu size={24} />
               </button>
-              
+
               <div className="hidden md:flex items-center bg-dark-800 rounded-md px-3 py-1.5">
                 <Search size={18} className="text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search..." 
+                <input
+                  type="text"
+                  placeholder="Search..."
                   className="bg-transparent border-none focus:outline-none text-white ml-2 w-64"
                 />
               </div>
             </div>
-            
+
             {/* Right side - Notifications & user menu */}
             <div className="flex items-center space-x-4">
-              <button className="text-gray-400 hover:text-white relative" aria-label="Notifications">
-                <NotificationBell />
-              </button>
+              {/* Removed the wrapping button */} 
+              <NotificationBell />
               
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center space-x-2 text-gray-300 hover:text-white focus:outline-none"
                   aria-label="User menu"
@@ -469,17 +468,17 @@ const DashboardLayout: React.FC = () => {
                     </>
                   )}
                 </button>
-                
+
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-md shadow-lg py-1 z-50">
-                    <NavLink 
-                      to="/settings" 
+                    <NavLink
+                      to="/settings"
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
                       onClick={() => setUserMenuOpen(false)}
                     >
                       Profile Settings
                     </NavLink>
-                    <button 
+                    <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         handleSignOut();
@@ -493,25 +492,25 @@ const DashboardLayout: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Mobile search bar */}
           <div className="md:hidden px-4 pb-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search size={18} className="text-gray-400" />
               </div>
-              <input 
-                type="text" 
-                placeholder="Search..." 
+              <input
+                type="text"
+                placeholder="Search..."
                 className="input pl-10 w-full"
               />
             </div>
           </div>
         </header>
-        
+
         {/* Calendar Sidebar */}
         {showCalendar && (
-          <div 
+          <div
             id="calendar-wrapper"
             className={`fixed right-0 top-16 bottom-0 bg-dark-900 border-l border-dark-800 z-20 overflow-hidden transition-all duration-200 flex flex-col ${
               calendarMaximized ? 'left-64 md:left-20' : 'w-96'
@@ -530,7 +529,7 @@ const DashboardLayout: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 p-4">
-              <CalendarComponent 
+              <CalendarComponent
                 isMaximized={calendarMaximized}
                 onToggleMaximize={handleCalendarMaximize}
                 onOpenNewWindow={openCalendarInNewWindow}
@@ -538,7 +537,7 @@ const DashboardLayout: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* Sidebar Toggle Button - Only show when sidebar is closed and calendar is maximized */}
         {!sidebarOpen && calendarMaximized && (
           <button
@@ -549,7 +548,7 @@ const DashboardLayout: React.FC = () => {
             <ChevronRight size={20} />
           </button>
         )}
-        
+
         {/* Page content */}
         <main className={`flex-1 overflow-y-auto bg-dark-950 p-4 md:p-6 transition-all duration-200 ${
           showCalendar ? (calendarMaximized ? 'mr-[calc(100%-16rem)]' : 'mr-96') : ''
