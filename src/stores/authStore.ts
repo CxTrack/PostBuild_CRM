@@ -95,8 +95,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signIn: async (email, password) => {
     set({ loading: true, error: null });
     try {
-      // Only allow maniksharmawork@gmail.com and amanjotgrewal@hotmail.com to sign in
-      if (email !== 'maniksharmawork@gmail.com' && email !== 'amanjotgrewal@hotmail.com' && email !== 'vaneetverma@yahoo.com' && email !== 'jviaches@gmail.com') {
+      // Only allow specific email addresses to sign in
+      const allowedEmails = [
+        'maniksharmawork@gmail.com',
+        'amanjotgrewal@hotmail.com',
+        'vaneetverma@yahoo.com',
+        'jviaches@gmail.com'
+      ];
+      
+      if (!allowedEmails.includes(email)) {
         throw new Error('Access restricted. Please join our waitlist.');
       }
 

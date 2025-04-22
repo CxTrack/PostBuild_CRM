@@ -165,8 +165,8 @@ const CreateInvoice: React.FC = () => {
 
       // Create the invoice
       const newInvoice = await createInvoice(data);
-      toast.success('Invoice created successfully!');
-      navigate(`/invoices/${newInvoice.id}`);
+      toast.success('Invoice has been created');
+      navigate('/invoices');
     } catch (err) {
       console.error('Error creating invoice:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to create invoice');

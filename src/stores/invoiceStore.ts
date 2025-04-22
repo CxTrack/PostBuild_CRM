@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 import { invoiceService } from '../services/invoiceService';
 import { Invoice, InvoiceFormData, InvoiceStatus } from '../types/database.types';
 
@@ -63,13 +64,21 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       const newInvoice = await invoiceService.createInvoice(data);
       
       // Log activity
-      await supabase.rpc('add_activity', {
-        p_user_id: (await supabase.auth.getUser()).data.user?.id,
-        p_type: 'invoice',
-        p_title: 'Invoice Created',
-        p_customer: newInvoice.customer_name,
-        p_amount: newInvoice.total
-      });
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          await supabase.rpc('add_activity', {
+            p_user_id: userData.user.id,
+            p_type: 'invoice',
+            p_title: 'Invoice Created',
+            p_customer: newInvoice.customer_name,
+            p_amount: newInvoice.total
+          });
+        }
+      } catch (activityError) {
+        console.error('Error logging activity:', activityError);
+        // Continue even if activity logging fails
+      }
 
       // Update the invoices list with the new invoice
       const invoices = [...get().invoices, newInvoice];

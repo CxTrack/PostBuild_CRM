@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Download, Trash2, Edit, Eye, Package, Upload } from 'lucide-react';
 import { useProductStore } from '../../stores/productStore';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import Papa from 'papaparse';
 import { toast } from 'react-hot-toast';
 
@@ -11,6 +12,7 @@ const Products: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const { totalProducts } = useProductStore();
   
   // Fetch products on component mount
@@ -57,13 +59,17 @@ const Products: React.FC = () => {
   };
   
   const handleDeleteProduct = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteProduct(id);
-        toast.success('Product deleted successfully');
-      } catch (error) {
-        toast.error('Failed to delete product');
-      }
+    setProductToDelete(id);
+  };
+  
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    
+    try {
+      await deleteProduct(productToDelete);
+      toast.success('Product deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete product');
     }
   };
   
@@ -366,6 +372,18 @@ const Products: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmDeleteProduct}
+        title="Delete item?"
+        message="Are you sure?"
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
     </div>
   );
 };

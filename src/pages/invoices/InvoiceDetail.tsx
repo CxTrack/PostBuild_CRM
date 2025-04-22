@@ -163,7 +163,7 @@ const InvoiceDetail: React.FC = () => {
       return;
     }
     
-    const success = await sendInvoiceEmail(invoice, emailMessage);
+    const success = await sendInvoiceEmail(invoice, emailMessage, true);
     
     if (success) {
       toast.success('Invoice sent successfully');
@@ -732,7 +732,7 @@ const InvoiceDetail: React.FC = () => {
       {showPaymentLinkModal && paymentLink && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Payment Link</h3> ```
+            <h3 className="text-lg font-semibold text-white mb-4">Payment Link</h3>
             <div className="mb-4">
               <p className="text-sm text-gray-300 mb-2">
                 Share this link with your customer to allow them to pay the invoice online.

@@ -46,9 +46,18 @@ export const quoteService = {
   // Generate next quote number
   async generateQuoteNumber(): Promise<string> {
     try {
+      // Get the current user's ID
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Get the highest quote number for this user
       const { data, error } = await supabase
         .from('quotes')
         .select('quote_number')
+        .eq('user_id', userData.user.id)
         .order('quote_number', { ascending: false })
         .limit(1);
 
@@ -64,15 +73,21 @@ export const quoteService = {
         const matches = lastQuoteNumber.match(/QUO-(\d+)/);
         
         if (matches && matches[1]) {
-          nextNumber = parseInt(matches[1], 10) + 1;
+          // Parse the number and increment
+          const currentNumber = parseInt(matches[1], 10);
+          nextNumber = currentNumber + 1;
         }
       }
 
-      return `QUO-${nextNumber.toString().padStart(6, '0')}`;
+      // Format with 6 digits, padded with zeros
+      const formattedNumber = nextNumber.toString().padStart(6, '0');
+      return `QUO-${formattedNumber}`;
     } catch (error) {
       console.error('Error generating quote number:', error);
+      // In case of error, generate a unique number based on timestamp and random suffix
       const timestamp = new Date().getTime();
-      return `QUO-${timestamp.toString().slice(-6).padStart(6, '0')}`;
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      return `QUO-${timestamp.toString().slice(-6)}-${randomSuffix}`;
     }
   },
 
@@ -127,57 +142,88 @@ export const quoteService = {
         }
       }
 
-      const quoteNumber = await this.generateQuoteNumber();
+      // Try to create the quote with a unique quote number, with retries
+      let attempts = 0;
+      const maxAttempts = 3;
+      let error = null;
+      let data = null;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const quoteNumber = await this.generateQuoteNumber();
+          
+          const items = quoteData.items.map(item => ({
+            product_id: item.product || null,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.quantity * item.unit_price
+          }));
 
-      const items = quoteData.items.map(item => ({
-        product_id: item.product || null,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.quantity * item.unit_price
-      }));
+          const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+          const taxRate = parseFloat(quoteData.tax_rate.toString()) / 100;
+          const tax = subtotal * taxRate;
+          const total = subtotal + tax;
 
-      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-      const taxRate = parseFloat(quoteData.tax_rate.toString()) / 100;
-      const tax = subtotal * taxRate;
-      const total = subtotal + tax;
+          const newQuote = {
+            quote_number: quoteNumber,
+            customer_id: customerId,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_address: customerAddress,
+            date: quoteData.date,
+            expiry_date: quoteData.expiry_date,
+            items: items,
+            subtotal: subtotal,
+            tax_rate: taxRate,
+            tax: tax,
+            total: total,
+            notes: quoteData.notes || null,
+            message: quoteData.message || null,
+            status: 'Draft' as QuoteStatus,
+            user_id: userData.user.id
+          };
 
-      const newQuote = {
-        quote_number: quoteNumber,
-        customer_id: customerId,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_address: customerAddress,
-        date: quoteData.date,
-        expiry_date: quoteData.expiry_date,
-        items: items,
-        subtotal: subtotal,
-        tax_rate: taxRate,
-        tax: tax,
-        total: total,
-        notes: quoteData.notes || null,
-        message: quoteData.message || null,
-        status: 'Draft' as QuoteStatus,
-        user_id: userData.user.id
-      };
-
-      const { data, error } = await supabase
-        .from('quotes')
-        .insert([newQuote])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating quote:', error);
+          const result = await supabase
+            .from('quotes')
+            .insert([newQuote])
+            .select()
+            .single();
+            
+          if (result.error) {
+            // If it's a duplicate key error, try again
+            if (result.error.code === '23505' && result.error.message.includes('quotes_quote_number_key')) {
+              attempts++;
+              error = result.error;
+              continue;
+            }
+            // For other errors, throw immediately
+            throw result.error;
+          }
+          
+          data = result.data;
+          break; // Success, exit the loop
+        } catch (err) {
+          if (attempts >= maxAttempts - 1) {
+            throw err; // Rethrow on last attempt
+          }
+          attempts++;
+          error = err;
+        }
+      }
+      
+      // If we've exhausted all attempts, throw the last error
+      if (!data && error) {
         throw error;
       }
-
-      return data;
+      
+      return data!;
     } catch (error) {
       console.error('Quote service error:', error);
       throw error;
     }
   },
+
 
   // Update quote status
   async updateQuoteStatus(id: string, status: QuoteStatus): Promise<Quote> {

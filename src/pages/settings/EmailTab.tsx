@@ -19,7 +19,7 @@ const EmailTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors }, getValues } = useForm<EmailSettingsFormData>();
+  const { register, handleSubmit, formState: { errors }, getValues, setValue } = useForm<EmailSettingsFormData>();
 
   // Keep track of form submission status
   useEffect(() => {
@@ -42,11 +42,13 @@ const EmailTab: React.FC = () => {
       try {
         const settings = await emailService.getEmailSettings(user.id);
         if (settings) {
-          // Pre-fill the form with existing settings
-          Object.entries(settings).forEach(([key, value]) => {
-            const input = document.querySelector(`[name="${key}"]`) as HTMLInputElement;
-            if (input) input.value = value;
-          });
+          // Pre-fill the form with existing settings using setValue
+          setValue('smtp_host', settings.smtp_host);
+          setValue('smtp_port', settings.smtp_port);
+          setValue('smtp_username', settings.smtp_username);
+          setValue('smtp_password', settings.smtp_password);
+          setValue('from_email', settings.from_email);
+          setValue('from_name', settings.from_name);
         }
       } catch (error) {
         console.error('Error loading email settings:', error);
@@ -63,6 +65,9 @@ const EmailTab: React.FC = () => {
 
     setIsSaving(true);
     try {
+      // Log the data being submitted
+      console.log('Submitting email settings:', data);
+      
       await emailService.saveEmailSettings(user.id, data);
       toast.success('Email settings saved successfully');
     } catch (error) {
@@ -80,6 +85,12 @@ const EmailTab: React.FC = () => {
     try {
       // Get form values
       const values = getValues();
+      
+      // Log the values being tested
+      console.log('Testing email settings with values:', {
+        ...values,
+        smtp_password: '***REDACTED***'
+      });
 
       // Validate required fields
       if (!values.smtp_host || !values.smtp_port || !values.smtp_username || 
@@ -88,9 +99,39 @@ const EmailTab: React.FC = () => {
         return;
       }
     
-      // Test email settings
-      await emailService.testEmailSettings(user.id, values);
-      toast.success('Test email sent successfully');
+      // Prepare test email content
+      const testEmailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h2 style="color: #4f46e5;">CxTrack Email Settings Test</h2>
+          <p>This is a test email to verify your SMTP settings are working correctly.</p>
+          <p>If you're seeing this message, your email configuration is working properly!</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+            <p style="font-size: 12px; color: #666;">This is an automated message from CxTrack. Please do not reply to this email.</p>
+          </div>
+        </div>
+      `;
+      
+      // Call the test-email function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          to: values.from_email, // Send to self for testing
+          subject: "CxTrack Email Settings Test",
+          html: testEmailHtml
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.id) {
+        toast.success('Test email sent successfully');
+      } else {
+        throw new Error(result.error || 'Failed to send test email');
+      }
     } catch (error) {
       console.error('Error testing email settings:', error);
       const errorMessage = error instanceof Error 
@@ -121,12 +162,15 @@ const EmailTab: React.FC = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Server size={16} className="text-gray-400" />
                   </div>
-                  <input
+                  <input 
                     id="smtp_host"
                     type="text"
                     className={`input pl-10 ${errors.smtp_host ? 'border-red-500' : ''}`}
                     placeholder="smtp.example.com"
-                    {...register('smtp_host', { required: 'SMTP host is required' })}
+                    {...register('smtp_host', { 
+                      required: 'SMTP host is required',
+                      setValueAs: v => v?.trim()
+                    })}
                   />
                 </div>
                 {errors.smtp_host && (
@@ -145,12 +189,13 @@ const EmailTab: React.FC = () => {
                   <input
                     id="smtp_port"
                     type="number"
-                    className={`input pl-10 ${errors.smtp_port ? 'border-red-500' : ''}`}
+                    className={`input pl-10 ${errors.smtp_port ? 'border-red-500' : ''}`} 
                     placeholder="587"
                     {...register('smtp_port', { 
                       required: 'SMTP port is required',
                       min: { value: 1, message: 'Port must be greater than 0' },
-                      max: { value: 65535, message: 'Port must be less than 65536' }
+                      max: { value: 65535, message: 'Port must be less than 65536' },
+                      valueAsNumber: true
                     })}
                   />
                 </div>
@@ -171,8 +216,11 @@ const EmailTab: React.FC = () => {
                     id="smtp_username"
                     type="text"
                     className={`input pl-10 ${errors.smtp_username ? 'border-red-500' : ''}`}
-                    placeholder="username@example.com"
-                    {...register('smtp_username', { required: 'SMTP username is required' })}
+                    placeholder="username@example.com" 
+                    {...register('smtp_username', { 
+                      required: 'SMTP username is required',
+                      setValueAs: v => v?.trim()
+                    })}
                   />
                 </div>
                 {errors.smtp_username && (
@@ -192,8 +240,10 @@ const EmailTab: React.FC = () => {
                     id="smtp_password"
                     type="password"
                     className={`input pl-10 ${errors.smtp_password ? 'border-red-500' : ''}`}
-                    placeholder="••••••••"
-                    {...register('smtp_password', { required: 'SMTP password is required' })}
+                    placeholder="••••••••" 
+                    {...register('smtp_password', { 
+                      required: 'SMTP password is required'
+                    })}
                   />
                 </div>
                 {errors.smtp_password && (
@@ -220,13 +270,14 @@ const EmailTab: React.FC = () => {
                     id="from_email"
                     type="email"
                     className={`input pl-10 ${errors.from_email ? 'border-red-500' : ''}`}
-                    placeholder="noreply@yourdomain.com"
+                    placeholder="noreply@yourdomain.com" 
                     {...register('from_email', { 
                       required: 'From email is required',
                       pattern: {
                         value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                         message: 'Invalid email address'
-                      }
+                      },
+                      setValueAs: v => v?.trim()
                     })}
                   />
                 </div>
@@ -243,8 +294,11 @@ const EmailTab: React.FC = () => {
                   id="from_name"
                   type="text"
                   className={`input ${errors.from_name ? 'border-red-500' : ''}`}
-                  placeholder="Your Company Name"
-                  {...register('from_name', { required: 'From name is required' })}
+                  placeholder="Your Company Name" 
+                  {...register('from_name', { 
+                    required: 'From name is required',
+                    setValueAs: v => v?.trim()
+                  })}
                 />
                 {errors.from_name && (
                   <p className="mt-1 text-sm text-red-400">{errors.from_name.message}</p>

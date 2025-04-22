@@ -2,8 +2,9 @@ import { Invoice, Quote } from '../types/database.types';
 import { generateInvoicePDF, generateQuotePDF } from './pdfUtils';
 import { emailService } from '../services/emailService';
 import { useAuthStore } from '../stores/authStore';
+import { supabase } from '../lib/supabase';
 
-export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: string = ''): Promise<boolean> => {
+export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: string = '', attachPdf: boolean = true): Promise<boolean> => {
   try {
     if (!invoice.customer_email) {
       throw new Error('Customer email is not available');
@@ -25,26 +26,46 @@ export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: stri
     const template = emailService.getInvoiceEmailTemplate(invoice.invoice_number, invoice.total);
     const emailBody = `${template.body}\n\n${additionalMessage}`;
 
-    // Generate PDF (in a real app, you'd attach this to the email)
-    const doc = generateInvoicePDF(invoice);
-    const pdfBlob = doc.output('blob');
+    // Generate PDF for attachment
+    let pdfAttachment = null;
+    if (attachPdf) {
+      const doc = generateInvoicePDF(invoice);
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      pdfAttachment = {
+        filename: `Invoice-${invoice.invoice_number}.pdf`,
+        content: pdfBase64,
+        encoding: 'base64',
+        type: 'application/pdf'
+      };
+    }
 
-    // Send the email with the user's ID for SMTP configuration
-    const success = await emailService.sendEmail(
-      invoice.customer_email,
-      template.subject,
-      emailBody,
-      user.id
-    );
+    try {
+      // Send the email with the user's ID for SMTP configuration
+      const success = await emailService.sendEmail(
+        invoice.customer_email,
+        template.subject,
+        emailBody,
+        user.id,
+        undefined,
+        pdfAttachment ? [pdfAttachment] : undefined
+      );
 
-    return success;
-  } catch (error) {
-    console.error('Error sending invoice email:', error);
-    throw error; // Re-throw to handle in the UI
+      return success;
+    } catch (e) {
+      console.error('Error sending invoice email:', e);
+      throw e instanceof Error 
+        ? e 
+        : new Error('Failed to send invoice email');
+    }
+  } catch (e) {
+    console.error('Error sending invoice email:', e);
+    throw e instanceof Error 
+      ? e 
+      : new Error('Failed to send invoice email');
   }
 };
 
-export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = ''): Promise<boolean> => {
+export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '', attachPdf: boolean = true): Promise<boolean> => {
   try {
     if (!quote.customer_email) {
       throw new Error('Customer email is not available');
@@ -66,22 +87,42 @@ export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '
     const template = emailService.getQuoteEmailTemplate(quote.quote_number, quote.total);
     const emailBody = `${template.body}\n\n${additionalMessage}`;
 
-    // Generate PDF (in a real app, you'd attach this to the email)
-    const doc = generateQuotePDF(quote);
-    const pdfBlob = doc.output('blob');
+    // Generate PDF for attachment
+    let pdfAttachment = null;
+    if (attachPdf) {
+      const doc = generateQuotePDF(quote);
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      pdfAttachment = {
+        filename: `Quote-${quote.quote_number}.pdf`,
+        content: pdfBase64,
+        encoding: 'base64',
+        type: 'application/pdf'
+      };
+    }
 
-    // Send the email with the user's ID for SMTP configuration
-    const success = await emailService.sendEmail(
-      quote.customer_email,
-      template.subject,
-      emailBody,
-      user.id
-    );
+    try {
+      // Send the email with the user's ID for SMTP configuration
+      const success = await emailService.sendEmail(
+        quote.customer_email,
+        template.subject,
+        emailBody,
+        user.id,
+        undefined,
+        pdfAttachment ? [pdfAttachment] : undefined
+      );
 
-    return success;
-  } catch (error) {
-    console.error('Error sending quote email:', error);
-    throw error; // Re-throw to handle in the UI
+      return success;
+    } catch (e) {
+      console.error('Error sending quote email:', e);
+      throw e instanceof Error 
+        ? e 
+        : new Error('Failed to send quote email');
+    }
+  } catch (e) {
+    console.error('Error sending quote email:', e);
+    throw e instanceof Error 
+      ? e 
+      : new Error('Failed to send quote email');
   }
 };
 
@@ -117,8 +158,10 @@ export const sendPaymentReminder = async (
       user.id,
       emailSettings
     );
-  } catch (error) {
-    console.error('Error setting up payment reminder:', error);
-    throw error;
+  } catch (e) {
+    console.error('Error setting up payment reminder:', e);
+    throw e instanceof Error 
+      ? e 
+      : new Error('Failed to send payment reminder');
   }
 };

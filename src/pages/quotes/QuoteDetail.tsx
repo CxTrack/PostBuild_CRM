@@ -8,6 +8,7 @@ import {
 import { useQuoteStore } from '../../stores/quoteStore';
 import { Quote } from '../../types/database.types';
 import { toast } from 'react-hot-toast';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import QuoteStatusBadge from '../../components/QuoteStatusBadge';
 import { downloadQuotePDF, printQuotePDF } from '../../utils/pdfUtils';
 import { sendQuoteEmail } from '../../utils/emailUtils';
@@ -19,6 +20,7 @@ const QuoteDetail: React.FC = () => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailMessage, setEmailMessage] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -51,15 +53,18 @@ const QuoteDetail: React.FC = () => {
   
   const handleDelete = async () => {
     if (!id) return;
+    setShowDeleteModal(true);
+  };
+  
+  const confirmDelete = async () => {
+    if (!id) return;
     
-    if (window.confirm('Are you sure you want to delete this quote?')) {
-      try {
-        await deleteQuote(id);
-        toast.success('Quote deleted successfully');
-        navigate('/quotes');
-      } catch (error) {
-        toast.error('Failed to delete quote');
-      }
+    try {
+      await deleteQuote(id);
+      toast.success('Quote deleted successfully');
+      navigate('/quotes');
+    } catch (error) {
+      toast.error('Failed to delete quote');
     }
   };
   
@@ -82,7 +87,7 @@ const QuoteDetail: React.FC = () => {
       return;
     }
     
-    const success = await sendQuoteEmail(quote, emailMessage);
+    const success = await sendQuoteEmail(quote, emailMessage, true);
     
     if (success) {
       toast.success('Quote sent successfully');
@@ -416,6 +421,18 @@ const QuoteDetail: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete item?"
+        message="Are you sure?"
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload } f
 import { useInvoiceStore } from '../../stores/invoiceStore';
 import Papa from 'papaparse';
 import { toast } from 'react-hot-toast';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import InvoiceStatusBadge from '../../components/InvoiceStatusBadge';
 
 const Invoices: React.FC = () => {
@@ -12,6 +13,7 @@ const Invoices: React.FC = () => {
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [uploading, setUploading] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   
   // Fetch invoices on component mount
   useEffect(() => {
@@ -47,13 +49,18 @@ const Invoices: React.FC = () => {
   };
   
   const handleDeleteInvoice = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
-      try {
-        await deleteInvoice(id);
-        toast.success('Invoice deleted successfully');
-      } catch (error) {
-        toast.error('Failed to delete invoice');
-      }
+    setInvoiceToDelete(id);
+  };
+  
+  const confirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    
+    try {
+      await deleteInvoice(invoiceToDelete);
+      toast.success('Invoice deleted successfully');
+      setInvoiceToDelete(null);
+    } catch (error) {
+      toast.error('Failed to delete invoice');
     }
   };
 
@@ -349,6 +356,18 @@ const Invoices: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Delete item?"
+        message="Are you sure?"
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
     </div>
   );
 };

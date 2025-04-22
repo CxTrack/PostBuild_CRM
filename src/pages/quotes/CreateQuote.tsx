@@ -89,6 +89,28 @@ const CreateQuote: React.FC = () => {
     clearError();
     
     try {
+      // Validate required fields
+      if (!data.customer && !data.newCustomer?.name) {
+        throw new Error('Please select a customer or create a new one');
+      }
+
+      if (!data.items?.length) {
+        throw new Error('Please add at least one item');
+      }
+
+      // Validate each item
+      data.items.forEach((item, index) => {
+        if (!item.description) {
+          throw new Error(`Please enter a description for item ${index + 1}`);
+        }
+        if (!item.quantity || item.quantity <= 0) {
+          throw new Error(`Please enter a valid quantity for item ${index + 1}`);
+        }
+        if (!item.unit_price || item.unit_price <= 0) {
+          throw new Error(`Please enter a valid price for item ${index + 1}`);
+        }
+      });
+
       // Create the quote in the database
       const newQuote = await createQuote(data);
       
@@ -99,7 +121,12 @@ const CreateQuote: React.FC = () => {
       navigate(`/quotes/${newQuote.id}`);
     } catch (err) {
       console.error('Error creating quote:', err);
-      toast.error('Failed to create quote. Please try again.');
+      // Display a more specific error message if available
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to create quote. Please try again.');
+      }
     }
   };
   

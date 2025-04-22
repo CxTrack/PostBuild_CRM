@@ -5,6 +5,7 @@ import {
   ShoppingCart, Layers, ArrowUp, ArrowDown, AlertCircle
 } from 'lucide-react';
 import { useProductStore } from '../../stores/productStore';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { Product } from '../../types/database.types';
 import { toast } from 'react-hot-toast';
 
@@ -15,6 +16,7 @@ const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [adjustQuantity, setAdjustQuantity] = useState<number>(0);
   const [showAdjustStock, setShowAdjustStock] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -34,16 +36,18 @@ const ProductDetail: React.FC = () => {
   }, [id, getProductById, navigate]);
   
   const handleDelete = async () => {
+    setShowDeleteModal(true);
+  };
+  
+  const confirmDelete = async () => {
     if (!id) return;
     
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteProduct(id);
-        toast.success('Product deleted successfully');
-        navigate('/products');
-      } catch (error) {
-        toast.error('Failed to delete product');
-      }
+    try {
+      await deleteProduct(id);
+      toast.success('Product deleted successfully');
+      navigate('/products');
+    } catch (error) {
+      toast.error('Failed to delete product');
     }
   };
   
@@ -271,6 +275,18 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete item?"
+        message="Are you sure?"
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
       
       {/* Stock Movement History */}
       <div className="card bg-dark-800 border border-dark-700">

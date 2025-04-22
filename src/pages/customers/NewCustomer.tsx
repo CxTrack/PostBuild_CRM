@@ -42,6 +42,7 @@ const NewCustomer: React.FC = () => {
   const navigate = useNavigate();
   const { createCustomer, updateCustomer, getCustomerById, loading, error, clearError } = useCustomerStore();
   const [selectedCountry, setSelectedCountry] = useState('CA');
+  const [customerType, setCustomerType] = useState('Individual');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [phoneValue, setPhoneValue] = useState('');
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -81,11 +82,11 @@ const NewCustomer: React.FC = () => {
             priority: customer.priority || 'Low',
             notes: customer.notes || '',
             // Address fields
-            street: customer.address || '',
-            city: '',
-            state: '',
-            country: 'CA',
-            postalCode: ''
+            street: customer.street || '',
+            city: customer.city || '',
+            state: customer.state || '',
+            country: customer.country || 'CA',
+            postal_code: customer.postal_code || ''
           });
           setCustomerType(customer.type);
         }
@@ -226,6 +227,7 @@ const NewCustomer: React.FC = () => {
                   id="type"
                   className="input"
                   {...register('type')}
+                  value={customerType}
                   onChange={(e) => setCustomerType(e.target.value)}
                 >
                   <option value="Individual">Individual</option>
@@ -234,6 +236,7 @@ const NewCustomer: React.FC = () => {
                   <option value="Non-Profit">Non-Profit</option>
                 </select>
               </div>
+              
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                   Email
@@ -279,20 +282,6 @@ const NewCustomer: React.FC = () => {
                   }}
                   placeholder="(555) 555-5555"
                 />
-              </div>
-              
-              <div>
-                <label htmlFor="type" className="block text-sm font-medium text-gray-300 mb-1">
-                  Customer Type
-                </label>
-                <select
-                  id="type"
-                  className="input"
-                  {...register('type')}
-                >
-                  <option value="Individual">Individual</option>
-                  <option value="Business">Business</option>
-                </select>
               </div>
             </div>
           </div>
@@ -405,13 +394,13 @@ const NewCustomer: React.FC = () => {
               </div>
               
               <div>
-                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-300 mb-1">
+                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-300 mb-1">
                   {selectedCountry === 'US' ? 'ZIP Code' :
                    selectedCountry === 'UK' ? 'Post Code' :
                    'Postal Code'}
                 </label>
                 <input
-                  id="postalCode"
+                  id="postal_code"
                   type="text"
                   className="input"
                   placeholder={selectedCountry === 'US' ? '12345' :

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Mail, Check, X, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { formatPhoneNumber } from '../../utils/formatters';
 import { supabase } from '../../lib/supabase';
@@ -32,6 +33,8 @@ const DirectReports: React.FC = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<InviteFormData>();
   const [phoneValue, setPhoneValue] = useState('');
 
@@ -111,8 +114,6 @@ const DirectReports: React.FC = () => {
   };
 
   const removeTeamMember = async (id: string) => {
-    if (!window.confirm('Are you sure you want to remove this team member?')) return;
-
     try {
       const { error } = await supabase
         .from('team_members')
@@ -127,6 +128,15 @@ const DirectReports: React.FC = () => {
       console.error('Error removing team member:', error);
       toast.error('Failed to remove team member');
     }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setMemberToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (memberToDelete) removeTeamMember(memberToDelete);
   };
 
   if (loading) {
@@ -213,7 +223,7 @@ const DirectReports: React.FC = () => {
                         <Edit size={16} />
                       </button>
                       <button
-                        onClick={() => removeTeamMember(member.id)}
+                        onClick={() => handleDeleteClick(member.id)}
                         className="text-gray-400 hover:text-red-500"
                         title="Remove Team Member"
                       >
@@ -507,6 +517,18 @@ const DirectReports: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Remove Team Member"
+        message="Are you sure you want to remove this team member? This action cannot be undone."
+        confirmButtonText="Remove"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
     </div>
   );
 };

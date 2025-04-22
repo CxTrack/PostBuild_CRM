@@ -86,7 +86,6 @@ const Pipeline: React.FC = () => {
           due_date: quote.expiry_date,
           status: quote.status,
           pipeline_stage: quote.pipeline_stage,
-          title: quote.quote_number,
           type: 'quote' as const
         }));
 
@@ -99,7 +98,6 @@ const Pipeline: React.FC = () => {
           due_date: invoice.due_date,
           status: invoice.status,
           pipeline_stage: invoice.pipeline_stage,
-          title: invoice.invoice_number,
           type: 'invoice' as const
         }));
 

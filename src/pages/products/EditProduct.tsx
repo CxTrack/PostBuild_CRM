@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save, Package } from 'lucide-react';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { useProductStore } from '../../stores/productStore';
 import { Product } from '../../types/database.types';
