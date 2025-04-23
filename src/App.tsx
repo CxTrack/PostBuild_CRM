@@ -31,6 +31,7 @@ import ProductDetail from './pages/products/ProductDetail';
 import EditProduct from './pages/products/EditProduct';
 import Inventory from './pages/inventory/Inventory';
 import Invoices from './pages/invoices/Invoices';
+import Suppliers from './pages/Suppliers';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import CreateInvoice from './pages/invoices/CreateInvoice';
 import EditInvoice from './pages/invoices/EditInvoice';
@@ -256,6 +257,7 @@ function App() {
           <Route path="/invoices/:id/edit" element={user ? <EditInvoice /> : <Navigate to="/login" />} />
           <Route path="/pipeline" element={user ? <Pipeline /> : <Navigate to="/login" />} />
           <Route path="/pipeline/:stage" element={user ? <PipelineDetail /> : <Navigate to="/login" />} />
+          <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
           <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} />
           <Route path="/quotes" element={user ? <Quotes /> : <Navigate to="/login" />} />
           <Route path="/quotes/create" element={user ? <CreateQuote /> : <Navigate to="/login" />} />

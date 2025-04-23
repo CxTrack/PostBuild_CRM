@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { 
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
-  Calendar, Settings as SettingsIcon
+  Calendar, Settings as SettingsIcon, Truck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useCustomerStore } from '../../stores/customerStore';
@@ -304,6 +304,18 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="p-3 rounded-lg bg-amber-500/20 text-amber-500">
               <ShoppingCart size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Suppliers</p>
+              <h3 className="text-2xl font-bold text-white mt-1">View Suppliers</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Truck size={24} />
             </div>
           </div>
         </Link>

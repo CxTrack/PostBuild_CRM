@@ -40,6 +40,7 @@ const defaultConfig: TemplateConfig = {
     { label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard' },
     { label: 'CRM', icon: 'Users', path: '/crm' },
     { label: 'Customers', icon: 'Users', path: '/customers' },
+    { label: 'Suppliers', icon: 'Users', path: '/suppliers' },
     { 
       label: 'Quotes', 
       icon: 'Quote', 
