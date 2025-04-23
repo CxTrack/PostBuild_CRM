@@ -147,10 +147,10 @@ const Inventory: React.FC = () => {
               <span>{uploading ? 'Importing...' : 'Import CSV'}</span>
             </label>
           </div>
-          <button className="btn btn-primary flex items-center space-x-2">
+          {/* <button className="btn btn-primary flex items-center space-x-2">
             <RefreshCw size={16} />
             <span>Sync with Shopify</span>
-          </button>
+          </button> */}
           <button className="btn btn-secondary flex items-center space-x-2">
             <Package size={16} />
             <span>Adjust Stock</span>
