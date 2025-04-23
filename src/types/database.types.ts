@@ -29,6 +29,33 @@ export type CustomerFormData = {
   notes?: string;
 };
 
+export type Supplier = {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  company?: string | null;
+  title?: string | null;
+  notes?: string | null;
+  status: 'Active' | 'Inactive';
+  total_spent: number;
+  last_purchase?: string | null;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+};
+
+export type SupplierFormData = {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  company?: string;
+  title?: string;
+  notes?: string;
+};
+
 export type Invoice = {
   id: string;
   invoice_number: string;

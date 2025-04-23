@@ -31,7 +31,7 @@ import ProductDetail from './pages/products/ProductDetail';
 import EditProduct from './pages/products/EditProduct';
 import Inventory from './pages/inventory/Inventory';
 import Invoices from './pages/invoices/Invoices';
-import Suppliers from './pages/Suppliers';
+import Suppliers from './pages/suppliers/Suppliers';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import CreateInvoice from './pages/invoices/CreateInvoice';
 import EditInvoice from './pages/invoices/EditInvoice';
@@ -78,6 +78,7 @@ import Contact from './pages/contact/Contact';
 import ChatBot from './components/ChatBot';
 import Templates from './pages/system/Templates';
 import Revenue from './pages/finance/Revenue';
+import NewSupplier from './pages/suppliers/NewSupplier';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -243,6 +244,7 @@ function App() {
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />
           <Route path="/customers" element={user ? <Customers /> : <Navigate to="/login" />} />
           <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
+          <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
           <Route path="/customers/:id" element={user ? <CustomerDetail /> : <Navigate to="/login" />} />
           <Route path="/customers/:id/edit" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
           <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
