@@ -80,6 +80,7 @@ import Templates from './pages/system/Templates';
 import Revenue from './pages/finance/Revenue';
 import NewSupplier from './pages/suppliers/NewSupplier';
 import SupplierDetail from './pages/suppliers/SupplierDetail';
+import Calls from './pages/calls/Calls';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -252,6 +253,8 @@ function App() {
           <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />          
           <Route path="/suppliers/:id" element={user ? <SupplierDetail /> : <Navigate to="/login" />} />
           <Route path="/suppliers/:id/edit" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
+
+          <Route path="/Calls" element={user ? <Calls /> : <Navigate to="/login" />} />
 
           <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
           <Route path="/products/new" element={user ? <NewProduct /> : <Navigate to="/login" />} />

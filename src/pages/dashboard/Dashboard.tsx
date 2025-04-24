@@ -322,6 +322,18 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </Link>
+
+        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Calls</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{suppliers.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Truck size={24} />
+            </div>
+          </div>
+        </Link>
       </div>
 
       <div className="card bg-dark-800 border border-dark-700">

@@ -41,6 +41,7 @@ const defaultConfig: TemplateConfig = {
     { label: 'CRM', icon: 'Users', path: '/crm' },
     { label: 'Customers', icon: 'Users', path: '/customers' },
     { label: 'Suppliers', icon: 'Users', path: '/suppliers' },
+    { label: 'Calls', icon: 'Users', path: '/calls' },
     { 
       label: 'Quotes', 
       icon: 'Quote', 
