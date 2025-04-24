@@ -79,6 +79,7 @@ import ChatBot from './components/ChatBot';
 import Templates from './pages/system/Templates';
 import Revenue from './pages/finance/Revenue';
 import NewSupplier from './pages/suppliers/NewSupplier';
+import SupplierDetail from './pages/suppliers/SupplierDetail';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -243,10 +244,15 @@ function App() {
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />
           <Route path="/customers" element={user ? <Customers /> : <Navigate to="/login" />} />
-          <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
-          <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
+          <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />          
           <Route path="/customers/:id" element={user ? <CustomerDetail /> : <Navigate to="/login" />} />
           <Route path="/customers/:id/edit" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
+          
+          <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
+          <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />          
+          <Route path="/suppliers/:id" element={user ? <SupplierDetail /> : <Navigate to="/login" />} />
+          <Route path="/suppliers/:id/edit" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
+
           <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
           <Route path="/products/new" element={user ? <NewProduct /> : <Navigate to="/login" />} />
           <Route path="/products/:id" element={user ? <ProductDetail /> : <Navigate to="/login" />} />

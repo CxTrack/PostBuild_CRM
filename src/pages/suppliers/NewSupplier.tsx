@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save, MapPin, Plus, X } from 'lucide-react';
+import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useCustomerStore } from '../../stores/customerStore';
-import { CustomerFormData } from '../../types/database.types';
-
-interface FormData extends CustomerFormData {
-    first_name: string;
-    last_name: string;
-    country?: string;
-    street?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-}
+import { Supplier } from '../../types/database.types';
+import { useSupplierStore } from '../../stores/supplierStore';
 
 const COUNTRIES = [
     {
@@ -44,22 +34,20 @@ const COUNTRIES = [
 const NewSupplier: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { createSupplier, getCustomerById, loading, error, clearError } = useCustomerStore();
+    const { createSupplier, updateSupplier, getSupplierById, loading, error, clearError } = useSupplierStore();
     const [selectedCountry, setSelectedCountry] = useState('CA');
     const [submitAttempted, setSubmitAttempted] = useState(false);
     const [phoneValue, setPhoneValue] = useState('');
     const [showLeadModal, setShowLeadModal] = useState(false);
     const [newSupplierId, setNewSupplierId] = useState<string | null>(null);
 
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<CustomerFormData>({
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<Supplier>({
         defaultValues: {
-            type: 'Individual',
-            priority: 'Low',
-            name: '',
+            first_name: '',
+            last_name: '',
             email: '',
             phone: '',
             company: '',
-            title: '',
             notes: ''
         }
     });
@@ -67,61 +55,48 @@ const NewSupplier: React.FC = () => {
     useEffect(() => {
         const loadSupplier = async () => {
             if (id) {
-                const customer = await getSupplierById(id);
-                if (customer) {
-                    // Split name into first and last name
-                    const nameParts = customer.name.split(' ');
-                    const firstName = nameParts[0];
-                    const lastName = nameParts.slice(1).join(' ');
-
+                const supplier = await getSupplierById(id);
+                if (supplier) {
                     reset({
-                        first_name: firstName,
-                        last_name: lastName,
-                        email: customer.email || '',
-                        phone: customer.phone || '',
-                        company: customer.company || '',
-                        title: customer.title || '',
-                        priority: customer.priority || 'Low',
-                        notes: customer.notes || '',
+                        first_name: supplier.first_name,
+                        last_name: supplier.last_name,
+                        email: supplier.email || '',
+                        phone: supplier.phone || '',
+                        company: supplier.company || '',
+                        notes: supplier.notes || '',
                         // Address fields
-                        street: customer.street || '',
-                        city: customer.city || '',
-                        state: customer.state || '',
-                        country: customer.country || 'CA',
-                        postal_code: customer.postal_code || ''
+                        street: supplier.street || '',
+                        city: supplier.city || '',
+                        state: supplier.state || '',
+                        country: supplier.country || 'CA',
+                        postal_code: supplier.postal_code || ''
                     });
                 }
             }
         };
 
         loadSupplier();
-    }, [id, getCustomerById, reset]);
+    }, [id, getSupplierById, reset]);
 
-    const onSubmit = async (data: CustomerFormData) => {
+    const onSubmit = async (data: Supplier) => {
         setSubmitAttempted(true);
         clearError();
 
         try {
-            // Combine first and last name into single name field
-            const supplierData = {
-                ...data,
-                name: `${data.first_name} ${data.last_name}`.trim(),
-                // Remove fields not in schema
-                first_name: undefined,
-                last_name: undefined
-            };
-
             let supplier;
             if (id) {
                 // Update existing supplier
-                supplier = await updateSupplier(id, supplierData);
+                supplier = await updateSupplier(id, data);
                 toast.success('Supplier updated successfully!');
             } else {
                 // Create new customer
-                supplier = await createSupplier(supplierData);
+                console.log(data);
+                
+                supplier = await createSupplier(data);
                 toast.success('Supplier created successfully!');
                 setNewSupplierId(supplier.id);
-                setShowLeadModal(true);
+                //setShowLeadModal(true);
+                navigate(`/suppliers`);
                 return;
             }
 
@@ -206,20 +181,6 @@ const NewSupplier: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
-                            </div>
-
-
-                            <div>
-                                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
-                                    Contact Title
-                                </label>
-                                <input
-                                    id="title"
-                                    type="text"
-                                    className="input"
-                                    placeholder="Job title"
-                                    {...register('title')}
-                                />
                             </div>
 
                             <div>

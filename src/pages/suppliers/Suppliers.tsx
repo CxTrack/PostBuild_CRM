@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 const Suppliers: React.FC = () => {
   const { suppliers, loading, error, fetchSuppliers, deleteSupplier } = useSupplierStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [selectedCustomers, setSelectedSuppliers] = useState<string[]>([]);
   
   // Fetch customers on component mount
   useEffect(() => {
@@ -24,17 +24,17 @@ const Suppliers: React.FC = () => {
   
   const toggleSelectAll = () => {
     if (selectedCustomers.length === filteredCustomers.length) {
-      setSelectedCustomers([]);
+      setSelectedSuppliers([]);
     } else {
-      setSelectedCustomers(filteredCustomers.map(c => c.id));
+      setSelectedSuppliers(filteredCustomers.map(c => c.id));
     }
   };
   
   const toggleSelectCustomer = (id: string) => {
     if (selectedCustomers.includes(id)) {
-      setSelectedCustomers(selectedCustomers.filter(cId => cId !== id));
+      setSelectedSuppliers(selectedCustomers.filter(cId => cId !== id));
     } else {
-      setSelectedCustomers([...selectedCustomers, id]);
+      setSelectedSuppliers([...selectedCustomers, id]);
     }
   };
   
@@ -107,7 +107,7 @@ const Suppliers: React.FC = () => {
         </div>
       )}
       
-      {/* Customers table */}
+      {/* Suppliers table */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
         {!loading && filteredCustomers.length > 0 ? (
           <div className="overflow-x-auto">
@@ -141,7 +141,7 @@ const Suppliers: React.FC = () => {
                       />
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <Link to={`/customers/${suppler.id}`} className="text-white font-medium hover:text-primary-400">
+                      <Link to={`/suppliers/${suppler.id}`} className="text-white font-medium hover:text-primary-400">
                         {suppler.company}
                       </Link>
                     </td>
@@ -151,10 +151,10 @@ const Suppliers: React.FC = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
-                        <Link to={`/customers/${suppler.id}`} className="text-gray-400 hover:text-white">
+                        <Link to={`/suppliers/${suppler.id}`} className="text-gray-400 hover:text-white">
                           <Eye size={16} />
                         </Link>
-                        <Link to={`/customers/${suppler.id}/edit`} className="text-gray-400 hover:text-white">
+                        <Link to={`/suppliers/${suppler.id}/edit`} className="text-gray-400 hover:text-white">
                           <Edit size={16} />
                         </Link>
                         <button 
@@ -176,7 +176,7 @@ const Suppliers: React.FC = () => {
               <UserPlus size={48} className="text-gray-600 mb-4" />
               <p className="text-gray-400 text-lg mb-2">No suppliers found</p>
               <p className="text-gray-500 text-sm mb-6">Get started by adding your first supplier</p>
-              <Link to="/customers/new" className="btn btn-primary flex items-center space-x-2">
+              <Link to="/suppliers/new" className="btn btn-primary flex items-center space-x-2">
                 <UserPlus size={16} />
                 <span>Add Supplier</span>
               </Link>

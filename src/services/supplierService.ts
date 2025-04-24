@@ -1,13 +1,13 @@
 import { supabase } from '../lib/supabase';
-import { Supplier, SupplierFormData } from '../types/database.types';
+import { Supplier } from '../types/database.types';
 
 export const supplierService = {
   
-  // Get all customers for the current user
+  // Get all suppliers for the current user
   async getSuppliers(): Promise<Supplier[]> {
     try {
       const { data: customers, error } = await supabase
-        .from('customers')
+        .from('suppliers')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -27,7 +27,7 @@ export const supplierService = {
   async getSupplierById(id: string): Promise<Supplier | null> {
     try {
       const { data, error } = await supabase
-        .from('customers')
+        .from('suppliers')
         .select('*')
         .eq('id', id)
         .single();
@@ -45,7 +45,7 @@ export const supplierService = {
   },
 
   // Create a new supplier
-  async createSupplier(supplierData: SupplierFormData): Promise<Supplier> {
+  async createSupplier(supplierData: Supplier): Promise<Supplier> {
     try {
       // Get the supplier user's ID
       const { data: userData } = await supabase.auth.getUser();
@@ -58,12 +58,14 @@ export const supplierService = {
       const newSupplier = {
         ...supplierData,
         user_id: userData.user.id,
-        status: 'Active',
         total_spent: 0
       };
 
+      console.log(newSupplier);
+      
+
       const { data, error } = await supabase
-        .from('customers')
+        .from('suppliers')
         .insert([newSupplier])
         .select()
         .single();
@@ -81,11 +83,11 @@ export const supplierService = {
   },
 
   // Update an existing supplier
-  async updateCustomer(id: string, supplierData: Partial<SupplierFormData>): Promise<Supplier> {
+  async updateSUpplier(id: string, supplierData: Partial<Supplier>): Promise<Supplier> {
     try {
       // Combine address fields into single address field
-      const { street, city, state, postalCode, country, ...otherData } = supplierData;
-      const address = street ? [street, city, state, postalCode].filter(Boolean).join(', ') : null;
+      const { street, city, state, postal_code, country, ...otherData } = supplierData;
+      const address = street ? [street, city, state, postal_code].filter(Boolean).join(', ') : null;
 
       const { data, error } = await supabase
         .from('customers')
@@ -114,7 +116,7 @@ export const supplierService = {
   async deleteSupplier(id: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('customers')
+        .from('suppliers')
         .delete()
         .eq('id', id);
 

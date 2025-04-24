@@ -31,10 +31,15 @@ export type CustomerFormData = {
 
 export type Supplier = {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email?: string | null;
   phone?: string | null;
-  address?: string | null;
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
   company?: string | null;
   title?: string | null;
   notes?: string | null;
@@ -44,16 +49,6 @@ export type Supplier = {
   created_at: string;
   updated_at: string;
   user_id: string;
-};
-
-export type SupplierFormData = {
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  company?: string;
-  title?: string;
-  notes?: string;
 };
 
 export type Invoice = {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supplierService } from '../services/supplierService';
-import { CustomerFormData, Supplier, SupplierFormData } from '../types/database.types';
+import { Supplier} from '../types/database.types';
 import { supabase } from '../lib/supabase';
 
 interface SupplierState {
@@ -11,8 +11,8 @@ interface SupplierState {
   // Actions
   fetchSuppliers: () => Promise<void>;
   getSupplierById: (id: string) => Promise<Supplier | null>;
-  createSupplier: (data: SupplierFormData) => Promise<Supplier>;
-  updateSupplier: (id: string, data: Partial<SupplierFormData>) => Promise<Supplier>;
+  createSupplier: (data: Supplier) => Promise<Supplier>;
+  updateSupplier: (id: string, data: Partial<Supplier>) => Promise<Supplier>;
   deleteSupplier: (id: string) => Promise<void>;
   clearError: () => void;
 }
@@ -54,7 +54,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     }
   },
   
-  createSupplier: async (data: SupplierFormData) => {
+  createSupplier: async (data: Supplier) => {
     set({ loading: true, error: null });
     try {
       // Get the current user's ID
@@ -69,9 +69,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
       // Log activity
       await supabase.rpc('add_activity', {
         p_user_id: user.id,
-        p_type: 'customer',
-        p_title: 'Customer Added',
-        p_customer: data.name
+        p_type: 'supplier',
+        p_title: 'Supplier Added',
+        p_customer: data.user_id
       });
 
       // Update the customers list with the new customer
@@ -80,16 +80,16 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
       
       return newSupplier;
     } catch (error: any) {
-      console.error('Error in createCustomer:', error);
+      console.error('Error in createSupplier:', error);
       set({ 
-        error: error.message || 'Failed to create customer', 
+        error: error.message || 'Failed to create supplier', 
         loading: false 
       });
       throw error;
     }
   },
   
-  updateSupplier: async (id: string, supplierData: Partial<SupplierFormData>) => {
+  updateSupplier: async (id: string, supplierData: Partial<Supplier>) => {
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
