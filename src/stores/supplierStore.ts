@@ -92,8 +92,10 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
   updateSupplier: async (id: string, supplierData: Partial<Supplier>) => {
     set({ loading: true, error: null });
     try {
+      console.log(id);
+      
       const { data, error } = await supabase
-        .from('customers')
+        .from('suppliers')
         .update({
           ...supplierData,
           updated_at: new Date().toISOString()
