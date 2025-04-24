@@ -89,7 +89,7 @@ const NewSupplier: React.FC = () => {
                 supplier = await updateSupplier(id, data);
                 toast.success('Supplier updated successfully!');
             } else {
-                // Create new customer
+                // Create new supplier
                 console.log(data);
                 
                 supplier = await createSupplier(data);

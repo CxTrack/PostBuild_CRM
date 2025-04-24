@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useCustomerStore } from '../../stores/customerStore';
+import { useSupplierStore } from '../../stores/supplierStore';
 import { useProductStore } from '../../stores/productStore';
 import { useInvoiceStore } from '../../stores/invoiceStore';
 import { useCalendarStore } from '../../stores/calendarStore';
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
   const { totalProducts } = useProductStore();
+  const { suppliers, fetchSuppliers } = useSupplierStore();
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
@@ -99,7 +101,8 @@ const Dashboard: React.FC = () => {
           fetchCustomers(),
           fetchProducts(),
           fetchInvoices(),
-          fetchEvents()
+          fetchEvents(),
+          fetchSuppliers()
         ]);
         
         // Load dashboard settings
@@ -312,7 +315,7 @@ const Dashboard: React.FC = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Suppliers</p>
-              <h3 className="text-2xl font-bold text-white mt-1">View Suppliers</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{suppliers.length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
               <Truck size={24} />
