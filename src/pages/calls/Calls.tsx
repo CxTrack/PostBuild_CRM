@@ -188,6 +188,7 @@ const Calls: React.FC = () => {
       y: {
         beginAtZero: true,
         ticks: {
+          stepSize: 1, // Force whole number steps
           color: '#cccccc',
         },
         grid: {
