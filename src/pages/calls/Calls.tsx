@@ -128,7 +128,7 @@ const Calls: React.FC = () => {
         <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-gray-400 text-sm">Agent Amount</p>
+              <p className="text-gray-400 text-sm">Agents Amount</p>
               <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
