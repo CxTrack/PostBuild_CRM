@@ -31,6 +31,7 @@
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.22.3",
     "resend": "^3.2.0",
+    "retell-sdk": "^4.27.0",
     "tesseract.js": "^5.0.5",
     "zustand": "^4.5.2"
   },

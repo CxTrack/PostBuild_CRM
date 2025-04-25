@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -24,81 +24,104 @@ ChartJS.register(
 const Calls: React.FC = () => {
   const { calls, loading, error } = useCallStore();
 
+  // Fetch calls when the component mounts
   useEffect(() => {
     callsService.fetchCalls();
-  }, []); // Fetch calls when the component mounts
+  }, []);
 
-  // Dummy data for the chart - replace with actual aggregated data from calls state later if needed
-  const data = {
-    labels: ['Total Calls', 'Average Call Length (minutes)', 'Success Rate (%)'],
-    datasets: [
-      {
-        label: 'Call Metrics',
-        data: [calls.length, 0, 0], // Example: using calls.length for Total Calls
-        backgroundColor: [
-          'rgba(79, 70, 229, 0.6)', // primary-600
-          'rgba(34, 197, 94, 0.6)',  // green-500
-          'rgba(234, 179, 8, 0.6)',   // amber-500
-        ],
-        borderColor: [
-          'rgba(79, 70, 229, 1)',
-          'rgba(34, 197, 94, 1)',
-          'rgba(234, 179, 8, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
+  // Calculate the average call duration in minutes
+  const averageCallDuration = useMemo(() => {
+    if (!calls.length) return 0;
+
+    console.log('Calls:', calls); // Debugging line to ensure we have data
+
+    const totalDuration = calls.reduce((acc, call) => {
+      const duration = (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000 // duration in seconds
+      return acc + duration;
+    }, 0);
+
+    const averageInSeconds = totalDuration / calls.length;
+
+    // Convert seconds to minutes (rounded to two decimal places)
+    const averageInMinutes = (averageInSeconds / 60).toFixed(2);
+
+    console.log('Total Duration (seconds):', totalDuration);
+    console.log('Average Duration (minutes):', averageInMinutes);
+
+    return parseFloat(averageInMinutes);
+  }, [calls]);
+
+  const chartData = useMemo(() => {
+    console.log(averageCallDuration);
+    
+
+    return {
+      labels: ['Total Calls', 'Average Call Length (minutes)', 'Success Rate (%)'],
+      datasets: [
+        {
+          label: 'Call Metrics',
+          data: [calls.length, averageCallDuration, 0], // <-- average in minutes
+          backgroundColor: [
+            'rgba(79, 70, 229, 0.6)',
+            'rgba(34, 197, 94, 0.6)',
+            'rgba(234, 179, 8, 0.6)',
+          ],
+          borderColor: [
+            'rgba(79, 70, 229, 1)',
+            'rgba(34, 197, 94, 1)',
+            'rgba(234, 179, 8, 1)',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+  }, [calls, averageCallDuration]);
 
   const options = {
     responsive: true,
-    maintainAspectRatio: false, // Allow height control
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
         labels: {
-          color: '#ffffff' // White color for legend text
-        }
+          color: '#ffffff',
+        },
       },
       title: {
         display: true,
         text: 'Call Metrics Overview',
-        color: '#ffffff' // White color for title
+        color: '#ffffff',
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             let label = context.dataset.label || '';
-            if (label) {
-              label += ': ';
-            }
-            if (context.parsed.y !== null) {
-              label += context.parsed.y;
-            }
+            if (label) label += ': ';
+            if (context.parsed.y !== null) label += context.parsed.y;
             return label;
-          }
-        }
-      }
+          },
+        },
+      },
     },
     scales: {
       y: {
         beginAtZero: true,
         ticks: {
-          color: '#cccccc' // Light grey color for y-axis ticks
+          color: '#cccccc',
         },
         grid: {
-          color: '#333333' // Dark grey color for y-axis grid lines
-        }
+          color: '#333333',
+        },
       },
       x: {
         ticks: {
-          color: '#cccccc' // Light grey color for x-axis ticks
+          color: '#cccccc',
         },
         grid: {
-          color: '#333333' // Dark grey color for x-axis grid lines
-        }
-      }
-    }
+          color: '#333333',
+        },
+      },
+    },
   };
 
   return (
@@ -106,7 +129,7 @@ const Calls: React.FC = () => {
       <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard</h1>
 
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-96 mb-6">
-        <Bar data={data} options={options} />
+        <Bar data={chartData} options={options} />
       </div>
 
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
@@ -134,14 +157,22 @@ const Calls: React.FC = () => {
                   <tr key={call.id} className="text-white">
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{call.from_number}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{call.to_number}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{call.start_time ? new Date(call.start_time).toLocaleString() : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{call.end_time ? new Date(call.end_time).toLocaleString() : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.start_time ? new Date(call.start_time).toLocaleString() : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.end_time ? new Date(call.end_time).toLocaleString() : 'N/A'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time && call.end_time
-                        ? Math.round((new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000)
+                        ? Math.round(
+                            (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                          )
                         : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{call.disconnection_reason || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.disconnection_reason || 'N/A'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
