@@ -435,14 +435,14 @@ const DashboardLayout: React.FC = () => {
                 <Menu size={24} />
               </button>
 
-              <div className="hidden md:flex items-center bg-dark-800 rounded-md px-3 py-1.5">
+              {/* <div className="hidden md:flex items-center bg-dark-800 rounded-md px-3 py-1.5">
                 <Search size={18} className="text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search..."
                   className="bg-transparent border-none focus:outline-none text-white ml-2 w-64"
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Right side - Notifications & user menu */}
@@ -494,7 +494,7 @@ const DashboardLayout: React.FC = () => {
           </div>
 
           {/* Mobile search bar */}
-          <div className="md:hidden px-4 pb-3">
+          {/* <div className="md:hidden px-4 pb-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search size={18} className="text-gray-400" />
@@ -505,7 +505,7 @@ const DashboardLayout: React.FC = () => {
                 className="input pl-10 w-full"
               />
             </div>
-          </div>
+          </div> */}
         </header>
 
         {/* Calendar Sidebar */}
