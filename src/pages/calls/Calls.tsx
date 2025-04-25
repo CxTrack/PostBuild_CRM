@@ -32,7 +32,7 @@ ChartJS.register(
 );
 
 const Calls: React.FC = () => {
-  const { calls, loading, error } = useCallStore(); // Removed agents and totalCallsDuration as they are not used directly here now
+  const { calls, agents, totalCallsDuration, loading, error } = useCallStore();
 
   // Fetch calls when the component mounts
   useEffect(() => {
@@ -309,7 +309,7 @@ const Calls: React.FC = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Agents Amount</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{0}</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
               <Headset size={24} />
@@ -333,7 +333,7 @@ const Calls: React.FC = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Calls Duration</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{0} min</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
             </div>
             <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
               <Timer size={24} />
@@ -349,7 +349,6 @@ const Calls: React.FC = () => {
 
           {/* Three smaller charts in a row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* Average Call Length Bar Chart */}
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
                <Bar data={averageCallLengthBarData} options={{
                  ...smallChartOptions,
@@ -358,7 +357,6 @@ const Calls: React.FC = () => {
                 }} />
             </div>
 
-            {/* Disconnection Reason Pie Chart 1 */}
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
               <Pie data={disconnectionReasonPieData} options={{
                 ...pieChartOptions,
@@ -366,12 +364,11 @@ const Calls: React.FC = () => {
                 }} />
             </div>
 
-            {/* Disconnected Reason Pie Chart 2 (Assuming this was intended to show the same data or similar) */}
              <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-              <Pie data={disconnectionReasonPieData} options={{
+              {/* <Pie data={disconnectionReasonPieData} options={{
                 ...pieChartOptions,
                 plugins: { ...pieChartOptions.plugins, title: { ...pieChartOptions.plugins.title, text: 'Disconnection Reason (Copy)' } }
-                }} />
+                }} /> */}
             </div>
           </div>
 
