@@ -303,6 +303,44 @@ const Calls: React.FC = () => {
 
       {!loading && !error && (
         <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Agents Amount</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{0}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Headset size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Phone size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls Duration</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{0} min</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Timer size={24} />
+            </div>
+          </div>
+        </Link>
+      </div>
+
           {/* Total Calls Area Chart */}
           <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
             <Line data={totalCallsAreaData} options={totalCallsAreaOptions} />
