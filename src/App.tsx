@@ -88,7 +88,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isVerifyingAuth, setIsVerifyingAuth] = useState(false);
-  
+
   // Re-initialize auth when location changes (helps with mobile browsers)
   useEffect(() => {
     // Handle OAuth callback
@@ -109,51 +109,51 @@ function App() {
       if (user && location.pathname !== '/login' && location.pathname !== '/register' && !location.pathname.startsWith('/features') && location.pathname !== '/contact') {
         setIsVerifyingAuth(true);
         const isAuthenticated = await checkAuthStatus();
-        
+
         if (!isAuthenticated) {
           // Session is invalid, redirect to login
           toast.error('Your session has expired. Please sign in again.');
           navigate('/login');
         }
-        
+
         setIsVerifyingAuth(false);
       }
     };
-    
+
     verifyAuth();
   }, [location.pathname, user, checkAuthStatus, navigate]);
-  
+
   // Re-initialize on page load and after any auth operations
   useEffect(() => {
     if (!initialized) {
       initialize();
     }
   }, [initialized, initialize]);
-  
+
   // Fetch profile when user is authenticated
   useEffect(() => {
     if (user) {
       fetchProfile();
     }
   }, [user, fetchProfile]);
-  
+
   // Handle network status changes
   useEffect(() => {
     const handleNetworkChange = (event: Event) => {
-      const customEvent = event as CustomEvent<{online: boolean}>;
+      const customEvent = event as CustomEvent<{ online: boolean }>;
       if (customEvent.detail?.online) {
         // When coming back online, verify auth status
         checkAuthStatus();
       }
     };
-    
+
     document.addEventListener('networkStatusChange', handleNetworkChange);
-    
+
     return () => {
       document.removeEventListener('networkStatusChange', handleNetworkChange);
     };
   }, [checkAuthStatus]);
-  
+
   // Handle visibility changes (when app comes to foreground on mobile)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -164,15 +164,15 @@ function App() {
       }
       lastVisibilityChange = Date.now();
     };
-    
+
     let lastVisibilityChange = Date.now();
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [checkAuthStatus, user]);
-  
+
   if (!initialized || isVerifyingAuth) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -195,12 +195,12 @@ function App() {
         </Route>
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
         <Route path="/gdpr" element={<GDPRNotice />} />
-        <Route 
-          path="/forgot-password" 
-          element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} 
+        <Route
+          path="/forgot-password"
+          element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
         />
         <Route path="/reset-password" element={user ? <Navigate to="/dashboard" /> : <ResetPassword />} />
-        
+
         {/* Feature Pages */}
         <Route element={<FeatureLayout />}>
           <Route path="/features/customer-management" element={<CustomerManagement />} />
@@ -234,23 +234,23 @@ function App() {
           <Route path="/pricing/compare" element={<ComparePlans />} />
           <Route path="/features/:planId" element={<PlanDetails />} />
         </Route>
-        
+
         {/* Contact & Demo Pages */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/demo" element={<DemoWaitlist />} />
         <Route path="/waitlist" element={<WaitlistForm />} />
-        
+
         {/* Protected Routes */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />
           <Route path="/customers" element={user ? <Customers /> : <Navigate to="/login" />} />
-          <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />          
+          <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
           <Route path="/customers/:id" element={user ? <CustomerDetail /> : <Navigate to="/login" />} />
           <Route path="/customers/:id/edit" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
-          
+
           <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
-          <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />          
+          <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
           <Route path="/suppliers/:id" element={user ? <SupplierDetail /> : <Navigate to="/login" />} />
           <Route path="/suppliers/:id/edit" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
 
@@ -281,7 +281,7 @@ function App() {
           <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
           <Route path="/templates" element={user ? <Templates /> : <Navigate to="/login" />} />
         </Route>
-        
+
         {/* Catch all - redirect to home or dashboard */}
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} />} />
       </Routes>
