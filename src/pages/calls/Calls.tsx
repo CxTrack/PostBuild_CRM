@@ -9,8 +9,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { useCallStore } from '../stores/callStore';
-import { callsService } from '../services/callsService';
+import { callsService } from '../../services/callsService';
+import { useCallStore } from '../../stores/callStore';
 
 ChartJS.register(
   CategoryScale,
@@ -34,7 +34,7 @@ const Calls: React.FC = () => {
     datasets: [
       {
         label: 'Call Metrics',
-        data: [calls.length, 5, 80], // Example: using calls.length for Total Calls
+        data: [calls.length, 0, 0], // Example: using calls.length for Total Calls
         backgroundColor: [
           'rgba(79, 70, 229, 0.6)', // primary-600
           'rgba(34, 197, 94, 0.6)',  // green-500
