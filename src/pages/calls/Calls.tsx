@@ -228,13 +228,13 @@ const Calls: React.FC = () => {
             let label = context.dataset.label || '';
             if (label) label += ': ';
             if (context.parsed.y !== null) {
-                if (context.chart.config.type === 'pie') {
-                    const total = context.dataset.data.reduce((sum: number, value: number) => sum + value, 0);
-                    const percentage = ((context.parsed / total) * 100).toFixed(1) + '%';
-                    label += `${context.parsed} (${percentage})`;
-                } else {
-                    label += context.parsed.y;
-                }
+              if (context.chart.config.type === 'pie') {
+                const total = context.dataset.data.reduce((sum: number, value: number) => sum + value, 0);
+                const percentage = ((context.parsed / total) * 100).toFixed(1) + '%';
+                label += `${context.parsed} (${percentage})`;
+              } else {
+                label += context.parsed.y;
+              }
             }
             return label;
           },
@@ -264,36 +264,36 @@ const Calls: React.FC = () => {
     },
   }), []);
 
-    // Options specifically for Pie charts (no scales)
-    const pieChartOptions = useMemo(() => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: {
-            color: '#ffffff',
-          },
-        },
-        title: {
-          display: true,
-          // Text will be set individually for each chart
+  // Options specifically for Pie charts (no scales)
+  const pieChartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
           color: '#ffffff',
         },
-        tooltip: {
-          callbacks: {
-            label: function (context: any) {
-              let label = context.label || '';
-              if (label) label += ': ';
-                const total = context.dataset.data.reduce((sum: number, value: number) => sum + value, 0);
-                const percentage = ((context.raw / total) * 100).toFixed(1) + '%';
-                label += `${context.raw} (${percentage})`;
-              return label;
-            },
+      },
+      title: {
+        display: true,
+        // Text will be set individually for each chart
+        color: '#ffffff',
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            let label = context.label || '';
+            if (label) label += ': ';
+            const total = context.dataset.data.reduce((sum: number, value: number) => sum + value, 0);
+            const percentage = ((context.raw / total) * 100).toFixed(1) + '%';
+            label += `${context.raw} (${percentage})`;
+            return label;
           },
         },
       },
-    }), []);
+    },
+  }), []);
 
   return (
     <div className="container mx-auto p-6">
@@ -304,43 +304,43 @@ const Calls: React.FC = () => {
 
       {!loading && !error && (
         <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Agents Amount</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Headset size={24} />
-            </div>
-          </div>
-        </Link>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-400 text-sm">Agents Amount</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
+                </div>
+                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+                  <Headset size={24} />
+                </div>
+              </div>
+            </Link>
 
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Calls</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Phone size={24} />
-            </div>
-          </div>
-        </Link>
+            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-400 text-sm">Total Calls</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
+                </div>
+                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+                  <Phone size={24} />
+                </div>
+              </div>
+            </Link>
 
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Calls Duration</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Timer size={24} />
-            </div>
+            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-400 text-sm">Total Calls Duration</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
+                </div>
+                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+                  <Timer size={24} />
+                </div>
+              </div>
+            </Link>
           </div>
-        </Link>
-      </div>
 
           {/* Total Calls Area Chart */}
           <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
@@ -350,25 +350,26 @@ const Calls: React.FC = () => {
           {/* Three smaller charts in a row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-               <Bar data={averageCallLengthBarData} options={{
-                 ...smallChartOptions,
-                 plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Average Call Length (minutes)' } },
-                 scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: false } } // Hide x-axis labels for single bar
-                }} />
+              <Bar data={averageCallLengthBarData} options={{
+                ...smallChartOptions,
+                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Average Call Length (minutes)' } },
+                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: false } } // Hide x-axis labels for single bar
+              }} />
             </div>
 
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
               <Pie data={disconnectionReasonPieData} options={{
                 ...pieChartOptions,
                 plugins: { ...pieChartOptions.plugins, title: { ...pieChartOptions.plugins.title, text: 'Disconnection Reason' } }
-                }} />
+              }} />
             </div>
 
-             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-              {/* <Pie data={disconnectionReasonPieData} options={{
-                ...pieChartOptions,
-                plugins: { ...pieChartOptions.plugins, title: { ...pieChartOptions.plugins.title, text: 'Disconnection Reason (Copy)' } }
-                }} /> */}
+            <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
+            <Bar data={totalCallsAreaData} options={{
+                ...totalCallsAreaOptions,
+                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Average Call Length (minutes)' } },
+                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: false } } // Hide x-axis labels for single bar
+              }}/>
             </div>
           </div>
 
@@ -404,8 +405,8 @@ const Calls: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {call.start_time && call.end_time
                             ? Math.round(
-                                (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                              )
+                              (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                            )
                             : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
