@@ -15,6 +15,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../../lib/supabase';
+import { useCallStore } from '../../stores/callStore';
 
 // Function to format relative time
 const getRelativeTime = (date: string) => {
@@ -37,6 +38,7 @@ const Dashboard: React.FC = () => {
   const { events, fetchEvents } = useCalendarStore();
   const { totalProducts } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
+  const { calls } = useCallStore();
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
@@ -247,11 +249,11 @@ const Dashboard: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 ${totalRevenue.toLocaleString()}
               </h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">12%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
               <DollarSign size={24} />
@@ -264,11 +266,11 @@ const Dashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Total Customers</p>
               <h3 className="text-2xl font-bold text-white mt-1">{customers.length}</h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">8%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
               <Users size={24} />
@@ -281,11 +283,11 @@ const Dashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Total Products</p>
               <h3 className="text-2xl font-bold text-white mt-1">{totalProducts}</h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">5%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-purple-500/20 text-purple-500">
               <Package size={24} />
@@ -300,11 +302,11 @@ const Dashboard: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 {invoices.filter(inv => !['Paid', 'Cancelled'].includes(inv.status)).length}
               </h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowDownRight size={16} className="text-red-500" />
                 <span className="text-sm text-red-500 ml-1">3%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-amber-500/20 text-amber-500">
               <ShoppingCart size={24} />
@@ -327,8 +329,8 @@ const Dashboard: React.FC = () => {
         <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-gray-400 text-sm">Calls</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{suppliers.length}</h3>
+              <p className="text-gray-400 text-sm">Total Calls</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
               <Phone size={24} />
