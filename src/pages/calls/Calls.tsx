@@ -11,6 +11,8 @@ import {
 } from 'chart.js';
 import { callsService } from '../../services/callsService';
 import { useCallStore } from '../../stores/callStore';
+import { Headset, Phone, Timer } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 ChartJS.register(
   CategoryScale,
@@ -22,7 +24,7 @@ ChartJS.register(
 );
 
 const Calls: React.FC = () => {
-  const { calls, loading, error } = useCallStore();
+  const { calls, agents, totalCallsDuration, loading, error } = useCallStore();
 
   // Fetch calls when the component mounts
   useEffect(() => {
@@ -45,16 +47,10 @@ const Calls: React.FC = () => {
     // Convert seconds to minutes (rounded to two decimal places)
     const averageInMinutes = (averageInSeconds / 60).toFixed(2);
 
-    console.log('Total Duration (seconds):', totalDuration);
-    console.log('Average Duration (minutes):', averageInMinutes);
-
     return parseFloat(averageInMinutes);
   }, [calls]);
 
   const chartData = useMemo(() => {
-    console.log(averageCallDuration);
-    
-
     return {
       labels: ['Total Calls', 'Average Call Length (minutes)', 'Success Rate (%)'],
       datasets: [
@@ -125,8 +121,46 @@ const Calls: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 ">
       <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Agent Amount</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Headset size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Phone size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls Duration</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Timer size={24} />
+            </div>
+          </div>
+        </Link>
+      </div>
 
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-96 mb-6">
         <Bar data={chartData} options={options} />
@@ -166,8 +200,8 @@ const Calls: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time && call.end_time
                         ? Math.round(
-                            (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                          )
+                          (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                        )
                         : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
