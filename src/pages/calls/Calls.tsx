@@ -15,7 +15,7 @@ import {
 import { Bar, Pie, Line } from 'react-chartjs-2'; // Import Line, Bar, and Pie
 import { callsService } from '../../services/callsService';
 import { useCallStore } from '../../stores/callStore';
-import { Headset, Phone, Timer } from 'lucide-react';
+import { Edit, Eye, Headset, Phone, Timer, Trash2, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 ChartJS.register(
@@ -299,7 +299,7 @@ const Calls: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard - last 1000 calls</h1>
 
       {loading && <p className="text-white">Loading calls...</p>}
       {error && <p className="text-red-500">Error fetching calls: {error}</p>}
@@ -375,6 +375,7 @@ const Calls: React.FC = () => {
             </div>
           </div>
 
+
           {/* Recent Calls Table */}
           <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
             <h2 className="text-xl font-bold text-white mb-4">Recent Calls</h2>
@@ -390,7 +391,6 @@ const Calls: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Reason</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
@@ -410,9 +410,6 @@ const Calls: React.FC = () => {
                               (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
                             )
                             : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.disconnection_reason || 'N/A'}
                         </td>
                       </tr>
                     ))}

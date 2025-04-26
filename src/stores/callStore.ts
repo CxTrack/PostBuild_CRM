@@ -11,6 +11,7 @@ interface Call {
   disconnection_reason: string | null;
   from_number: string | null;
   to_number: string | null;
+  pagination_key: string | null;
 }
 
 interface RetellCall {
@@ -20,7 +21,7 @@ interface RetellCall {
   end_timestamp: number | null;
   end_reason: string | null;
   phone_number: string | null;
-  // Add other Retell fields if necessary for future use
+  pagination_key: string | 0;
 }
 
 interface CallStore {
@@ -49,23 +50,44 @@ export const useCallStore = create<CallStore>((set, get) => ({
         throw new Error('RETELL_API_KEY is not set.');
       }
 
-      const response = await fetch('https://api.retellai.com/v2/list-calls', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`, 
-          'Content-Type': 'application/json',
-        },
-      });
+      let allCalls :RetellCall[] = [];
+      let paginationKey = '1000';
 
-      if (!response.ok) {
-        // Read the response body as text to see the HTML error
-        const errorText = await response.text();
-        console.error('Retell API Error Response:', errorText);
-        throw new Error(`Failed to fetch calls from Retell API: ${response.status} - ${response.statusText}. Response body: ${errorText}`);
-      }
+      do {
 
-      const retellCalls: RetellCall[] = await response.json();
+        const response = await fetch('https://api.retellai.com/v2/list-calls', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'limit': 1000,
+            'call_type': ["phone_call"],
+            'sort_order': "descending",
+            //'user_sentiment': ["Positive", "Negative"],
+            //'call_successful': [false]
+        }),
+        });
 
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch calls from Retell API: ${response.status} - ${response.statusText}. Response body: ${errorText}`);
+        }
+
+        const data: RetellCall[] = await response.json();
+
+        // Assuming the returned object has a 'calls' array and a 'pagination_key' for the next batch
+        if (data && Array.isArray(data)) {
+          allCalls = allCalls.concat(data);
+        }
+    
+        paginationKey = data[0].pagination_key || null; // If no pagination_key, we are done
+        
+      } while (paginationKey);
+
+      
+      const retellCalls: RetellCall[] = allCalls;
       console.log(retellCalls);
 
       // Map Retell API response to the expected Call type structure
@@ -79,8 +101,8 @@ export const useCallStore = create<CallStore>((set, get) => ({
           start_time: start,
           end_time: end,
           disconnection_reason: retellCall.end_reason,
-          from_number: retellCall.phone_number, // Assuming phone_number is the 'from' number
-          to_number: retellCall.agent_id || 'N/A', // No direct mapping, using agent_id as a placeholder or 'N/A'
+          from_number: retellCall.from_number || 'N/A',  
+          to_number: retellCall.to_number || 'N/A', 
         };
       });
 
@@ -97,7 +119,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
         }
         return acc;
       }, 0);
-      
+
       // Round total duration to 2 decimal places
       const roundedTotalDuration = parseFloat(totalDurationInMinutes.toFixed(2));
 
