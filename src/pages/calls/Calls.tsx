@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,11 +33,28 @@ ChartJS.register(
 
 const Calls: React.FC = () => {
   const { calls, agents, totalCallsDuration, loading, error } = useCallStore();
+  const [currentPage, setCurrentPage] = useState(1);
+  const callsPerPage = 20;
 
   // Fetch calls when the component mounts
   useEffect(() => {
     callsService.fetchCalls();
   }, []);
+
+    // Group calls by month
+    const callsByMonth = useMemo(() => {
+        if (!calls) return {};
+        const groupedCalls: { [key: string]: number } = {};
+        calls.forEach(call => {
+            if (call.start_time) {
+                const date = new Date(call.start_time);
+                const month = date.toLocaleString('default', { month: 'long' }); // Get full month name
+                groupedCalls[month] = (groupedCalls[month] || 0) + 1;
+            }
+        });
+        console.log('callsByMonth:', groupedCalls);
+        return groupedCalls;
+    }, [calls]);
 
   // Calculate the average call duration in minutes
   const averageCallDuration = useMemo(() => {
@@ -297,6 +314,41 @@ const Calls: React.FC = () => {
     },
   }), []);
 
+    // Prepare data for Calls by Month Bar Chart
+    const callsByMonthBarData = useMemo(() => {
+        const labels = Object.keys(callsByMonth);
+        const data = Object.values(callsByMonth);
+
+        return {
+            labels,
+            datasets: [
+                {
+                    label: 'Number of Calls',
+                    data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)', // blue color
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+    }, [callsByMonth]);
+
+    // Get current calls
+    const indexOfLastCall = currentPage * callsPerPage;
+    const indexOfFirstCall = indexOfLastCall - callsPerPage;
+    const currentCalls = useMemo(() => calls.slice(indexOfFirstCall, indexOfLastCall), [calls, currentPage]);
+
+    // Change page
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+    const pageNumbers = useMemo(() => {
+        const numbers = [];
+        for (let i = 1; i <= Math.ceil(calls.length / callsPerPage); i++) {
+            numbers.push(i);
+        }
+        return numbers;
+    }, [calls, callsPerPage]);
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard - last 1000 calls</h1>
@@ -366,13 +418,17 @@ const Calls: React.FC = () => {
               }} />
             </div>
 
-            <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-            <Bar data={totalCallsChartData} options={{
-                ...mainChartOptions,
-                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Total Calls by Date' } },
-                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } } // Show x-axis labels for bar chart
-              }}/>
-            </div>
+              {/* Calls by Month Bar Chart */}
+              <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
+                  <Bar
+                      data={callsByMonthBarData}
+                      options={{
+                          ...smallChartOptions,
+                          plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Calls by Month' } },
+                          scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } }
+                      }}
+                  />
+              </div>
           </div>
 
 
@@ -394,7 +450,7 @@ const Calls: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
-                    {calls.map((call) => (
+                    {currentCalls.map((call) => (
                       <tr key={call.id} className="text-white">
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{call.from_number}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{call.to_number}</td>
@@ -418,6 +474,50 @@ const Calls: React.FC = () => {
               </div>
             )}
           </div>
+          {/* Pagination */}
+          {calls.length > 0 && (
+            <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="btn btn-secondary">Previous</button>
+                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === pageNumbers.length} className="btn btn-secondary">Next</button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">
+                    Showing <span className="font-medium text-white">{indexOfFirstCall + 1}</span> to <span className="font-medium text-white">{indexOfLastCall > calls.length ? calls.length : indexOfLastCall}</span> of <span className="font-medium text-white">{calls.length}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => paginate(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-dark-700 bg-dark-800 text-sm font-medium text-gray-400 hover:bg-dark-700"
+                    >
+                      Previous
+                    </button>
+                    {pageNumbers.map(number => (
+                      <button
+                        key={number}
+                        onClick={() => paginate(number)}
+                        aria-current="page"
+                        className={`${currentPage === number ? 'z-10 bg-indigo-500 border-indigo-500 text-white' : 'bg-dark-800 border-dark-700 text-gray-400 hover:bg-dark-700'} relative inline-flex items-center px-4 py-2 border text-sm font-medium`}
+                      >
+                        {number}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => paginate(currentPage + 1)}
+                      disabled={currentPage === pageNumbers.length}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-dark-700 bg-dark-800 text-sm font-medium text-gray-400 hover:bg-dark-700"
+                    >
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
