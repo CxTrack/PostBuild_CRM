@@ -185,7 +185,7 @@ function App() {
     <>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/waitlist" />} />
+        <Route path="/" element={<AuthLayout />} />
         <Route path="/waitlist" element={<WaitlistForm />} />
         <Route path="/demo" element={<DemoWaitlist />} />
         <Route element={<FeatureLayout />}>
