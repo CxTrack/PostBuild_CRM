@@ -12,7 +12,7 @@ import {
   LineElement, // For Area charts
   Filler, // For Area charts
 } from 'chart.js';
-import { Bar, Pie, Line } from 'react-chartjs-2'; // Import Line and Pie
+import { Bar, Pie, Line } from 'react-chartjs-2'; // Import Line, Bar, and Pie
 import { callsService } from '../../services/callsService';
 import { useCallStore } from '../../stores/callStore';
 import { Headset, Phone, Timer } from 'lucide-react';
@@ -72,8 +72,8 @@ const Calls: React.FC = () => {
     return counts;
   }, [calls]);
 
-  // Prepare data for Total Calls Area Chart (Cumulative count over time)
-  const totalCallsAreaData = useMemo(() => {
+  // Prepare data for Total Calls Chart (Cumulative count over time, grouped by date)
+  const totalCallsChartData = useMemo(() => {
     if (!calls || calls.length === 0) {
       return {
         labels: [],
@@ -81,22 +81,25 @@ const Calls: React.FC = () => {
       };
     }
 
-    const sortedCalls = [...calls].sort((a, b) => {
-      const timeA = a.start_time ? new Date(a.start_time).getTime() : 0;
-      const timeB = b.start_time ? new Date(b.start_time).getTime() : 0;
-      return timeA - timeB;
+    const callsByDate: { [key: string]: number } = {};
+
+    calls.forEach(call => {
+      if (call.start_time) {
+        const date = new Date(call.start_time).toISOString().split('T')[0]; // Get YYYY-MM-DD
+        callsByDate[date] = (callsByDate[date] || 0) + 1;
+      }
     });
+
+    const sortedDates = Object.keys(callsByDate).sort();
 
     const labels: string[] = [];
     const data: number[] = [];
     let cumulativeCount = 0;
 
-    sortedCalls.forEach(call => {
-      if (call.start_time) {
-        cumulativeCount++;
-        labels.push(new Date(call.start_time).toLocaleString()); // Use local string for simplicity
-        data.push(cumulativeCount);
-      }
+    sortedDates.forEach(date => {
+      labels.push(date);
+      cumulativeCount += callsByDate[date];
+      data.push(cumulativeCount);
     });
 
     return {
@@ -105,10 +108,9 @@ const Calls: React.FC = () => {
         {
           label: 'Total Calls',
           data,
-          fill: true,
-          backgroundColor: 'rgba(79, 70, 229, 0.3)', // primary-600 with transparency
+          backgroundColor: 'rgba(79, 70, 229, 0.6)', // primary-600 with transparency
           borderColor: 'rgba(79, 70, 229, 1)',
-          tension: 0.1, // Smooth the line
+          borderWidth: 1,
         },
       ],
     };
@@ -157,8 +159,8 @@ const Calls: React.FC = () => {
     };
   }, [disconnectionReasonCounts]);
 
-  // Options for the Area Chart
-  const totalCallsAreaOptions = useMemo(() => ({
+  // Options for the main chart (updated for Bar chart)
+  const mainChartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -342,9 +344,9 @@ const Calls: React.FC = () => {
             </Link>
           </div>
 
-          {/* Total Calls Area Chart */}
+          {/* Total Calls Bar Chart */}
           <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
-            <Line data={totalCallsAreaData} options={totalCallsAreaOptions} />
+            <Bar data={totalCallsChartData} options={mainChartOptions} />
           </div>
 
           {/* Three smaller charts in a row */}
@@ -360,15 +362,15 @@ const Calls: React.FC = () => {
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
               <Pie data={disconnectionReasonPieData} options={{
                 ...pieChartOptions,
-                plugins: { ...pieChartOptions.plugins, title: { ...pieChartOptions.plugins.title, text: 'Disconnection Reason' } }
+                plugins: { ...pieChartOptions.plugins, text: 'Disconnection Reason' }
               }} />
             </div>
 
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-            <Bar data={totalCallsAreaData} options={{
-                ...totalCallsAreaOptions,
-                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Average Call Length (minutes)' } },
-                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: false } } // Hide x-axis labels for single bar
+            <Bar data={totalCallsChartData} options={{
+                ...mainChartOptions,
+                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Total Calls by Date' } },
+                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } } // Show x-axis labels for bar chart
               }}/>
             </div>
           </div>
