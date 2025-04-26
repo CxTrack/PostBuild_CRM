@@ -17,6 +17,7 @@ import { callsService } from '../../services/callsService';
 import { useCallStore } from '../../stores/callStore';
 import { Edit, Eye, Headset, Phone, Timer, Trash2, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -41,19 +42,19 @@ const Calls: React.FC = () => {
     callsService.fetchCalls();
   }, []);
 
-    // Group calls by month
+    // Group calls by month and year
     const callsByMonth = useMemo(() => {
-        if (!calls) return {};
-        const groupedCalls: { [key: string]: number } = {};
-        calls.forEach(call => {
-            if (call.start_time) {
-                const date = new Date(call.start_time);
-                const month = date.toLocaleString('default', { month: 'long' }); // Get full month name
-                groupedCalls[month] = (groupedCalls[month] || 0) + 1;
-            }
-        });
-        console.log('callsByMonth:', groupedCalls);
-        return groupedCalls;
+      if (!calls) return {};
+      const groupedCalls: { [key: string]: number } = {};
+      calls.forEach(call => {
+          if (call.start_time) {
+              const date = new Date(call.start_time);
+              const formattedDate = format(date, 'yyyy-MM');
+              groupedCalls[formattedDate] = (groupedCalls[formattedDate] || 0) + 1;
+          }
+      });
+        console.log('callsByMonth data:', groupedCalls);
+      return groupedCalls;
     }, [calls]);
 
   // Calculate the average call duration in minutes
@@ -149,7 +150,7 @@ const Calls: React.FC = () => {
     };
   }, [averageCallDuration]);
 
-  // Prepare data for Disconnection Reason Pie Chart
+  // Calculate disconnection reason counts
   const disconnectionReasonPieData = useMemo(() => {
     const labels = Object.keys(disconnectionReasonCounts);
     const data = Object.values(disconnectionReasonCounts);
@@ -317,15 +318,22 @@ const Calls: React.FC = () => {
     // Prepare data for Calls by Month Bar Chart
     const callsByMonthBarData = useMemo(() => {
         const labels = Object.keys(callsByMonth);
-        const data = Object.values(callsByMonth);
-
+        const sortedLabels = labels.sort((a, b) => {
+            const [yearA, monthA] = a.split('-').map(Number);
+            const [yearB, monthB] = b.split('-').map(Number);
+            const dateA = new Date(yearA, monthA - 1).getTime();
+            const dateB = new Date(yearB, monthB - 1).getTime();
+            return dateA - dateB;
+        });
+        const data: number[] = sortedLabels.map(label => callsByMonth[label]);
+    
         return {
-            labels,
+            labels: sortedLabels,
             datasets: [
                 {
                     label: 'Number of Calls',
                     data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)', // blue color
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
                 }
@@ -354,9 +362,9 @@ const Calls: React.FC = () => {
         const visiblePageCount = 5; // Number of visible page numbers (including ellipsis)
         const edgePageCount = 3;
 
-        // if (pageCount <= visiblePageCount) {
-        //     return pageNumbers;
-        // }
+        if (pageCount <= visiblePageCount) {
+            return pageNumbers;
+        }
 
         const displayedPages = [];
         // First page
@@ -365,13 +373,8 @@ const Calls: React.FC = () => {
         }
 
         // Ellipsis
-        //if (currentPage >= edgePageCount + 1) {
+        if (currentPage > edgePageCount + 1) {
             displayedPages.push('...');
-        //}
-        
-        if (currentPage >= edgePageCount + 1 && currentPage < pageCount + 1 - edgePageCount ) {
-          displayedPages.push(currentPage);
-          displayedPages.push('...');
         }
 
         // Last Pages
@@ -457,7 +460,7 @@ const Calls: React.FC = () => {
                       data={callsByMonthBarData}
                       options={{
                           ...smallChartOptions,
-                          plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Calls by Month' } },
+                          plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins, text: 'Calls by Month' } },
                           scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } }
                       }}
                   />
