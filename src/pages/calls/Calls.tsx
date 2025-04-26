@@ -349,6 +349,39 @@ const Calls: React.FC = () => {
         return numbers;
     }, [calls, callsPerPage]);
 
+    const renderPageNumbers = useMemo(() => {
+        const pageCount = pageNumbers.length;
+        const visiblePageCount = 5; // Number of visible page numbers (including ellipsis)
+        const edgePageCount = 3;
+
+        // if (pageCount <= visiblePageCount) {
+        //     return pageNumbers;
+        // }
+
+        const displayedPages = [];
+        // First page
+        for (let i = 1; i <= Math.min(edgePageCount, pageCount); i++) {
+          displayedPages.push(i);
+        }
+
+        // Ellipsis
+        //if (currentPage >= edgePageCount + 1) {
+            displayedPages.push('...');
+        //}
+        
+        if (currentPage >= edgePageCount + 1 && currentPage < pageCount + 1 - edgePageCount ) {
+          displayedPages.push(currentPage);
+          displayedPages.push('...');
+        }
+
+        // Last Pages
+        for (let i = Math.max(pageCount - edgePageCount + 1, edgePageCount + 1); i <= pageCount; i++) {
+            displayedPages.push(i);
+        }
+
+        return displayedPages;
+    }, [pageNumbers, currentPage]);
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard - last 1000 calls</h1>
@@ -496,12 +529,17 @@ const Calls: React.FC = () => {
                     >
                       Previous
                     </button>
-                    {pageNumbers.map(number => (
+                    {renderPageNumbers.map(number => (
                       <button
                         key={number}
-                        onClick={() => paginate(number)}
+                        onClick={() => {
+                          if (number !== '...') {
+                            paginate(Number(number));
+                          }
+                        }}
                         aria-current="page"
                         className={`${currentPage === number ? 'z-10 bg-indigo-500 border-indigo-500 text-white' : 'bg-dark-800 border-dark-700 text-gray-400 hover:bg-dark-700'} relative inline-flex items-center px-4 py-2 border text-sm font-medium`}
+                        disabled={number === '...'}
                       >
                         {number}
                       </button>
