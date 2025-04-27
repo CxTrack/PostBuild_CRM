@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Robot head base -->
+  <path d="M256 48C141.1 48 48 141.1 48 256s93.1 208 208 208 208-93.1 208-208S370.9 48 256 48z" fill="#4f46e5"/>
+  
+  <!-- Robot face -->
+  <path d="M256 128c-70.7 0-128 57.3-128 128s57.3 128 128 128 128-57.3 128-128-57.3-128-128-128z" fill="#312e81"/>
+  
+  <!-- Eyes -->
+  <circle cx="192" cy="224" r="24" fill="#a5b4fc"/>
+  <circle cx="320" cy="224" r="24" fill="#a5b4fc"/>
+  
+  <!-- Mouth -->
+  <path d="M192 288h128c0 35.3-28.7 64-64 64s-64-28.7-64-64z" fill="#a5b4fc"/>
+  
+  <!-- Antenna -->
+  <path d="M256 64v48" stroke="#a5b4fc" strokeWidth="24" strokeLinecap="round"/>
+  <circle cx="256" cy="48" r="16" fill="#a5b4fc"/>
+  
+  <!-- Circuit patterns -->
+  <path d="M144 256h-32M400 256h-32" stroke="#818cf8" strokeWidth="8" strokeLinecap="round"/>
+  <path d="M256 400v-32M256 144v-32" stroke="#818cf8" strokeWidth="8" strokeLinecap="round"/>
+</svg>
