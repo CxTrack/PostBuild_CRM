@@ -53,7 +53,6 @@ const Calls: React.FC = () => {
               groupedCalls[formattedDate] = (groupedCalls[formattedDate] || 0) + 1;
           }
       });
-        console.log('callsByMonth data:', groupedCalls);
       return groupedCalls;
     }, [calls]);
 

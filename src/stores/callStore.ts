@@ -92,7 +92,6 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       
       const retellCalls: RetellCall[] = allCalls;
-      console.log(retellCalls);
 
       // Map Retell API response to the expected Call type structure
       const mappedCalls: Call[] = retellCalls.map(retellCall => {
