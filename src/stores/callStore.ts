@@ -8,6 +8,7 @@ interface Call {
   call_agent_id: string | null;
   start_time: string | null;
   end_time: string | null;
+  recording_url: string | null;
   disconnection_reason: string | null;
   from_number: string | null;
   to_number: string | null;
@@ -19,6 +20,7 @@ interface RetellCall {
   agent_id: string | null;
   start_timestamp: number | null;
   end_timestamp: number | null;
+  recording_url: string | null;
   end_reason: string | null;
   phone_number: string | null;
   pagination_key: string | 0;
@@ -76,10 +78,12 @@ export const useCallStore = create<CallStore>((set, get) => ({
         }
 
         const data: RetellCall[] = await response.json();
+        
 
         // Assuming the returned object has a 'calls' array and a 'pagination_key' for the next batch
         if (data && Array.isArray(data)) {
           allCalls = allCalls.concat(data);
+          console.log(allCalls);
         }
     
         paginationKey = data[0].pagination_key || null; // If no pagination_key, we are done
@@ -100,6 +104,8 @@ export const useCallStore = create<CallStore>((set, get) => ({
           call_agent_id: retellCall.agent_id,
           start_time: start,
           end_time: end,
+          recording_url: retellCall.recording_url,
+          pagination_key: retellCall.pagination_key,
           disconnection_reason: retellCall.end_reason,
           from_number: retellCall.from_number || 'N/A',  
           to_number: retellCall.to_number || 'N/A', 

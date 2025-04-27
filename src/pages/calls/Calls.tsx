@@ -483,6 +483,7 @@ const Calls: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
@@ -503,6 +504,20 @@ const Calls: React.FC = () => {
                             )
                             : 'N/A'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {call.recording_url ? (
+                            <audio controls src={call.recording_url} style={{
+                              width: '150px',    // shrink width
+                              height: '30px',    // shrink height
+                              display: 'block',
+                              objectFit: 'contain',
+                            }}>
+                              Download audio
+                            </audio>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -510,6 +525,7 @@ const Calls: React.FC = () => {
               </div>
             )}
           </div>
+          
           {/* Pagination */}
           {calls.length > 0 && (
             <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
