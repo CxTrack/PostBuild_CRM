@@ -74,10 +74,10 @@ const CRMDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">Active Leads</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">{stats.leads.total}</span>
-                    <div className={`flex items-center ml-2 ${stats.leads.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                    {/* <div className={`flex items-center ml-2 ${stats.leads.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.leads.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.leads.change}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -163,10 +163,10 @@ const CRMDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">Tasks</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">{stats.tasks.completed}/{stats.tasks.total}</span>
-                    <div className={`flex items-center ml-2 ${stats.tasks.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                    {/* <div className={`flex items-center ml-2 ${stats.tasks.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.tasks.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.tasks.change}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -226,10 +226,10 @@ const CRMDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">Opportunities</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">{stats.opportunities.value}</span>
-                    <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                    {/* <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.opportunities.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.opportunities.change}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -330,7 +330,7 @@ const CRMDashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Total Leads</p>
               <h3 className="text-2xl font-bold text-white mt-1">{stats.leads.total}</h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 {stats.leads.trend === 'up' ? (
                   <ArrowUpRight size={16} className="text-green-500" />
                 ) : (
@@ -340,7 +340,7 @@ const CRMDashboard: React.FC = () => {
                   {stats.leads.change}
                 </span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-primary-500/20 text-primary-500">
               <Users size={24} />
@@ -353,7 +353,7 @@ const CRMDashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Tasks</p>
               <h3 className="text-2xl font-bold text-white mt-1">{stats.tasks.completed}/{stats.tasks.total}</h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 {stats.tasks.trend === 'up' ? (
                   <ArrowUpRight size={16} className="text-green-500" />
                 ) : (
@@ -363,7 +363,7 @@ const CRMDashboard: React.FC = () => {
                   {stats.tasks.change}
                 </span>
                 <span className="text-gray-500 text-sm ml-1">completion rate</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-yellow-500/20 text-yellow-500">
               <CheckSquare size={24} />
@@ -376,7 +376,7 @@ const CRMDashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Pipeline Value</p>
               <h3 className="text-2xl font-bold text-white mt-1">{stats.opportunities.value}</h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 {stats.opportunities.trend === 'up' ? (
                   <ArrowUpRight size={16} className="text-green-500" />
                 ) : (
@@ -386,7 +386,7 @@ const CRMDashboard: React.FC = () => {
                   {stats.opportunities.change}
                 </span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
               <TrendingUp size={24} />
