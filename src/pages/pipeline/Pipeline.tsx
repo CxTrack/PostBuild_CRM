@@ -216,11 +216,11 @@ const Pipeline: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 ${totalValue.toLocaleString()}
               </h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">12%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
               <DollarSign size={24} />
@@ -235,11 +235,11 @@ const Pipeline: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 {totalDeals}
               </h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">8%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
               <FileText size={24} />
@@ -254,11 +254,11 @@ const Pipeline: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 ${averageDealValue.toLocaleString()}
               </h3>
-              <div className="flex items-center mt-2">
+              {/* <div className="flex items-center mt-2">
                 <ArrowDownRight size={16} className="text-red-500" />
                 <span className="text-sm text-red-500 ml-1">3%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
+              </div> */}
             </div>
             <div className="p-3 rounded-lg bg-purple-500/20 text-purple-500">
               <Users size={24} />
