@@ -194,6 +194,7 @@ function App() {
           <Route path="/legal/cookie-policy" element={<CookiePolicy />} />
         </Route>
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/register" element={user ? <Register /> : <Register />} />
         <Route path="/gdpr" element={<GDPRNotice />} />
         <Route
           path="/forgot-password"

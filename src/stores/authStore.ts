@@ -95,17 +95,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signIn: async (email, password) => {
     set({ loading: true, error: null });
     try {
-      // Only allow specific email addresses to sign in
-      const allowedEmails = [
-        'maniksharmawork@gmail.com',
-        'amanjotgrewal@hotmail.com',
-        'vaneetverma@yahoo.com',
-        'jviaches@gmail.com'
-      ];
-      
-      if (!allowedEmails.includes(email)) {
-        throw new Error('Access restricted. Please join our waitlist.');
-      }
 
       // Clear any existing sessions first
       await supabase.auth.signOut();
@@ -194,11 +183,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUp: async (email, password, fullName) => {
     set({ loading: true, error: null });
     try {
-      // Only allow maniksharmawork@gmail.com to register
-      if (email !== 'maniksharmawork@gmail.com') {
-        throw new Error('Registration is currently restricted. Please join our waitlist.');
-      }
-
       // Clear any existing sessions first
       await supabase.auth.signOut();
       clearAuthStorage();
@@ -206,7 +190,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Add delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Attempt signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -214,10 +197,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           data: {
             full_name: fullName
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          emailVerification: false
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
+      
 
       if (error) {
         if (error.message.includes('User already registered')) {
