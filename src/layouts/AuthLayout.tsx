@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Bot, FileText, Users, Package, Brain, Phone, MessageSquare, 
-  BarChart2, Globe, Shield, Check, RefreshCw, Clock, Settings, 
-  DollarSign, LogIn, UserPlus, ArrowRight, Calendar
+  Bot, FileText, Users, Building, DollarSign, Newspaper, Info, Lightbulb, History, Briefcase, Users2, Phone, Heart, Shield, Code, ListChecks, LogIn, UserPlus, Menu, X, ShoppingBag, Calendar, Check, ArrowRight, Package
 } from 'lucide-react';
 import PricingSection from '../components/PricingSection';
 import ChatBot from '../components/ChatBot';
@@ -32,6 +30,100 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 
 const AuthLayout: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Handle mouse enter/leave for entire nav item
+  const handleMouseEnter = (key: string) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setActiveDropdown(key);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setActiveDropdown(null);
+    }, 300); // Increased delay before closing
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const dropdowns = {
+    product: [
+      { label: 'AI Agent', href: '/products/ai-agent' },
+      { label: 'AI Workforce', href: '/products/ai-workforce' },
+      { label: 'AI Tools', href: '/products/ai-tools' },
+      { label: 'CRM', href: '/products/crm' }
+    ],
+    function: [
+      { label: 'Sales', href: '/function/sales' },
+      { label: 'Marketing', href: '/function/marketing' },
+      { label: 'Customer Support', href: '/function/customer-support' },
+      { label: 'Research', href: '/function/research' },
+      { label: 'Operations', href: '/function/operations' }
+    ],
+    agents: [
+      { label: 'AI BDR Agent', href: '/agents/bdr' },
+      { label: 'Lifecycle Marketer', href: '/agents/marketer' },
+      { label: 'Account Researcher', href: '/agents/researcher' },
+      { label: 'CRM Enrichment', href: '/agents/crm' },
+      { label: 'Inbound Qualification', href: '/agents/qualification' },
+      { label: 'SEO', href: '/agents/seo' },
+      { label: 'Inbox Manager', href: '/agents/inbox' }
+    ],
+    enterprise: [
+      { label: 'Solutions', href: '/enterprise/solutions', icon: Building },
+      { label: 'Security', href: '/enterprise/security', icon: Shield },
+      { label: 'Custom Development', href: '/enterprise/custom', icon: Code }
+    ],
+    pricing: [
+      { label: 'Plans & Features', href: '/pricing', icon: DollarSign },
+      { label: 'Compare Plans', href: '/pricing/compare', icon: ListChecks },
+      { label: 'Enterprise Pricing', href: '/pricing/enterprise', icon: Building },
+      { label: 'Contact Sales', href: '/contact', icon: Phone }
+    ],
+    about: [
+      { label: 'Our Story', href: '/about', icon: History },
+      { label: 'Team', href: '/about/team', icon: Users2 },
+      { label: 'Contact', href: '/contact', icon: Phone },
+      { label: 'Careers', href: '/careers', icon: Heart },
+      { label: 'Regional Availability', href: '/gdpr', icon: Info }
+    ]
+  };
+
+  // Intersection Observer for animations
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate');
+          }
+        });
+      },
+      {
+        threshold: 0.2,
+        rootMargin: '50px'
+      }
+    );
+
+    document.querySelectorAll('.feature-section').forEach(section => {
+      observer.observe(section);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Intersection Observer for animations
   useEffect(() => {
@@ -147,7 +239,7 @@ const AuthLayout: React.FC = () => {
       id: 'ai',
       title: "AI-Powered Automation",
       description: "Let our intelligent AI agents handle your routine tasks and communications.",
-      icon: Brain,
+      icon: Bot,
       color: "indigo",
       benefits: [
         "Automated collections",
@@ -164,35 +256,224 @@ const AuthLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Fixed Auth Widget */}
-      <div className="fixed-header">
-        <div className="container mx-auto px-4 py-2">
-          <div className="flex justify-end items-center space-x-4 pr-4">
-            <Link 
-              to="/login" 
-              className="btn btn-secondary flex items-center space-x-2 bg-dark-800/80 hover:bg-dark-700/80"
-            >
-              <LogIn size={16} />
-              <span>Sign In</span>
+      {/* Header with navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-primary-900/95 to-primary-800/95 backdrop-blur-sm border-b border-primary-800/50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between relative">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-3">
+              <img src="/logo.svg" alt="CxTrack Logo" className="h-8 w-8 logo-glow" />
+              <span className="brand-logo text-xl font-bold text-white brand-text">CxTrack</span>
             </Link>
-            <Link 
-              to="/register" 
-              className="btn btn-primary flex items-center space-x-2 bg-primary-600/80 hover:bg-primary-700/80"
+
+            {/* Mobile Menu Button */}
+            <button
+              className="lg:hidden text-white p-2 hover:bg-primary-800/50 rounded-lg"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              <UserPlus size={16} />
-              <span>Sign Up</span>
-            </Link>
-            {/* Canadian Maple Leaf */}
-            <svg 
-              viewBox="0 0 375 375" 
-              className="h-12 w-12 text-white opacity-80 flag-wave"
-              fill="currentColor"
-            >
-              <path d="M 187.472656 112.507812 L 175.378906 135.132812 C 174.003906 137.59375 171.546875 137.363281 169.089844 135.992188 L 160.332031 131.441406 L 166.859375 166.191406 C 168.230469 172.542969 163.828125 172.542969 161.652344 169.796875 L 146.371094 152.644531 L 143.890625 161.355469 C 143.605469 162.5 142.347656 163.699219 140.457031 163.414062 L 121.136719 159.339844 L 126.210938 177.847656 C 127.296875 181.964844 128.144531 183.667969 125.113281 184.753906 L 118.226562 188.003906 L 151.492188 215.097656 C 152.808594 216.125 153.476562 217.96875 153.007812 219.636719 L 150.09375 229.21875 L 183.269531 225.386719 C 184.289062 225.375 184.953125 225.941406 184.945312 227.113281 L 182.902344 262.523438 L 192.050781 262.523438 L 190.007812 227.113281 C 190 225.941406 190.667969 225.375 191.6875 225.386719 L 224.863281 229.21875 L 221.949219 219.636719 C 221.480469 217.96875 222.144531 216.125 223.464844 215.097656 L 256.730469 188.003906 L 249.839844 184.753906 C 246.8125 183.667969 247.65625 181.964844 248.746094 177.847656 L 253.820312 159.339844 L 234.496094 163.414062 C 232.609375 163.699219 231.351562 162.5 231.066406 161.355469 L 228.582031 152.644531 L 213.300781 169.800781 C 211.128906 172.542969 206.722656 172.542969 208.097656 166.195312 L 214.625 131.445312 L 205.867188 135.992188 C 203.40625 137.367188 200.949219 137.59375 199.574219 135.136719 L 187.484375 112.515625 Z" />
-            </svg>
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
+            {/* Navigation Links - Centered */}
+            <div className="hidden lg:flex items-center justify-center space-x-6">
+              {Object.entries(dropdowns).map(([key, items]) => (
+                key !== 'enterprise' && key !== 'pricing' && key !== 'blog' && key !== 'about' && (
+                <div 
+                  key={key}
+                  className="relative"
+                  ref={el => dropdownRefs.current[key] = el}
+                  onMouseEnter={() => handleMouseEnter(key)} 
+                  onMouseLeave={handleMouseLeave} 
+                >
+                  <button className="flex items-center space-x-1 text-gray-100 hover:text-white group-hover:text-white transition-all duration-200 ease-in-out">
+                    {key === 'product' && <FileText size={18} className="mr-1" />}
+                    {key === 'function' && <Users size={18} className="mr-1" />}
+                    {key === 'agents' && <Bot size={18} className="mr-1" />}
+                    <span className="capitalize">{key}</span>
+                    <svg 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      className={`transform transition-transform duration-200 ease-in-out ${
+                        activeDropdown === key ? 'rotate-180' : ''
+                      }`}
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+
+                  {/* Dropdown */}
+                  <div 
+                    className={`absolute left-1/2 transform -translate-x-1/2 mt-0.5 pt-2 w-56 transition-all duration-200 ease-in-out ${
+                    activeDropdown === key ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+                  }`}
+                  >
+                    <div className="bg-dark-800/95 backdrop-blur-sm rounded-lg shadow-lg border border-dark-700 overflow-hidden">
+                    {items.map((item, index) => (
+                      <Link
+                        key={index}
+                        to={item.href}
+                        className="block px-4 py-2.5 text-gray-300 hover:bg-dark-700/50 hover:text-white transition-all duration-200 ease-in-out cursor-pointer"
+                        onClick={() => setActiveDropdown(null)}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    </div>
+                  </div>
+                </div>
+                )
+              ))}
+
+              <div 
+                className="relative"
+                onMouseEnter={() => handleMouseEnter('enterprise')} 
+                onMouseLeave={handleMouseLeave} 
+              >
+                <button className="flex items-center space-x-1 text-gray-100 hover:text-white group-hover:text-white transition-all duration-200 ease-in-out">
+                  <Building size={18} className="mr-1" />
+                  <span>Enterprise</span>
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={`transform transition-transform duration-200 ${activeDropdown === 'enterprise' ? 'rotate-180' : ''}`}
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div 
+                  className={`absolute left-1/2 transform -translate-x-1/2 mt-0.5 pt-2 w-48 transition-all duration-200 ease-in-out ${
+                  activeDropdown === 'enterprise' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+                  }`}
+                  onMouseEnter={() => handleMouseEnter('enterprise')}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="bg-dark-800/95 backdrop-blur-sm rounded-lg shadow-lg border border-dark-700 overflow-hidden">
+                  {dropdowns.enterprise.map((item, index) => (
+                    <Link
+                      key={index}
+                      to={item.href}
+                      className="flex items-center px-4 py-2.5 text-gray-300 hover:bg-dark-700/50 hover:text-white transition-all duration-200 ease-in-out cursor-pointer"
+                    >
+                      <item.icon size={16} className="mr-2" />
+                      {item.label}
+                    </Link>
+                  ))}
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className="flex items-center"
+              >
+                <Link 
+                  to="/pricing/compare"
+                  className="flex items-center space-x-1 text-gray-100 hover:text-white group-hover:text-white transition-all duration-200 ease-in-out"
+                >
+                  <DollarSign size={18} className="mr-1" />
+                  <span>Pricing</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Auth Buttons */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <Link to="/login" className="btn btn-secondary flex items-center space-x-2">
+                <LogIn size={16} />
+                <span>Sign In</span>
+              </Link>
+              <Link to="/register" className="btn btn-primary flex items-center space-x-2">
+                <UserPlus size={16} />
+                <span>Sign Up</span>
+              </Link>
+            </div>
+
+            {/* Mobile Menu */}
+            {isMobileMenuOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-dark-800/95 backdrop-blur-sm border-t border-dark-700 lg:hidden">
+                <div className="py-4 px-4 space-y-4">
+                  {/* Mobile Navigation Links */}
+                  {Object.entries(dropdowns).map(([key, items]) => (
+                    <div key={key} className="space-y-2">
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === key ? null : key)}
+                        className="w-full flex items-center justify-between text-gray-100 hover:text-white py-2"
+                        key={key}
+                      >
+                        <span className="capitalize">{key}</span>
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className={`transform transition-transform duration-200 ${
+                            activeDropdown === key ? 'rotate-180' : ''
+                          }`}
+                        >
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
+                      
+                      {activeDropdown === key && (
+                        <div className="pl-4 space-y-2">
+                          {items.map((item, index) => (
+                            <Link
+                              key={index}
+                              to={item.href}
+                              className="block text-gray-300 hover:text-white py-2"
+                              onClick={() => {
+                                setActiveDropdown(null);
+                                setIsMobileMenuOpen(false);
+                              }}
+                            >
+                              {item.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Mobile Auth Buttons */}
+                  <div className="pt-4 border-t border-dark-700 space-y-2">
+                    <Link 
+                      to="/login" 
+                      className="w-full btn btn-secondary flex items-center justify-center space-x-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LogIn size={16} />
+                      <span>Sign In</span>
+                    </Link>
+                    <Link 
+                      to="/register" 
+                      className="w-full btn btn-primary flex items-center justify-center space-x-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <UserPlus size={16} />
+                      <span>Sign Up</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* Hero Section */}
       <div className="relative bg-primary-900 overflow-hidden">
@@ -200,19 +481,14 @@ const AuthLayout: React.FC = () => {
         <div className="container mx-auto px-6 pt-20 pb-24">
           {/* Logo Section */}
           <div className="flex items-center justify-center md:justify-start mb-8">
-            <div className="flex items-center space-x-4">
-              <div className="relative w-24 h-24">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-primary-700 rounded-full animate-pulse"></div>
-                <img 
-                  src="/logo.svg" 
-                  alt="CxTrack Logo" 
-                  className="relative w-full h-full logo-glow"
-                />
-              </div>
-              <h1 className="brand-logo text-5xl font-bold text-white brand-text">
-                CxTrack
-              </h1>
-            </div>
+            <img 
+              src="/logo.svg" 
+              alt="CxTrack Logo" 
+              className="h-16 w-16 logo-glow mr-4"
+            />
+            <h1 className="brand-logo text-5xl font-bold text-white brand-text">
+              CxTrack
+            </h1>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -277,7 +553,7 @@ const AuthLayout: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="relative">
+            <div className="relative hidden md:block">
               <img 
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80"
                 alt="Dashboard Preview"
