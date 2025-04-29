@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload } from 'lucide-react';
+import { Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload, Truck } from 'lucide-react';
 import { useSupplierStore } from '../../stores/supplierStore';
 import { toast } from 'react-hot-toast';
 
@@ -8,20 +8,20 @@ const Suppliers: React.FC = () => {
   const { suppliers, loading, error, fetchSuppliers, deleteSupplier } = useSupplierStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomers, setSelectedSuppliers] = useState<string[]>([]);
-  
+
   // Fetch customers on component mount
   useEffect(() => {
     fetchSuppliers().catch(err => {
       toast.error('Failed to load suppliers');
     });
   }, [fetchSuppliers]);
-  
-  const filteredCustomers = suppliers.filter(supplier => 
+
+  const filteredCustomers = suppliers.filter(supplier =>
     supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier?.phone?.includes(searchTerm)
   );
-  
+
   const toggleSelectAll = () => {
     if (selectedCustomers.length === filteredCustomers.length) {
       setSelectedSuppliers([]);
@@ -29,7 +29,7 @@ const Suppliers: React.FC = () => {
       setSelectedSuppliers(filteredCustomers.map(c => c.id));
     }
   };
-  
+
   const toggleSelectCustomer = (id: string) => {
     if (selectedCustomers.includes(id)) {
       setSelectedSuppliers(selectedCustomers.filter(cId => cId !== id));
@@ -37,7 +37,7 @@ const Suppliers: React.FC = () => {
       setSelectedSuppliers([...selectedCustomers, id]);
     }
   };
-  
+
   const handleDeleteCustomer = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this supplier?')) {
       try {
@@ -48,7 +48,7 @@ const Suppliers: React.FC = () => {
       }
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,7 +64,7 @@ const Suppliers: React.FC = () => {
           </Link>
         </div>
       </div>
-      
+
       {/* Filters and search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -79,7 +79,7 @@ const Suppliers: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <div className="flex gap-2">
           <button className="btn btn-secondary flex items-center space-x-2">
             <Filter size={16} />
@@ -91,14 +91,14 @@ const Suppliers: React.FC = () => {
           </button>
         </div>
       </div>
-      
+
       {/* Error message */}
       {error && (
         <div className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded-md">
           {error}
         </div>
       )}
-      
+
       {/* Loading state */}
       {loading && (
         <div className="text-center py-4">
@@ -106,7 +106,21 @@ const Suppliers: React.FC = () => {
           <p className="mt-2 text-gray-400">Loading suppliers...</p>
         </div>
       )}
-      
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Suppliers</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{suppliers.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Truck size={24} />
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* Suppliers table */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
         {!loading && filteredCustomers.length > 0 ? (
@@ -157,7 +171,7 @@ const Suppliers: React.FC = () => {
                         <Link to={`/suppliers/${suppler.id}/edit`} className="text-gray-400 hover:text-white">
                           <Edit size={16} />
                         </Link>
-                        <button 
+                        <button
                           className="text-gray-400 hover:text-red-500"
                           onClick={() => handleDeleteCustomer(suppler.id)}
                         >
@@ -183,7 +197,7 @@ const Suppliers: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* Pagination - only show if there are customers */}
         {filteredCustomers.length > 0 && (
           <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
