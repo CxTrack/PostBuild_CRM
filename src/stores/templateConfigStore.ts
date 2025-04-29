@@ -132,7 +132,7 @@ const realtorConfig: TemplateConfig = {
   name: 'Realtors',
   sidebarItems: [
     { label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard' },
-    { label: 'Properties', icon: 'Home', path: '/properties' },
+    // { label: 'Properties', icon: 'Home', path: '/properties' },
     { label: 'Clients', icon: 'Users', path: '/customers' },
     { 
       label: 'Listings', 
