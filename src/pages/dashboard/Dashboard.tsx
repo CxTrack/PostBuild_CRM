@@ -314,7 +314,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Link>
 
-        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/* <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Suppliers</p>
@@ -336,7 +336,7 @@ const Dashboard: React.FC = () => {
               <Phone size={24} />
             </div>
           </div>
-        </Link>
+        </Link> */}
       </div>
 
       <div className="card bg-dark-800 border border-dark-700">
