@@ -216,13 +216,13 @@ function App() {
           <Route path="/products/ai-workforce" element={<AIWorkforce />} />
           <Route path="/products/ai-tools" element={<AITools />} />
           <Route path="/products/crm" element={<CRM />} />
-          <Route path="/agents/bdr" element={<BDR />} />
+          {/* <Route path="/agents/bdr" element={<BDR />} />
           <Route path="/agents/marketer" element={<Marketer />} />
           <Route path="/agents/researcher" element={<Researcher />} />
           <Route path="/agents/crm" element={<CRMEnrichment />} />
           <Route path="/agents/qualification" element={<Qualification />} />
           <Route path="/agents/seo" element={<SEO />} />
-          <Route path="/agents/inbox" element={<InboxManager />} />
+          <Route path="/agents/inbox" element={<InboxManager />} /> */}
           <Route path="/blog/ai-market" element={<AIMarket />} />
           <Route path="/features/expenses" element={<ExpensesFeature />} />
           <Route path="/features/quotes" element={<QuotesFeature />} />
@@ -270,7 +270,7 @@ function App() {
           <Route path="/pipeline" element={user ? <Pipeline /> : <Navigate to="/login" />} />
           <Route path="/pipeline/:stage" element={user ? <PipelineDetail /> : <Navigate to="/login" />} />
           <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
-          <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} />
+          {/* <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} /> */}
           <Route path="/quotes" element={user ? <Quotes /> : <Navigate to="/login" />} />
           <Route path="/quotes/create" element={user ? <CreateQuote /> : <Navigate to="/login" />} />
           <Route path="/quotes/:id" element={user ? <QuoteDetail /> : <Navigate to="/login" />} />

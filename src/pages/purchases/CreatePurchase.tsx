@@ -3,24 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
-// Sample supplier data for dropdown
-const SUPPLIERS = [
-  { id: '1', name: 'Global Supplies Inc', email: 'orders@globalsupplies.com' },
-  { id: '2', name: 'Tech Parts Co', email: 'sales@techparts.com' },
-  { id: '3', name: 'Office Solutions', email: 'orders@officesolutions.com' },
-  { id: '4', name: 'Manufacturing Partners', email: 'procurement@mfgpartners.com' },
-  { id: '5', name: 'Industrial Supplies', email: 'sales@industrialsupplies.com' },
-];
-
-// Sample product data for dropdown
-const PRODUCTS = [
-  { id: '1', name: 'Premium Widget Components', price: 50.00 },
-  { id: '2', name: 'Deluxe Gadget Parts', price: 40.00 },
-  { id: '3', name: 'Super Tool Materials', price: 65.00 },
-  { id: '4', name: 'Basic Widget Components', price: 25.00 },
-  { id: '5', name: 'Advanced Gadget Parts', price: 55.00 },
-];
+import { useSupplierStore } from '../../stores/supplierStore';
+import { useProductStore } from '../../stores/productStore';
 
 interface PurchaseFormData {
   supplier: string;
@@ -37,6 +21,8 @@ interface PurchaseFormData {
 
 const CreatePurchase: React.FC = () => {
   const navigate = useNavigate();
+  const {suppliers} = useSupplierStore();
+  const {products} = useProductStore();
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<PurchaseFormData>({
     defaultValues: {
       orderDate: new Date().toISOString().split('T')[0],
@@ -60,7 +46,7 @@ const CreatePurchase: React.FC = () => {
   const total = subtotal + tax;
   
   const handleProductChange = (index: number, productId: string) => {
-    const product = PRODUCTS.find(p => p.id === productId);
+    const product = products.find(p => p.id === productId);
     if (product) {
       setValue(`items.${index}.description`, product.name);
       setValue(`items.${index}.unitPrice`, product.price);
@@ -105,8 +91,8 @@ const CreatePurchase: React.FC = () => {
                   {...register('supplier', { required: 'Supplier is required' })}
                 >
                   <option value="">Select a supplier</option>
-                  {SUPPLIERS.map(supplier => (
-                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                  {suppliers.map(supplier => (
+                    <option key={supplier.id} value={supplier.id}>{supplier.company}</option>
                   ))}
                 </select>
                 {errors.supplier && (
@@ -199,7 +185,7 @@ const CreatePurchase: React.FC = () => {
                         onChange={(e) => handleProductChange(index, e.target.value)}
                       >
                         <option value="">Select a product</option>
-                        {PRODUCTS.map(product => (
+                        {products.map(product => (
                           <option key={product.id} value={product.id}>{product.name}</option>
                         ))}
                       </select>

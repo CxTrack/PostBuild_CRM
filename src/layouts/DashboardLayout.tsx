@@ -168,9 +168,8 @@ const DashboardLayout: React.FC = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 h-full bg-dark-900 transform transition-transform duration-200 ease-in-out md:relative ${
-          sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:w-20'
-        }`}
+        className={`fixed top-0 left-0 z-30 h-full bg-dark-900 transform transition-transform duration-200 ease-in-out md:relative ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:w-20'
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar header */}
@@ -194,7 +193,7 @@ const DashboardLayout: React.FC = () => {
           <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
             {templateConfig.sidebarItems.map((item, index) => {
               let Icon;
-              switch(item.icon) {
+              switch (item.icon) {
                 case 'LayoutDashboard':
                   Icon = LayoutGrid;
                   break;
@@ -223,7 +222,7 @@ const DashboardLayout: React.FC = () => {
                 <NavLink
                   key={index}
                   to={item.path}
-                  className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={20} />
                   {sidebarOpen && <span>{item.label}</span>}
@@ -239,9 +238,8 @@ const DashboardLayout: React.FC = () => {
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sales</span>
                 <ChevronDown
                   size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${
-                    expandedSections.sales ? 'rotate-180' : ''
-                  }`}
+                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.sales ? 'rotate-180' : ''
+                    }`}
                 />
               </div>
             )}
@@ -251,7 +249,7 @@ const DashboardLayout: React.FC = () => {
                 .filter(item => item.section === 'sales')
                 .map((item, index) => {
                   let Icon;
-                  switch(item.icon) {
+                  switch (item.icon) {
                     case 'Quote':
                       Icon = Quote;
                       break;
@@ -265,7 +263,7 @@ const DashboardLayout: React.FC = () => {
                     <NavLink
                       key={index}
                       to={item.path}
-                      className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}
+                      className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                     >
                       <Icon size={20} />
                       {sidebarOpen && <span>{item.label}</span>}
@@ -273,7 +271,7 @@ const DashboardLayout: React.FC = () => {
                   );
                 })}</>
             )}
-
+            {/* 
             {sidebarOpen && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
@@ -287,9 +285,9 @@ const DashboardLayout: React.FC = () => {
                   }`}
                 />
               </div>
-            )}
+            )} */}
 
-            {(!sidebarOpen || expandedSections.team) && (
+            {/* {(!sidebarOpen || expandedSections.team) && (
               <>
                 <NavLink to="/team" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Users size={20} />
@@ -316,7 +314,7 @@ const DashboardLayout: React.FC = () => {
                   )}
                 </NavLink>
               </>
-            )}
+            )} */}
 
             {sidebarOpen && (
               <div
@@ -326,39 +324,38 @@ const DashboardLayout: React.FC = () => {
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</span>
                 <ChevronDown
                   size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${
-                    expandedSections.finance ? 'rotate-180' : ''
-                  }`}
+                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.finance ? 'rotate-180' : ''
+                    }`}
                 />
               </div>
             )}
 
             {(!sidebarOpen || expandedSections.finance) && (
               <>
-                <NavLink to="/revenue" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/revenue" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <DollarSign size={20} />
                   {sidebarOpen && <span>Revenue</span>}
                 </NavLink>
 
-                <NavLink to="/expenses" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                {/* <NavLink to="/expenses" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Receipt size={20} />
                   {sidebarOpen && <span>Expenses</span>}
-                </NavLink>
+                </NavLink> */}
 
-                <NavLink to="/products" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/products" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Package size={20} />
                   {sidebarOpen && <span>Products</span>}
                 </NavLink>
 
-                <NavLink to="/inventory" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Layers size={20} />
                   {sidebarOpen && <span>Inventory</span>}
                 </NavLink>
 
-                <NavLink to="/purchases" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                {/* <NavLink to="/purchases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <ShoppingCart size={20} />
                   {sidebarOpen && <span>Purchases</span>}
-                </NavLink>
+                </NavLink> */}
               </>
             )}
 
@@ -370,26 +367,25 @@ const DashboardLayout: React.FC = () => {
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">System</span>
                 <ChevronDown
                   size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${
-                    expandedSections.system ? 'rotate-180' : ''
-                  }`}
+                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.system ? 'rotate-180' : ''
+                    }`}
                 />
               </div>
             )}
 
             {(!sidebarOpen || expandedSections.system) && (
               <>
-                <NavLink to="/settings" end className={({isActive}) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
+                <NavLink to="/settings" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Settings</span>}
                 </NavLink>
 
-                <NavLink to="/settings?tab=integrations" className={({isActive}) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
+                <NavLink to="/settings?tab=integrations" className={({ isActive }) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
                   <Upload size={20} />
                   {sidebarOpen && <span>Integrations</span>}
                 </NavLink>
 
-                <NavLink to="/templates" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/templates" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <FileText size={20} />
                   {sidebarOpen && <span>Templates</span>}
                 </NavLink>
@@ -447,9 +443,9 @@ const DashboardLayout: React.FC = () => {
 
             {/* Right side - Notifications & user menu */}
             <div className="flex items-center space-x-4">
-              {/* Removed the wrapping button */} 
+              {/* Removed the wrapping button */}
               <NotificationBell />
-              
+
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -512,9 +508,8 @@ const DashboardLayout: React.FC = () => {
         {showCalendar && (
           <div
             id="calendar-wrapper"
-            className={`fixed right-0 top-16 bottom-0 bg-dark-900 border-l border-dark-800 z-20 overflow-hidden transition-all duration-200 flex flex-col ${
-              calendarMaximized ? 'left-64 md:left-20' : 'w-96'
-            }`}
+            className={`fixed right-0 top-16 bottom-0 bg-dark-900 border-l border-dark-800 z-20 overflow-hidden transition-all duration-200 flex flex-col ${calendarMaximized ? 'left-64 md:left-20' : 'w-96'
+              }`}
           >
             <div className="flex items-center justify-between p-4 border-b border-dark-700">
               <h2 className="text-lg font-semibold text-white">Calendar</h2>
@@ -550,9 +545,8 @@ const DashboardLayout: React.FC = () => {
         )}
 
         {/* Page content */}
-        <main className={`flex-1 overflow-y-auto bg-dark-950 p-4 md:p-6 transition-all duration-200 ${
-          showCalendar ? (calendarMaximized ? 'mr-[calc(100%-16rem)]' : 'mr-96') : ''
-        }`}>
+        <main className={`flex-1 overflow-y-auto bg-dark-950 p-4 md:p-6 transition-all duration-200 ${showCalendar ? (calendarMaximized ? 'mr-[calc(100%-16rem)]' : 'mr-96') : ''
+          }`}>
           <Outlet />
         </main>
       </div>

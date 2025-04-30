@@ -397,7 +397,8 @@ const Dashboard: React.FC = () => {
       </div>
       
       {/* Inventory and Expenses Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */} {/* when both widgets are enabled */}
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-12">
         {/* Inventory Table */}
         <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
           <div className="flex justify-between items-center mb-4">
@@ -456,7 +457,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Expenses Table */}
-        <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
+        {/* <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-white">Recent Expenses</h2>
             <Link to="/expenses" className="btn btn-secondary flex items-center space-x-2">
@@ -503,7 +504,7 @@ const Dashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </div> */}
       </div>
       
       {/* Today's Events */}
