@@ -408,7 +408,7 @@ const CRMDashboard: React.FC = () => {
           >
             Leads
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveTab('tasks')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'tasks'
@@ -427,7 +427,7 @@ const CRMDashboard: React.FC = () => {
             }`}
           >
             Opportunities
-          </button>
+          </button> */}
         </nav>
       </div>
 
