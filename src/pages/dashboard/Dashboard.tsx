@@ -188,13 +188,13 @@ const Dashboard: React.FC = () => {
               day: 'numeric' 
             })}
           </div>
-          <button
+          {/* <button
             onClick={() => setShowSettingsModal(true)}
             className="btn btn-secondary p-2"
             title="Customize Dashboard"
           >
             <SettingsIcon size={20} />
-          </button>
+          </button> */}
         </div>
         {/* Mobile: Show action menu */}
         <div className="md:hidden relative">
