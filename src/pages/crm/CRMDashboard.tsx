@@ -441,7 +441,7 @@ const CRMDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">CRM Dashboard</h1>
-        <div className="flex space-x-2">
+        {/* <div className="flex space-x-2">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={18} className="text-gray-400" />
@@ -456,7 +456,7 @@ const CRMDashboard: React.FC = () => {
             <Filter size={16} />
             <span>Filter</span>
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Stats Grid */}
