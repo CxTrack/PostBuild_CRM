@@ -73,7 +73,7 @@ const Settings: React.FC = () => {
             Billing & Subscription
           </button>
 
-          <button
+          {/* <button
             onClick={() => navigate('/settings?tab=ai-agents')}
             className={`w-full text-left px-4 py-2 rounded-lg ${
               activeTab === 'ai-agents' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-dark-800'
@@ -83,7 +83,7 @@ const Settings: React.FC = () => {
             {!hasPremiumAccess && (
               <span className="ml-2 text-yellow-400">★</span>
             )}
-          </button>
+          </button> */}
 
           <button
             onClick={() => navigate('/settings?tab=integrations')}
@@ -94,14 +94,14 @@ const Settings: React.FC = () => {
             Integrations
           </button>
 
-          <button
+          {/* <button
             onClick={() => navigate('/settings?tab=email')}
             className={`w-full text-left px-4 py-2 rounded-lg ${
               activeTab === 'email' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-dark-800'
             }`}
           >
             Email Settings
-          </button>
+          </button> */}
 
           <button
             onClick={() => navigate('/settings?tab=data-export')}
@@ -112,14 +112,14 @@ const Settings: React.FC = () => {
             Data Export
           </button>
 
-          <button
+          {/* <button
             onClick={() => navigate('/settings?tab=notifications')}
             className={`w-full text-left px-4 py-2 rounded-lg ${
               activeTab === 'notifications' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-dark-800'
             }`}
           >
             Notifications
-          </button>
+          </button> */}
 
           {user?.email === 'maniksharmawork@gmail.com' && (
             <button

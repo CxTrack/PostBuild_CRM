@@ -380,10 +380,10 @@ const DashboardLayout: React.FC = () => {
                   {sidebarOpen && <span>Settings</span>}
                 </NavLink>
 
-                <NavLink to="/settings?tab=integrations" className={({ isActive }) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
+                {/* <NavLink to="/settings?tab=integrations" className={({ isActive }) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
                   <Upload size={20} />
                   {sidebarOpen && <span>Integrations</span>}
-                </NavLink>
+                </NavLink> */}
 
                 <NavLink to="/templates" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <FileText size={20} />
