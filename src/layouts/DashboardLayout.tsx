@@ -474,6 +474,13 @@ const DashboardLayout: React.FC = () => {
                     >
                       Profile Settings
                     </NavLink>
+                    <NavLink
+                      to="/settings?tab=billing"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      Billing
+                    </NavLink>
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
