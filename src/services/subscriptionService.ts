@@ -35,20 +35,7 @@ export const subscriptionService = {
         throw new Error('User not authenticated');
       }
 
-      // const { data, error } = await supabase
-      //   .from('subscriptions')
-      //   .select('*')
-      //   .eq('user_id', userData.user.id)
-      //   .eq('status', 'active') <--- case when subscription was cancelled but not expired
-      //   .maybeSingle();
-
-      //1. extract free planId
-      //2. compare if esisting plan cancelled but have some time till end
-      //3. OR if it cancelled but now it is feee plan
-
       const freeSubsciption = await subscriptionService.fetchFreeSubscription();
-
-      console.log(freeSubsciption.id);
 
       let today = new Date().toISOString();
 
@@ -60,8 +47,6 @@ export const subscriptionService = {
           `and(status.eq.active,current_period_end.gt.${today}),and(status.eq.canceled,plan_id.eq.${freeSubsciption.id})`
         )
         .maybeSingle();
-
-      console.log(data);
 
       if (error) {
         console.error('Error fetching current subscription:', error);

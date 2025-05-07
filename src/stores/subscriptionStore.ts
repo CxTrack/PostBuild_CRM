@@ -50,7 +50,6 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const subscription = await subscriptionService.getCurrentSubscription();
-      console.log(subscription);
       
       set({ currentSubscription: subscription, loading: false });
     } catch (error: any) {

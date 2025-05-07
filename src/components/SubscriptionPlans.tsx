@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, Loader } from 'lucide-react';
 import { SubscriptionPlan, Subscription } from '../types/database.types';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
@@ -10,19 +10,36 @@ interface SubscriptionPlansProps {
 }
 
 const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSubscription }) => {
-  const { createCheckoutSession, fetchFreeSubscription, setSubscription, cancelSubscription, loading } = useSubscriptionStore();
+  const { createCheckoutSession, fetchFreeSubscription, fetchCurrentSubscription, setSubscription, cancelSubscription, loading } = useSubscriptionStore();
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
+  const [isFreeSubscription, setIsFreeSubscription] = useState<boolean>(false);
 
-  const getCurrentPlan = () => {
+  useEffect(() => {
+    const fetchData = async () => {
+      const freeSubscription = await fetchFreeSubscription(); 
+      await fetchCurrentSubscription(); // assuming this also uses async/await
+  
+      console.log(currentSubscription?.plan_id === freeSubscription.id);
+
+
+      if (currentSubscription?.plan_id === freeSubscription.id) {
+        setIsFreeSubscription(true);
+      } else {
+        setIsFreeSubscription(false);
+      }
+    };
+  
+    fetchData();
+  }, []);
+  
+
+  function getCurrentPlan() {
     if (!currentSubscription)
       return null;
 
     let plan = plans.find(plan => plan.id === currentSubscription.plan_id);
-    console.log(plan);
-    
-
     return plan;
-  };
+  }
 
   let currentPlan = getCurrentPlan();
 
@@ -75,14 +92,18 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-semibold text-white">Current Plan: {currentPlan.name}</h3>
-              <p className="text-gray-300 mt-1">
-                {currentSubscription.cancel_at_period_end
-                  ? 'Your subscription will end on '
-                  : 'Your next billing date is '}
-                {new Date(currentSubscription.current_period_end).toLocaleDateString()}
-              </p>
+
+              {!isFreeSubscription && (
+                <p className="text-gray-300 mt-1">
+                  {currentSubscription.cancel_at_period_end
+                    ? 'Your subscription will end on '
+                    : 'Your next billing date is '}
+                  {new Date(currentSubscription.current_period_end).toLocaleDateString()}
+                </p>)
+              }
+
             </div>
-            {!currentSubscription.cancel_at_period_end && (
+            {!currentSubscription.cancel_at_period_end &&  !isFreeSubscription && (
               <button
                 onClick={handleCancel}
                 disabled={loading}
