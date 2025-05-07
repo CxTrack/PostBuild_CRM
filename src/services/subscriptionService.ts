@@ -27,7 +27,7 @@ export const subscriptionService = {
   },
 
   // Get current user's subscription
-  async getCurrentSubscription(): Promise<Subscription | null> {
+  async getCurrentSubscription(): Promise<Subscription> {
     try {
       const { data: userData } = await supabase.auth.getUser();
 
@@ -37,15 +37,15 @@ export const subscriptionService = {
 
       const freeSubsciption = await subscriptionService.fetchFreeSubscription();
 
-      let today = new Date().toISOString();
+      //let today = new Date().toISOString();
 
       let { data, error } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', userData.user.id)
-        .or(
-          `and(status.eq.active,current_period_end.gt.${today}),and(status.eq.canceled,plan_id.eq.${freeSubsciption.id})`
-        )
+        // .or(
+        //   `and(status.eq.active,current_period_end.gt.${today}),and(status.eq.canceled,plan_id.eq.${freeSubsciption.id})`
+        // )
         .maybeSingle();
 
       if (error) {
@@ -60,7 +60,7 @@ export const subscriptionService = {
     }
   },
 
-  async setSubscription(planId: string) {
+  async setSubscription(planId: string, isFree: boolean) {
     try {
       const { data: userData } = await supabase.auth.getUser();
 
@@ -68,14 +68,27 @@ export const subscriptionService = {
         throw new Error('User not authenticated');
       }
 
-      const { error } = await supabase.from('subscriptions').update({
-        plan_id: planId,
-        updated_at: new Date().toISOString()
-      }).eq('user_id', userData?.user.id);
-      if (error) {
-        throw error;
+      if (isFree) {
+        const { error } = await supabase.from('subscriptions').update({
+          plan_id: planId,
+          status: 'active',
+          current_period_end: '2125-01-01 19:17:14+00',
+          cancel_at_period_end: false,
+          stripe_subscription_id: null,
+          updated_at: new Date().toISOString()
+        }).eq('user_id', userData?.user.id);
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } = await supabase.from('subscriptions').update({
+          plan_id: planId,
+          updated_at: new Date().toISOString()
+        }).eq('user_id', userData?.user.id);
+        if (error) {
+          throw error;
+        }
       }
-
     } catch (error) {
       console.error('Subscription service error:', error);
       throw error;
@@ -159,31 +172,6 @@ export const subscriptionService = {
       }
       );
 
-
-
-
-
-
-
-      // Call Supabase Edge Function to create Stripe checkout session
-      // const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      //   body: { 
-      //     planId,
-      //     userId: userData.user.id,
-      //     email: userData.user.email
-      //   }
-      // });
-
-      // if (error) {
-      //   console.error('Error creating checkout session:', error);
-      //   throw error;
-      // }
-
-      // if (!data?.url) {
-      //   throw new Error('Invalid response from checkout session creation');
-      // }
-
-
       return stripeSession.url;
       //return data;
     } catch (error) {
@@ -200,10 +188,12 @@ export const subscriptionService = {
         throw new Error('User not authenticated');
       }
 
-      await stripe.subscriptions.update(subscriptionId, {
-        cancel_at_period_end: true
+      const subscription = await this.getCurrentSubscription();
+      const stripe = new Stripe('sk_test_51RIYtWPmPvoB8hNNG0hDFxkRB1NfdqtYLT94m83StsLprhZb7jGHAO2fnkaVvj4wuWyIqeneBnoxcciehltTVyo9000uFOQs9B');
+      
+      await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+         cancel_at_period_end: true
       });
-
 
     } catch (error) {
       console.error('Subscription service error:', error);

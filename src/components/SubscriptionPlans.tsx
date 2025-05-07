@@ -21,11 +21,9 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
       const freeSubscription = await fetchFreeSubscription(); 
       await fetchCurrentSubscription(); // assuming this also uses async/await
   
-      console.log(currentSubscription?.plan_id === freeSubscription.id);
-
-
       if (currentSubscription?.plan_id === freeSubscription.id) {
         setIsFreeSubscription(true);
+        console.log(isFreeSubscription);
       } else {
         setIsFreeSubscription(false);
       }
@@ -50,18 +48,17 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
       const freePlan = await fetchFreeSubscription();
       if (freePlan.id === planId) {
 
-        await setSubscription(planId);
+        await setSubscription(planId, true);
         setProcessingPlanId(null);
 
         currentPlan = getCurrentPlan();
-        console.log(currentPlan);
 
         return;
       } else {
         const url = await createCheckoutSession(planId);
         window.open(url, '_blank');
 
-        await setSubscription(planId);
+        await setSubscription(planId, false);
         currentPlan = getCurrentPlan();
 
         setProcessingPlanId(null);
@@ -138,6 +135,9 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan?.id === plan.id;// && !currentSubscription?.cancel_at_period_end;
           const isProcessing = processingPlanId === plan.id;
+
+          //console.log(currentPlan);
+          
 
           return (
             <div

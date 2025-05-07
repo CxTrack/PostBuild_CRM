@@ -13,7 +13,7 @@ interface SubscriptionState {
   fetchSubscriptionPlans: () => Promise<void>;
   fetchCurrentSubscription: () => Promise<void>;
   fetchFreeSubscription: () => Promise<Subscription>;
-  setSubscription: (planId: string) => Promise<void>;
+  setSubscription: (planId: string, isFree: boolean) => Promise<void>;
   //fetchPaymentMethods: () => Promise<void>;
   createCheckoutSession: (planId: string) => Promise<string>;
   cancelSubscription: () => Promise<void>;
@@ -129,11 +129,11 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 
-  setSubscription: async (planId: string) => {
+  setSubscription: async (planId: string, isFree: boolean) => {
     set({ loading: true, error: null });
     try {
 
-      await subscriptionService.setSubscription(planId);
+      await subscriptionService.setSubscription(planId, isFree);
 
     } catch (error: any) {
       console.error('Error in setSubscription:', error);
