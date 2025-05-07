@@ -17,20 +17,21 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const freeSubscription = await fetchFreeSubscription(); 
-      await fetchCurrentSubscription(); // assuming this also uses async/await
-  
-      if (currentSubscription?.plan_id === freeSubscription.id) {
-        setIsFreeSubscription(true);
-        console.log(isFreeSubscription);
-      } else {
-        setIsFreeSubscription(false);
-      }
-    };
-  
-    fetchData();
+    evaluateSubscriptionType();
   }, []);
+
+
+  const evaluateSubscriptionType = async () => {
+    const freeSubscription = await fetchFreeSubscription();
+    await fetchCurrentSubscription(); // Refresh currentSubscription from store
+
+    const latestSubscription = useSubscriptionStore.getState().currentSubscription;
+    if (latestSubscription?.plan_id === freeSubscription.id) {
+      setIsFreeSubscription(true);
+    } else {
+      setIsFreeSubscription(false);
+    }
+  };
   
 
   function getCurrentPlan() {
@@ -67,6 +68,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
     } catch (error) {
       toast.error('Failed to create checkout session');
       setProcessingPlanId(null);
+    }finally {
+      await evaluateSubscriptionType();
     }
   };
 
@@ -82,6 +85,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
       toast.error('Failed to cancel subscription');
     } finally {
       setShowCancelConfirmation(false);
+      await evaluateSubscriptionType();
     }
   };
 
