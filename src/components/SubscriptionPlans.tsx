@@ -10,14 +10,44 @@ interface SubscriptionPlansProps {
 }
 
 const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSubscription }) => {
-  const { createCheckoutSession, cancelSubscription, loading } = useSubscriptionStore();
+  const { createCheckoutSession, fetchFreeSubscription, setSubscription, cancelSubscription, loading } = useSubscriptionStore();
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
+
+  const getCurrentPlan = () => {
+    if (!currentSubscription)
+      return null;
+
+    let plan = plans.find(plan => plan.id === currentSubscription.plan_id);
+    console.log(plan);
+    
+
+    return plan;
+  };
+
+  let currentPlan = getCurrentPlan();
 
   const handleSubscribe = async (planId: string) => {
     try {
-      setProcessingPlanId(planId);
-      const { url } = await createCheckoutSession(planId);
-      window.location.href = url;
+      const freePlan = await fetchFreeSubscription();
+      if (freePlan.id === planId) {
+
+        await setSubscription(planId);
+        setProcessingPlanId(null);
+
+        currentPlan = getCurrentPlan();
+        console.log(currentPlan);
+
+        return;
+      } else {
+        const url = await createCheckoutSession(planId);
+        window.open(url, '_blank');
+
+        await setSubscription(planId);
+        currentPlan = getCurrentPlan();
+
+        setProcessingPlanId(null);
+      }
+
     } catch (error) {
       toast.error('Failed to create checkout session');
       setProcessingPlanId(null);
@@ -26,7 +56,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
 
   const handleCancel = async () => {
     if (!currentSubscription) return;
-    
+
     if (window.confirm('Are you sure you want to cancel your subscription? You will still have access until the end of your billing period.')) {
       try {
         await cancelSubscription();
@@ -37,14 +67,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
     }
   };
 
-  const getCurrentPlan = () => {
-    if (!currentSubscription) return null;
-    return plans.find(plan => plan.id === currentSubscription.plan_id);
-  };
-
-  const currentPlan = getCurrentPlan();
-
   return (
+
     <div className="space-y-6">
       {currentSubscription && currentPlan && (
         <div className="bg-primary-900/20 border border-primary-800 rounded-lg p-4">
@@ -52,8 +76,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
             <div>
               <h3 className="text-lg font-semibold text-white">Current Plan: {currentPlan.name}</h3>
               <p className="text-gray-300 mt-1">
-                {currentSubscription.cancel_at_period_end 
-                  ? 'Your subscription will end on ' 
+                {currentSubscription.cancel_at_period_end
+                  ? 'Your subscription will end on '
                   : 'Your next billing date is '}
                 {new Date(currentSubscription.current_period_end).toLocaleDateString()}
               </p>
@@ -73,22 +97,21 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {plans.map((plan) => {
-          const isCurrentPlan = currentPlan?.id === plan.id && !currentSubscription?.cancel_at_period_end;
+          const isCurrentPlan = currentPlan?.id === plan.id;// && !currentSubscription?.cancel_at_period_end;
           const isProcessing = processingPlanId === plan.id;
-          
+
           return (
-            <div 
-              key={plan.id} 
-              className={`bg-dark-800 border rounded-lg p-6 ${
-                isCurrentPlan ? 'border-primary-500' : 'border-dark-700'
-              }`}
+            <div
+              key={plan.id}
+              className={`bg-dark-800 border rounded-lg p-6 ${isCurrentPlan ? 'border-primary-500' : 'border-dark-700'
+                }`}
             >
               <h3 className="text-xl font-semibold text-white mb-2">{plan.name}</h3>
               <p className="text-2xl font-bold text-white mb-4">
                 ${plan.price}/{plan.interval}
               </p>
               <p className="text-gray-400 mb-6">{plan.description}</p>
-              
+
               <ul className="space-y-2 mb-6">
                 {Array.isArray(plan.features) && plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
@@ -97,13 +120,12 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
                   </li>
                 ))}
               </ul>
-              
+
               <button
                 onClick={() => handleSubscribe(plan.id)}
-                disabled={isCurrentPlan || isProcessing || loading || plan.price === 0}
-                className={`w-full btn ${
-                  isCurrentPlan ? 'btn-secondary' : 'btn-primary'
-                }`}
+                disabled={isCurrentPlan || isProcessing || loading}
+                className={`w-full btn ${isCurrentPlan ? 'btn-secondary' : 'btn-primary'
+                  }`}
               >
                 {isProcessing ? (
                   <span className="flex items-center justify-center">
@@ -112,8 +134,9 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
                   </span>
                 ) : isCurrentPlan ? (
                   'Current Plan'
-                ) : plan.price === 0 ? (
-                  'Free Plan'
+                  // ) : plan.price === 0 ? (
+                  //  'Free Plan'
+                  //`${plan.name}`
                 ) : (
                   `Subscribe to ${plan.name}`
                 )}

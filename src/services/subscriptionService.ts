@@ -1,5 +1,8 @@
+import { log } from 'console';
 import { supabase } from '../lib/supabase';
-import { SubscriptionPlan, Subscription, PaymentMethod } from '../types/database.types';
+import { SubscriptionPlan, Subscription } from '../types/database.types';
+import Stripe from 'stripe';
+
 
 export const subscriptionService = {
   // Get all available subscription plans
@@ -8,7 +11,7 @@ export const subscriptionService = {
       const { data: plans, error } = await supabase
         .from('subscription_plans')
         .select('*')
-        .eq('is_active', true)
+        //.eq('is_active', true)
         .order('price', { ascending: true });
 
       if (error) {
@@ -27,16 +30,85 @@ export const subscriptionService = {
   async getCurrentSubscription(): Promise<Subscription | null> {
     try {
       const { data: userData } = await supabase.auth.getUser();
-      
+
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
+      // const { data, error } = await supabase
+      //   .from('subscriptions')
+      //   .select('*')
+      //   .eq('user_id', userData.user.id)
+      //   .eq('status', 'active') <--- case when subscription was cancelled but not expired
+      //   .maybeSingle();
+
+      //1. extract free planId
+      //2. compare if esisting plan cancelled but have some time till end
+      //3. OR if it cancelled but now it is feee plan
+
+      const freeSubsciption = await subscriptionService.fetchFreeSubscription();
+
+      console.log(freeSubsciption.id);
+
+      let today = new Date().toISOString();
+
+      let { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .or(
+          `and(status.eq.active,current_period_end.gt.${today}),and(status.eq.canceled,plan_id.eq.${freeSubsciption.id})`
+        )
+        .maybeSingle();
+
+      console.log(data);
+
+      if (error) {
+        console.error('Error fetching current subscription:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Subscription service error:', error);
+      throw error;
+    }
+  },
+
+  async setSubscription(planId: string) {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error } = await supabase.from('subscriptions').update({
+        plan_id: planId,
+        updated_at: new Date().toISOString()
+      }).eq('user_id', userData?.user.id);
+      if (error) {
+        throw error;
+      }
+
+    } catch (error) {
+      console.error('Subscription service error:', error);
+      throw error;
+    }
+  },
+
+  async fetchFreeSubscription(): Promise<Subscription> {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+
       if (!userData?.user) {
         throw new Error('User not authenticated');
       }
 
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('subscription_plans')
         .select('*')
-        .eq('user_id', userData.user.id)
-        .eq('status', 'active')
+        .eq('price', 0)
         .maybeSingle();
 
       if (error) {
@@ -52,150 +124,212 @@ export const subscriptionService = {
   },
 
   // Create a checkout session for subscription
-  async createCheckoutSession(planId: string): Promise<{ sessionId: string; url: string }> {
+  async createCheckoutSession(planId: string): Promise<string> {
     try {
       const { data: userData } = await supabase.auth.getUser();
-      
+
       if (!userData?.user) {
         throw new Error('User not authenticated');
       }
 
       // Get the user's session for authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         throw new Error('Failed to get authentication session');
       }
 
+      const plans = await this.getSubscriptionPlans()
+
+      var selectedPlan = plans.find(plan => plan.id === planId)
+      //return selectedPlan?.stripe_price_id || '';
+
+      const stripe = new Stripe('sk_test_51RIYtWPmPvoB8hNNG0hDFxkRB1NfdqtYLT94m83StsLprhZb7jGHAO2fnkaVvj4wuWyIqeneBnoxcciehltTVyo9000uFOQs9B', {
+        //apiVersion: '2023-10-16',
+      });
+      const stripeSession = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        customer_email: userData?.user.email, // will auto-create a Customer,
+        client_reference_id: userData?.user.id,
+        line_items: [
+          {
+            price: selectedPlan?.stripe_price_id,
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          user_id: userData?.user?.id ?? 'unknown',
+          description: userData?.user?.email ?? 'unknown',
+          plan_id: planId
+        },
+        subscription_data: {
+          metadata: {
+            user_id: userData?.user.id,
+            description: `CxTrack UserId: ${userData?.user.id} | CxTrack user email: ${userData?.user.email}`
+          },
+        },
+        success_url: `https://buy.stripe.com/test_3csbJ22Ym7z4d0Y000/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `https://buy.stripe.com/test_3csbJ22Ym7z4d0Y000/cancel`
+      }
+      );
+
+
+
+
+
+
+
       // Call Supabase Edge Function to create Stripe checkout session
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { 
-          planId,
-          userId: userData.user.id,
-          email: userData.user.email
-        }
+      // const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      //   body: { 
+      //     planId,
+      //     userId: userData.user.id,
+      //     email: userData.user.email
+      //   }
+      // });
+
+      // if (error) {
+      //   console.error('Error creating checkout session:', error);
+      //   throw error;
+      // }
+
+      // if (!data?.url) {
+      //   throw new Error('Invalid response from checkout session creation');
+      // }
+
+
+      return stripeSession.url;
+      //return data;
+    } catch (error) {
+      console.error('Subscription service error:', error);
+      throw error;
+    }
+  },
+
+  async cancelSubscription() {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
+      await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true
       });
 
-      if (error) {
-        console.error('Error creating checkout session:', error);
-        throw error;
-      }
 
-      if (!data?.url) {
-        throw new Error('Invalid response from checkout session creation');
-      }
-
-      return data;
     } catch (error) {
       console.error('Subscription service error:', error);
       throw error;
     }
   },
 
-  // Get user's payment methods
-  async getPaymentMethods(): Promise<PaymentMethod[]> {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData?.user) {
-        throw new Error('User not authenticated');
-      }
+  // // Get user's payment methods
+  // async getPaymentMethods(): Promise<PaymentMethod[]> {
+  //   try {
+  //     const { data: userData } = await supabase.auth.getUser();
 
-      const { data, error } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .order('is_default', { ascending: false });
+  //     if (!userData?.user) {
+  //       throw new Error('User not authenticated');
+  //     }
 
-      if (error) {
-        console.error('Error fetching payment methods:', error);
-        throw error;
-      }
+  //     const { data, error } = await supabase
+  //       .from('payment_methods')
+  //       .select('*')
+  //       .eq('user_id', userData.user.id)
+  //       .order('is_default', { ascending: false });
 
-      return data || [];
-    } catch (error) {
-      console.error('Subscription service error:', error);
-      throw error;
-    }
-  },
+  //     if (error) {
+  //       console.error('Error fetching payment methods:', error);
+  //       throw error;
+  //     }
+
+  //     return data || [];
+  //   } catch (error) {
+  //     console.error('Subscription service error:', error);
+  //     throw error;
+  //   }
+  // },
 
   // Set default payment method
-  async setDefaultPaymentMethod(paymentMethodId: string): Promise<void> {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData?.user) {
-        throw new Error('User not authenticated');
-      }
+  // async setDefaultPaymentMethod(paymentMethodId: string): Promise<void> {
+  //   try {
+  //     const { data: userData } = await supabase.auth.getUser();
 
-      // First, set all payment methods to non-default
-      const { error: updateError } = await supabase
-        .from('payment_methods')
-        .update({ is_default: false })
-        .eq('user_id', userData.user.id);
-      
-      if (updateError) {
-        console.error('Error updating payment methods:', updateError);
-        throw updateError;
-      }
-      
-      // Then set the selected payment method as default
-      const { error } = await supabase
-        .from('payment_methods')
-        .update({ is_default: true })
-        .eq('id', paymentMethodId)
-        .eq('user_id', userData.user.id);
-      
-      if (error) {
-        console.error('Error setting default payment method:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Subscription service error:', error);
-      throw error;
-    }
-  },
+  //     if (!userData?.user) {
+  //       throw new Error('User not authenticated');
+  //     }
+
+  //     // First, set all payment methods to non-default
+  //     const { error: updateError } = await supabase
+  //       .from('payment_methods')
+  //       .update({ is_default: false })
+  //       .eq('user_id', userData.user.id);
+
+  //     if (updateError) {
+  //       console.error('Error updating payment methods:', updateError);
+  //       throw updateError;
+  //     }
+
+  //     // Then set the selected payment method as default
+  //     const { error } = await supabase
+  //       .from('payment_methods')
+  //       .update({ is_default: true })
+  //       .eq('id', paymentMethodId)
+  //       .eq('user_id', userData.user.id);
+
+  //     if (error) {
+  //       console.error('Error setting default payment method:', error);
+  //       throw error;
+  //     }
+  //   } catch (error) {
+  //     console.error('Subscription service error:', error);
+  //     throw error;
+  //   }
+  // },
 
   // Remove payment method
-  async removePaymentMethod(paymentMethodId: string): Promise<void> {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData?.user) {
-        throw new Error('User not authenticated');
-      }
+  // async removePaymentMethod(paymentMethodId: string): Promise<void> {
+  //   try {
+  //     const { data: userData } = await supabase.auth.getUser();
 
-      // Check if this is the default payment method
-      const { data: paymentMethod, error: fetchError } = await supabase
-        .from('payment_methods')
-        .select('is_default')
-        .eq('id', paymentMethodId)
-        .eq('user_id', userData.user.id)
-        .single();
-      
-      if (fetchError) {
-        console.error('Error fetching payment method:', fetchError);
-        throw fetchError;
-      }
-      
-      if (paymentMethod.is_default) {
-        throw new Error('Cannot remove default payment method');
-      }
-      
-      // Remove the payment method
-      const { error } = await supabase
-        .from('payment_methods')
-        .delete()
-        .eq('id', paymentMethodId)
-        .eq('user_id', userData.user.id);
-      
-      if (error) {
-        console.error('Error removing payment method:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Subscription service error:', error);
-      throw error;
-    }
-  }
+  //     if (!userData?.user) {
+  //       throw new Error('User not authenticated');
+  //     }
+
+  //     // Check if this is the default payment method
+  //     const { data: paymentMethod, error: fetchError } = await supabase
+  //       .from('payment_methods')
+  //       .select('is_default')
+  //       .eq('id', paymentMethodId)
+  //       .eq('user_id', userData.user.id)
+  //       .single();
+
+  //     if (fetchError) {
+  //       console.error('Error fetching payment method:', fetchError);
+  //       throw fetchError;
+  //     }
+
+  //     if (paymentMethod.is_default) {
+  //       throw new Error('Cannot remove default payment method');
+  //     }
+
+  //     // Remove the payment method
+  //     const { error } = await supabase
+  //       .from('payment_methods')
+  //       .delete()
+  //       .eq('id', paymentMethodId)
+  //       .eq('user_id', userData.user.id);
+
+  //     if (error) {
+  //       console.error('Error removing payment method:', error);
+  //       throw error;
+  //     }
+  //   } catch (error) {
+  //     console.error('Subscription service error:', error);
+  //     throw error;
+  //   }
+  // }
 };

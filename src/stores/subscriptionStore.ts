@@ -12,12 +12,14 @@ interface SubscriptionState {
   // Actions
   fetchSubscriptionPlans: () => Promise<void>;
   fetchCurrentSubscription: () => Promise<void>;
-  fetchPaymentMethods: () => Promise<void>;
-  createCheckoutSession: (planId: string) => Promise<{ sessionId: string; url: string }>;
+  fetchFreeSubscription: () => Promise<Subscription>;
+  setSubscription: (planId: string) => Promise<void>;
+  //fetchPaymentMethods: () => Promise<void>;
+  createCheckoutSession: (planId: string) => Promise<string>;
   cancelSubscription: () => Promise<void>;
-  createSetupIntent: () => Promise<{ clientSecret: string }>;
-  setDefaultPaymentMethod: (paymentMethodId: string) => Promise<void>;
-  removePaymentMethod: (paymentMethodId: string) => Promise<void>;
+  //createSetupIntent: () => Promise<{ clientSecret: string }>;
+  //setDefaultPaymentMethod: (paymentMethodId: string) => Promise<void>;
+  //removePaymentMethod: (paymentMethodId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -48,6 +50,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const subscription = await subscriptionService.getCurrentSubscription();
+      console.log(subscription);
+      
       set({ currentSubscription: subscription, loading: false });
     } catch (error: any) {
       console.error('Error in fetchCurrentSubscription:', error);
@@ -58,19 +62,19 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
   
-  fetchPaymentMethods: async () => {
-    set({ loading: true, error: null });
-    try {
-      const paymentMethods = await subscriptionService.getPaymentMethods();
-      set({ paymentMethods, loading: false });
-    } catch (error: any) {
-      console.error('Error in fetchPaymentMethods:', error);
-      set({ 
-        error: error.message || 'Failed to fetch payment methods', 
-        loading: false 
-      });
-    }
-  },
+  // fetchPaymentMethods: async () => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     const paymentMethods = await subscriptionService.getPaymentMethods();
+  //     set({ paymentMethods, loading: false });
+  //   } catch (error: any) {
+  //     console.error('Error in fetchPaymentMethods:', error);
+  //     set({ 
+  //       error: error.message || 'Failed to fetch payment methods', 
+  //       loading: false 
+  //     });
+  //   }
+  // },
   
   createCheckoutSession: async (planId: string) => {
     set({ loading: true, error: null });
@@ -105,56 +109,92 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       throw error;
     }
   },
-  
-  createSetupIntent: async () => {
+
+  fetchFreeSubscription: async () => {
     set({ loading: true, error: null });
     try {
-      const result = await subscriptionService.createSetupIntent();
-      set({ loading: false });
-      return result;
+
+      // Refresh subscription after cancellation
+      const freePlan = await subscriptionService.fetchFreeSubscription();
+      set({ currentSubscription: freePlan, loading: false });
+
+      return freePlan;
+
     } catch (error: any) {
-      console.error('Error in createSetupIntent:', error);
+      console.error('Error in fetchFreeSubscription:', error);
       set({ 
-        error: error.message || 'Failed to create setup intent', 
+        error: error.message || 'Failed to fetchFreeSubscription subscription', 
+        loading: false 
+      });
+      throw error;
+    }
+  },
+
+  setSubscription: async (planId: string) => {
+    set({ loading: true, error: null });
+    try {
+
+      await subscriptionService.setSubscription(planId);
+
+    } catch (error: any) {
+      console.error('Error in setSubscription:', error);
+      set({ 
+        error: error.message || 'Failed to setSubscription subscription', 
         loading: false 
       });
       throw error;
     }
   },
   
-  setDefaultPaymentMethod: async (paymentMethodId: string) => {
-    set({ loading: true, error: null });
-    try {
-      await subscriptionService.setDefaultPaymentMethod(paymentMethodId);
-      
-      // Refresh payment methods after setting default
-      const paymentMethods = await subscriptionService.getPaymentMethods();
-      set({ paymentMethods, loading: false });
-    } catch (error: any) {
-      console.error('Error in setDefaultPaymentMethod:', error);
-      set({ 
-        error: error.message || 'Failed to set default payment method', 
-        loading: false 
-      });
-      throw error;
-    }
-  },
+  // createSetupIntent: async () => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     const result = await subscriptionService.createSetupIntent();
+  //     set({ loading: false });
+  //     return result;
+  //   } catch (error: any) {
+  //     console.error('Error in createSetupIntent:', error);
+  //     set({ 
+  //       error: error.message || 'Failed to create setup intent', 
+  //       loading: false 
+  //     });
+  //     throw error;
+  //   }
+  // },
   
-  removePaymentMethod: async (paymentMethodId: string) => {
-    set({ loading: true, error: null });
-    try {
-      await subscriptionService.removePaymentMethod(paymentMethodId);
+  // setDefaultPaymentMethod: async (paymentMethodId: string) => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     await subscriptionService.setDefaultPaymentMethod(paymentMethodId);
       
-      // Refresh payment methods after removal
-      const paymentMethods = await subscriptionService.getPaymentMethods();
-      set({ paymentMethods, loading: false });
-    } catch (error: any) {
-      console.error('Error in removePaymentMethod:', error);
-      set({ 
-        error: error.message || 'Failed to remove payment method', 
-        loading: false 
-      });
-      throw error;
-    }
-  }
+  //     // Refresh payment methods after setting default
+  //     const paymentMethods = await subscriptionService.getPaymentMethods();
+  //     set({ paymentMethods, loading: false });
+  //   } catch (error: any) {
+  //     console.error('Error in setDefaultPaymentMethod:', error);
+  //     set({ 
+  //       error: error.message || 'Failed to set default payment method', 
+  //       loading: false 
+  //     });
+  //     throw error;
+  //   }
+  // },
+  
+  // removePaymentMethod: async (paymentMethodId: string) => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     await subscriptionService.removePaymentMethod(paymentMethodId);
+      
+  //     // Refresh payment methods after removal
+  //     const paymentMethods = await subscriptionService.getPaymentMethods();
+  //     set({ paymentMethods, loading: false });
+  //   } catch (error: any) {
+  //     console.error('Error in removePaymentMethod:', error);
+  //     set({ 
+  //       error: error.message || 'Failed to remove payment method', 
+  //       loading: false 
+  //     });
+  //     throw error;
+  //   }
+  // }
 }));

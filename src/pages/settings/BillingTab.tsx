@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { CreditCard, AlertCircle, Check, Trash2 } from 'lucide-react';
+//import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+//import { CreditCard, AlertCircle, Check, Trash2 } from 'lucide-react';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
-import { toast } from 'react-hot-toast';
-import PaymentMethodsList from '../../components/PaymentMethodsList';
-import PaymentMethodForm from '../../components/PaymentMethodForm';
+//import { toast } from 'react-hot-toast';
+//import PaymentMethodsList from '../../components/PaymentMethodsList';
+//import PaymentMethodForm from '../../components/PaymentMethodForm';
 import SubscriptionPlans from '../../components/SubscriptionPlans';
 
 const BillingTab: React.FC = () => {
@@ -16,21 +16,21 @@ const BillingTab: React.FC = () => {
     error,
     fetchSubscriptionPlans, 
     fetchCurrentSubscription, 
-    fetchPaymentMethods 
+    //fetchPaymentMethods 
   } = useSubscriptionStore();
-  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
+  //const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
 
   useEffect(() => {
     // Load subscription data
     fetchSubscriptionPlans();
     fetchCurrentSubscription();
-    fetchPaymentMethods();
-  }, [fetchSubscriptionPlans, fetchCurrentSubscription, fetchPaymentMethods]);
+    //fetchPaymentMethods();
+  }, [fetchSubscriptionPlans, fetchCurrentSubscription]);
 
-  const handlePaymentMethodAdded = () => {
-    setShowAddPaymentMethod(false);
-    fetchPaymentMethods();
-  };
+  // const handlePaymentMethodAdded = () => {
+  //   setShowAddPaymentMethod(false);
+  //   //fetchPaymentMethods();
+  // };
 
   return (
     <div className="space-y-8">
@@ -57,7 +57,7 @@ const BillingTab: React.FC = () => {
         />
       </div>
 
-      <div className="space-y-6">
+      {/* <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-md font-medium text-white">Payment Methods</h3>
           {!showAddPaymentMethod && (
@@ -86,9 +86,9 @@ const BillingTab: React.FC = () => {
             <PaymentMethodForm onSuccess={handlePaymentMethodAdded} />
           </div>
         )}
-      </div>
+      </div> */}
 
-      <div className="bg-dark-800 border border-dark-700 rounded-lg p-6">
+      {/* <div className="bg-dark-800 border border-dark-700 rounded-lg p-6">
         <div className="flex items-start space-x-4">
           <div className="p-2 rounded-md bg-blue-500/20 text-blue-500">
             <CreditCard size={24} />
@@ -100,7 +100,7 @@ const BillingTab: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
