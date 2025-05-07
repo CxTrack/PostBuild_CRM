@@ -3,6 +3,7 @@ import { Check, Loader } from 'lucide-react';
 import { SubscriptionPlan, Subscription } from '../types/database.types';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { toast } from 'react-hot-toast';
+import ConfirmationModal from './ConfirmationModal';
 
 interface SubscriptionPlansProps {
   plans: SubscriptionPlan[];
@@ -13,6 +14,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
   const { createCheckoutSession, fetchFreeSubscription, fetchCurrentSubscription, setSubscription, cancelSubscription, loading } = useSubscriptionStore();
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
   const [isFreeSubscription, setIsFreeSubscription] = useState<boolean>(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,22 +73,38 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ plans, currentSub
     }
   };
 
-  const handleCancel = async () => {
-    if (!currentSubscription) return;
+  const handleCancel = () => {
+    setShowCancelConfirmation(true);
+  };
 
-    if (window.confirm('Are you sure you want to cancel your subscription? You will still have access until the end of your billing period.')) {
-      try {
-        await cancelSubscription();
-        toast.success('Subscription canceled successfully');
-      } catch (error) {
-        toast.error('Failed to cancel subscription');
-      }
+  const handleConfirmCancel = async () => {
+    try {
+      await cancelSubscription();
+      toast.success('Subscription canceled successfully');
+    } catch (error) {
+      toast.error('Failed to cancel subscription');
+    } finally {
+      setShowCancelConfirmation(false);
     }
+  };
+
+  const handleCloseCancel = () => {
+    setShowCancelConfirmation(false);
   };
 
   return (
 
     <div className="space-y-6">
+      <ConfirmationModal
+        isOpen={showCancelConfirmation}
+        onClose={handleCloseCancel}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Subscription"
+        message="Are you sure you want to cancel your subscription? You will still have access until the end of your billing period."
+        confirmButtonText="Yes, Cancel"
+        cancelButtonText="No, Keep Subscription"
+        isDanger={true}
+      />
       {currentSubscription && currentPlan && (
         <div className="bg-primary-900/20 border border-primary-800 rounded-lg p-4">
           <div className="flex justify-between items-start">
