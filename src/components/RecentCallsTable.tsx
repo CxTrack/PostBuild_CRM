@@ -1,6 +1,6 @@
 import React from 'react';
 import { Call } from '../types/database.types';
-
+ 
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
