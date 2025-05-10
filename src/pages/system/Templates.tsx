@@ -231,13 +231,13 @@ const Templates: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">CRM Templates</h1>
         <button className="btn btn-primary flex items-center space-x-2">
           <Plus size={16} />
           <span>Create Template</span>
         </button>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templates.map((template) => (
