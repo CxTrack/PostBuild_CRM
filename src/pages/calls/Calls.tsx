@@ -42,19 +42,19 @@ const Calls: React.FC = () => {
     callsService.fetchCalls();
   }, []);
 
-    // Group calls by month and year
-    const callsByMonth = useMemo(() => {
-      if (!calls) return {};
-      const groupedCalls: { [key: string]: number } = {};
-      calls.forEach(call => {
-          if (call.start_time) {
-              const date = new Date(call.start_time);
-              const formattedDate = format(date, 'yyyy-MM');
-              groupedCalls[formattedDate] = (groupedCalls[formattedDate] || 0) + 1;
-          }
-      });
-      return groupedCalls;
-    }, [calls]);
+  // Group calls by month and year
+  const callsByMonth = useMemo(() => {
+    if (!calls) return {};
+    const groupedCalls: { [key: string]: number } = {};
+    calls.forEach(call => {
+      if (call.start_time) {
+        const date = new Date(call.start_time);
+        const formattedDate = format(date, 'yyyy-MM');
+        groupedCalls[formattedDate] = (groupedCalls[formattedDate] || 0) + 1;
+      }
+    });
+    return groupedCalls;
+  }, [calls]);
 
   // Calculate the average call duration in minutes
   const averageCallDuration = useMemo(() => {
@@ -314,108 +314,108 @@ const Calls: React.FC = () => {
     },
   }), []);
 
-    // Prepare data for Calls by Month Bar Chart
-    const callsByMonthBarData = useMemo(() => {
-        const labels = Object.keys(callsByMonth);
-        const sortedLabels = labels.sort((a, b) => {
-            const [yearA, monthA] = a.split('-').map(Number);
-            const [yearB, monthB] = b.split('-').map(Number);
-            const dateA = new Date(yearA, monthA - 1).getTime();
-            const dateB = new Date(yearB, monthB - 1).getTime();
-            return dateA - dateB;
-        });
-        const data: number[] = sortedLabels.map(label => callsByMonth[label]);
-    
-        return {
-            labels: sortedLabels,
-            datasets: [
-                {
-                    label: 'Number of Calls',
-                    data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }
-            ]
-        };
-    }, [callsByMonth]);
+  // Prepare data for Calls by Month Bar Chart
+  const callsByMonthBarData = useMemo(() => {
+    const labels = Object.keys(callsByMonth);
+    const sortedLabels = labels.sort((a, b) => {
+      const [yearA, monthA] = a.split('-').map(Number);
+      const [yearB, monthB] = b.split('-').map(Number);
+      const dateA = new Date(yearA, monthA - 1).getTime();
+      const dateB = new Date(yearB, monthB - 1).getTime();
+      return dateA - dateB;
+    });
+    const data: number[] = sortedLabels.map(label => callsByMonth[label]);
 
-    // Get current calls
-    const indexOfLastCall = currentPage * callsPerPage;
-    const indexOfFirstCall = indexOfLastCall - callsPerPage;
-    const currentCalls = useMemo(() => calls.slice(indexOfFirstCall, indexOfLastCall), [calls, currentPage]);
-
-    // Change page
-    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-    const pageNumbers = useMemo(() => {
-        const numbers = [];
-        for (let i = 1; i <= Math.ceil(calls.length / callsPerPage); i++) {
-            numbers.push(i);
+    return {
+      labels: sortedLabels,
+      datasets: [
+        {
+          label: 'Number of Calls',
+          data,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
         }
-        return numbers;
-    }, [calls, callsPerPage]);
+      ]
+    };
+  }, [callsByMonth]);
 
-    const renderPageNumbers = useMemo(() => {
-        const pageCount = pageNumbers.length;
-        const visiblePageCount = 5; // Number of visible page numbers (including ellipsis)
-        const edgePageCount = 3;
+  // Get current calls
+  const indexOfLastCall = currentPage * callsPerPage;
+  const indexOfFirstCall = indexOfLastCall - callsPerPage;
+  const currentCalls = useMemo(() => calls.slice(indexOfFirstCall, indexOfLastCall), [calls, currentPage]);
 
-        if (pageCount <= visiblePageCount) {
-            return pageNumbers;
-        }
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-        const displayedPages = [];
-        // First page
-        for (let i = 1; i <= Math.min(edgePageCount, pageCount); i++) {
-          displayedPages.push(i);
-        }
+  const pageNumbers = useMemo(() => {
+    const numbers = [];
+    for (let i = 1; i <= Math.ceil(calls.length / callsPerPage); i++) {
+      numbers.push(i);
+    }
+    return numbers;
+  }, [calls, callsPerPage]);
 
-        // Ellipsis
-        if (currentPage > edgePageCount + 1) {
-            displayedPages.push('...');
-        }
+  const renderPageNumbers = useMemo(() => {
+    const pageCount = pageNumbers.length;
+    const visiblePageCount = 5; // Number of visible page numbers (including ellipsis)
+    const edgePageCount = 3;
 
-        // Last Pages
-        for (let i = Math.max(pageCount - edgePageCount + 1, edgePageCount + 1); i <= pageCount; i++) {
-            displayedPages.push(i);
-        }
-
-        return displayedPages;
-    }, [pageNumbers, currentPage]);
-
-
-    const formatPhoneNumber = (phone: string) => {
-      const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
-
-      // Expecting format like +1XXXXXXXXXX
-      if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        const country = cleaned.slice(0, 1);
-        const area = cleaned.slice(1, 4);
-        const prefix = cleaned.slice(4, 7);
-        const line = cleaned.slice(7, 11);
-        return `+${country} (${area}) ${prefix}-${line}`;
-      }
-    
-      return phone; // fallback
+    if (pageCount <= visiblePageCount) {
+      return pageNumbers;
     }
 
-
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-    
-      const options = {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      };
-    
-      return new Intl.DateTimeFormat('en-US', options).format(date);
+    const displayedPages = [];
+    // First page
+    for (let i = 1; i <= Math.min(edgePageCount, pageCount); i++) {
+      displayedPages.push(i);
     }
+
+    // Ellipsis
+    if (currentPage > edgePageCount + 1) {
+      displayedPages.push('...');
+    }
+
+    // Last Pages
+    for (let i = Math.max(pageCount - edgePageCount + 1, edgePageCount + 1); i <= pageCount; i++) {
+      displayedPages.push(i);
+    }
+
+    return displayedPages;
+  }, [pageNumbers, currentPage]);
+
+
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+
+    // Expecting format like +1XXXXXXXXXX
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      const country = cleaned.slice(0, 1);
+      const area = cleaned.slice(1, 4);
+      const prefix = cleaned.slice(4, 7);
+      const line = cleaned.slice(7, 11);
+      return `+${country} (${area}) ${prefix}-${line}`;
+    }
+
+    return phone; // fallback
+  }
+
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+
+    const options = {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    };
+
+    return new Intl.DateTimeFormat('en-US', options).format(date);
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -465,8 +465,19 @@ const Calls: React.FC = () => {
           </div>
 
           {/* Total Calls Bar Chart */}
-          <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
+          {/* <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
             <Bar data={totalCallsChartData} options={mainChartOptions} />
+          </div> */}
+
+          <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
+            <Bar
+              data={callsByMonthBarData}
+              options={{
+                ...smallChartOptions,
+                plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins, text: 'Calls by Month' } },
+                scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } }
+              }}
+            />
           </div>
 
           {/* Three smaller charts in a row */}
@@ -486,17 +497,17 @@ const Calls: React.FC = () => {
               }} />
             </div>
 
-              {/* Calls by Month Bar Chart */}
-              <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-                  <Bar
+            {/* Calls by Month Bar Chart */}
+            <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
+              {/* <Bar
                       data={callsByMonthBarData}
                       options={{
                           ...smallChartOptions,
                           plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins, text: 'Calls by Month' } },
                           scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } }
                       }}
-                  />
-              </div>
+                  /> */}
+            </div>
           </div>
 
 
@@ -557,7 +568,7 @@ const Calls: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           {/* Pagination */}
           {calls.length > 0 && (
             <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
