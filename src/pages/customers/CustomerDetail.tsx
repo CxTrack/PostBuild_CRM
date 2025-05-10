@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  Edit, Trash2, Mail, Phone, MapPin, Building, User, FileText, 
+import {
+  Edit, Trash2, Mail, Phone, MapPin, Building, User, FileText,
   ShoppingCart, Clock, Calendar, DollarSign, ArrowLeft, Eye, Star, Briefcase, UserPlus
 } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
@@ -16,7 +16,7 @@ const CustomerDetail: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  
+
   useEffect(() => {
     if (id) {
       getCustomerById(id)
@@ -33,10 +33,10 @@ const CustomerDetail: React.FC = () => {
         });
     }
   }, [id, getCustomerById, navigate]);
-  
+
   const handleDelete = async () => {
     if (!id) return;
-    
+
     if (window.confirm('Are you sure you want to delete this customer?')) {
       try {
         await deleteCustomer(id);
@@ -47,7 +47,7 @@ const CustomerDetail: React.FC = () => {
       }
     }
   };
-  
+
   const handleStartEdit = (field: string, value: string) => {
     setEditingField(field);
     setEditValue(value);
@@ -55,7 +55,7 @@ const CustomerDetail: React.FC = () => {
 
   const handleSaveEdit = async (field: string) => {
     if (!id || !customer) return;
-    
+
     try {
       const updatedCustomer = await updateCustomer(id, { [field]: editValue });
       setCustomer(updatedCustomer);
@@ -84,7 +84,7 @@ const CustomerDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -93,7 +93,7 @@ const CustomerDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   if (!customer) {
     return (
       <div className="text-center py-12">
@@ -102,7 +102,7 @@ const CustomerDetail: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -112,7 +112,7 @@ const CustomerDetail: React.FC = () => {
         </Link>
         <h1 className="text-2xl font-bold text-white">{customer.name}</h1>
       </div>
-      
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <Link to={`/customers/${id}/edit`} className="btn btn-primary flex items-center space-x-2">
@@ -127,7 +127,7 @@ const CustomerDetail: React.FC = () => {
           <FileText size={16} />
           <span>Create Invoice</span>
         </Link>
-        <button 
+        <button
           className="btn btn-danger flex items-center space-x-2"
           onClick={handleDelete}
         >
@@ -135,12 +135,12 @@ const CustomerDetail: React.FC = () => {
           <span>Delete</span>
         </button>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Customer info card */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
-          
+
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
@@ -148,7 +148,7 @@ const CustomerDetail: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Type</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('name', customer.name)}
                 >
@@ -170,14 +170,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Building size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Company</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('company', customer.company || '')}
                 >
@@ -199,14 +199,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Briefcase size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Title</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('title', customer.title || '')}
                 >
@@ -228,14 +228,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Mail size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Email</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('email', customer.email || '')}
                 >
@@ -257,14 +257,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Phone size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Phone</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('phone', customer.phone || '')}
                 >
@@ -286,14 +286,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <MapPin size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Address</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('type', customer.type)}
                 >
@@ -318,14 +318,14 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Star size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Priority</p>
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('priority', customer.priority || 'Low')}
                 >
@@ -342,18 +342,17 @@ const CustomerDetail: React.FC = () => {
                       <option value="High">High</option>
                     </select>
                   ) : (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      customer.priority === 'High' ? 'bg-red-900/30 text-red-400' :
-                      customer.priority === 'Medium' ? 'bg-yellow-900/30 text-yellow-400' :
-                      'bg-blue-900/30 text-blue-400'
-                    }`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.priority === 'High' ? 'bg-red-900/30 text-red-400' :
+                        customer.priority === 'Medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                          'bg-blue-900/30 text-blue-400'
+                      }`}>
                       {customer.priority || 'Low'}
                     </span>
                   )}
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Calendar size={18} />
@@ -363,32 +362,31 @@ const CustomerDetail: React.FC = () => {
                 <p className="text-white">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : 'N/A'}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
                 <Clock size={18} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Status</p>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  customer.status === 'Active' ? 'bg-green-900/30 text-green-400' : 'bg-gray-700/30 text-gray-400'
-                }`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.status === 'Active' ? 'bg-green-900/30 text-green-400' : 'bg-gray-700/30 text-gray-400'
+                  }`}>
                   {customer.status || 'Active'}
                 </span>
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6">
             <h3 className="text-md font-medium text-white mb-2">Notes</h3>
             <p className="text-gray-300 text-sm">{customer.notes || 'No notes available'}</p>
           </div>
         </div>
-        
+
         {/* Financial summary */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Financial Summary</h2>
-          
+
           <div className="space-y-4">
             <div className="bg-dark-700 rounded-md p-4">
               <div className="flex items-center space-x-3">
@@ -401,7 +399,7 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-dark-700 rounded-md p-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-md bg-green-500/20 text-green-500">
@@ -413,7 +411,7 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-dark-700 rounded-md p-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-md bg-blue-500/20 text-blue-500">
@@ -425,7 +423,7 @@ const CustomerDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-dark-700 rounded-md p-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-md bg-purple-500/20 text-purple-500">
@@ -439,19 +437,19 @@ const CustomerDetail: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Recent activity */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-          
+
           <div className="text-center py-6">
             <p className="text-gray-400">No recent activity</p>
           </div>
         </div>
       </div>
-      
+
       {/* Invoices */}
-      <div className="card bg-dark-800 border border-dark-700">
+      {/* <div className="card bg-dark-800 border border-dark-700">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-white">Invoices</h2>
           <Link to={`/invoices/create?customer=${id}`} className="btn btn-primary flex items-center space-x-2">
@@ -463,14 +461,17 @@ const CustomerDetail: React.FC = () => {
         <div className="text-center py-6">
           <p className="text-gray-400">No invoices found for this customer</p>
         </div>
-      </div>
-      
+      </div> */}
+
       {/* Purchases */}
       <div className="card bg-dark-800 border border-dark-700">
-        <div className="flex justify-between items-center mb-4">
+        {/* <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-white">Purchase History</h2>
-        </div>
-        
+        </div> */}
+
+        {/* <div className="text-center py-6">
+          <p className="text-gray-400">No purchase history found for this customer</p>
+        </div> */}
         <div className="text-center py-6">
           <p className="text-gray-400">No purchase history found for this customer</p>
         </div>
