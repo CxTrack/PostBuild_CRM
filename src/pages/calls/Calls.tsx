@@ -524,7 +524,7 @@ const Calls: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.start_time ? new Date(call.start_time).toLocaleString() : 'N/A'}
+                          {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
