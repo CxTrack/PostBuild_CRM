@@ -19,7 +19,8 @@ import { Edit, Eye, Headset, Phone, Timer, Trash2, UserPlus } from 'lucide-react
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-import RecentCallsTable from '../components/RecentCallsTable'; // Import the new component
+import RecentCallsTable from '../../components/RecentCallsTable';
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -511,13 +512,12 @@ const Calls: React.FC = () => {
             </div>
           </div>
 
-
           {/* Recent Calls Table */}
- <RecentCallsTable
- currentCalls={currentCalls}
- formatPhoneNumber={formatPhoneNumber}
- formatDate={formatDate}
- />
+          <RecentCallsTable
+            currentCalls={currentCalls}
+            formatPhoneNumber={formatPhoneNumber}
+            formatDate={formatDate}
+          />
 
           {/* Pagination */}
           {calls.length > 0 && (
