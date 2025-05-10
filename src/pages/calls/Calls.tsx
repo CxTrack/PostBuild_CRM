@@ -19,6 +19,7 @@ import { Edit, Eye, Headset, Phone, Timer, Trash2, UserPlus } from 'lucide-react
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
+import RecentCallsTable from '../components/RecentCallsTable'; // Import the new component
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -512,70 +513,11 @@ const Calls: React.FC = () => {
 
 
           {/* Recent Calls Table */}
-          <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Recent Calls</h2>
-            {calls.length === 0 ? (
-              <p className="text-white">No calls found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-dark-700">
-                  <thead>
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">From</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">To</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Download Audio</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-dark-700">
-                    {currentCalls.map((call) => (
-                      <tr key={call.id} className="text-white">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.start_time && call.end_time
-                            ? Math.round(
-                              (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                            )
-                            : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.recording_url ? (
-                            <audio controls src={call.recording_url} style={{
-                              width: '150px',    // shrink width
-                              height: '30px',    // shrink height
-                              display: 'block',
-                              objectFit: 'contain',
-                            }}>
-                              Download audio
-                            </audio>
-                          ) : (
-                            'N/A'
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.recording_url ? (
-                            <a href={call.recording_url!} download>Download Recording</a>
-                          ) : (
-                            'N/A'
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+ <RecentCallsTable
+ currentCalls={currentCalls}
+ formatPhoneNumber={formatPhoneNumber}
+ formatDate={formatDate}
+ />
 
           {/* Pagination */}
           {calls.length > 0 && (
