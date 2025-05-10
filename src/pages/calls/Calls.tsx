@@ -563,7 +563,11 @@ const Calls: React.FC = () => {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href={call.recording_url!} download>Download Recording</a>
+                          {call.recording_url ? (
+                            <a href={call.recording_url!} download>Download Recording</a>
+                          ) : (
+                            'N/A'
+                          )}
                         </td>
                       </tr>
                     ))}
