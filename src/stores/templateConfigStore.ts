@@ -25,6 +25,8 @@ interface TemplateConfig {
     showPipeline: boolean;
     showInventory: boolean;
     showExpenses: boolean;
+    showSales: boolean;
+    showFinance: boolean;
     showCalendar: boolean;
   };
 }
@@ -124,7 +126,9 @@ const defaultConfig: TemplateConfig = {
     showPipeline: true,
     showInventory: true,
     showExpenses: true,
-    showCalendar: true
+    showCalendar: true,
+    showSales: true,
+    showFinance: true,
   }
 };
 
@@ -198,7 +202,9 @@ const realtorConfig: TemplateConfig = {
     showPipeline: true,
     showInventory: false,
     showExpenses: true,
-    showCalendar: true
+    showCalendar: true,
+    showSales: true,
+    showFinance: true,
   }
 };
 
@@ -231,7 +237,9 @@ const callCenterConfig: TemplateConfig = {
     showPipeline: true,
     showInventory: false,
     showExpenses: true,
-    showCalendar: true
+    showCalendar: true,
+    showSales: false,
+    showFinance: false,
   }
 };
 
