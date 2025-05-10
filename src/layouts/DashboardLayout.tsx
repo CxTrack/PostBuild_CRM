@@ -230,7 +230,7 @@ const DashboardLayout: React.FC = () => {
               );
             })}
 
-            {sidebarOpen && (
+            {sidebarOpen && templateConfig.dashboardSections.showSales && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('sales')}
@@ -244,7 +244,7 @@ const DashboardLayout: React.FC = () => {
               </div>
             )}
 
-            {(!sidebarOpen || expandedSections.sales) && (
+            {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSales) && (
               <>{templateConfig.sidebarItems
                 .filter(item => item.section === 'sales')
                 .map((item, index) => {
@@ -316,7 +316,7 @@ const DashboardLayout: React.FC = () => {
               </>
             )} */}
 
-            {sidebarOpen && (
+            {sidebarOpen && templateConfig.dashboardSections.showFinance &&(
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('finance')}
@@ -330,7 +330,7 @@ const DashboardLayout: React.FC = () => {
               </div>
             )}
 
-            {(!sidebarOpen || expandedSections.finance) && (
+            {(!sidebarOpen || expandedSections.finance) && templateConfig.dashboardSections.showFinance && (
               <>
                 <NavLink to="/revenue" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <DollarSign size={20} />

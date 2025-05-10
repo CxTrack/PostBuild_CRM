@@ -234,10 +234,10 @@ const callCenterConfig: TemplateConfig = {
     }
   ],
   dashboardSections: {
-    showPipeline: true,
+    showPipeline: false,
     showInventory: false,
-    showExpenses: true,
-    showCalendar: true,
+    showExpenses: false,
+    showCalendar: false,
     showSales: false,
     showFinance: false,
   }
