@@ -227,6 +227,38 @@ const Templates: React.FC = () => {
         'Commission tracking'
       ]
     }
+    ,
+    {
+      id: 'call-center',
+      name: 'Call Center',
+      description: 'Optimized for businesses with high call volumes and agent management needs.',
+      isActive: activeTemplate === 'call-center',
+      items: [
+        {
+          type: 'Call Types',
+          data: [
+            'Inbound Sales',
+            'Customer Support',
+            'Outbound Prospecting',
+            'Follow-up Calls'
+          ]
+        },
+        {
+          type: 'Agent Statuses',
+          data: [
+            'Available',
+            'On Call',
+            'Wrap-up',
+            'Break'
+          ]
+        }
+      ],
+      features: [
+        'Call logging and tracking',
+        'Agent performance monitoring',
+        'Call script management',
+      ]
+    }
   ];
 
   return (
