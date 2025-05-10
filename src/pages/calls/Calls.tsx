@@ -384,6 +384,39 @@ const Calls: React.FC = () => {
         return displayedPages;
     }, [pageNumbers, currentPage]);
 
+
+    const formatPhoneNumber = (phone: string) => {
+      const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+
+      // Expecting format like +1XXXXXXXXXX
+      if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        const country = cleaned.slice(0, 1);
+        const area = cleaned.slice(1, 4);
+        const prefix = cleaned.slice(4, 7);
+        const line = cleaned.slice(7, 11);
+        return `+${country} (${area}) ${prefix}-${line}`;
+      }
+    
+      return phone; // fallback
+    }
+
+
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+    
+      const options = {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      };
+    
+      return new Intl.DateTimeFormat('en-US', options).format(date);
+    }
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard - last 1000 calls</h1>
@@ -488,13 +521,13 @@ const Calls: React.FC = () => {
                   <tbody className="divide-y divide-dark-700">
                     {currentCalls.map((call) => (
                       <tr key={call.id} className="text-white">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{call.from_number}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{call.to_number}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {call.start_time ? new Date(call.start_time).toLocaleString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {call.end_time ? new Date(call.end_time).toLocaleString() : 'N/A'}
+                          {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {call.start_time && call.end_time
