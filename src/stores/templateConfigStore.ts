@@ -202,12 +202,57 @@ const realtorConfig: TemplateConfig = {
   }
 };
 
+const customerCallsSettingsConfig: TemplateConfig = {
+  name: 'Customer Calls Settings',
+  sidebarItems: [
+    { label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard' },
+    { label: 'Customers', icon: 'Users', path: '/customers' },
+    { label: 'Calls', icon: 'Phone', path: '/calls' },
+    { label: 'Settings', icon: 'Settings', path: '/settings' },
+  ],
+  dashboardCards: [
+    {
+      title: 'Customers',
+      icon: 'Users',
+      value: '0',
+      change: '0%',
+      trend: 'up',
+      color: 'text-blue-500'
+    },
+    {
+      title: 'Calls',
+      icon: 'Phone',
+      value: '0',
+      change: '0%',
+      trend: 'up',
+      color: 'text-green-500'
+    },
+    {
+      title: 'Settings',
+      icon: 'Settings',
+      value: 'N/A',
+      change: 'N/A',
+      trend: 'neutral',
+      color: 'text-gray-500'
+    },
+  ],
+  dashboardSections: {
+    showPipeline: true,
+    showInventory: false,
+    showExpenses: true,
+    showCalendar: true
+  }
+};
+
 export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
   configs: {
     'small-business': defaultConfig,
-    'realtors': realtorConfig
+    'realtors': realtorConfig,
+    'customer-calls-settings': customerCallsSettingsConfig,
   },
   getConfig: (templateId: string) => {
-    return templateId === 'realtors' ? realtorConfig : defaultConfig;
+    if (templateId === 'realtors') return realtorConfig;
+    if (templateId === 'customer-calls-settings') return customerCallsSettingsConfig;
+    return defaultConfig;
   }
 }));
