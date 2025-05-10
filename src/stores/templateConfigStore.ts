@@ -208,7 +208,6 @@ const callCenterConfig: TemplateConfig = {
     { label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard' },
     { label: 'Customers', icon: 'Users', path: '/customers' },
     { label: 'Calls', icon: 'Phone', path: '/calls' },
-    { label: 'Settings', icon: 'Settings', path: '/settings' },
   ],
   dashboardCards: [
     {
