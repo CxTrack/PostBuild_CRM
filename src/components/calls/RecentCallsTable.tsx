@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Call } from '../../types/database.types';
+import { useNavigate } from 'react-router-dom';
  
 interface RecentCallsTableProps {
   currentCalls: Call[];
@@ -8,6 +9,7 @@ interface RecentCallsTableProps {
 }
 
 const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, formatPhoneNumber, formatDate }) => {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -152,6 +154,15 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               }
               </p>
             </div>
+            {selectedCall.from_user_id && (
+              <button
+                onClick={() => {
+                  navigate(`/customers/${selectedCall.from_user_id}`);
+                  closeModal();
+                }}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >View User Details</button>
+            )}
             <button
               onClick={closeModal}
               className="mt-6 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600"
