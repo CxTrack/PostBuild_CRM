@@ -1,4 +1,3 @@
-import { log } from 'console';
 import { supabase } from '../lib/supabase';
 import { SubscriptionPlan, Subscription } from '../types/database.types';
 import Stripe from 'stripe';

@@ -18,8 +18,9 @@ import { useCallStore } from '../../stores/callStore';
 import { Edit, Eye, Headset, Phone, Timer, Trash2, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { formatService } from '../../services/formatService';
 
-import RecentCallsTable from '../../components/RecentCallsTable';
+import RecentCallsTable from '../../components/calls/RecentCallsTable';
 
 ChartJS.register(
   CategoryScale,
@@ -387,37 +388,37 @@ const Calls: React.FC = () => {
   }, [pageNumbers, currentPage]);
 
 
-  const formatPhoneNumber = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+  // const formatPhoneNumber = (phone: string) => {
+  //   const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
 
-    // Expecting format like +1XXXXXXXXXX
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      const country = cleaned.slice(0, 1);
-      const area = cleaned.slice(1, 4);
-      const prefix = cleaned.slice(4, 7);
-      const line = cleaned.slice(7, 11);
-      return `+${country} (${area}) ${prefix}-${line}`;
-    }
+  //   // Expecting format like +1XXXXXXXXXX
+  //   if (cleaned.length === 11 && cleaned.startsWith('1')) {
+  //     const country = cleaned.slice(0, 1);
+  //     const area = cleaned.slice(1, 4);
+  //     const prefix = cleaned.slice(4, 7);
+  //     const line = cleaned.slice(7, 11);
+  //     return `+${country} (${area}) ${prefix}-${line}`;
+  //   }
 
-    return phone; // fallback
-  }
+  //   return phone; // fallback
+  // }
 
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  // const formatDate = (dateString: string) => {
+  //   const date = new Date(dateString);
 
-    const options = {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    };
+  //   const options = {
+  //     month: 'long',
+  //     day: 'numeric',
+  //     year: 'numeric',
+  //     hour: 'numeric',
+  //     minute: '2-digit',
+  //     second: '2-digit',
+  //     hour12: false,
+  //   };
 
-    return new Intl.DateTimeFormat('en-US', options).format(date);
-  }
+  //   return new Intl.DateTimeFormat('en-US', options).format(date);
+  // }
 
   return (
     <div className="container mx-auto p-6">
@@ -515,8 +516,8 @@ const Calls: React.FC = () => {
           {/* Recent Calls Table */}
           <RecentCallsTable
             currentCalls={currentCalls}
-            formatPhoneNumber={formatPhoneNumber}
-            formatDate={formatDate}
+            formatPhoneNumber={formatService.formatPhoneNumber}
+            formatDate={formatService.formatDate}
           />
 
           {/* Pagination */}

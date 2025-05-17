@@ -8,30 +8,43 @@ import { useCustomerStore } from '../../stores/customerStore';
 import { Customer } from '../../types/database.types';
 import { toast } from 'react-hot-toast';
 import { formatPhoneNumber } from '../../utils/formatters';
+import { useCallStore } from '../../stores/callStore';
+import RecentCallsTable from '../../components/calls/RecentCallsTable';
+import { formatService } from '../../services/formatService';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
+  const { calls, fetchCustomerCalls } = useCallStore();
+
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
   useEffect(() => {
-    if (id) {
-      getCustomerById(id)
-        .then(data => {
-          if (data) {
-            setCustomer(data);
-          } else {
-            toast.error('Customer not found');
-            navigate('/customers');
-          }
-        })
-        .catch(err => {
-          toast.error('Failed to load customer details');
-        });
-    }
+
+    const loadData = async () => {
+      if (id) {
+        getCustomerById(id)
+          .then(async data => {
+            if (data) {
+              setCustomer(data);
+              await fetchCustomerCalls(id);
+              console.log(calls);
+
+            } else {
+              toast.error('Customer not found');
+              navigate('/customers');
+            }
+          })
+          .catch(err => {
+            toast.error('Failed to load customer details');
+          });
+      }
+    };
+
+    loadData();
   }, [id, getCustomerById, navigate]);
 
   const handleDelete = async () => {
@@ -343,8 +356,8 @@ const CustomerDetail: React.FC = () => {
                     </select>
                   ) : (
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.priority === 'High' ? 'bg-red-900/30 text-red-400' :
-                        customer.priority === 'Medium' ? 'bg-yellow-900/30 text-yellow-400' :
-                          'bg-blue-900/30 text-blue-400'
+                      customer.priority === 'Medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                        'bg-blue-900/30 text-blue-400'
                       }`}>
                       {customer.priority || 'Low'}
                     </span>
@@ -463,6 +476,17 @@ const CustomerDetail: React.FC = () => {
         </div>
       </div> */}
 
+      <div className="card bg-dark-800 border border-dark-700">
+        <div className="text-left py-6">
+          {/* Recent Calls Table */}
+          <RecentCallsTable
+            currentCalls={calls}
+            formatPhoneNumber={formatService.formatPhoneNumber}
+            formatDate={formatService.formatDate}
+          />
+        </div>
+      </div>
+
       {/* Purchases */}
       <div className="card bg-dark-800 border border-dark-700">
         {/* <div className="flex justify-between items-center mb-4">
@@ -472,8 +496,15 @@ const CustomerDetail: React.FC = () => {
         {/* <div className="text-center py-6">
           <p className="text-gray-400">No purchase history found for this customer</p>
         </div> */}
-        <div className="text-center py-6">
-          <p className="text-gray-400">No purchase history found for this customer</p>
+
+        <div className="text-left py-6">
+          {
+            calls.map((call) => (
+              <p>{call.transcript}</p>
+            ))
+          }
+
+          {/* <p className="text-gray-400">No purchase history found for this customer</p> */}
         </div>
       </div>
     </div>

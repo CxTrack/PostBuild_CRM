@@ -268,3 +268,14 @@ export type AIAgentLog = {
   status: 'success' | 'failed';
   created_at: string;
 };
+
+export type RetellCall = {
+  call_id: string;
+  agent_id: string | null;
+  start_timestamp: number | null;
+  end_timestamp: number | null;
+  recording_url: string | null;
+  end_reason: string | null;
+  phone_number: string | null;
+  pagination_key: string | 0;
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Call } from '../types/database.types';
+import { Call } from '../../types/database.types';
  
 interface RecentCallsTableProps {
   currentCalls: Call[];

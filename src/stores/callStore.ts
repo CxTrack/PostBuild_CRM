@@ -1,8 +1,11 @@
 import create from 'zustand';
+import { callsService } from '../services/callsService';
+import { customerService } from '../services/customerService';
+import { RetellCall } from '../types/database.types';
+import { log } from 'console';
 // import { supabase } from '../lib/supabase'; // Assuming your supabase client is here
 // import { Database } from '../types/database.types'; // Assuming your types are generated here
 
-// Define the Call type to match the structure used in the application (originally from Supabase)
 interface Call {
   id: string;
   call_agent_id: string | null;
@@ -15,24 +18,14 @@ interface Call {
   pagination_key: string | null;
 }
 
-interface RetellCall {
-  call_id: string;
-  agent_id: string | null;
-  start_timestamp: number | null;
-  end_timestamp: number | null;
-  recording_url: string | null;
-  end_reason: string | null;
-  phone_number: string | null;
-  pagination_key: string | 0;
-}
-
 interface CallStore {
-  calls: Call[];
+  calls: RetellCall[];
   agents: string[]; // Assuming agent IDs are strings
   totalCallsDuration: number; // Changed type to number as it's used in calculations
   loading: boolean;
   error: string | null;
   fetchCalls: () => Promise<void>;
+  fetchCustomerCalls: (customerId: string) => Promise<void>;
 }
 
 export const useCallStore = create<CallStore>((set, get) => ({
@@ -52,7 +45,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
         throw new Error('RETELL_API_KEY is not set.');
       }
 
-      let allCalls :RetellCall[] = [];
+      let allCalls: RetellCall[] = [];
       let paginationKey = '1000';
 
       do {
@@ -69,7 +62,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
             'sort_order': "descending",
             //'user_sentiment': ["Positive", "Negative"],
             //'call_successful': [false]
-        }),
+          }),
         });
 
         if (!response.ok) {
@@ -78,19 +71,19 @@ export const useCallStore = create<CallStore>((set, get) => ({
         }
 
         const data: RetellCall[] = await response.json();
-        
+
 
         // Assuming the returned object has a 'calls' array and a 'pagination_key' for the next batch
         if (data && Array.isArray(data)) {
           allCalls = allCalls.concat(data);
-          console.log(allCalls);
+          //console.log(allCalls);
         }
-    
+
         paginationKey = data[0].pagination_key || null; // If no pagination_key, we are done
-        
+
       } while (paginationKey);
 
-      
+
       const retellCalls: RetellCall[] = allCalls;
 
       // Map Retell API response to the expected Call type structure
@@ -106,8 +99,8 @@ export const useCallStore = create<CallStore>((set, get) => ({
           recording_url: retellCall.recording_url,
           pagination_key: retellCall.pagination_key,
           disconnection_reason: retellCall.end_reason,
-          from_number: retellCall.from_number || 'N/A',  
-          to_number: retellCall.to_number || 'N/A', 
+          from_number: retellCall.from_number || 'N/A',
+          to_number: retellCall.to_number || 'N/A',
         };
       });
 
@@ -128,9 +121,26 @@ export const useCallStore = create<CallStore>((set, get) => ({
       // Round total duration to 2 decimal places
       const roundedTotalDuration = parseFloat(totalDurationInMinutes.toFixed(2));
 
-
       set({ calls: mappedCalls, agents: uniqueAgentIds, totalCallsDuration: roundedTotalDuration, loading: false });
     } catch (error: any) {
+      console.error('Error fetching calls:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  fetchCustomerCalls: async (customerId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const customer = await customerService.getCustomerById(customerId);
+      if (!customer?.phone) {
+        return;
+      }
+
+      const customerCalls = await callsService.fetchCustomerCalls(customer);
+      
+      set({ calls: customerCalls, agents: [], totalCallsDuration: 0, loading: false });
+    }
+    catch (error: any) {
       console.error('Error fetching calls:', error);
       set({ error: error.message, loading: false });
     }
