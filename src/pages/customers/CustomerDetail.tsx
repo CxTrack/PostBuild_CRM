@@ -486,27 +486,6 @@ const CustomerDetail: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Purchases */}
-      <div className="card bg-dark-800 border border-dark-700">
-        {/* <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-white">Purchase History</h2>
-        </div> */}
-
-        {/* <div className="text-center py-6">
-          <p className="text-gray-400">No purchase history found for this customer</p>
-        </div> */}
-
-        <div className="text-left py-6">
-          {
-            calls.map((call) => (
-              <p>{call.transcript}</p>
-            ))
-          }
-
-          {/* <p className="text-gray-400">No purchase history found for this customer</p> */}
-        </div>
-      </div>
     </div>
   );
 };

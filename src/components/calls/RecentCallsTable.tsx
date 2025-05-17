@@ -123,7 +123,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
       {isModalOpen && selectedCall && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 p-6 rounded-lg text-white max-w-md w-full">
+          <div className="bg-dark-800 p-6 rounded-lg text-white max-w-4xl w-full">
             <h3 className="text-xl font-bold mb-4">Call Details</h3>
             <p><strong>From:</strong> {formatPhoneNumber(selectedCall.from_number!)}</p>
             <p><strong>To:</strong> {formatPhoneNumber(selectedCall.to_number!)}</p>
@@ -143,6 +143,14 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               ) : (
                 ' N/A'
               )}
+            </div>
+            <div className="mt-4">
+              <strong>Transcript:</strong>
+              <p>
+              {
+                selectedCall.transcript
+              }
+              </p>
             </div>
             <button
               onClick={closeModal}
