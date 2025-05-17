@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Call } from '../../types/database.types';
  
 interface RecentCallsTableProps {
@@ -8,63 +8,152 @@ interface RecentCallsTableProps {
 }
 
 const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, formatPhoneNumber, formatDate }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const indexOfLastCall = currentPage * itemsPerPage;
+  const indexOfFirstCall = indexOfLastCall - itemsPerPage;
+  const currentCallsPaginated = currentCalls.slice(indexOfFirstCall, indexOfLastCall);
+
+  const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleRowClick = (call: Call) => {
+    setSelectedCall(call);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedCall(null);
+  };
+
   return (
-    <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
-      <h2 className="text-xl font-bold text-white mb-4">Recent Calls</h2>
-      {currentCalls.length === 0 ? (
-        <p className="text-white">No calls found.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-dark-700">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">From</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">To</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-dark-700">
-              {currentCalls.map((call) => (
-                <tr key={call.id} className="text-white">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {call.start_time && call.end_time
-                      ? Math.round(
-                          (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                        )
-                      : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {call.recording_url ? (
-                      <audio controls src={call.recording_url} style={{
-                        width: '150px',
-                        height: '30px',
-                        display: 'block',
-                        objectFit: 'contain',
-                      }}>
-                        Download audio
-                      </audio>
-                    ) : (
-                      'N/A'
-                    )}
-                  </td>
+    <>
+      <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
+        <h2 className="text-xl font-bold text-white mb-4">Recent Calls</h2>
+        {currentCalls.length === 0 ? (
+          <p className="text-white">No calls found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-dark-700">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">From</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-dark-700">
+                {currentCallsPaginated.map((call) => (
+                  <tr key={call.id} className="text-white cursor-pointer hover:bg-dark-700" onClick={() => handleRowClick(call)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.start_time && call.end_time
+                        ? Math.round(
+                            (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                          )
+                        : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {call.recording_url ? (
+                        <audio controls src={call.recording_url} style={{
+                          width: '150px',
+                          height: '30px',
+                          display: 'block',
+                          objectFit: 'contain',
+                        }}>
+                          Download audio
+                        </audio>
+                      ) : (
+                        'N/A'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 flex justify-between items-center">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-dark-700 text-white rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-white">Page {currentPage} of {totalPages}</span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-dark-700 text-white rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isModalOpen && selectedCall && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 p-6 rounded-lg text-white max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Call Details</h3>
+            <p><strong>From:</strong> {formatPhoneNumber(selectedCall.from_number!)}</p>
+            <p><strong>To:</strong> {formatPhoneNumber(selectedCall.to_number!)}</p>
+            <p><strong>Start Time:</strong> {selectedCall.start_time ? formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}</p>
+            <p><strong>End Time:</strong> {selectedCall.end_time ? formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}</p>
+            <p><strong>Duration:</strong> {selectedCall.start_time && selectedCall.end_time
+                      ? Math.round(
+                          (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
+                        )
+                      : 'N/A'} s</p>
+            <div className="mt-4">
+              <strong>Recording:</strong>
+              {selectedCall.recording_url ? (
+                <audio controls src={selectedCall.recording_url} className="mt-2 w-full">
+                  Download audio
+                </audio>
+              ) : (
+                ' N/A'
+              )}
+            </div>
+            <button
+              onClick={closeModal}
+              className="mt-6 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
