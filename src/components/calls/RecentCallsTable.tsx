@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
+import { customerService} from '../../services/customerService'
  
 interface RecentCallsTableProps {
   currentCalls: Call[];
@@ -150,14 +151,14 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               <strong>Transcript:</strong>
               <p>
               {
-                selectedCall.transcript
+                selectedCall.transcript + await customerService.getCustomerByPhone(selectedCall.from_phone)
               }
               </p>
             </div>
-            {selectedCall.from_user_id && (
+            {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
                 onClick={() => {
-                  navigate(`/customers/${selectedCall.from_user_id}`);
+                  navigate(`/customers/${await customerService.getCustomerByPhone(selectedCall.from_phone)}`); // instead `from_user_id` need to find user by phone #
                   closeModal();
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
