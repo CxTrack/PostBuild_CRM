@@ -109,6 +109,30 @@ export const customerService = {
     }
   },
 
+  async getCustomerByPhone(phoneNum: string):Promise<Customer | null> {
+    try {
+      console.log(phoneNum);
+      
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('phone', phoneNum)
+        .single();
+
+      if (error) {
+        console.error('Error fetching customer:', error);
+        throw error;
+      }
+
+      console.log(data);
+
+      return data;
+    } catch (error) {
+      console.error('Customer service error:', error);
+      throw error;
+    }
+  },
+
   // Delete a customer
   async deleteCustomer(id: string): Promise<void> {
     try {

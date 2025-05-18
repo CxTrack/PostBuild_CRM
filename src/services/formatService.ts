@@ -14,6 +14,16 @@ export const formatService = {
     return phone;
   },
 
+  formatPhoneNumberAsInDB(phone: string) {
+    const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+  
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return cleaned.slice(1, 11); 
+    }
+  
+    return phone;
+  },
+
   formatDate(dateString: string) {
     const date = new Date(dateString);
 

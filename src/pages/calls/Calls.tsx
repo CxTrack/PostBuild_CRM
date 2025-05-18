@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { formatService } from '../../services/formatService';
 
 import RecentCallsTable from '../../components/calls/RecentCallsTable';
+import { Call } from '../../types/database.types';
 
 ChartJS.register(
   CategoryScale,
@@ -36,13 +37,29 @@ ChartJS.register(
 );
 
 const Calls: React.FC = () => {
-  const { calls, agents, totalCallsDuration, loading, error } = useCallStore();
+  //const { calls, agents, totalCallsDuration, loading, error } = useCallStore();
+  const { agents, totalCallsDuration } = useCallStore();
+  const [calls, setCalls] = useState<Call[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const callsPerPage = 20;
 
-  // Fetch calls when the component mounts
+
   useEffect(() => {
-    callsService.fetchCalls();
+    const fetchCalls = async () => {
+      try {
+        const data = await callsService.fetchAccountCalls();
+        setCalls(data);
+      } catch (err: any) {
+        console.error(err);
+        setError('Failed to load calls');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalls();
   }, []);
 
   // Group calls by month and year
@@ -85,7 +102,8 @@ const Calls: React.FC = () => {
     const counts: { [key: string]: number } = {};
     if (calls) {
       calls.forEach(call => {
-        const reason = call.disconnection_reason || 'Completed'; // Group null/empty as 'Completed'
+        //const reason = call.disconnection_reason || 'Completed'; // Group null/empty as 'Completed'
+        const reason = 'Completed'; // Group null/empty as 'Completed'
         counts[reason] = (counts[reason] || 0) + 1;
       });
     }
@@ -422,7 +440,7 @@ const Calls: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard - last 1000 calls</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">Calls Dashboard</h1>
 
       {loading && <p className="text-white">Loading calls...</p>}
       {error && <p className="text-red-500">Error fetching calls: {error}</p>}
@@ -496,7 +514,7 @@ const Calls: React.FC = () => {
             <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
               <Pie data={disconnectionReasonPieData} options={{
                 ...pieChartOptions,
-                plugins: { ...pieChartOptions.plugins, text: 'Disconnection Reason' }
+                plugins: { ...pieChartOptions.plugins }
               }} />
             </div>
 

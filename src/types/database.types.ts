@@ -269,7 +269,7 @@ export type AIAgentLog = {
   created_at: string;
 };
 
-export type RetellCall = {
+export type RetellCall = { // API contract
   call_id: string;
   agent_id: string | null;
   start_timestamp: number | null;
@@ -278,4 +278,17 @@ export type RetellCall = {
   end_reason: string | null;
   phone_number: string | null;
   pagination_key: string | 0;
+}
+
+export type Call = { // in DB
+  id: string;
+  from_number: string;
+  to_number: string;
+  call_agent_id: number | null;
+  provider_call_id: string;
+  user_id: string;
+  start_time: string;
+  end_time: string;
+  recording_url: string;
+  transcript: string;
 }
