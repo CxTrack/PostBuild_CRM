@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
-import { customerService } from '../../services/customerService'
-import { formatService } from '../../services/formatService'
-import { PhoneCall } from 'lucide-react';
-
-
+import { customerService} from '../../services/customerService'
+ 
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
@@ -18,38 +15,12 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [itemsPerPage] = useState(10);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [customerDetails, setCustomerDetails] = useState<any>(null);
-  const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
-  const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
-  const [customerCache, setCustomerCache] = useState<{ [phone: string]: any }>({});
 
   const indexOfLastCall = currentPage * itemsPerPage;
   const indexOfFirstCall = indexOfLastCall - itemsPerPage;
   const currentCallsPaginated = currentCalls.slice(indexOfFirstCall, indexOfLastCall);
 
   const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
-
-  useEffect(() => {
-    const fetchCustomerNames = async () => {
-      const newNames = { ...customerNames };
-
-      await Promise.all(currentCallsPaginated.map(async (call) => {
-        if (newNames[call.id]) return; // skip already fetched
-
-        try {
-          const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-          const customer = await customerService.getCustomerByPhone(formattedPhone);
-          newNames[call.id] = customer?.name || formattedPhone;
-        } catch (error) {
-          newNames[call.id] = call.from_number || 'Unknown';
-        }
-      }));
-
-      setCustomerNames(newNames);
-    };
-
-    fetchCustomerNames();
-  }, [currentCallsPaginated]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -67,40 +38,10 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     }
   };
 
-  const handleRowClick = async (call: any) => {
+  const handleRowClick = (call: Call) => {
     setSelectedCall(call);
-    setIsModalOpen(true); // Open modal immediately with basic call info
-    setCustomerDetails(null); // Clear previous customer details
-    setIsLoadingCustomer(true); // Start loading state for customer details
-    try {
-      const customer = await getCutomerName(call); // Renamed function to be more descriptive
-      setCustomerDetails(customer); // set customerDetails state
-    } catch (error) {
-      console.error('Error fetching customer details:', error);
-      // Optionally show an error message in the modal
-      setCustomerDetails(null);
-    }
+    setIsModalOpen(true);
   };
-
-
-  const getCutomerName = async (call: Call) => {
-    try {
-      const phoneNumber = call.from_number!;
-      // Check cache first
-      if (customerCache[phoneNumber]) {
-        return customerCache[phoneNumber];
-      }
-
-      const formattedPhone = await formatService.formatPhoneNumberAsInDB(phoneNumber);
-      const customer = await customerService.getCustomerByPhone(formattedPhone); // Ensure this service method is optimized
-      setCustomerCache(prevCache => ({ ...prevCache, [phoneNumber]: customer || formattedPhone })); // Cache the result
-      return customer || formattedPhone;
-    } catch (error) {
-      console.error('Error fetching customer details:', error);
-      return '';
-    }
-  };
-
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -129,12 +70,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               <tbody className="divide-y divide-dark-700">
                 {currentCallsPaginated.map((call) => (
                   <tr key={call.id} className="text-white cursor-pointer hover:bg-dark-700" onClick={() => handleRowClick(call)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span>
-                        {customerNames[call.id] ? customerNames[call.id] : formatPhoneNumber(call.from_number!)}
-                      </span>
-                     
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
@@ -145,8 +81,8 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time && call.end_time
                         ? Math.round(
-                          (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                        )
+                            (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                          )
                         : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -197,10 +133,10 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             <p><strong>Start Time:</strong> {selectedCall.start_time ? formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}</p>
             <p><strong>End Time:</strong> {selectedCall.end_time ? formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}</p>
             <p><strong>Duration:</strong> {selectedCall.start_time && selectedCall.end_time
-              ? Math.round(
-                (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
-              )
-              : 'N/A'} s</p>
+                      ? Math.round(
+                          (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
+                        )
+                      : 'N/A'} s</p>
             <div className="mt-4">
               <strong>Recording:</strong>
               {selectedCall.recording_url ? (
@@ -211,29 +147,17 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                 ' N/A'
               )}
             </div>
-            {isLoadingCustomer ? (
-              <div className="mt-4 text-center">Loading customer details...</div>
-            ) : customerDetails ? (
-              <>
-                <div className="mt-4">
-                  <strong>Customer:</strong> {customerDetails.name || formatPhoneNumber(selectedCall.from_number!)}
-                </div>
-                <div className="mt-4">
-                  <strong>Transcript:</strong>
-                  <p>
-                    {selectedCall.transcript}
-                  </p>
-                </div>
+            <div className="mt-4">
+              <strong>Transcript:</strong>
+              <p> { selectedCall.transcript } </p>
+            </div>
+            {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
                 onClick={() => {
-                  navigate(`/customers/${customerDetails.id}`);
+                  navigate(`/customers/${customerService.getCustomerByPhone(selectedCall.from_number)}`); // instead `from_user_id` need to find user by phone #
                   closeModal();
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >View Customer Details</button>
-            ) : (
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                // You could add a different message or component here if customerDetails is null
               >View User Details</button>
             )}
             <button

@@ -120,8 +120,9 @@ export const customerService = {
         .single();
 
       if (error) {
-        console.error('Error fetching customer:', error);
-        throw error;
+        //console.error('Error fetching customer:', error);
+        //throw error;
+        return null;
       }
 
       console.log(data);
