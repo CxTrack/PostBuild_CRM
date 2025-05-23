@@ -154,12 +154,11 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             </div>
             {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
-                onClick={() => {
-                  // Use the getCutomerName logic to find the customer by phone number // NOTE: The prompt asked to modify this line, but the actual logic for fetching the customer by phone is inside the onClick handler itself.
+                onClick={async () => {
                   const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
                   const foundCustomer = await customerService.getCustomerByPhone(customer);
                   if (foundCustomer) {
-                    navigate(`/customers/${foundCustomer.id}`); // Use the found customer's ID
+                    navigate(`/customers/${foundCustomer.id}`);
                   }
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
