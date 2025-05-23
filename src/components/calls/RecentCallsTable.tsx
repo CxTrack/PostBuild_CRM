@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
+import { formatService } from '../../services/formatService';
 import { customerService} from '../../services/customerService'
  
 interface RecentCallsTableProps {
@@ -154,8 +155,12 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
                 onClick={() => {
-                  navigate(`/customers/${customerService.getCustomerByPhone(selectedCall.from_number)}`); // instead `from_user_id` need to find user by phone #
-                  closeModal();
+                  // Use the getCutomerName logic to find the customer by phone number // NOTE: The prompt asked to modify this line, but the actual logic for fetching the customer by phone is inside the onClick handler itself.
+                  const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
+                  const foundCustomer = await customerService.getCustomerByPhone(customer);
+                  if (foundCustomer) {
+                    navigate(`/customers/${foundCustomer.id}`); // Use the found customer's ID
+                  }
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >View User Details</button>
