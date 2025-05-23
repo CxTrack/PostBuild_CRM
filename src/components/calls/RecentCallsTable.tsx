@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { formatService } from '../../services/formatService';
@@ -17,11 +17,39 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [customerDetails, setCustomerDetails] = useState<any>(null);
+  const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
+
   const indexOfLastCall = currentPage * itemsPerPage;
   const indexOfFirstCall = indexOfLastCall - itemsPerPage;
   const currentCallsPaginated = currentCalls.slice(indexOfFirstCall, indexOfLastCall);
 
   const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
+
+  useEffect(() => {
+    const fetchCustomerNames = async () => {
+      const newNames = { ...customerNames };
+
+      await Promise.all(currentCallsPaginated.map(async (call) => {
+        if (newNames[call.id]) return; // skip already fetched
+
+        try {
+          const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+          const customer = await customerService.getCustomerByPhone(formattedPhone);
+          newNames[call.id] = customer?.name ||  formatPhoneNumber(call.from_number!);
+        } catch (error) {
+          newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+        }
+      }));
+
+      setCustomerNames(newNames);
+
+      console.log(customerNames);
+      
+    };
+
+    fetchCustomerNames();
+  }, [currentCallsPaginated]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -71,7 +99,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               <tbody className="divide-y divide-dark-700">
                 {currentCallsPaginated.map((call) => (
                   <tr key={call.id} className="text-white cursor-pointer hover:bg-dark-700" onClick={() => handleRowClick(call)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{customerNames[call.id]}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
