@@ -19,6 +19,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
+  const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
   const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
 
   const indexOfLastCall = currentPage * itemsPerPage;
@@ -66,27 +67,20 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   };
 
   const handleRowClick = async (call: any) => {
+    setSelectedCall(call);
+    setIsModalOpen(true); // Open modal immediately with basic call info
+    setCustomerDetails(null); // Clear previous customer details
+    setIsLoadingCustomer(true); // Start loading state for customer details
     try {
-
-      setSelectedCall(call);
-
-      console.log(call);
-      
-      const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-
-      console.log(formattedPhone);
-
-      const customer = await getCutomerName(call);
-
-      console.log(customer);
-
+      const customer = await getCutomerName(call); // Renamed function to be more descriptive
       setCustomerDetails(customer);
     } catch (error) {
       console.error('Error fetching customer details:', error);
+      // Optionally show an error message in the modal
       setCustomerDetails(null);
     }
-    setIsModalOpen(true);
   };
+
 
   const getCutomerName = async (call: Call) => {
     try {
@@ -97,7 +91,6 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
       console.error('Error fetching customer details:', error);
       return '';
     }
-    setIsModalOpen(true);
   };
 
 
@@ -210,17 +203,27 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                 ' N/A'
               )}
             </div>
-            <div className="mt-4">
-              <strong>Transcript:</strong>
-              <p>
-                {selectedCall.transcript}
-              </p>
-            </div>
-            {customerDetails && (
+            {isLoadingCustomer ? (
+              <div className="mt-4 text-center">Loading customer details...</div>
+            ) : customerDetails ? (
+              <>
+                <div className="mt-4">
+                  <strong>Customer:</strong> {customerDetails.name || formatPhoneNumber(selectedCall.from_number!)}
+                </div>
+                <div className="mt-4">
+                  <strong>Transcript:</strong>
+                  <p>
+                    {selectedCall.transcript}
+                  </p>
+                </div>
               <button
                 onClick={() => {
                   navigate(`/customers/${customerDetails.id}`);
                   closeModal();
+                }}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >View Customer Details</button>
+            ) : (
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >View User Details</button>
