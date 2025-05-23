@@ -232,8 +232,8 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >View Customer Details</button>
             ) : (
-                }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                // You could add a different message or component here if customerDetails is null
               >View User Details</button>
             )}
             <button
