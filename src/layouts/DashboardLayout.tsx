@@ -18,6 +18,7 @@ const DashboardLayout: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMaximized, setCalendarMaximized] = useState(false);
+  const { activeTemplate, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     sales: true,
     finance: true,
@@ -26,7 +27,6 @@ const DashboardLayout: React.FC = () => {
   });
   const { user, signOut } = useAuthStore();
   const { currentSubscription } = useSubscriptionStore();
-  const { activeTemplate } = useTemplateStore();
   const { getConfig } = useTemplateConfigStore();
   const templateConfig = getConfig(activeTemplate);
   const navigate = useNavigate();
@@ -50,6 +50,9 @@ const DashboardLayout: React.FC = () => {
 
   // Watch calendar state changes
   useEffect(() => {
+    
+    getActiveTemplate();
+
     if (calendarMaximized) {
       setSidebarOpen(false);
     }
