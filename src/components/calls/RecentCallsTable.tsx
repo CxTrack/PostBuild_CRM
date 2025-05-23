@@ -21,6 +21,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
   const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
+  const [customerCache, setCustomerCache] = useState<{ [phone: string]: any }>({});
 
   const indexOfLastCall = currentPage * itemsPerPage;
   const indexOfFirstCall = indexOfLastCall - itemsPerPage;
@@ -73,7 +74,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     setIsLoadingCustomer(true); // Start loading state for customer details
     try {
       const customer = await getCutomerName(call); // Renamed function to be more descriptive
-      setCustomerDetails(customer);
+      setCustomerDetails(customer); // set customerDetails state
     } catch (error) {
       console.error('Error fetching customer details:', error);
       // Optionally show an error message in the modal
@@ -84,8 +85,15 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
   const getCutomerName = async (call: Call) => {
     try {
-      const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-      const customer = await customerService.getCustomerByPhone(formattedPhone);
+      const phoneNumber = call.from_number!;
+      // Check cache first
+      if (customerCache[phoneNumber]) {
+        return customerCache[phoneNumber];
+      }
+
+      const formattedPhone = await formatService.formatPhoneNumberAsInDB(phoneNumber);
+      const customer = await customerService.getCustomerByPhone(formattedPhone); // Ensure this service method is optimized
+      setCustomerCache(prevCache => ({ ...prevCache, [phoneNumber]: customer || formattedPhone })); // Cache the result
       return customer || formattedPhone;
     } catch (error) {
       console.error('Error fetching customer details:', error);
