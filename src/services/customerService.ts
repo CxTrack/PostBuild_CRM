@@ -111,8 +111,6 @@ export const customerService = {
 
   async getCustomerByPhone(phoneNum: string):Promise<Customer | null> {
     try {
-      console.log(phoneNum);
-      
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -124,8 +122,6 @@ export const customerService = {
         //throw error;
         return null;
       }
-
-      console.log(data);
 
       return data;
     } catch (error) {
