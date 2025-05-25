@@ -17,7 +17,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [customerDetails, setCustomerDetails] = useState<any>(null);
+  //const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
 
   const indexOfLastCall = currentPage * itemsPerPage;
@@ -30,21 +30,20 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     const fetchCustomerNames = async () => {
       const newNames = { ...customerNames };
 
-      await Promise.all(currentCallsPaginated.map(async (call) => {
-        if (newNames[call.id]) return; // skip already fetched
+      // await Promise.all(currentCallsPaginated.map(async (call) => {
+      //   if (newNames[call.id]) return; // skip already fetched
 
-        try {
-          const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-          const customer = await customerService.getCustomerByPhone(formattedPhone);
-          newNames[call.id] = customer?.name ||  formatPhoneNumber(call.from_number!);
-        } catch (error) {
-          newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
-        }
-      }));
+      //   try {
+      //     const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+      //     const customer = await customerService.getCustomerByPhone(formattedPhone);
+      //     //newNames[call.id] = customer?.name ||  formatPhoneNumber(call.from_number!);
+      //     newNames[call.id] = customer ? customer?.name : formatPhoneNumber(call.from_number!);
+      //   } catch (error) {
+      //     newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+      //   }
+      // }));
 
       setCustomerNames(newNames);
-
-      console.log(customerNames);
       
     };
 
