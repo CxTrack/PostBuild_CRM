@@ -1,8 +1,8 @@
 import create from 'zustand';
 import { callsService } from '../services/callsService';
 import { customerService } from '../services/customerService';
-import { RetellCall } from '../types/database.types';
-import { log } from 'console';
+import Retell from 'retell-sdk';
+import { CallResponse } from 'retell-sdk/resources.mjs';
 // import { supabase } from '../lib/supabase'; // Assuming your supabase client is here
 // import { Database } from '../types/database.types'; // Assuming your types are generated here
 
@@ -25,7 +25,7 @@ interface CallStore {
   totalCallsDuration: number; // Changed type to number as it's used in calculations
   loading: boolean;
   error: string | null;
-  //fetchCallsViaAPI: () => Promise<void>;
+  fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
   fetchCalls: () => Promise<void>;
   fetchCustomerCalls: (customerId: string) => Promise<void>;
 }
@@ -145,6 +145,40 @@ export const useCallStore = create<CallStore>((set, get) => ({
       const customerCalls = await callsService.fetchCustomerCalls(customer);
 
       set({ calls: customerCalls, agents: [], totalCallsDuration: 0, loading: false });
+    }
+    catch (error: any) {
+      console.error('Error fetching calls:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  fetchCallViaAPI: async (callId: string): Promise<CallResponse | undefined> => {
+    set({ loading: true, error: null });
+    try {
+      const apiKey = "key_b8e3bfa4516f4064f59d0eb60b8f"; //process.env.RETELL_API_KEY;
+
+      // if (!apiKey) {
+      //   throw new Error('RETELL_API_KEY is not set.');
+      // }
+
+      console.log(callId);
+      
+      const client = new Retell({
+        apiKey: apiKey,
+      });
+
+      const callResponse = await client.call.retrieve(callId, {
+           method: 'GET',
+           headers: {
+             'Authorization': `Bearer ${apiKey}`,
+             'Content-Type': 'application/json',
+           }
+         });
+      console.log(callResponse);
+
+      return callResponse;
+      
+      set({ loading: false, error: null });
     }
     catch (error: any) {
       console.error('Error fetching calls:', error);

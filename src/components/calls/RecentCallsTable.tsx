@@ -3,6 +3,7 @@ import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { formatService } from '../../services/formatService';
 import { customerService} from '../../services/customerService'
+import { callsService} from '../../services/callsService'
  
 interface RecentCallsTableProps {
   currentCalls: Call[];
@@ -92,7 +93,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
@@ -113,7 +114,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                           )
                         : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.recording_url ? (
                         <audio controls src={call.recording_url} style={{
                           width: '150px',
@@ -126,7 +127,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                       ) : (
                         'N/A'
                       )}
-                    </td>
+                    </td> */}
                   </tr>
                 ))}
               </tbody>
@@ -172,7 +173,12 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                   Download audio
                 </audio>
               ) : (
-                ' N/A'
+                <button onClick={async () => {
+                  const apiCallDetails = await callsService.getCallRecording(selectedCall.provider_call_id);
+                  selectedCall!.recording_url = apiCallDetails?.recording_url!;
+                }}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >Load Recording</button>
               )}
             </div>
             <div className="mt-4">

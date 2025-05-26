@@ -1,7 +1,9 @@
+import { log } from 'console';
 import { supabase } from '../lib/supabase';
 //import { useAuthStore } from '../stores/authStore';
 import { useCallStore } from '../stores/callStore';
 import { Call, Customer } from '../types/database.types';
+import { CallResponse } from 'retell-sdk/resources.mjs';
 //import { useNavigate } from 'react-router-dom';
 
 export const callsService = {
@@ -38,19 +40,6 @@ export const callsService = {
     try {
       const { user } = (await supabase.auth.getUser()).data;
 
-      //await supabase.auth.signOut();
-
-      // if (!user) {
-      //   console.log('Not authenticated');
-      //   const navigate = useNavigate();
-
-      //   const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-      //   const redirectTo = `${baseUrl}/login`;
-
-      //   navigate(redirectTo); // or whatever your login route is
-      // }
-      
-
       const { data: calls, error } = await supabase
         .from('calls')
         .select('*')
@@ -65,6 +54,20 @@ export const callsService = {
     } catch (err) {
       console.error('Unhandled error in fetchCustomerCalls:', err);
       return [];
+    }
+  },
+
+  
+  async getCallRecording(callId: string): Promise<CallResponse | undefined> {
+    try {
+      var call = await useCallStore.getState().fetchCallViaAPI(callId)
+      console.log(call);
+
+      return call;
+      
+    } catch (err) {
+      console.error('Unhandled error in fetchCustomerCalls:', err);
+      return undefined;
     }
   },
 };
