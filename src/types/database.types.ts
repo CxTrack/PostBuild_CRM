@@ -291,4 +291,5 @@ export type Call = { // in DB
   end_time: string;
   recording_url: string;
   transcript: string;
+  disconnection_reason: string;
 }
