@@ -318,7 +318,7 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               </>
             )} */}
-
+{/* 
             {sidebarOpen && templateConfig.dashboardSections.showFinance &&(
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
@@ -331,7 +331,7 @@ const DashboardLayout: React.FC = () => {
                     }`}
                 />
               </div>
-            )}
+            )} */}
 
             {(!sidebarOpen || expandedSections.finance) && templateConfig.dashboardSections.showFinance && (
               <>
@@ -395,7 +395,7 @@ const DashboardLayout: React.FC = () => {
               </>
             )}
 
-            <button
+            {/* <button
               onClick={() => {
                 setShowCalendar(!showCalendar);
                 if (!showCalendar && window.innerWidth < 1280) {
@@ -406,7 +406,7 @@ const DashboardLayout: React.FC = () => {
             >
               <Calendar size={20} />
               {sidebarOpen && <span>Calendar</span>}
-            </button>
+            </button> */}
 
             <button
               onClick={handleSignOut}
@@ -515,7 +515,7 @@ const DashboardLayout: React.FC = () => {
         </header>
 
         {/* Calendar Sidebar */}
-        {showCalendar && (
+        {/* {showCalendar && (
           <div
             id="calendar-wrapper"
             className={`fixed right-0 top-16 bottom-0 bg-dark-900 border-l border-dark-800 z-20 overflow-hidden transition-all duration-200 flex flex-col ${calendarMaximized ? 'left-64 md:left-20' : 'w-96'
@@ -541,10 +541,10 @@ const DashboardLayout: React.FC = () => {
               />
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Sidebar Toggle Button - Only show when sidebar is closed and calendar is maximized */}
-        {!sidebarOpen && calendarMaximized && (
+        {/* {!sidebarOpen && calendarMaximized && (
           <button
             onClick={toggleSidebar}
             className="fixed left-4 top-20 z-30 bg-dark-800 text-gray-400 hover:text-white p-2 rounded-lg hover:bg-dark-700 shadow-lg"
@@ -552,7 +552,7 @@ const DashboardLayout: React.FC = () => {
           >
             <ChevronRight size={20} />
           </button>
-        )}
+        )} */}
 
         {/* Page content */}
         <main className={`flex-1 overflow-y-auto bg-dark-950 p-4 md:p-6 transition-all duration-200 ${showCalendar ? (calendarMaximized ? 'mr-[calc(100%-16rem)]' : 'mr-96') : ''
