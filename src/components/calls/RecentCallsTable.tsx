@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { formatService } from '../../services/formatService';
 import { customerService} from '../../services/customerService'
+import { callsService} from '../../services/callsService'
  
 interface RecentCallsTableProps {
   currentCalls: Call[];
@@ -17,11 +18,38 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  //const [customerDetails, setCustomerDetails] = useState<any>(null);
+  const [customerNames, setCustomerNames] = useState<{ [callId: string]: string }>({});
+
   const indexOfLastCall = currentPage * itemsPerPage;
   const indexOfFirstCall = indexOfLastCall - itemsPerPage;
   const currentCallsPaginated = currentCalls.slice(indexOfFirstCall, indexOfLastCall);
 
   const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
+
+  useEffect(() => {
+    const fetchCustomerNames = async () => {
+      const newNames = { ...customerNames };
+
+      // await Promise.all(currentCallsPaginated.map(async (call) => {
+      //   if (newNames[call.id]) return; // skip already fetched
+
+      //   try {
+      //     const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+      //     const customer = await customerService.getCustomerByPhone(formattedPhone);
+      //     //newNames[call.id] = customer?.name ||  formatPhoneNumber(call.from_number!);
+      //     newNames[call.id] = customer ? customer?.name : formatPhoneNumber(call.from_number!);
+      //   } catch (error) {
+      //     newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+      //   }
+      // }));
+
+      setCustomerNames(newNames);
+      
+    };
+
+    fetchCustomerNames();
+  }, [currentCallsPaginated]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -65,13 +93,13 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
                 {currentCallsPaginated.map((call) => (
                   <tr key={call.id} className="text-white cursor-pointer hover:bg-dark-700" onClick={() => handleRowClick(call)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{customerNames[call.id]}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
@@ -86,7 +114,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                           )
                         : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.recording_url ? (
                         <audio controls src={call.recording_url} style={{
                           width: '150px',
@@ -99,7 +127,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                       ) : (
                         'N/A'
                       )}
-                    </td>
+                    </td> */}
                   </tr>
                 ))}
               </tbody>
@@ -145,7 +173,12 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                   Download audio
                 </audio>
               ) : (
-                ' N/A'
+                <button onClick={async () => {
+                  const apiCallDetails = await callsService.getCallRecording(selectedCall.provider_call_id);
+                  selectedCall!.recording_url = apiCallDetails?.recording_url!;
+                }}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >Load Recording</button>
               )}
             </div>
             <div className="mt-4">
@@ -154,12 +187,11 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             </div>
             {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
-                onClick={() => {
-                  // Use the getCutomerName logic to find the customer by phone number // NOTE: The prompt asked to modify this line, but the actual logic for fetching the customer by phone is inside the onClick handler itself.
+                onClick={async () => {
                   const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
                   const foundCustomer = await customerService.getCustomerByPhone(customer);
                   if (foundCustomer) {
-                    navigate(`/customers/${foundCustomer.id}`); // Use the found customer's ID
+                    navigate(`/customers/${foundCustomer.id}`);
                   }
                 }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

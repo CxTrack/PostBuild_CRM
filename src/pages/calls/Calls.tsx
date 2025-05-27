@@ -103,7 +103,9 @@ const Calls: React.FC = () => {
     if (calls) {
       calls.forEach(call => {
         //const reason = call.disconnection_reason || 'Completed'; // Group null/empty as 'Completed'
-        const reason = 'Completed'; // Group null/empty as 'Completed'
+        console.log(call);
+        
+        const reason = call.disconnection_reason;
         counts[reason] = (counts[reason] || 0) + 1;
       });
     }

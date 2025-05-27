@@ -5,6 +5,12 @@ export const customerService = {
   // Get all customers for the current user
   async getCustomers(): Promise<Customer[]> {
     try {
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data: customers, error } = await supabase
         .from('customers')
         .select('*')
@@ -25,6 +31,12 @@ export const customerService = {
   // Get a single customer by ID
   async getCustomerById(id: string): Promise<Customer | null> {
     try {
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -86,6 +98,11 @@ export const customerService = {
       const { street, city, state, postalCode, country, ...otherData } = customerData;
       const address = street ? [street, city, state, postalCode].filter(Boolean).join(', ') : null;
 
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('customers')
         .update({
@@ -111,9 +128,13 @@ export const customerService = {
 
   async getCustomerByPhone(phoneNum: string):Promise<Customer | null> {
     try {
-      console.log(phoneNum);
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
       
-      const { data, error } = await supabase
+      const { data: reply, error } = await supabase
         .from('customers')
         .select('*')
         .eq('phone', phoneNum)
@@ -121,13 +142,11 @@ export const customerService = {
 
       if (error) {
         //console.error('Error fetching customer:', error);
-        //throw error;
-        return null;
+        throw error;
+        //return null;
       }
 
-      console.log(data);
-
-      return data;
+      return reply;
     } catch (error) {
       console.error('Customer service error:', error);
       throw error;
@@ -137,6 +156,12 @@ export const customerService = {
   // Delete a customer
   async deleteCustomer(id: string): Promise<void> {
     try {
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await supabase
         .from('customers')
         .delete()

@@ -31,8 +31,6 @@ const CustomerDetail: React.FC = () => {
             if (data) {
               setCustomer(data);
               await fetchCustomerCalls(id);
-              console.log(calls);
-
             } else {
               toast.error('Customer not found');
               navigate('/customers');
