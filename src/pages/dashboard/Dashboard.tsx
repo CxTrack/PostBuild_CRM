@@ -62,6 +62,7 @@ const Dashboard: React.FC = () => {
 
   // Fetch data when component mounts
   useEffect(() => {
+    if (!user?.id) return; // Ensure user is authenticated before loading data
     const loadData = async () => {
       setLoading(true);
       try {
