@@ -40,7 +40,7 @@ const Dashboard: React.FC = () => {
   const { products, fetchProducts } = useProductStore();
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
-  const { totalProducts } = useProductStore();
+  //const { totalProducts } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
   
   const [loading, setLoading] = useState(true);
@@ -520,7 +520,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Today's Events */}
-      {dashboardSettings.showTodayEvents && (
+      {/* {dashboardSettings.showTodayEvents && (
         <div className="card bg-dark-800 border border-dark-700 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Today's Events</h3>
@@ -581,7 +581,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Recent Activity */}
       <div className="card bg-dark-800 border border-dark-700">
