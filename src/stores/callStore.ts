@@ -3,20 +3,7 @@ import { callsService } from '../services/callsService';
 import { customerService } from '../services/customerService';
 import Retell from 'retell-sdk';
 import { CallResponse } from 'retell-sdk/resources.mjs';
-// import { supabase } from '../lib/supabase'; // Assuming your supabase client is here
-// import { Database } from '../types/database.types'; // Assuming your types are generated here
-
-interface Call {
-  id: string;
-  call_agent_id: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  recording_url: string | null;
-  disconnection_reason: string | null;
-  from_number: string | null;
-  to_number: string | null;
-  pagination_key: string | null;
-}
+import { Call } from '../types/database.types';
 
 interface CallStore {
   calls: Call[];

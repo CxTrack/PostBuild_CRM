@@ -49,7 +49,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     };
 
     fetchCustomerNames();
-  }, [customerNames, currentCallsPaginated]);
+  }, [selectedCall, customerNames, currentCallsPaginated]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
