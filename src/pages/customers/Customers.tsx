@@ -15,7 +15,7 @@ const Customers: React.FC = () => {
     fetchCustomers().catch(err => {
       toast.error('Failed to load customers');
     });
-  }, [fetchCustomers]);
+  }, [customers]);
   
   const filteredCustomers = customers.filter(customer => 
     customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

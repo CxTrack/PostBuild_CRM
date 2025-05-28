@@ -29,7 +29,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
   useEffect(() => {
     const fetchCustomerNames = async () => {
-      const newNames = { ...customerNames };
+      //const newNames = { ...customerNames };
 
       // await Promise.all(currentCallsPaginated.map(async (call) => {
       //   if (newNames[call.id]) return; // skip already fetched
@@ -44,12 +44,12 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
       //   }
       // }));
 
-      setCustomerNames(newNames);
+      //setCustomerNames(newNames);
       
     };
 
     fetchCustomerNames();
-  }, [currentCallsPaginated]);
+  }, [customerNames, currentCallsPaginated]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
