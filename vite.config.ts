@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ['lucide-react', 'resend', 'crypto']
+    exclude: ['lucide-react', 'resend']
   },
   build: {
     rollupOptions: {
@@ -27,8 +27,6 @@ export default defineConfig({
     headers: {
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': '*'
-    },
-    // Add history API fallback for SPA routing
-    historyApiFallback: true
+    }
   }
 });
