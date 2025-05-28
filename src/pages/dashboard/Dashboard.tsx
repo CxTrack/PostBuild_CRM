@@ -13,6 +13,7 @@ import { useInvoiceStore } from '../../stores/invoiceStore';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
+import CallsDashboardCharts from '../../components/calls/CallsDashboardCharts';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import { useCallStore } from '../../stores/callStore';
@@ -326,6 +327,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </Link>
+
+      {/* Calls Charts */}
+      <CallsDashboardCharts />
 
         <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
