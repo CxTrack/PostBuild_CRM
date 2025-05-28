@@ -15,7 +15,7 @@ import { formatService } from '../../services/formatService';
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
+  const { customers, getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
   const { calls, fetchCustomerCalls } = useCallStore();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -43,7 +43,7 @@ const CustomerDetail: React.FC = () => {
     };
 
     loadData();
-  }, [id, getCustomerById, navigate]);
+  }, [id, customers]);
 
   const handleDelete = async () => {
     if (!id) return;
