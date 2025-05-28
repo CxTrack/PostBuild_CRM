@@ -5,11 +5,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ['lucide-react', 'resend']
+    exclude: ['lucide-react', 'resend', 'crypto']
   },
   build: {
     rollupOptions: {
-      external: ['resend'],
+      external: ['resend', 'crypto'],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
