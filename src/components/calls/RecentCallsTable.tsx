@@ -51,9 +51,9 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     fetchCustomerNames();
   }, [selectedCall, customerNames, currentCallsPaginated]);
 
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-  };
+  // const handlePageChange = (pageNumber: number) => {
+  //   setCurrentPage(pageNumber);
+  // };
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {

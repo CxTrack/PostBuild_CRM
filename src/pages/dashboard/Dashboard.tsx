@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { 
+import {
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
@@ -17,6 +17,9 @@ import CallsDashboardCharts from '../../components/calls/CallsDashboardCharts';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import { useCallStore } from '../../stores/callStore';
+import { callsService } from '../../services/callsService';
+import { Call } from '../../types/database.types';
+
 
 // Function to format relative time
 const getRelativeTime = (date: string) => {
@@ -39,7 +42,7 @@ const Dashboard: React.FC = () => {
   const { events, fetchEvents } = useCalendarStore();
   const { totalProducts } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
-  const { calls } = useCallStore();
+  
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
@@ -51,6 +54,8 @@ const Dashboard: React.FC = () => {
     showInventoryStatus: true,
     showTodayEvents: true
   });
+
+  const [ callsItems, setCalls] = useState<Call[]>([]);
 
   // Update time every second
   useEffect(() => {
@@ -79,8 +84,8 @@ const Dashboard: React.FC = () => {
 
         // Fetch pipeline data
         const { data: pipeline, error: pipelineError } = await supabase
-          .rpc('get_pipeline_summary', { 
-            p_user_id: user?.id 
+          .rpc('get_pipeline_summary', {
+            p_user_id: user?.id
           });
 
         if (pipelineError) throw pipelineError;
@@ -109,14 +114,14 @@ const Dashboard: React.FC = () => {
           fetchEvents(),
           fetchSuppliers()
         ]);
-        
+
         // Load dashboard settings
         const { data: settings } = await supabase
           .from('user_settings')
           .select('dashboard_settings')
           .eq('user_id', user?.id)
           .single();
-        
+
         if (settings?.dashboard_settings) {
           setDashboardSettings(settings.dashboard_settings);
         }
@@ -129,6 +134,22 @@ const Dashboard: React.FC = () => {
 
     loadData();
   }, [fetchCustomers, fetchProducts, fetchInvoices, fetchEvents, user?.id]);
+
+    useEffect(() => {
+      const fetchCalls = async () => {
+        try {
+          const data = await callsService.fetchAccountCalls();
+          setCalls(data);
+        } catch (err: any) {
+          console.error(err);
+          //setError('Failed to load calls');
+        } finally {
+          //setLoading(false);
+        }
+      };
+  
+      fetchCalls();
+    }, []);
 
   // Save dashboard settings
   const saveDashboardSettings = async (newSettings: typeof dashboardSettings) => {
@@ -183,11 +204,11 @@ const Dashboard: React.FC = () => {
             {currentTime.toLocaleTimeString()}
           </div>
           <div className="text-gray-400" id="date">
-            {currentTime.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            {currentTime.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
             })}
           </div>
           {/* <button
@@ -241,21 +262,21 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
-      
+
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/*  <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Revenue</p>
               <h3 className="text-2xl font-bold text-white mt-1">
                 ${totalRevenue.toLocaleString()}
               </h3>
-              {/* <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">12%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
               <DollarSign size={24} />
@@ -268,11 +289,11 @@ const Dashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Total Customers</p>
               <h3 className="text-2xl font-bold text-white mt-1">{customers.length}</h3>
-              {/* <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">8%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
               <Users size={24} />
@@ -285,11 +306,11 @@ const Dashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Total Products</p>
               <h3 className="text-2xl font-bold text-white mt-1">{totalProducts}</h3>
-              {/* <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 <ArrowUpRight size={16} className="text-green-500" />
                 <span className="text-sm text-green-500 ml-1">5%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-purple-500/20 text-purple-500">
               <Package size={24} />
@@ -304,11 +325,11 @@ const Dashboard: React.FC = () => {
               <h3 className="text-2xl font-bold text-white mt-1">
                 {invoices.filter(inv => !['Paid', 'Cancelled'].includes(inv.status)).length}
               </h3>
-              {/* <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 <ArrowDownRight size={16} className="text-red-500" />
                 <span className="text-sm text-red-500 ml-1">3%</span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-amber-500/20 text-amber-500">
               <ShoppingCart size={24} />
@@ -316,7 +337,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Link>
 
-        {/* <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Suppliers</p>
@@ -326,25 +347,12 @@ const Dashboard: React.FC = () => {
               <Truck size={24} />
             </div>
           </div>
-        </Link>
-
-      {/* Calls Charts */}
-      <CallsDashboardCharts />
-
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Calls</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Phone size={24} />
-            </div>
-          </div>
         </Link> */}
       </div>
 
-      <div className="card bg-dark-800 border border-dark-700">
+      <CallsDashboardCharts calls={callsItems} />
+
+      {/* <div className="card bg-dark-800 border border-dark-700">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold text-white flex items-center">
             <span>Pipeline Overview</span>
@@ -357,7 +365,7 @@ const Dashboard: React.FC = () => {
             <span>View Details</span>
           </Link>
         </div>
-        
+
         <div className="space-y-4">
           {[
             { stage: 'lead', label: 'Leads', color: 'bg-gray-500' },
@@ -375,11 +383,11 @@ const Dashboard: React.FC = () => {
             const value = stageData?.total_value || 0;
             const count = stageData?.deal_count || 0;
             const percentage = stageData?.completion_percentage || 0;
-            
+
             return (
               <Link
                 key={stage.stage}
-                to={`/pipeline/${stage.stage}`} 
+                to={`/pipeline/${stage.stage}`}
                 className="group relative block p-2 rounded-lg transition-all duration-300 hover:bg-dark-700/50 hover:shadow-lg hover:scale-[1.02] transform"
               >
                 <div className="flex justify-between mb-1">
@@ -389,7 +397,7 @@ const Dashboard: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full ${stage.color} transition-all duration-500 group-hover:opacity-90 group-hover:shadow-md`}
                     style={{ width: `${percentage * 100}%` }}
                   />
@@ -399,13 +407,13 @@ const Dashboard: React.FC = () => {
             );
           })}
         </div>
-      </div>
-      
+      </div> */}
+
       {/* Inventory and Expenses Overview */}
       {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */} {/* when both widgets are enabled */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-12">
         {/* Inventory Table */}
-        <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
+        {/* <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-white">Low Stock Items</h2>
             <Link to="/inventory" className="btn btn-secondary flex items-center space-x-2">
@@ -413,7 +421,7 @@ const Dashboard: React.FC = () => {
               <span>View All</span>
             </Link>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -438,13 +446,12 @@ const Dashboard: React.FC = () => {
                       <span className="text-sm text-gray-300">{product.stock}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        product.stock === 0 ? 'bg-red-900/30 text-red-400' :
-                        product.stock <= 5 ? 'bg-yellow-900/30 text-yellow-400' :
-                        'bg-orange-900/30 text-orange-400'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.stock === 0 ? 'bg-red-900/30 text-red-400' :
+                          product.stock <= 5 ? 'bg-yellow-900/30 text-yellow-400' :
+                            'bg-orange-900/30 text-orange-400'
+                        }`}>
                         {product.stock === 0 ? 'Out of Stock' :
-                         product.stock <= 5 ? 'Critical' : 'Low Stock'}
+                          product.stock <= 5 ? 'Critical' : 'Low Stock'}
                       </span>
                     </td>
                   </tr>
@@ -459,7 +466,7 @@ const Dashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </div> */}
 
         {/* Expenses Table */}
         {/* <div className="card bg-dark-800 border border-dark-700 transform transition-all duration-300 hover:shadow-lg hover:border-primary-500/30">
@@ -511,14 +518,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div> */}
       </div>
-      
+
       {/* Today's Events */}
       {dashboardSettings.showTodayEvents && (
         <div className="card bg-dark-800 border border-dark-700 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Today's Events</h3>
           </div>
-          
+
           {events.filter(event => {
             const today = new Date();
             const eventDate = new Date(event.start);
@@ -538,27 +545,26 @@ const Dashboard: React.FC = () => {
                   eventDate.getFullYear() === today.getFullYear()
                 );
               }).map((event, index) => (
-                <div 
+                <div
                   key={index}
                   className="flex items-center space-x-4 p-3 rounded-lg bg-dark-700/50 hover:bg-dark-700 transition-colors"
                 >
-                  <div className={`p-2 rounded-lg ${
-                    event.type === 'invoice' ? 'bg-primary-500/20 text-primary-400' :
+                  <div className={`p-2 rounded-lg ${event.type === 'invoice' ? 'bg-primary-500/20 text-primary-400' :
                     'bg-gray-500/20 text-gray-400'
-                  }`}>
+                    }`}>
                     {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />}
                   </div>
                   <div className="flex-1">
                     <p className="text-white font-medium">{event.title}</p>
                     <p className="text-sm text-gray-400">
-                      {new Date(event.start).toLocaleTimeString([], { 
-                        hour: '2-digit', 
+                      {new Date(event.start).toLocaleTimeString([], {
+                        hour: '2-digit',
                         minute: '2-digit'
                       })}
                     </p>
                   </div>
                   {event.type === 'invoice' && event.invoice_id && (
-                    <Link 
+                    <Link
                       to={`/invoices/${event.invoice_id}`}
                       className="btn btn-secondary"
                     >
@@ -576,7 +582,7 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       )}
-      
+
       {/* Recent Activity */}
       <div className="card bg-dark-800 border border-dark-700">
         <div className="flex justify-between items-center mb-4">
@@ -586,12 +592,11 @@ const Dashboard: React.FC = () => {
           <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
             {activities.map((activity) => (
               <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-md bg-dark-700/50 hover:bg-dark-700 transition-colors">
-                <div className={`p-2 rounded-md ${
-                  activity.type === 'invoice' ? 'bg-blue-500/20 text-blue-500' :
+                <div className={`p-2 rounded-md ${activity.type === 'invoice' ? 'bg-blue-500/20 text-blue-500' :
                   activity.type === 'purchase' ? 'bg-purple-500/20 text-purple-500' :
-                  activity.type === 'customer' ? 'bg-green-500/20 text-green-500' :
-                  'bg-amber-500/20 text-amber-500'
-                }`}>
+                    activity.type === 'customer' ? 'bg-green-500/20 text-green-500' :
+                      'bg-amber-500/20 text-amber-500'
+                  }`}>
                   {activity.type === 'invoice' && <FileText size={18} />}
                   {activity.type === 'purchase' && <ShoppingCart size={18} />}
                   {activity.type === 'customer' && <Users size={18} />}
@@ -621,13 +626,13 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-white mb-4">Dashboard Settings</h3>
-            
+
             <div className="space-y-4">
               <label className="flex items-center justify-between">
                 <span className="text-gray-300">Show Sales Chart</span>
@@ -641,7 +646,7 @@ const Dashboard: React.FC = () => {
                   className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-600"
                 />
               </label>
-              
+
               <label className="flex items-center justify-between">
                 <span className="text-gray-300">Show Purchases Chart</span>
                 <input
@@ -654,7 +659,7 @@ const Dashboard: React.FC = () => {
                   className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-600"
                 />
               </label>
-              
+
               <label className="flex items-center justify-between">
                 <span className="text-gray-300">Show Inventory Status</span>
                 <input
@@ -667,7 +672,7 @@ const Dashboard: React.FC = () => {
                   className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-600"
                 />
               </label>
-              
+
               <label className="flex items-center justify-between">
                 <span className="text-gray-300">Show Today's Events</span>
                 <input
