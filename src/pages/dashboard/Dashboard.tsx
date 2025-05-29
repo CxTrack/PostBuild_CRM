@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import {
+  Link, useNavigate
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
@@ -32,6 +32,7 @@ const getRelativeTime = (date: string) => {
 };
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -68,7 +69,11 @@ const Dashboard: React.FC = () => {
 
   // Fetch data when component mounts
   useEffect(() => {
-    if (!user?.id) return; // Ensure user is authenticated before loading data
+    if (!user?.id) {
+      navigate('/login');
+      return; // Ensure user is authenticated before loading data
+    }
+
     const loadData = async () => {
       setLoading(true);
       try {
