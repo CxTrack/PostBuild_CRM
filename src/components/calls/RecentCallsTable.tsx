@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { formatService } from '../../services/formatService';
-import { customerService} from '../../services/customerService'
-import { callsService} from '../../services/callsService'
- 
+import { customerService } from '../../services/customerService'
+import { callsService } from '../../services/callsService'
+
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
@@ -45,7 +45,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
       // }));
 
       //setCustomerNames(newNames);
-      
+
     };
 
     fetchCustomerNames();
@@ -110,8 +110,8 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time && call.end_time
                         ? Math.round(
-                            (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
-                          )
+                          (new Date(call.end_time).getTime() - new Date(call.start_time).getTime()) / 1000
+                        )
                         : 'N/A'}
                     </td>
                     {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -162,10 +162,10 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             <p><strong>Start Time:</strong> {selectedCall.start_time ? formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}</p>
             <p><strong>End Time:</strong> {selectedCall.end_time ? formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}</p>
             <p><strong>Duration:</strong> {selectedCall.start_time && selectedCall.end_time
-                      ? Math.round(
-                          (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
-                        )
-                      : 'N/A'} s</p>
+              ? Math.round(
+                (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
+              )
+              : 'N/A'} s</p>
             <div className="mt-4">
               <strong>Recording:</strong>
               {selectedCall.recording_url ? (
@@ -175,15 +175,20 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               ) : (
                 <button onClick={async () => {
                   const apiCallDetails = await callsService.getCallRecording(selectedCall.provider_call_id);
-                  selectedCall!.recording_url = apiCallDetails?.recording_url!;
+                  if (apiCallDetails?.recording_url) {
+                    setSelectedCall({
+                      ...selectedCall!,
+                      recording_url: apiCallDetails.recording_url
+                    });
+                  }
                 }}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >Load Recording</button>
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >Load Recording</button>
               )}
             </div>
             <div className="mt-4">
               <strong>Transcript:</strong>
-              <p> { selectedCall.transcript } </p>
+              <p> {selectedCall.transcript} </p>
             </div>
             {selectedCall.user_id && ( //TODO: compare this user is logged user
               <button
