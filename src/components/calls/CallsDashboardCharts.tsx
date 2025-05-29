@@ -391,7 +391,7 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
   }, [calls]);
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="card border border-dark-700">
       {/* 
       {!loading && !error && (
         <> */}

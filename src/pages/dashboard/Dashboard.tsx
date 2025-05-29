@@ -1,5 +1,5 @@
 import {
-  Link, 
+  Link,
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
   const { events, fetchEvents } = useCalendarStore();
   //const { totalProducts } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
-  
+
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
@@ -57,7 +57,7 @@ const Dashboard: React.FC = () => {
     showTodayEvents: true
   });
 
-  const [ callsItems, setCalls] = useState<Call[]>([]);
+  const [callsItems, setCalls] = useState<Call[]>([]);
 
   // Update time every second
   useEffect(() => {
@@ -122,14 +122,14 @@ const Dashboard: React.FC = () => {
         ]);
 
         // Load dashboard settings
-         const { data: settings } = await supabase
-           .from('user_settings')
-           .select('dashboard_settings')
-           .eq('user_id', user?.id)
-           .single();
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('dashboard_settings')
+          .eq('user_id', user?.id)
+          .single();
 
         if (settings?.dashboard_settings) {
-        setDashboardSettings(settings.dashboard_settings);
+          setDashboardSettings(settings.dashboard_settings);
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -141,21 +141,21 @@ const Dashboard: React.FC = () => {
     loadData();
   }, [fetchCustomers, fetchProducts, fetchInvoices, fetchEvents, user?.id]);
 
-    useEffect(() => {
-      const fetchCalls = async () => {
-        try {
-          const data = await callsService.fetchAccountCalls();
-          setCalls(data);
-        } catch (err: any) {
-          console.error(err);
-          //setError('Failed to load calls');
-        } finally {
-          //setLoading(false);
-        }
-      };
-  
-      fetchCalls();
-    }, []);
+  useEffect(() => {
+    const fetchCalls = async () => {
+      try {
+        const data = await callsService.fetchAccountCalls();
+        setCalls(data);
+      } catch (err: any) {
+        console.error(err);
+        //setError('Failed to load calls');
+      } finally {
+        //setLoading(false);
+      }
+    };
+
+    fetchCalls();
+  }, []);
 
   // Save dashboard settings
   // const saveDashboardSettings = async (newSettings: typeof dashboardSettings) => {
