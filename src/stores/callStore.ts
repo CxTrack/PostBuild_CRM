@@ -8,12 +8,10 @@ import { Call } from '../types/database.types';
 interface CallStore {
   calls: Call[];
   //APIcalls: RetellCall[];
-  agents: string[]; // Assuming agent IDs are strings
-  totalCallsDuration: number; // Changed type to number as it's used in calculations
   loading: boolean;
   error: string | null;
   fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
-  fetchCalls: () => Promise<void>;
+  //fetchCalls: () => Promise<void>;
   fetchCustomerCalls: (customerId: string) => Promise<void>;
 }
 
@@ -21,12 +19,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
   calls: [],
   //APIcalls: [],
   agents: [],
-  totalCallsDuration: 0,
   loading: false,
   error: null,
 
-  fetchCalls: async () => {
-  },
+  // fetchCalls: async () => {
+  // },
 
   // fetchCallsViaAPI: async () => {
   //   set({ loading: true, error: null });
@@ -131,7 +128,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       const customerCalls = await callsService.fetchCustomerCalls(customer);
 
-      set({ calls: customerCalls, agents: [], totalCallsDuration: 0, loading: false });
+      set({ calls: customerCalls, loading: false });
     }
     catch (error: any) {
       console.error('Error fetching calls:', error);
@@ -149,22 +146,22 @@ export const useCallStore = create<CallStore>((set, get) => ({
       // }
 
       console.log(callId);
-      
+
       const client = new Retell({
         apiKey: apiKey,
       });
 
       const callResponse = await client.call.retrieve(callId, {
-           method: 'GET',
-           headers: {
-             'Authorization': `Bearer ${apiKey}`,
-             'Content-Type': 'application/json',
-           }
-         });
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+      });
       console.log(callResponse);
 
       return callResponse;
-      
+
       set({ loading: false, error: null });
     }
     catch (error: any) {

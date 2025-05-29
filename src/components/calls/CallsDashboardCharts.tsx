@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Call } from '../../types/database.types';
 import { Headset, Phone, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -36,8 +36,38 @@ interface CallsDashboardChartsProps {
 
 const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) => {
 
-    const { agents, totalCallsDuration } = useCallStore();
-    
+  const [totalCallsDuration, setTotalCallsDuration] = useState('0');
+  const [agentsCount, setAgentsCount] = useState(0);
+
+  useEffect(() => {
+    setAgentsCount(getUniqueCallsByCallAgentId());
+    setTotalCallsDuration(getTotalCallsDuration());
+  });
+
+
+  function getUniqueCallsByCallAgentId(): number {
+    const seen = new Set<string>();
+    return calls.filter(call => {
+      if (seen.has(call.call_agent_id + '')) return false;
+      seen.add(call.call_agent_id + '');
+      return true;
+    }).length;
+  }
+
+  function getTotalCallsDuration(): string {
+    const totalDurationMs = calls.reduce((sum, call) => {
+      const start = new Date(call.start_time).getTime();
+      const end = new Date(call.end_time).getTime();
+      return sum + (end - start); // duration in ms
+    }, 0);
+
+    const totalDurationSeconds = totalDurationMs / 1000;
+    const totalDurationMinutes = totalDurationSeconds / 60;
+
+    return totalDurationMinutes.toFixed(2)
+  }
+
+
   // Calculate the average call duration in minutes
   const averageCallDuration = useMemo(() => {
     if (!calls || calls.length === 0) return 0;
@@ -267,54 +297,54 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
     };
   }, [callsByMonth]);
 
-    // Options for the main chart (updated for Bar chart)
-    const mainChartOptions = useMemo(() => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: {
-            color: '#ffffff',
-          },
-        },
-        title: {
-          display: true,
-          text: 'Total Calls Over Time',
+  // Options for the main chart (updated for Bar chart)
+  const mainChartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
           color: '#ffffff',
         },
-        tooltip: {
-          callbacks: {
-            label: function (context: any) {
-              let label = context.dataset.label || '';
-              if (label) label += ': ';
-              if (context.parsed.y !== null) label += context.parsed.y;
-              return label;
-            },
+      },
+      title: {
+        display: true,
+        text: 'Total Calls Over Time',
+        color: '#ffffff',
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) label += context.parsed.y;
+            return label;
           },
         },
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1, // Force whole number steps
-            color: '#cccccc',
-          },
-          grid: {
-            color: '#333333',
-          },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1, // Force whole number steps
+          color: '#cccccc',
         },
-        x: {
-          ticks: {
-            color: '#cccccc',
-          },
-          grid: {
-            color: '#333333',
-          },
+        grid: {
+          color: '#333333',
         },
       },
-    }), []);
+      x: {
+        ticks: {
+          color: '#cccccc',
+        },
+        grid: {
+          color: '#333333',
+        },
+      },
+    },
+  }), []);
 
   // Prepare data for Total Calls Chart (Cumulative count over time, grouped by date)
   const totalCallsChartData = useMemo(() => {
@@ -365,43 +395,43 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
       {/* 
       {!loading && !error && (
         <> */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-gray-400 text-sm">Agents Amount</p>
-                  <h3 className="text-2xl font-bold text-white mt-1">{agents.length}</h3>
-                </div>
-                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-                  <Headset size={24} />
-                </div>
-              </div>
-            </Link>
-
-            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-gray-400 text-sm">Total Calls</p>
-                  <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
-                </div>
-                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-                  <Phone size={24} />
-                </div>
-              </div>
-            </Link>
-
-            <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-gray-400 text-sm">Total Calls Duration</p>
-                  <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
-                </div>
-                <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-                  <Timer size={24} />
-                </div>
-              </div>
-            </Link>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Agents Amount</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{agentsCount}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Headset size={24} />
+            </div>
           </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Phone size={24} />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Calls Duration</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+              <Timer size={24} />
+            </div>
+          </div>
+        </Link>
+      </div>
 
       {/* Total Calls Bar Chart */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">

@@ -284,7 +284,7 @@ export type Call = { // in DB
   id: string;
   from_number: string;
   to_number: string;
-  call_agent_id: number | null;
+  call_agent_id: number;
   provider_call_id: string;
   user_id: string;
   start_time: string;
