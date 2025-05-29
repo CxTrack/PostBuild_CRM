@@ -391,7 +391,7 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
   }, [calls]);
 
   return (
-    <div className="card border border-dark-700">      
+    <div className="card border border-dark-700 mb-5">      
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
