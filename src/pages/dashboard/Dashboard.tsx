@@ -1,5 +1,5 @@
 import {
-  Link, useNavigate
+  Link, 
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { useCallStore } from '../../stores/callStore';
 import { callsService } from '../../services/callsService';
 import { Call } from '../../types/database.types';
+import { useNavigate } from 'react-router-dom';
 
 
 // Function to format relative time
@@ -121,14 +122,14 @@ const Dashboard: React.FC = () => {
         ]);
 
         // Load dashboard settings
-        const { data: settings } = await supabase
-          .from('user_settings')
-          .select('dashboard_settings')
-          .eq('user_id', user?.id)
-          .single();
+         const { data: settings } = await supabase
+           .from('user_settings')
+           .select('dashboard_settings')
+           .eq('user_id', user?.id)
+           .single();
 
         if (settings?.dashboard_settings) {
-          setDashboardSettings(settings.dashboard_settings);
+        setDashboardSettings(settings.dashboard_settings);
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -157,38 +158,38 @@ const Dashboard: React.FC = () => {
     }, []);
 
   // Save dashboard settings
-  const saveDashboardSettings = async (newSettings: typeof dashboardSettings) => {
-    try {
-      // First check if settings exist
-      const { data: existingSettings } = await supabase
-        .from('user_settings')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+  // const saveDashboardSettings = async (newSettings: typeof dashboardSettings) => {
+  //   try {
+  //     // First check if settings exist
+  //     const { data: existingSettings } = await supabase
+  //       .from('user_settings')
+  //       .select('id')
+  //       .eq('user_id', user?.id)
+  //       .single();
 
-      if (existingSettings) {
-        // Update existing settings
-        await supabase
-          .from('user_settings')
-          .update({ dashboard_settings: newSettings })
-          .eq('user_id', user?.id);
-      } else {
-        // Insert new settings
-        await supabase
-          .from('user_settings')
-          .insert([{
-            user_id: user?.id,
-            dashboard_settings: newSettings
-          }]);
-      }
+  //     if (existingSettings) {
+  //       // Update existing settings
+  //       await supabase
+  //         .from('user_settings')
+  //         .update({ dashboard_settings: newSettings })
+  //         .eq('user_id', user?.id);
+  //     } else {
+  //       // Insert new settings
+  //       await supabase
+  //         .from('user_settings')
+  //         .insert([{
+  //           user_id: user?.id,
+  //           dashboard_settings: newSettings
+  //         }]);
+  //     }
 
-      setDashboardSettings(newSettings);
-      toast.success('Dashboard settings saved');
-    } catch (error) {
-      console.error('Error saving dashboard settings:', error);
-      toast.error('Failed to save dashboard settings');
-    }
-  };
+  //     setDashboardSettings(newSettings);
+  //     toast.success('Dashboard settings saved');
+  //   } catch (error) {
+  //     console.error('Error saving dashboard settings:', error);
+  //     toast.error('Failed to save dashboard settings');
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -701,7 +702,7 @@ const Dashboard: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  saveDashboardSettings(dashboardSettings);
+                  //saveDashboardSettings(dashboardSettings);
                   setShowSettingsModal(false);
                 }}
                 className="btn btn-primary"
