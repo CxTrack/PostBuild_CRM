@@ -7,23 +7,16 @@ import { Call } from '../types/database.types';
 
 interface CallStore {
   calls: Call[];
-  //APIcalls: RetellCall[];
   loading: boolean;
   error: string | null;
   fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
-  //fetchCalls: () => Promise<void>;
   fetchCustomerCalls: (customerId: string) => Promise<void>;
 }
 
-export const useCallStore = create<CallStore>((set, get) => ({
+export const useCallStore = create<CallStore>((set) => ({
   calls: [],
-  //APIcalls: [],
-  agents: [],
   loading: false,
   error: null,
-
-  // fetchCalls: async () => {
-  // },
 
   // fetchCallsViaAPI: async () => {
   //   set({ loading: true, error: null });
