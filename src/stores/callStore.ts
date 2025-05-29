@@ -145,8 +145,6 @@ export const useCallStore = create<CallStore>((set, get) => ({
       //   throw new Error('RETELL_API_KEY is not set.');
       // }
 
-      console.log(callId);
-
       const client = new Retell({
         apiKey: apiKey,
       });
@@ -158,7 +156,6 @@ export const useCallStore = create<CallStore>((set, get) => ({
           'Content-Type': 'application/json',
         }
       });
-      console.log(callResponse);
 
       return callResponse;
 

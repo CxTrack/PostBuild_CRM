@@ -1,16 +1,9 @@
-import { log } from 'console';
 import { supabase } from '../lib/supabase';
-//import { useAuthStore } from '../stores/authStore';
 import { useCallStore } from '../stores/callStore';
 import { Call, Customer } from '../types/database.types';
 import { CallResponse } from 'retell-sdk/resources.mjs';
-//import { useNavigate } from 'react-router-dom';
 
 export const callsService = {
-
-  async fetchCalls(): Promise<void> {
-    await useCallStore.getState().fetchCalls();
-  },
 
   async fetchCustomerCalls(customer: Customer): Promise<Call[]> {
     try {
@@ -57,14 +50,12 @@ export const callsService = {
     }
   },
 
-  
+
   async getCallRecording(callId: string): Promise<CallResponse | undefined> {
     try {
       var call = await useCallStore.getState().fetchCallViaAPI(callId)
-      console.log(call);
-
       return call;
-      
+
     } catch (err) {
       console.error('Unhandled error in fetchCustomerCalls:', err);
       return undefined;
