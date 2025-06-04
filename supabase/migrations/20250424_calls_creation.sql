@@ -28,7 +28,7 @@ CREATE POLICY "Users can view their own calls"
   USING (auth.uid() = user_id);
 
 -- Policy for users to insert their own calls
-CREATE POLICY "Users can insert their own supcallspliers"
+CREATE POLICY "Users can insert their own call"
   ON calls
   FOR INSERT
   TO authenticated
