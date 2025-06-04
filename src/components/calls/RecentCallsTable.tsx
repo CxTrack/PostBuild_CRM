@@ -29,27 +29,28 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
   useEffect(() => {
     const fetchCustomerNames = async () => {
-      //const newNames = { ...customerNames };
+      const newNames = { ...customerNames };
 
-      // await Promise.all(currentCallsPaginated.map(async (call) => {
-      //   if (newNames[call.id]) return; // skip already fetched
+      await Promise.all(
+        currentCallsPaginated.map(async (call) => {
+          if (newNames[call.id]) return;
 
-      //   try {
-      //     const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-      //     const customer = await customerService.getCustomerByPhone(formattedPhone);
-      //     //newNames[call.id] = customer?.name ||  formatPhoneNumber(call.from_number!);
-      //     newNames[call.id] = customer ? customer?.name : formatPhoneNumber(call.from_number!);
-      //   } catch (error) {
-      //     newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
-      //   }
-      // }));
+          try {
+            const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+            const customer = await customerService.getCustomerByPhone(formattedPhone);
+            newNames[call.id] = customer ? customer.name : formatPhoneNumber(call.from_number!);
+          } catch (error) {
+            newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+          }
+        })
+      );
 
-      //setCustomerNames(newNames);
-
+      setCustomerNames(newNames);
     };
 
     fetchCustomerNames();
-  }, [selectedCall, customerNames, currentCallsPaginated]);
+  }, [selectedCall, currentCallsPaginated]); // removed customerNames here
+
 
   // const handlePageChange = (pageNumber: number) => {
   //   setCurrentPage(pageNumber);
@@ -93,7 +94,6 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Audio</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
@@ -114,20 +114,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                         )
                         : 'N/A'}
                     </td>
-                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {call.recording_url ? (
-                        <audio controls src={call.recording_url} style={{
-                          width: '150px',
-                          height: '30px',
-                          display: 'block',
-                          objectFit: 'contain',
-                        }}>
-                          Download audio
-                        </audio>
-                      ) : (
-                        'N/A'
-                      )}
-                    </td> */}
+
                   </tr>
                 ))}
               </tbody>
