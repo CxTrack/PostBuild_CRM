@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatService } from '../../services/formatService';
 import { customerService } from '../../services/customerService'
 import { callsService } from '../../services/callsService'
-
+import { Loader2 } from "lucide-react";
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
@@ -99,7 +99,13 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
               <tbody className="divide-y divide-dark-700">
                 {currentCallsPaginated.map((call) => (
                   <tr key={call.id} className="text-white cursor-pointer hover:bg-dark-700" onClick={() => handleRowClick(call)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{customerNames[call.id]}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {customerNames[call.id] ? (
+                        customerNames[call.id]
+                      ) : (
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
