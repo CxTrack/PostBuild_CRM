@@ -188,7 +188,9 @@ useEffect(() => {
               <strong>Transcript:</strong>
               <p> {selectedCall.transcript} </p>
             </div>
+            <div className="mt-6 flex justify-end gap-2">
             {selectedCall.user_id && ( //TODO: compare this user is logged user
+            
               <button
                 onClick={async () => {
                   const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
@@ -197,8 +199,9 @@ useEffect(() => {
                     navigate(`/customers/${foundCustomer.id}`);
                   }
                 }}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >View User Details</button>
+              
             )}
             <button
               onClick={closeModal}
@@ -206,6 +209,7 @@ useEffect(() => {
             >
               Close
             </button>
+            </div>
           </div>
         </div>
       )}
