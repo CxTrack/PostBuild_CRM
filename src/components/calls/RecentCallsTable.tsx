@@ -5,6 +5,7 @@ import { formatService } from '../../services/formatService';
 import { customerService } from '../../services/customerService'
 import { callsService } from '../../services/callsService'
 import { Loader2 } from "lucide-react";
+import { log } from 'console';
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
@@ -27,29 +28,33 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
   const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
 
-  useEffect(() => {
-    const fetchCustomerNames = async () => {
-      const newNames = { ...customerNames };
+useEffect(() => {
+  if (!currentCallsPaginated.length) return;
 
-      await Promise.all(
-        currentCallsPaginated.map(async (call) => {
-          if (newNames[call.id]) return;
+  const fetchCustomerNames = async () => {
+    const namesToAdd: { [callId: string]: string } = {};
 
-          try {
-            const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-            const customer = await customerService.getCustomerByPhone(formattedPhone);
-            newNames[call.id] = customer ? customer.name : formatPhoneNumber(call.from_number!);
-          } catch (error) {
-            newNames[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
-          }
-        })
-      );
+    await Promise.all(
+      currentCallsPaginated.map(async (call) => {
+        if (customerNames[call.id]) return;
 
-      setCustomerNames(newNames);
-    };
+        try {
+          const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+          const customer = await customerService.getCustomerByPhone(formattedPhone);
+          namesToAdd[call.id] = customer ? customer.name : formatPhoneNumber(call.from_number!);
+        } catch (error) {
+          namesToAdd[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+        }
+      })
+    );
 
-    fetchCustomerNames();
-  }, [selectedCall, currentCallsPaginated]); // removed customerNames here
+    if (Object.keys(namesToAdd).length > 0) {
+      setCustomerNames((prev) => ({ ...prev, ...namesToAdd }));
+    }
+  };
+
+  fetchCustomerNames();
+}, [currentCallsPaginated]); // ✅ Only when calls change
 
 
   // const handlePageChange = (pageNumber: number) => {
