@@ -164,7 +164,7 @@ useEffect(() => {
                 (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
               )
               : 'N/A'} s</p>
-            <div className="mt-4">
+            <div className="mt-4 block mb-2">
               <strong>Recording:</strong>
               {selectedCall.recording_url ? (
                 <audio controls src={selectedCall.recording_url} className="mt-2 w-full">

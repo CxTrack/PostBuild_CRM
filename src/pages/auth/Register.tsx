@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
 import { Eye, EyeOff, UserPlus, ArrowLeft, Loader } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface RegisterFormData {
   fullName: string;
