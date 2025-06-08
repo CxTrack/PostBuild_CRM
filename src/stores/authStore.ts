@@ -39,54 +39,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const redirectTo = `${baseUrl}/reset-password#`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectTo,
+        redirectTo,
       });
-      
+
       if (error) throw error;
-      
+
       set({ loading: false });
     } catch (error: any) {
       console.error('Password reset error:', error);
-      set({ 
-        error: error.message || 'Failed to send reset instructions', 
-        loading: false 
-      });
+      set({ error: error.message || 'Failed to send reset instructions', loading: false });
       throw error;
     }
   },
-  
-  updatePassword: async (token: string, newPassword: string) => {
+
+  updatePassword: async (token, newPassword) => {
     set({ loading: true, error: null });
     try {
-      // Set the session with the access token
       const { error: setSessionError } = await supabase.auth.setSession({
         access_token: token,
         refresh_token: ''
       });
 
-      if (setSessionError) {
-        throw new Error('Invalid or expired reset link');
-      }
+      if (setSessionError) throw new Error('Invalid or expired reset link');
 
-      // Update the password
-      const { error: updateError } = await supabase.auth.updateUser({ 
-        password: newPassword 
-      });
-
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
-      
-      // Sign out after password change to force re-login
+
       await supabase.auth.signOut();
       clearAuthStorage();
-      
+
       set({ loading: false });
     } catch (error: any) {
       console.error('Password update error:', error);
-      set({ 
-        error: error.message.includes('Invalid') || error.message.includes('expired')
+      set({
+        error: error.message?.includes('Invalid') || error.message?.includes('expired')
           ? 'Invalid or expired reset link. Please request a new password reset.'
           : error.message || 'Failed to update password',
-        loading: false 
+        loading: false
       });
       throw error;
     }
@@ -94,58 +83,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (email, password) => {
     set({ loading: true, error: null });
-    try {
 
-      // Clear any existing sessions first
+    try {
       await supabase.auth.signOut();
       clearAuthStorage();
-      
-      // Add delay to ensure cleanup
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Add delay to ensure session is stored
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Verify session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Failed to establish session. Please try again.');
+      await new Promise(r => setTimeout(r, 300));
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) throw signInError;
+
+      // Wait for session/user to propagate
+      let user = null;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!user && attempts < maxAttempts) {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) console.warn('Retrying getUser():', userError.message);
+
+        user = userData?.user ?? null;
+        if (!user) await new Promise(res => setTimeout(res, 200));
+        attempts++;
       }
 
-      set({ user: data.user, loading: false });
+      if (!user) {
+        throw new Error('Your session has expired. Please sign in again.');
+      }
+
+      set({ user, loading: false });
     } catch (error: any) {
       console.error('Sign in error:', error);
-      set({ 
-        error: error.message || 'Unable to sign in. Please try again.', 
-        loading: false 
-      });
+      set({ error: error.message || 'Unable to sign in. Please try again.', loading: false });
       throw error;
     }
   },
-  
+
+
   signInWithGoogle: async () => {
     set({ loading: true, error: null });
     try {
-      // Clear any existing sessions first
       await supabase.auth.signOut();
       clearAuthStorage();
-      
-      // Add delay to ensure cleanup
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log('Redirect URL:', redirectUrl);
+      await new Promise(r => setTimeout(r, 300));
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/callback`,
@@ -157,24 +138,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       if (error) throw error;
-      
-      // Add delay to ensure session is stored
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Verify session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Failed to establish session. Please try again.');
-      }
-      
+
       set({ loading: false });
     } catch (error: any) {
       console.error('Google sign in error:', error);
-      set({ 
-        error: error.message?.includes('refused to connect') 
+      set({
+        error: error.message?.includes('refused to connect')
           ? 'Please check your Google authentication settings in Supabase'
           : error.message || 'Unable to sign in with Google',
-        loading: false 
+        loading: false
       });
       throw error;
     }
@@ -183,24 +155,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUp: async (email, password, fullName) => {
     set({ loading: true, error: null });
     try {
-      // Clear any existing sessions first
       await supabase.auth.signOut();
       clearAuthStorage();
-      
-      // Add delay to ensure cleanup
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(r => setTimeout(r, 300));
 
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name: fullName
-          },
+          data: { full_name: fullName },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
-      
 
       if (error) {
         if (error.message.includes('User already registered')) {
@@ -215,15 +181,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error('No user data returned from signup');
       }
 
-      // Add delay to ensure profile is created
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       set({ loading: false });
     } catch (error: any) {
       console.error('Sign up error:', error);
-      
+
       let errorMessage = 'Unable to create account. Please try again.';
-      
       if (error.message.includes('already exists') || error.message.includes('already registered')) {
         errorMessage = error.message;
       } else if (error.message.includes('password')) {
@@ -233,71 +195,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else if (error.message.includes('rate limit')) {
         errorMessage = 'Too many attempts. Please try again later.';
       }
-      
-      set({ 
-        error: errorMessage,
-        loading: false 
-      });
-      
+
+      set({ error: errorMessage, loading: false });
       throw error;
     }
   },
-  
+
   signOut: async () => {
     set({ loading: true, error: null });
     try {
-      // Clear all auth storage first
       clearAuthStorage();
-      
-      // Add delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
+      await new Promise(r => setTimeout(r, 300));
+
       await supabase.auth.signOut();
-      
-      set({ 
-        user: null, 
+
+      set({
+        user: null,
         loading: false,
         error: null,
         initialized: true
       });
     } catch (error: any) {
       console.error('Sign out error:', error);
-      
-      // Clear storage anyway
       clearAuthStorage();
-      
-      set({ 
-        user: null, 
+      set({
+        user: null,
         loading: false,
         error: 'Failed to sign out properly, but you have been logged out.',
         initialized: true
       });
     }
   },
-  
+
   initialize: async () => {
+    set({ loading: true });
+
     try {
-      set({ loading: true });
-      
-      // Clear any stale data
-      clearAuthStorage();
-      
-      // Add delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
       const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        throw error;
-      }
-      
+      console.log('[AUTH INIT] Session:', session);
+
+      if (error) throw error;
+
       if (session) {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          throw userError;
-        }
-        
+        if (userError) throw userError;
+
         set({ user, initialized: true, loading: false });
       } else {
         set({ user: null, initialized: true, loading: false });
@@ -307,34 +249,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: null, initialized: true, loading: false });
     }
   },
-  
+
   clearError: () => set({ error: null }),
-  
+
   checkAuthStatus: async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
-      // If no session, return false
-      if (!session) {
-        return false;
-      }
-      
-      // Check if session is within 5 minute window
+
+      if (!session) return false;
+
       const sessionExpiry = new Date(session.expires_at * 1000);
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      
-      // Consider session valid if within 5 minute window
-      if (sessionExpiry > fiveMinutesAgo) {
-        return true;
-      }
-      
-      // Try to refresh session
+
+      if (sessionExpiry > fiveMinutesAgo) return true;
+
       const { success } = await refreshSession();
-      if (success) {
-        return true;
-      }
-      
-      return false;
+      return success;
     } catch (error) {
       console.error('Auth status check error:', error);
       return false;
@@ -342,5 +272,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   }
 }));
 
-// Initialize auth state
+// 👇 Subscribe to Supabase auth state changes (optional, but robust)
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  if (session?.user) {
+    useAuthStore.setState({ user: session.user, initialized: true });
+  } else {
+    useAuthStore.setState({ user: null, initialized: true });
+  }
+});
+
+// Initialize once on load
 useAuthStore.getState().initialize();

@@ -11,6 +11,7 @@ import BillingTab from './BillingTab';
 import AIAgentsTab from './AIAgentsTab';
 import EmailTab from './EmailTab';
 import IntegrationsTab from './IntegrationsTab';
+import CallAgentTab from './CallAgentTab';
 
 const Settings: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -41,6 +42,8 @@ const Settings: React.FC = () => {
         return <NotificationsTab />;
       case 'waitlist':
         return <WaitlistTab />;
+      case 'call-agent-setup':
+        return <CallAgentTab />;
       default:
         return null;
     }
@@ -110,6 +113,15 @@ const Settings: React.FC = () => {
             }`}
           >
             Data Export
+          </button>
+
+          <button
+            onClick={() => navigate('/settings?tab=call-agent-setup')}
+            className={`w-full text-left px-4 py-2 rounded-lg ${
+              activeTab === 'call-agent-setup' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-dark-800'
+            }`}
+          >
+            Call Agent Setup
           </button>
 
           {/* <button
