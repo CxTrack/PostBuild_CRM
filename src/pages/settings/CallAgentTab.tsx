@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { createClient } from '@supabase/supabase-js';
-import { useProfileStore } from '../../stores/profileStore';
 import { useAuthStore } from '../../stores/authStore';
-import { Save } from 'lucide-react';
-import { formatPhoneNumber } from '../../utils/formatters';
-import Modal from '../../components/ConfirmationModal'; // Assuming ConfirmationModal can be repurposed
-
-interface ProfileFormData {
-  company: string;
-  address: string;
-  city: string;
-  state: string;
-  zipcode: string;
-  country: string;
-  phone: string;
-}
+//import Modal from 'react-modal';
+import { useProfileStore } from '../../stores/profileStore';
+import { supabase } from '../../lib/supabase';
+import { Edit, Eye, Link, Trash2 } from 'lucide-react';
+import { Agent } from 'retell-sdk/resources.mjs';
 
 interface CallAgent {
   call_agent_id: string;
@@ -25,52 +14,96 @@ interface CallAgent {
 const CallAgentTab: React.FC = () => {
   const { profile, updateProfile, loading, error } = useProfileStore();
   const { user } = useAuthStore();
-  const [phoneValue, setPhoneValue] = useState('');
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileFormData>();
   const [callAgents, setCallAgents] = useState<CallAgent[]>([]);
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
   const [newAgentId, setNewAgentId] = useState('');
-
-  const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
-
+  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [addingAgent, setAddingAgent] = useState(false);
+  const [deletingAgent, setDeleteAgent] = useState(false);
 
   useEffect(() => {
-    if (profile) {
-      reset(profile);
-      setPhoneValue(formatPhoneNumber(profile.phone));
-    }
-  }, [profile, reset]);
+    fetchCallAgents();
+  }, [user]);
 
-  const onSubmit = async (data: ProfileFormData) => {
-    try {
-      await updateProfile(data);
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      console.error('Error creating new agent:', error);\
-      toast.error('Error creating new agent');
-    }
-  };
 
   const fetchCallAgents = async () => {
     if (!user) return;
+    setLoadingAgents(true);
 
     const { data, error } = await supabase
-      .from('user_call')
+      .from('user_calls')
       .select('call_agent_id')
       .eq('user_id', user.id);
 
+    console.log(data);
+
     if (error) {
-      console.error('Error creating new agent:', error);
-      toast.success('New agent successfully created');
-    } catch (error) {
-      console.error('Error creating new agent::', error);
-      toast.error('Error creating new agent');
+      console.error('Error fetching call agents:', error);
+      toast.error('Failed to fetch call agents.');
+    } else {
+      console.log(data);
+
+      setCallAgents(data as CallAgent[]);
     }
+
+    setLoadingAgents(false);
+  };
+
+
+  const handleDeletAgent = async (agent: CallAgent) => {
+    if (!user) {
+      toast.error('User not logged in.');
+      return;
+    }
+
+    console.log(agent.call_agent_id);
+
+
+    setDeleteAgent(true);
+
+    const { data, error } = await supabase
+      .from('user_calls')
+      .delete()
+      .eq('call_agent_id', agent.call_agent_id);
+
+    if (error) {
+      console.error('Error deleting user_call record:', error.message);
+      toast.error('Error deleting user_call record:');
+    } else {
+      console.log('Deleted record(s):', data);
+      toast.success('Agent succesfully deleted.');
+      fetchCallAgents();
+    }
+
+    setDeleteAgent(false);
+  };
+
+  const handleAddAgent = async () => {
+    if (!user || !newAgentId) {
+      toast.error('User not logged in or Agent ID is empty.');
+      return;
+    }
+
+    setAddingAgent(true);
+    const { data, error } = await supabase
+      .from('user_calls')
+      .insert([{ user_id: user.id, call_agent_id: newAgentId }]);
+
+    if (error) {
+      console.error('Error adding new agent:', error);
+      toast.error('Failed to add new agent.');
+    } else {
+      toast.success('New agent added successfully!');
+      setNewAgentId('');
+      setShowAddAgentModal(false);
+      fetchCallAgents(); // Refresh the list
+    }
+    setAddingAgent(false);
   };
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-lg font-semibold text-white mb-4">Profile Settings</h2>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold text-white mb-4">Call Agents</h2>
 
       {error && (
         <div className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded-md">
@@ -78,84 +111,71 @@ const CallAgentTab: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Basic Information */}
-          <div className="card bg-dark-800 border border-dark-700">
-            <h3 className="text-md font-medium text-white mb-4">Basic Information</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="input bg-dark-700 text-gray-400"
-                  value={user?.email || ''}
-                  disabled
-                />
-              </div>
+      <button
+        onClick={() => setShowAddAgentModal(true)}
+        className="btn btn-primary mb-4"
+      >
+        Add New Agent
+      </button>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Company Name
-                </label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Your company name"
-                  {...register('company')}
-                />
-              </div>
+      {loadingAgents ? (
+        <p>Loading agents...</p>
+      ) : (
+        <table className="min-w-full bg-dark-800 border border-dark-700 rounded-md overflow-hidden">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-4 text-gray-300 border-b border-dark-700">Agent ID</th>
+              <th className="text-left py-2 px-4 text-gray-300 border-b border-dark-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {callAgents.map((agent, index) => (
+              <tr key={index} className="hover:bg-dark-700">
+                <td className="py-2 px-4 text-gray-400 border-b border-dark-700">{agent.call_agent_id}</td>
+                <td className="py-2 px-4 text-gray-400 border-b border-dark-700 text-right text-sm font-medium">
+                  <div className="flex items-center justify space-x-2">
+                    <button
+                      className="text-gray-400 hover:text-red-500"
+                      onClick={() => handleDeletAgent(agent)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Phone
-                </label>
-                <input 
-                  type="tel" 
-                  className="input" 
-                  value={phoneValue}
-                  onChange={(e) => {
-                    // Only allow digits
-                    const digits = e.target.value.replace(/\D/g, '');
-                    // Limit to 10 digits
-                    const truncated = digits.slice(0, 10);
-                    setPhoneValue(formatPhoneNumber(truncated));
-                    // Store raw digits in form
-                    register('phone').onChange({
-                      target: { value: truncated, name: 'phone' }
-                    });
-                  }}
-                  placeholder="(555) 555-5555"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Submit button */}
-        <div className="flex justify-end">
-          <button 
-            type="submit" 
-            className="btn btn-primary flex items-center space-x-2"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                <span>Save Changes</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+      {/* <Modal
+        isOpen={showAddAgentModal}
+        onRequestClose={() => setShowAddAgentModal(false)}
+        contentLabel="Add New Agent"
+      >
+        <h2 className="text-lg font-semibold mb-4">Add New Agent</h2>
+        <input
+          type="text"
+          className="input mb-4"
+          placeholder="Enter Agent ID"
+          value={newAgentId}
+          onChange={(e) => setNewAgentId(e.target.value)}
+        />
+        <button
+          onClick={handleAddAgent}
+          className="btn btn-primary"
+          disabled={addingAgent}
+        >
+          {addingAgent ? 'Adding...' : 'Add Agent'}
+        </button>
+        <button
+          onClick={() => setShowAddAgentModal(false)}
+          className="btn btn-secondary ml-2"
+          disabled={addingAgent}
+        >
+          Cancel
+        </button>
+      </Modal> */}
     </div>
   );
 };
