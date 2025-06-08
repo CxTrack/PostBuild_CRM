@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { createClient } from '@supabase/supabase-js';
 import { useProfileStore } from '../../stores/profileStore';
 import { useAuthStore } from '../../stores/authStore';
 import { Save } from 'lucide-react';
 import { formatPhoneNumber } from '../../utils/formatters';
+import Modal from '../../components/ConfirmationModal'; // Assuming ConfirmationModal can be repurposed
 
 interface ProfileFormData {
   company: string;
@@ -16,11 +18,21 @@ interface ProfileFormData {
   phone: string;
 }
 
+interface CallAgent {
+  call_agent_id: string;
+}
+
 const CallAgentTab: React.FC = () => {
   const { profile, updateProfile, loading, error } = useProfileStore();
   const { user } = useAuthStore();
   const [phoneValue, setPhoneValue] = useState('');
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileFormData>();
+  const [callAgents, setCallAgents] = useState<CallAgent[]>([]);
+  const [showAddAgentModal, setShowAddAgentModal] = useState(false);
+  const [newAgentId, setNewAgentId] = useState('');
+
+  const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
+
 
   useEffect(() => {
     if (profile) {
@@ -34,8 +46,25 @@ const CallAgentTab: React.FC = () => {
       await updateProfile(data);
       toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      console.error('Error creating new agent:', error);\
+      toast.error('Error creating new agent');
+    }
+  };
+
+  const fetchCallAgents = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('user_call')
+      .select('call_agent_id')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error creating new agent:', error);
+      toast.success('New agent successfully created');
+    } catch (error) {
+      console.error('Error creating new agent::', error);
+      toast.error('Error creating new agent');
     }
   };
 
