@@ -148,170 +148,35 @@ const CallAgentTab: React.FC = () => {
         </table>
       )}
 
-
-
-
-
-
-      {/* <Modal
-        isOpen={showAddAgentModal}
-        onRequestClose={() => setShowAddAgentModal(false)}
-        contentLabel="Add New Agent"
-      >
-        <h2 className="text-lg font-semibold mb-4">Add New Agent</h2>
-        <input
-          type="text"
-          className="input mb-4"
-          placeholder="Enter Agent ID"
-          value={newAgentId}
-          onChange={(e) => setNewAgentId(e.target.value)}
-        />
-        <button
-          onClick={handleAddAgent}
-          className="btn btn-primary"
-          disabled={addingAgent}
-        >
-          {addingAgent ? 'Adding...' : 'Add Agent'}
-        </button>
-        <button
-          onClick={() => setShowAddAgentModal(false)}
-          className="btn btn-secondary ml-2"
-          disabled={addingAgent}
-        >
-          Cancel
-        </button>
-      </Modal> */}
-
-
-
-           {/* Event Modal */}
-            {showAddAgentModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-                  {/* <h3 className="text-lg font-semibold text-white mb-4">
-                    {selectedEvent ? 'Edit Event' : 'New Event'}
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Title
-                      </label>
-                      <input
-                        type="text"
-                        className="input w-full"
-                        value={newEvent.title}
-                        onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                        placeholder="Event title"
-                      />
-                    </div>
-      
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Type
-                      </label>
-                      <select
-                        className="input w-full"
-                        value={newEvent.type}
-                        onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })}
-                      >
-                        <option value="custom">Custom Event</option>
-                        <option value="task">Task</option>
-                        <option value="invoice">Invoice Due</option>
-                        <option value="expense">Expense</option>
-                      </select>
-                    </div>
-      
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Start Date & Time
-                      </label>
-                      <input
-                        type="datetime-local"
-                        className="input w-full"
-                        value={format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
-                        onChange={(e) => setNewEvent({ ...newEvent, start: new Date(e.target.value) })}
-                      />
-                    </div>
-      
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        End Date & Time
-                      </label>
-                      <input
-                        type="datetime-local"
-                        className="input w-full"
-                        value={format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
-                        onChange={(e) => setNewEvent({ ...newEvent, end: new Date(e.target.value) })}
-                      />
-                    </div>
-      
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        className="input w-full"
-                        value={newEvent.description}
-                        onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                        rows={3}
-                        placeholder="Event description"
-                      />
-                    </div>
-                  </div>
-      
-                  <div className="flex justify-end space-x-2 mt-6">
-                    {selectedEvent && (
-                      <button
-                        onClick={handleDeleteEvent}
-                        className="btn btn-danger"
-                      >
-                        Delete
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setShowEventModal(false);
-                        setSelectedEvent(null);
-                      }}
-                      className="btn btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveEvent}
-                      className="btn btn-primary"
-                    >
-                      {selectedEvent ? 'Update' : 'Create'}
-                    </button>
-                  </div> */}
-
-
-                          <h2 className="text-lg font-semibold mb-4">Add New Agent</h2>
-        <input
-          type="text"
-          className="input mb-4"
-          placeholder="Enter Agent ID"
-          value={newAgentId}
-          onChange={(e) => setNewAgentId(e.target.value)}
-        />
-        <button
-          onClick={handleAddAgent}
-          className="btn btn-primary"
-          disabled={addingAgent}
-        >
-          {addingAgent ? 'Adding...' : 'Add Agent'}
-        </button>
-        <button
-          onClick={() => setShowAddAgentModal(false)}
-          className="btn btn-secondary ml-2"
-          disabled={addingAgent}
-        >
-          Cancel
-        </button>
-                </div>
-              </div>
-            )}
+      {/* Agent Add Modal */}
+      {showAddAgentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Add New Agent</h2>
+            <input
+              type="text"
+              className="input mb-4"
+              placeholder="Enter Agent ID"
+              value={newAgentId}
+              onChange={(e) => setNewAgentId(e.target.value)}
+            />
+            <button
+              onClick={handleAddAgent}
+              className="btn btn-primary"
+              disabled={addingAgent}
+            >
+              {addingAgent ? 'Adding...' : 'Add Agent'}
+            </button>
+            <button
+              onClick={() => setShowAddAgentModal(false)}
+              className="btn btn-secondary ml-2"
+              disabled={addingAgent}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
