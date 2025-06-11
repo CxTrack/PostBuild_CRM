@@ -3,7 +3,7 @@ import { Call } from '../../types/database.types';
 import { Headset, Phone, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCallStore } from '../../stores/callStore';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import {
   Chart as ChartJS,
@@ -433,7 +433,7 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
 
       {/* Total Calls Bar Chart */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
-        <Bar data={totalCallsChartData} options={mainChartOptions} />
+        <Line data={totalCallsChartData} options={mainChartOptions} />
       </div>
 
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
