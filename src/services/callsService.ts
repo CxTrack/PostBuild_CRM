@@ -15,7 +15,7 @@ export const callsService = {
         .from('calls')
         .select('*')
         .or(`from_number.eq.${phone1},from_number.eq.+1${phone2}`)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching calls:', error);
@@ -36,12 +36,16 @@ export const callsService = {
       const { data: calls, error } = await supabase
         .from('calls')
         .select('*')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .order('start_time', { ascending: false });
 
       if (error) {
         console.error('Error fetching calls:', error);
         throw error;
       }
+
+      console.log(calls);
+      
 
       return calls || [];
     } catch (err) {

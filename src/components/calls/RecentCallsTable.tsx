@@ -5,7 +5,7 @@ import { formatService } from '../../services/formatService';
 import { customerService } from '../../services/customerService'
 import { callsService } from '../../services/callsService'
 import { Loader2 } from "lucide-react";
-import { log } from 'console';
+
 interface RecentCallsTableProps {
   currentCalls: Call[];
   formatPhoneNumber: (phone: string) => string;
