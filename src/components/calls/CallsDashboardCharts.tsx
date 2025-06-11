@@ -45,6 +45,7 @@ const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) =>
   });
 
 
+  //TODO: its incorrect, need to pull from 'user_calls' db
   function getUniqueCallsByCallAgentId(): number {
     const seen = new Set<string>();
     return calls.filter(call => {

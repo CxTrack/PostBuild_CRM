@@ -79,23 +79,23 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       try {
         // Fetch recent expenses
-        const { data: recentExpenses, error: expensesError } = await supabase
-          .from('expenses')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
+        // const { data: recentExpenses, error: expensesError } = await supabase
+        //   .from('expenses')
+        //   .select('*')
+        //   .order('created_at', { ascending: false })
+        //   .limit(5);
 
-        if (expensesError) throw expensesError;
-        setExpenses(recentExpenses || []);
+        // if (expensesError) throw expensesError;
+        // setExpenses(recentExpenses || []);
 
         // Fetch pipeline data
-        const { data: pipeline, error: pipelineError } = await supabase
-          .rpc('get_pipeline_summary', {
-            p_user_id: user?.id
-          });
+        // const { data: pipeline, error: pipelineError } = await supabase
+        //   .rpc('get_pipeline_summary', {
+        //     p_user_id: user?.id
+        //   });
 
-        if (pipelineError) throw pipelineError;
-        setPipelineData(pipeline || []);
+        // if (pipelineError) throw pipelineError;
+        // setPipelineData(pipeline || []);
 
         // Fetch recent activities
         const { data: recentActivities, error: activitiesError } = await supabase
@@ -108,18 +108,18 @@ const Dashboard: React.FC = () => {
         setActivities(recentActivities || []);
 
         // Calculate total revenue from paid invoices
-        const revenue = invoices
-          .filter(inv => inv.status === 'Paid')
-          .reduce((sum, inv) => sum + (inv.total || 0), 0);
-        setTotalRevenue(revenue);
+        // const revenue = invoices
+        //   .filter(inv => inv.status === 'Paid')
+        //   .reduce((sum, inv) => sum + (inv.total || 0), 0);
+        // setTotalRevenue(revenue);
 
-        await Promise.all([
-          fetchCustomers(),
-          fetchProducts(),
-          fetchInvoices(),
-          fetchEvents(),
-          fetchSuppliers()
-        ]);
+        // await Promise.all([
+        //   fetchCustomers(),
+        //   fetchProducts(),
+        //   fetchInvoices(),
+        //   fetchEvents(),
+        //   fetchSuppliers()
+        // ]);
 
         // Load dashboard settings
         const { data: settings } = await supabase
