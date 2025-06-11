@@ -71,6 +71,8 @@ const NewCustomer: React.FC = () => {
           const firstName = nameParts[0];
           const lastName = nameParts.slice(1).join(' ');
 
+          
+
           reset({
             first_name: firstName,
             last_name: lastName,
@@ -89,6 +91,7 @@ const NewCustomer: React.FC = () => {
             postal_code: customer.postal_code || ''
           });
           setCustomerType(customer.type);
+          setPhoneValue(customer.phone || '')
         }
       }
     };

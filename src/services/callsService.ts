@@ -44,9 +44,6 @@ export const callsService = {
         throw error;
       }
 
-      console.log(calls);
-      
-
       return calls || [];
     } catch (err) {
       console.error('Unhandled error in fetchCustomerCalls:', err);
