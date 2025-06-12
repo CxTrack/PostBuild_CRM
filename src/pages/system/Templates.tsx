@@ -21,213 +21,213 @@ const Templates: React.FC = () => {
   };
 
   const templates = [
-    {
-      id: 'small-business',
-      name: 'Small Business',
-      description: 'Perfect for small businesses and startups',
-      isActive: activeTemplate === 'small-business',
-      items: [
-        {
-          type: 'Customer Types',
-          data: [
-            'Individual Customer',
-            'Small Business',
-            'Freelancer',
-            'Local Business'
-          ]
-        },
-        {
-          type: 'Product Categories',
-          data: [
-            'Services',
-            'Products',
-            'Consulting',
-            'Support'
-          ]
-        },
-        {
-          type: 'Invoice Terms',
-          data: [
-            'Net 30',
-            'Due on Receipt',
-            'Net 15',
-            'Custom Terms'
-          ]
-        },
-        {
-          type: 'Payment Methods',
-          data: [
-            'Credit Card',
-            'Bank Transfer',
-            'Cash',
-            'Check'
-          ]
-        }
-      ],
-      features: [
-        'Basic customer management',
-        'Simple invoicing workflow',
-        'Essential product tracking',
-        'Basic reporting'
-      ]
-    },
-    {
-      id: 'realtors',
-      name: 'Realtors',
-      description: 'Tailored for real estate professionals',
-      isActive: activeTemplate === 'realtors',
-      items: [
-        {
-          type: 'Client Types',
-          data: [
-            'Home Buyer',
-            'Home Seller',
-            'Property Investor',
-            'Commercial Client'
-          ]
-        },
-        {
-          type: 'Property Categories',
-          data: [
-            'Residential',
-            'Commercial',
-            'Investment',
-            'Luxury'
-          ]
-        },
-        {
-          type: 'Service Types',
-          data: [
-            'Property Listing',
-            'Buyer Representation',
-            'Property Management',
-            'Market Analysis'
-          ]
-        },
-        {
-          type: 'Commission Types',
-          data: [
-            'Fixed Rate',
-            'Percentage Based',
-            'Tiered Commission',
-            'Split Commission'
-          ]
-        }
-      ],
-      features: [
-        'Property listing management',
-        'Client pipeline tracking',
-        'Commission calculation',
-        'Showing schedule management',
-        'Document management',
-        'Market analysis tools'
-      ]
-    },
-    {
-      id: 'mortgage-brokers',
-      name: 'Mortgage Brokers',
-      description: 'Specialized for mortgage and lending professionals',
-      isActive: activeTemplate === 'mortgage-brokers',
-      items: [
-        {
-          type: 'Client Types',
-          data: [
-            'First-time Buyer',
-            'Refinancing',
-            'Investment Property',
-            'Commercial Loan'
-          ]
-        },
-        {
-          type: 'Loan Types',
-          data: [
-            'Conventional',
-            'FHA',
-            'VA',
-            'Commercial'
-          ]
-        },
-        {
-          type: 'Document Categories',
-          data: [
-            'Income Verification',
-            'Credit Reports',
-            'Property Appraisals',
-            'Loan Applications'
-          ]
-        },
-        {
-          type: 'Status Tracking',
-          data: [
-            'Pre-Approval',
-            'Application',
-            'Underwriting',
-            'Closing'
-          ]
-        }
-      ],
-      features: [
-        'Loan application tracking',
-        'Document collection system',
-        'Rate comparison tools',
-        'Payment calculators',
-        'Automated follow-ups',
-        'Lender relationship management'
-      ]
-    },
-    {
-      id: 'insurance-brokers',
-      name: 'Insurance Brokers',
-      description: 'Complete solution for insurance professionals',
-      isActive: activeTemplate === 'insurance-brokers',
-      items: [
-        {
-          type: 'Policy Types',
-          data: [
-            'Life Insurance',
-            'Health Insurance',
-            'Property Insurance',
-            'Business Insurance'
-          ]
-        },
-        {
-          type: 'Client Categories',
-          data: [
-            'Individual',
-            'Family',
-            'Small Business',
-            'Corporate'
-          ]
-        },
-        {
-          type: 'Renewal Tracking',
-          data: [
-            '30 Days Notice',
-            '60 Days Notice',
-            '90 Days Notice',
-            'Annual Review'
-          ]
-        },
-        {
-          type: 'Claims Status',
-          data: [
-            'New Claim',
-            'In Progress',
-            'Under Review',
-            'Settled'
-          ]
-        }
-      ],
-      features: [
-        'Policy management',
-        'Claims tracking',
-        'Renewal automation',
-        'Premium calculators',
-        'Client risk assessment',
-        'Commission tracking'
-      ]
-    }
-    ,
+    // {
+    //   id: 'small-business',
+    //   name: 'Small Business',
+    //   description: 'Perfect for small businesses and startups',
+    //   isActive: activeTemplate === 'small-business',
+    //   items: [
+    //     {
+    //       type: 'Customer Types',
+    //       data: [
+    //         'Individual Customer',
+    //         'Small Business',
+    //         'Freelancer',
+    //         'Local Business'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Product Categories',
+    //       data: [
+    //         'Services',
+    //         'Products',
+    //         'Consulting',
+    //         'Support'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Invoice Terms',
+    //       data: [
+    //         'Net 30',
+    //         'Due on Receipt',
+    //         'Net 15',
+    //         'Custom Terms'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Payment Methods',
+    //       data: [
+    //         'Credit Card',
+    //         'Bank Transfer',
+    //         'Cash',
+    //         'Check'
+    //       ]
+    //     }
+    //   ],
+    //   features: [
+    //     'Basic customer management',
+    //     'Simple invoicing workflow',
+    //     'Essential product tracking',
+    //     'Basic reporting'
+    //   ]
+    // },
+    // {
+    //   id: 'realtors',
+    //   name: 'Realtors',
+    //   description: 'Tailored for real estate professionals',
+    //   isActive: activeTemplate === 'realtors',
+    //   items: [
+    //     {
+    //       type: 'Client Types',
+    //       data: [
+    //         'Home Buyer',
+    //         'Home Seller',
+    //         'Property Investor',
+    //         'Commercial Client'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Property Categories',
+    //       data: [
+    //         'Residential',
+    //         'Commercial',
+    //         'Investment',
+    //         'Luxury'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Service Types',
+    //       data: [
+    //         'Property Listing',
+    //         'Buyer Representation',
+    //         'Property Management',
+    //         'Market Analysis'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Commission Types',
+    //       data: [
+    //         'Fixed Rate',
+    //         'Percentage Based',
+    //         'Tiered Commission',
+    //         'Split Commission'
+    //       ]
+    //     }
+    //   ],
+    //   features: [
+    //     'Property listing management',
+    //     'Client pipeline tracking',
+    //     'Commission calculation',
+    //     'Showing schedule management',
+    //     'Document management',
+    //     'Market analysis tools'
+    //   ]
+    // },
+    // {
+    //   id: 'mortgage-brokers',
+    //   name: 'Mortgage Brokers',
+    //   description: 'Specialized for mortgage and lending professionals',
+    //   isActive: activeTemplate === 'mortgage-brokers',
+    //   items: [
+    //     {
+    //       type: 'Client Types',
+    //       data: [
+    //         'First-time Buyer',
+    //         'Refinancing',
+    //         'Investment Property',
+    //         'Commercial Loan'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Loan Types',
+    //       data: [
+    //         'Conventional',
+    //         'FHA',
+    //         'VA',
+    //         'Commercial'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Document Categories',
+    //       data: [
+    //         'Income Verification',
+    //         'Credit Reports',
+    //         'Property Appraisals',
+    //         'Loan Applications'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Status Tracking',
+    //       data: [
+    //         'Pre-Approval',
+    //         'Application',
+    //         'Underwriting',
+    //         'Closing'
+    //       ]
+    //     }
+    //   ],
+    //   features: [
+    //     'Loan application tracking',
+    //     'Document collection system',
+    //     'Rate comparison tools',
+    //     'Payment calculators',
+    //     'Automated follow-ups',
+    //     'Lender relationship management'
+    //   ]
+    // },
+    // {
+    //   id: 'insurance-brokers',
+    //   name: 'Insurance Brokers',
+    //   description: 'Complete solution for insurance professionals',
+    //   isActive: activeTemplate === 'insurance-brokers',
+    //   items: [
+    //     {
+    //       type: 'Policy Types',
+    //       data: [
+    //         'Life Insurance',
+    //         'Health Insurance',
+    //         'Property Insurance',
+    //         'Business Insurance'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Client Categories',
+    //       data: [
+    //         'Individual',
+    //         'Family',
+    //         'Small Business',
+    //         'Corporate'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Renewal Tracking',
+    //       data: [
+    //         '30 Days Notice',
+    //         '60 Days Notice',
+    //         '90 Days Notice',
+    //         'Annual Review'
+    //       ]
+    //     },
+    //     {
+    //       type: 'Claims Status',
+    //       data: [
+    //         'New Claim',
+    //         'In Progress',
+    //         'Under Review',
+    //         'Settled'
+    //       ]
+    //     }
+    //   ],
+    //   features: [
+    //     'Policy management',
+    //     'Claims tracking',
+    //     'Renewal automation',
+    //     'Premium calculators',
+    //     'Client risk assessment',
+    //     'Commission tracking'
+    //   ]
+    // }
+    // ,
     {
       id: 'call-center',
       name: 'Call Center',
@@ -235,28 +235,28 @@ const Templates: React.FC = () => {
       isActive: activeTemplate === 'call-center',
       items: [
         {
-          type: 'Call Types',
+          type: 'Call Template Features',
           data: [
-            'Inbound Sales',
-            'Customer Support',
-            'Outbound Prospecting',
-            'Follow-up Calls'
+            'Inbound Calls',
+            'Calls Statistics',
+            'Calls Summary',
+            'Calls Recording'
           ]
         },
         {
-          type: 'Agent Statuses',
+          type: 'Modules',
           data: [
-            'Available',
-            'On Call',
-            'Wrap-up',
-            'Break'
+            'Dashboard',
+            'Customers',
+            'Calls',
+            'Templates'
           ]
         }
       ],
       features: [
+        'Call scripts',
+        'Agents management',
         'Call logging and tracking',
-        'Agent performance monitoring',
-        'Call script management',
       ]
     }
   ];
