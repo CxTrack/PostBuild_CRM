@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { supabase, checkSession, refreshSession, clearAuthStorage } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { supabase, refreshSession, clearAuthStorage } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -246,7 +245,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (!session) return false;
+      if (!session || error) 
+        return false;
 
       const sessionExpiry = new Date(session.expires_at! * 1000);
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -265,7 +265,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // 👇 Subscribe to Supabase auth state changes (optional, but robust)
 supabase.auth.onAuthStateChange(async (_event, session) => {
   if (session?.user) {
-    useAuthStore.setState({ user: session.user, initialized: true });
+    useAuthStore.setState({ user: { email: session.user.email!, id: session.user.id }, initialized: true });
   } else {
     useAuthStore.setState({ user: null, initialized: true });
   }

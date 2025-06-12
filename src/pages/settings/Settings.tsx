@@ -73,7 +73,7 @@ const Settings: React.FC = () => {
               activeTab === 'billing' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-dark-800'
             }`}
           >
-            Billing & Subscription
+            Subscription
           </button>
 
           {/* <button

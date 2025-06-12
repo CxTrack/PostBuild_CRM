@@ -34,7 +34,7 @@ const BillingTab: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-lg font-semibold text-white mb-4">Billing & Subscription</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Subscriptions</h2>
 
       {error && (
         <div className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded-md">
@@ -45,7 +45,7 @@ const BillingTab: React.FC = () => {
       {loading && (
         <div className="text-center py-4">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-2 text-gray-400">Loading billing information...</p>
+          <p className="mt-2 text-gray-400">Loading subscription information...</p>
         </div>
       )}
 

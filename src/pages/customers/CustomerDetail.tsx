@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Edit, Trash2, Mail, Phone, MapPin, Building, User, FileText,
-  ShoppingCart, Clock, Calendar, DollarSign, ArrowLeft, Eye, Star, Briefcase, UserPlus
+  ShoppingCart, Clock, Calendar, DollarSign, ArrowLeft, Eye, Star, Briefcase, UserPlus,
+  CircleUser
 } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { Customer } from '../../types/database.types';
@@ -300,10 +301,10 @@ const CustomerDetail: React.FC = () => {
 
             <div className="flex items-start space-x-3">
               <div className="text-gray-400">
-                <MapPin size={18} />
+                <CircleUser size={18} />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Address</p>
+                <p className="text-sm text-gray-400">Customer Type</p>
                 <div
                   className="cursor-pointer"
                   onClick={() => handleStartEdit('type', customer.type)}
