@@ -128,6 +128,9 @@ const Dashboard: React.FC = () => {
           .eq('user_id', user?.id)
           .single();
 
+          //TODO: how to make sure this template is enabled or disabled
+          // if disabled than nedd to recover to default
+
         if (settings?.dashboard_settings) {
           setDashboardSettings(settings.dashboard_settings);
         }
@@ -150,7 +153,7 @@ const Dashboard: React.FC = () => {
         console.error(err);
         //setError('Failed to load calls');
       } finally {
-        //setLoading(false);
+        setLoading(false);
       }
     };
 

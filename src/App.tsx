@@ -5,7 +5,6 @@ import { useProfileStore } from './stores/profileStore';
 import Pipeline from './pages/pipeline/Pipeline';
 import PipelineDetail from './pages/pipeline/PipelineDetail';
 import DirectReports from './pages/team/DirectReports';
-import WaitlistForm from './pages/WaitlistForm';
 import DemoWaitlist from './pages/DemoWaitlist';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
@@ -185,8 +184,7 @@ function App() {
     <>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<AuthLayout />} />
-        <Route path="/waitlist" element={<WaitlistForm />} />
+        <Route path="/" element={<AuthLayout />} />        
         <Route path="/demo" element={<DemoWaitlist />} />
         <Route element={<FeatureLayout />}>
           <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
@@ -239,7 +237,6 @@ function App() {
         {/* Contact & Demo Pages */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/demo" element={<DemoWaitlist />} />
-        <Route path="/waitlist" element={<WaitlistForm />} />
 
         {/* Protected Routes */}
         <Route element={<DashboardLayout />}>

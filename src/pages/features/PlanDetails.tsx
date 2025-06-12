@@ -180,7 +180,7 @@ const PlanDetails: React.FC = () => {
 
   const handleGetStarted = async () => {
     // Redirect to waitlist form with plan type
-    navigate(`/waitlist?plan=${plan.name.toLowerCase()}`);
+    navigate(`/dashboard?plan=${plan.name.toLowerCase()}`);
   };
 
   return (

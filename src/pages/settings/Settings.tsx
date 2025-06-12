@@ -6,7 +6,6 @@ import ProfileTab from './ProfileTab';
 import NotificationsTab from './NotificationsTab';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import DataExportTab from './DataExportTab';
-import WaitlistTab from './WaitlistTab';
 import BillingTab from './BillingTab';
 import AIAgentsTab from './AIAgentsTab';
 import EmailTab from './EmailTab';
@@ -40,8 +39,6 @@ const Settings: React.FC = () => {
         return <DataExportTab />;
       case 'notifications':
         return <NotificationsTab />;
-      case 'waitlist':
-        return <WaitlistTab />;
       case 'call-agent-setup':
         return <CallAgentTab />;
       default:

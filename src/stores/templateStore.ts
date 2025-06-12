@@ -13,7 +13,7 @@ interface TemplateState {
 }
 
 export const useTemplateStore = create<TemplateState>((set, get) => ({
-  activeTemplate: 'small-business',
+  activeTemplate: 'call-center',
   loading: false,
   error: null,
   
