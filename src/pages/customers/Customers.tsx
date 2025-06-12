@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { toast } from 'react-hot-toast';
-import { Customer } from '../../types/database.types';
 
 const Customers: React.FC = () => {
   const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();

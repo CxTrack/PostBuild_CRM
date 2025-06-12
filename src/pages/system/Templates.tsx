@@ -237,7 +237,7 @@ const Templates: React.FC = () => {
         {
           type: 'Call Template Features',
           data: [
-            'Inbound Calls',
+            'AI Agents - Inbound Calls',
             'Calls Statistics',
             'Calls Summary',
             'Calls Recording'

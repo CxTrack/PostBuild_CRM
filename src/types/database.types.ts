@@ -293,3 +293,12 @@ export type Call = { // in DB
   transcript: string;
   disconnection_reason: string;
 }
+
+export type SystemUser = {
+  id: string;
+  user_id: string;
+  admin_access: string;
+  isAdmin: boolean;
+  created_at: string;
+  email: string;
+};

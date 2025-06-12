@@ -12,6 +12,7 @@ import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { useTemplateStore } from '../stores/templateStore';
 import { useTemplateConfigStore } from '../stores/templateConfigStore';
 import CalendarComponent from '../components/Calendar';
+import { adminStore } from '../stores/adminStore';
 
 const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,7 +24,8 @@ const DashboardLayout: React.FC = () => {
     sales: true,
     finance: true,
     team: true,
-    system: true
+    system: true,
+    admin: true
   });
   const { user, signOut } = useAuthStore();
   const { currentSubscription } = useSubscriptionStore();
@@ -31,6 +33,7 @@ const DashboardLayout: React.FC = () => {
   const templateConfig = getConfig(activeTemplate);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin, isUserAdmin } = adminStore.getState();
 
   // Check if user has access to premium features
   const hasPremiumAccess = currentSubscription?.plan_id && ['business', 'enterprise'].includes(currentSubscription.plan_id);
@@ -50,8 +53,9 @@ const DashboardLayout: React.FC = () => {
 
   // Watch calendar state changes
   useEffect(() => {
-    
+
     getActiveTemplate();
+    isUserAdmin();
 
     if (calendarMaximized) {
       setSidebarOpen(false);
@@ -318,7 +322,7 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               </>
             )} */}
-{/* 
+            {/* 
             {sidebarOpen && templateConfig.dashboardSections.showFinance &&(
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
@@ -359,6 +363,40 @@ const DashboardLayout: React.FC = () => {
                   <ShoppingCart size={20} />
                   {sidebarOpen && <span>Purchases</span>}
                 </NavLink> */}
+              </>
+            )}
+
+
+            {/* ADMIN area */}
+            {sidebarOpen && isAdmin && (
+              <div
+                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
+                onClick={() => toggleSection('admin')}
+              >
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</span>
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.admin ? 'rotate-180' : ''
+                    }`}
+                />
+              </div>
+            )}
+
+            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
+              <>
+                <NavLink to="/admin-calls" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
+                  <Settings size={20} />
+                  {sidebarOpen && <span>Calls</span>}
+                </NavLink>
+              </>
+            )}
+
+            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
+              <>
+                <NavLink to="/admin-users" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
+                  <Settings size={20} />
+                  {sidebarOpen && <span>Users</span>}
+                </NavLink>
               </>
             )}
 

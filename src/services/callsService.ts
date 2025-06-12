@@ -51,6 +51,25 @@ export const callsService = {
     }
   },
 
+    async fetchAllCalls(): Promise<Call[]> {
+    try {
+      const { data: calls, error } = await supabase
+        .from('calls')
+        .select('*')
+        .order('start_time', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching calls:', error);
+        throw error;
+      }
+
+      return calls || [];
+    } catch (err) {
+      console.error('Unhandled error in fetchAllCalls:', err);
+      return [];
+    }
+  },
+
 
   async getCallRecording(callId: string): Promise<CallResponse | undefined> {
     try {

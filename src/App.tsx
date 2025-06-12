@@ -80,6 +80,8 @@ import Revenue from './pages/finance/Revenue';
 import NewSupplier from './pages/suppliers/NewSupplier';
 import SupplierDetail from './pages/suppliers/SupplierDetail';
 import Calls from './pages/calls/Calls';
+import AdminCalls from './pages/calls/AdminCalls';
+import AdminUsers from './pages/users/AdminUsers';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -185,7 +187,6 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<AuthLayout />} />        
-        <Route path="/demo" element={<DemoWaitlist />} />
         <Route element={<FeatureLayout />}>
           <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/legal/terms-of-service" element={<TermsOfService />} />
@@ -241,6 +242,8 @@ function App() {
         {/* Protected Routes */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+          <Route path="/admin-calls" element={user ? <AdminCalls /> : <Navigate to="/login" />} />
+          <Route path="/admin-users" element={user ? <AdminUsers /> : <Navigate to="/login" />} />
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />
           <Route path="/customers" element={user ? <Customers /> : <Navigate to="/login" />} />
           <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />

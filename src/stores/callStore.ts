@@ -4,6 +4,8 @@ import { customerService } from '../services/customerService';
 import Retell from 'retell-sdk';
 import { CallResponse } from 'retell-sdk/resources.mjs';
 import { Call } from '../types/database.types';
+import { adminStore } from './adminStore';
+import toast from 'react-hot-toast';
 
 interface CallStore {
   calls: Call[];
@@ -11,13 +13,17 @@ interface CallStore {
   error: string | null;
   fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
   fetchCustomerCalls: (customerId: string) => Promise<void>;
+  fetchAllCalls: () => Promise<CallResponse | undefined>;
 }
+
+const { isAdmin, isUserAdmin } = adminStore.getState();
 
 export const useCallStore = create<CallStore>((set) => ({
   calls: [],
   loading: false,
   error: null,
 
+  
   // fetchCallsViaAPI: async () => {
   //   set({ loading: true, error: null });
   //   try {
@@ -120,6 +126,27 @@ export const useCallStore = create<CallStore>((set) => ({
       }
 
       const customerCalls = await callsService.fetchCustomerCalls(customer);
+
+      set({ calls: customerCalls, loading: false });
+    }
+    catch (error: any) {
+      console.error('Error fetching calls:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+
+   fetchAllCalls: async (): Promise<CallResponse | undefined> => {
+    set({ loading: true, error: null });
+    try {
+
+      await isUserAdmin();
+      if (!isAdmin) {
+        toast.error('Has to be admin to get all calls');
+        return;
+      }
+
+      const customerCalls = await callsService.fetchAllCalls();
 
       set({ calls: customerCalls, loading: false });
     }
