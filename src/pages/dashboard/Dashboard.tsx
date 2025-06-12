@@ -35,7 +35,7 @@ const getRelativeTime = (date: string) => {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [pipelineData, setPipelineData] = useState<any[]>([]);
+  //const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { customers, fetchCustomers } = useCustomerStore();
@@ -43,12 +43,12 @@ const Dashboard: React.FC = () => {
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
   //const { totalProducts } = useProductStore();
-  const { suppliers, fetchSuppliers } = useSupplierStore();
+  //const { suppliers, fetchSuppliers } = useSupplierStore();
 
   const [loading, setLoading] = useState(true);
-  const [totalRevenue, setTotalRevenue] = useState(0);
+  //const [totalRevenue, setTotalRevenue] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
+  //const [expenses, setExpenses] = useState<any[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [dashboardSettings, setDashboardSettings] = useState({
     showSalesChart: true,

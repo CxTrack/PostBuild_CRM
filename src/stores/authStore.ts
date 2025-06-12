@@ -92,25 +92,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw signInError;
 
-      // Wait for session/user to propagate
-      let user = null;
-      let attempts = 0;
-      const maxAttempts = 10;
-
-      while (!user && attempts < maxAttempts) {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) console.warn('Retrying getUser():', userError.message);
-
-        user = userData?.user ?? null;
-        if (!user) await new Promise(res => setTimeout(res, 200));
-        attempts++;
-      }
+      await new Promise((r) => setTimeout(r, 500)) // let session persist
+      const session = await supabase.auth.getSession()
+      
+      let user = session?.data?.session?.user;
 
       if (!user) {
         throw new Error('Your session has expired. Please sign in again.');
       }
-
-      set({ user, loading: false });
+      
+      set({user: { id: user.id, email: user.email!}, loading: false });
     } catch (error: any) {
       console.error('Sign in error:', error);
       set({ error: error.message || 'Unable to sign in. Please try again.', loading: false });
@@ -232,7 +223,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('[AUTH INIT] Session:', session);
 
       if (error) throw error;
 
@@ -240,7 +230,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
 
-        set({ user, initialized: true, loading: false });
+        set({ user: {id: user?.id!, email: user?.email! }, initialized: true, loading: false });
       } else {
         set({ user: null, initialized: true, loading: false });
       }
@@ -258,7 +248,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (!session) return false;
 
-      const sessionExpiry = new Date(session.expires_at * 1000);
+      const sessionExpiry = new Date(session.expires_at! * 1000);
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
       if (sessionExpiry > fiveMinutesAgo) return true;

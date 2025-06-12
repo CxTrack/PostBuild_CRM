@@ -35,13 +35,10 @@ const CallAgentTab: React.FC = () => {
       .select('call_agent_id')
       .eq('user_id', user.id);
 
-    console.log(data);
-
     if (error) {
       console.error('Error fetching call agents:', error);
       toast.error('Failed to fetch call agents.');
     } else {
-      console.log(data);
 
       setCallAgents(data as CallAgent[]);
     }
