@@ -20,6 +20,7 @@ import { useCallStore } from '../../stores/callStore';
 import { callsService } from '../../services/callsService';
 import { Call } from '../../types/database.types';
 import { useNavigate } from 'react-router-dom';
+import { useActivityStore } from '../../stores/activitiesStore';
 
 
 // Function to format relative time
@@ -44,10 +45,9 @@ const Dashboard: React.FC = () => {
   const { events, fetchEvents } = useCalendarStore();
   //const { totalProducts } = useProductStore();
   //const { suppliers, fetchSuppliers } = useSupplierStore();
-
   const [loading, setLoading] = useState(true);
   //const [totalRevenue, setTotalRevenue] = useState(0);
-  const [activities, setActivities] = useState<any[]>([]);
+  const { activities, getActivities} = useActivityStore();
   //const [expenses, setExpenses] = useState<any[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [dashboardSettings, setDashboardSettings] = useState({
@@ -97,15 +97,8 @@ const Dashboard: React.FC = () => {
         // if (pipelineError) throw pipelineError;
         // setPipelineData(pipeline || []);
 
-        // Fetch recent activities
-        const { data: recentActivities, error: activitiesError } = await supabase
-          .from('recent_activities')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (activitiesError) throw activitiesError;
-        setActivities(recentActivities || []);
+        await getActivities(); // Fetch recent activities
+      
 
         // Calculate total revenue from paid invoices
         // const revenue = invoices
@@ -597,9 +590,9 @@ const Dashboard: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
         </div>
-        {activities.length > 0 ? (
+        {activities!.length > 0 ? (
           <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-            {activities.map((activity) => (
+            {activities!.map((activity) => (
               <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-md bg-dark-700/50 hover:bg-dark-700 transition-colors">
                 <div className={`p-2 rounded-md ${activity.type === 'invoice' ? 'bg-blue-500/20 text-blue-500' :
                   activity.type === 'purchase' ? 'bg-purple-500/20 text-purple-500' :
