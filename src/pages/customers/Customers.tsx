@@ -80,7 +80,7 @@ const Customers: React.FC = () => {
           />
         </div>
         
-        <div className="flex gap-2">
+        {/* <div className="flex gap-2">
           <button className="btn btn-secondary flex items-center space-x-2">
             <Filter size={16} />
             <span>Filter</span>
@@ -89,7 +89,7 @@ const Customers: React.FC = () => {
             <Download size={16} />
             <span>Export</span>
           </button>
-        </div>
+        </div> */}
       </div>
       
       {/* Error message */}
