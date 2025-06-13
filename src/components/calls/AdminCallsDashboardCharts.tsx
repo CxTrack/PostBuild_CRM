@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Call } from '../../types/database.types';
-import { ArrowDownRight, ArrowUpRight, Headset, Phone, Timer } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useCallStore } from '../../stores/callStore';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { format } from 'date-fns';
@@ -31,16 +29,18 @@ ChartJS.register(
   Legend
 );
 
-interface AdminCallsDashboardChartsProps {
+interface CallsDashboardChartsProps {
   calls: Call[];
 }
 
-const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ calls }) => {
+const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) => {
 
-  const [totalCallsDuration, setTotalCallsDuration] = useState('0');
+  const [totalCallsDuration, setTotalCallsDuration] = useState(0);
   const { agentsCount, fetchCallAgents } = useCallStore();
   const [totalCallGrowghtLastMonth, setTotalCallGrowghtLastMonth] = useState(0);
   const [totalCallGrowghtThisMonth, setTotalCallGrowghtThisMonth] = useState(0);
+  const [totalDurationGrowghtLastMonth, setTotalDurationGrowghtLastMonth] = useState(0);
+  const [totalDurationGrowghtThisMonth, setTotalDurationGrowghtThisMonth] = useState(0);
 
   useEffect(() => {
     fetchCallAgents();
@@ -48,9 +48,13 @@ const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ c
 
     fetchTotalCallsGrowthLastMonth();
     fetchTotalCallsGrowthThisMonth();
-  }, [fetchCallAgents]);
 
-  function getTotalCallsDuration(): string {
+    getTotalDurationThisMonth(calls);
+    getTotalDurationLastMonth(calls);
+
+  }, [calls]);
+
+  function getTotalCallsDuration(): number {
     const totalDurationMs = calls.reduce((sum, call) => {
       const start = new Date(call.start_time).getTime();
       const end = new Date(call.end_time).getTime();
@@ -60,7 +64,7 @@ const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ c
     const totalDurationSeconds = totalDurationMs / 1000;
     const totalDurationMinutes = totalDurationSeconds / 60;
 
-    return totalDurationMinutes.toFixed(2)
+    return totalDurationMinutes;
   }
 
   function fetchTotalCallsGrowthLastMonth() {
@@ -108,6 +112,49 @@ const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ c
     // Total calls from this month
     setTotalCallGrowghtThisMonth(Object.values(callsByDate).reduce((sum, count) => sum + count, 0));
   }
+
+  function getTotalDurationThisMonth(calls: { start_time: string; end_time: string }[]) {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const filteredCalls = calls.filter(call => {
+      const startDate = new Date(call.start_time);
+      return (
+        startDate.getFullYear() === currentYear &&
+        startDate.getMonth() === currentMonth
+      );
+    });
+
+    setTotalDurationGrowghtThisMonth(getTotalDuration(filteredCalls))
+  }
+
+  function getTotalDurationLastMonth(calls: { start_time: string; end_time: string }[]) {
+    const now = new Date();
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const yearOfLastMonth = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+    const filteredCalls = calls.filter(call => {
+      const startDate = new Date(call.start_time);
+      return (
+        startDate.getFullYear() === yearOfLastMonth &&
+        startDate.getMonth() === lastMonth
+      );
+    });
+
+    setTotalDurationGrowghtLastMonth(getTotalDuration(filteredCalls))
+  }
+
+  function getTotalDuration(calls: { start_time: string; end_time: string }[]): number {
+    const totalDurationMs = calls.reduce((sum, call) => {
+      const start = new Date(call.start_time).getTime();
+      const end = new Date(call.end_time).getTime();
+      return sum + (end - start); // duration in ms
+    }, 0);
+
+    return totalDurationMs / 1000 / 60; // minutes
+  }
+
 
 
   // Calculate the average call duration in minutes
@@ -436,11 +483,13 @@ const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ c
     <div className="card border border-dark-700 mb-5">
 
       <CallsWidgetsDashboard
-        agentsCount={agentsCount} calls={calls} 
-        totalCallGrowthThisMonth={totalCallGrowghtThisMonth} 
-        totalCallGrowthLastMonth={totalCallGrowghtLastMonth} 
-        totalCallsDuration={totalCallsDuration}
-        ></CallsWidgetsDashboard>
+        agentsCount={agentsCount} calls={calls}
+        totalCallGrowthThisMonth={totalCallGrowghtThisMonth}
+        totalCallGrowthLastMonth={totalCallGrowghtLastMonth}
+        totalCallsDuration={totalCallsDuration} 
+        totalCallsDurationGrowthThisMonth={totalDurationGrowghtThisMonth} 
+        totalCallsDurationGrowthLastMonth={totalDurationGrowghtLastMonth}
+      ></CallsWidgetsDashboard>
 
       {/* Total Calls Bar Chart */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
