@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Call } from '../../types/database.types';
-import { Headset, Phone, Timer } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Headset, Phone, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCallStore } from '../../stores/callStore';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import {
@@ -16,6 +17,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { CallsWidgetsDashboard } from './CallsWidgetsDashboard';
 
 ChartJS.register(
   CategoryScale,
@@ -29,30 +31,24 @@ ChartJS.register(
   Legend
 );
 
-interface CallsDashboardChartsProps {
+interface AdminCallsDashboardChartsProps {
   calls: Call[];
 }
 
-const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) => {
+const AdminCallsDashboardCharts: React.FC<AdminCallsDashboardChartsProps> = ({ calls }) => {
 
   const [totalCallsDuration, setTotalCallsDuration] = useState('0');
-  const [agentsCount, setAgentsCount] = useState(0);
+  const { agentsCount, fetchCallAgents } = useCallStore();
+  const [totalCallGrowghtLastMonth, setTotalCallGrowghtLastMonth] = useState(0);
+  const [totalCallGrowghtThisMonth, setTotalCallGrowghtThisMonth] = useState(0);
 
   useEffect(() => {
-    setAgentsCount(getUniqueCallsByCallAgentId());
+    fetchCallAgents();
     setTotalCallsDuration(getTotalCallsDuration());
-  });
 
-
-  //TODO: its incorrect, need to pull from 'user_calls' db
-  function getUniqueCallsByCallAgentId(): number {
-    const seen = new Set<string>();
-    return calls.filter(call => {
-      if (seen.has(call.call_agent_id + '')) return false;
-      seen.add(call.call_agent_id + '');
-      return true;
-    }).length;
-  }
+    fetchTotalCallsGrowthLastMonth();
+    fetchTotalCallsGrowthThisMonth();
+  }, [fetchCallAgents]);
 
   function getTotalCallsDuration(): string {
     const totalDurationMs = calls.reduce((sum, call) => {
@@ -65,6 +61,52 @@ const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls 
     const totalDurationMinutes = totalDurationSeconds / 60;
 
     return totalDurationMinutes.toFixed(2)
+  }
+
+  function fetchTotalCallsGrowthLastMonth() {
+
+    const callsByDate: { [date: string]: number } = {};
+
+    // Calculate date range for last month
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(startOfThisMonth.getTime() - 1); // One millisecond before this month's start
+
+    calls.forEach(call => {
+      if (call.start_time) {
+        const callDate = new Date(call.start_time);
+
+        if (callDate >= startOfLastMonth && callDate <= endOfLastMonth) {
+          const dateStr = callDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          callsByDate[dateStr] = (callsByDate[dateStr] || 0) + 1;
+        }
+      }
+    });
+
+    setTotalCallGrowghtLastMonth(Object.values(callsByDate).reduce((sum, count) => sum + count, 0));
+  }
+
+  function fetchTotalCallsGrowthThisMonth() {
+
+    const callsByDate: { [date: string]: number } = {};
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed (Jan = 0)
+
+    // Example: assume `calls` is your array of call records
+    calls.forEach(call => {
+      if (call.start_time) {
+        const date = new Date(call.start_time);
+        if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
+          const dateKey = date.toISOString().split('T')[0]; // "YYYY-MM-DD"
+          callsByDate[dateKey] = (callsByDate[dateKey] || 0) + 1;
+        }
+      }
+    });
+
+    // Total calls from this month
+    setTotalCallGrowghtThisMonth(Object.values(callsByDate).reduce((sum, count) => sum + count, 0));
   }
 
 
@@ -391,44 +433,14 @@ const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls 
   }, [calls]);
 
   return (
-    <div className="card border border-dark-700 mb-5">      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Agents Amount</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{agentsCount}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Headset size={24} />
-            </div>
-          </div>
-        </Link>
+    <div className="card border border-dark-700 mb-5">
 
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Calls</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{calls.length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Phone size={24} />
-            </div>
-          </div>
-        </Link>
-
-        <Link to="/calls" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Calls Duration</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{totalCallsDuration} min</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
-              <Timer size={24} />
-            </div>
-          </div>
-        </Link>
-      </div>
+      <CallsWidgetsDashboard
+        agentsCount={agentsCount} calls={calls} 
+        totalCallGrowthThisMonth={totalCallGrowghtThisMonth} 
+        totalCallGrowthLastMonth={totalCallGrowghtLastMonth} 
+        totalCallsDuration={totalCallsDuration}
+        ></CallsWidgetsDashboard>
 
       {/* Total Calls Bar Chart */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80 mb-6">
