@@ -6,24 +6,28 @@ import { CallResponse } from 'retell-sdk/resources.mjs';
 import { Call } from '../types/database.types';
 import { adminStore } from './adminStore';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 interface CallStore {
   calls: Call[];
+  agentsCount: number;
   loading: boolean;
   error: string | null;
   fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
   fetchCustomerCalls: (customerId: string) => Promise<void>;
   fetchAllCalls: () => Promise<CallResponse | undefined>;
+  fetchCallAgents: () => Promise<void>;
 }
 
 const { isAdmin, isUserAdmin } = adminStore.getState();
 
 export const useCallStore = create<CallStore>((set) => ({
   calls: [],
+  agentsCount: 0,
   loading: false,
   error: null,
 
-  
+
   // fetchCallsViaAPI: async () => {
   //   set({ loading: true, error: null });
   //   try {
@@ -117,6 +121,29 @@ export const useCallStore = create<CallStore>((set) => ({
   //   }
   // },
 
+
+  fetchCallAgents: async () => {
+    set({ loading: true, error: null });
+    try {
+      const user = await supabase.auth.getUser();
+      if (!user) {
+        set({ error: 'Unable to retrieve call aggents, user is not signed in', loading: false });
+        return;
+      }
+
+      const { data: callAgents, error } = await supabase
+        .from('user_calls')
+        .select('call_agent_id')
+        .eq('user_id', user!.data?.user?.id);
+
+      set({ agentsCount: callAgents?.length, loading: false });
+    }
+    catch (error: any) {
+      console.error('Error fetching callAgents:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
   fetchCustomerCalls: async (customerId: string) => {
     set({ loading: true, error: null });
     try {
@@ -136,7 +163,7 @@ export const useCallStore = create<CallStore>((set) => ({
   },
 
 
-   fetchAllCalls: async (): Promise<CallResponse | undefined> => {
+  fetchAllCalls: async (): Promise<CallResponse | undefined> => {
     set({ loading: true, error: null });
     try {
 

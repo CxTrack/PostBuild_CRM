@@ -37,23 +37,12 @@ interface CallsDashboardChartsProps {
 const CallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls }) => {
 
   const [totalCallsDuration, setTotalCallsDuration] = useState('0');
-  const [agentsCount, setAgentsCount] = useState(0);
+  const {agentsCount, fetchCallAgents} = useCallStore();
 
   useEffect(() => {
-    setAgentsCount(getUniqueCallsByCallAgentId());
+    fetchCallAgents();
     setTotalCallsDuration(getTotalCallsDuration());
-  });
-
-
-  //TODO: its incorrect, need to pull from 'user_calls' db
-  function getUniqueCallsByCallAgentId(): number {
-    const seen = new Set<string>();
-    return calls.filter(call => {
-      if (seen.has(call.call_agent_id + '')) return false;
-      seen.add(call.call_agent_id + '');
-      return true;
-    }).length;
-  }
+  },[fetchCallAgents]);
 
   function getTotalCallsDuration(): string {
     const totalDurationMs = calls.reduce((sum, call) => {
