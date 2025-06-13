@@ -125,28 +125,10 @@ useEffect(() => {
                         )
                         : 'N/A'}
                     </td>
-
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="mt-4 flex justify-between items-center">
-              <button
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-dark-700 text-white rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-white">Page {currentPage} of {totalPages}</span>
-              <button
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-dark-700 text-white rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
           </div>
         )}
       </div>

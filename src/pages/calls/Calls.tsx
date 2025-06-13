@@ -154,7 +154,7 @@ const Calls: React.FC = () => {
 
           {/* Pagination */}
           {calls.length > 0 && (
-            <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
+            <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700 rounded mt-1">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="btn btn-secondary">Previous</button>
                 <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === pageNumbers.length} className="btn btn-secondary">Next</button>
