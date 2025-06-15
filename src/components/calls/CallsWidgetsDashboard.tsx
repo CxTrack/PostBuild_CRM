@@ -31,7 +31,7 @@ export const CallsWidgetsDashboard = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {/* Agents Widget */}
             <Link
-                to="/calls"
+                to="/settings?tab=call-agent-setup"
                 className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors"
             >
                 <div className="flex justify-between items-start">
