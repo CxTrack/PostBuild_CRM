@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload, Bell } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useUserStore } from '../../stores/userStore';
 import { formatService } from '../../services/formatService';
+import { useNotificationStore } from '../../stores/notificationStore';
 
 const AdminUsers: React.FC = () => {
   //const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { users, loading, error, fetchUsers } = useUserStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const { notifyUser } = useNotificationStore();
 
   // Fetch customers on component mount
   useEffect(() => {
@@ -21,6 +23,11 @@ const AdminUsers: React.FC = () => {
   const filteredCustomers = users.filter(user =>
     user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+
+  function handleSentNotification(id: any): void {
+    throw new Error('Function not implemented.');
+  }
 
   return (
     <div className="space-y-6">
@@ -74,10 +81,11 @@ const AdminUsers: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-dark-700">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User-Id</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Id</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Is Admin</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
@@ -96,8 +104,13 @@ const AdminUsers: React.FC = () => {
                       <span className="text-sm text-gray-300">{formatService.formatDate(customer.created_at)}</span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span>
-                      </span>
+                      <button
+                        className="text-gray-400 hover:text-red-500"
+                        onClick={() => handleSentNotification(customer.id)}
+                        disabled
+                      >
+                        <Bell size={16} />
+                      </button>
                     </td>
 
                   </tr>

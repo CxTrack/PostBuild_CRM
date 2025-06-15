@@ -52,7 +52,7 @@ const NotificationSender: React.FC = () => {
           <ArrowLeft size={20} />
         </Link>
         <h1 className="text-2xl font-bold text-white">
-          Send Notification
+          Send Global Notification (to all users)
         </h1>
       </div>
 

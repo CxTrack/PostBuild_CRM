@@ -34,6 +34,28 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
+  notifyUser: async (title: string, message: string, userId: string) => {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData?.user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase.from('notifications').insert([
+      {
+        user_id: userId,
+        title: title,
+        message: message,
+        type: 'success'
+      }]);
+
+    if (error) {
+      console.error('Error inserting notification:', error);
+      throw error;
+    }
+  },
+
+
   notifyAll: async (title: string, message: string) => {
     const { data: userData } = await supabase.auth.getUser();
 
@@ -45,7 +67,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
-      
+
       const { error } = await supabase.from('notifications').insert([
         {
           user_id: user.user_id,
