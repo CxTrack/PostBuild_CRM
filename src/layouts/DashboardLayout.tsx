@@ -400,6 +400,17 @@ const DashboardLayout: React.FC = () => {
               </>
             )}
 
+            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
+              <>
+                <NavLink to="/admin/sent-notification" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
+                  <Settings size={20} />
+                  {sidebarOpen && <span>Send Notification</span>}
+                </NavLink>
+              </>
+            )}
+
+           
+
             {sidebarOpen && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
