@@ -14,12 +14,14 @@ const NotificationSender: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { notifyAll } = useNotificationStore();
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<NotificationData>({
+  const { register, handleSubmit, formState: { errors, isValid }, reset } = useForm<NotificationData>({
     defaultValues: {
       title: '',
       message: '',
-    }
+    },
+    mode: 'onChange',
   });
+
 
   const onSubmit = async (data: NotificationData) => {
     setLoading(true);
@@ -95,10 +97,10 @@ const NotificationSender: React.FC = () => {
 
         {/* Submit button */}
         <div className="flex justify-end">
-          <button 
-            type="submit" 
-            className="btn btn-primary flex items-center space-x-2"
-            disabled={loading}
+          <button
+            type="submit"
+           className="btn btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !isValid} // disable if loading or form invalid
           >
             {loading ? (
               <>
@@ -112,6 +114,7 @@ const NotificationSender: React.FC = () => {
               </>
             )}
           </button>
+
         </div>
       </form>
     </div>
