@@ -61,9 +61,7 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
 
       if (selectedCall?.from_number) {
-        console.log(selectedCall);
         const name = await getCustomerName(selectedCall.from_number);
-        console.log(name);
         setCustomerNameDialog(name);
       }
     };

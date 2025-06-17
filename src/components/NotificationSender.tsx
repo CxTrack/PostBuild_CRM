@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Save } from 'lucide-react';
 import { useNotificationStore } from '../stores/notificationStore';
 
 interface NotificationData {
@@ -48,11 +47,8 @@ const NotificationSender: React.FC = () => {
     <div className="space-y-6">
       {/* Header with back button */}
       <div className="flex items-center space-x-4">
-        <Link to="/customers" className="btn btn-secondary p-2">
-          <ArrowLeft size={20} />
-        </Link>
         <h1 className="text-2xl font-bold text-white">
-          Send Global Notification (to all users)
+          Send Global Notification
         </h1>
       </div>
 

@@ -4,12 +4,15 @@ import { toast } from 'react-hot-toast';
 import { useUserStore } from '../../stores/userStore';
 import { formatService } from '../../services/formatService';
 import { useNotificationStore } from '../../stores/notificationStore';
+import SendUserNotificationModal from '../../components/SendUserNotificationModal';
 
 const AdminUsers: React.FC = () => {
   //const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();
-  const { users, loading, error, fetchUsers } = useUserStore();
+  const { users, loading, error, fetchUsers, } = useUserStore();
   const [searchTerm, setSearchTerm] = useState('');
   const { notifyUser } = useNotificationStore();
+  const [notificaitonModalActive, setNotificaitonModalActive] = useState(false);
+  const [userId, setUserId] = useState('');
 
   // Fetch customers on component mount
   useEffect(() => {
@@ -25,12 +28,18 @@ const AdminUsers: React.FC = () => {
   );
 
 
-  function handleSentNotification(id: any): void {
-    throw new Error('Function not implemented.');
+  async function handleSentNotification(id: any): Promise<void> {
+    setNotificaitonModalActive(true);
+    setUserId(id);
   }
 
   return (
     <div className="space-y-6">
+
+      <SendUserNotificationModal
+        isOpen={notificaitonModalActive}
+        onClose={() => { setNotificaitonModalActive(!notificaitonModalActive); } }
+        title="" userId={userId} />
 
       {/* Filters and search */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -104,13 +113,12 @@ const AdminUsers: React.FC = () => {
                       <span className="text-sm text-gray-300">{formatService.formatDate(customer.created_at)}</span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <button
+                      {/* <button
                         className="text-gray-400 hover:text-red-500"
-                        onClick={() => handleSentNotification(customer.id)}
-                        disabled
+                        onClick={() => handleSentNotification(customer.user_id)}
                       >
                         <Bell size={16} />
-                      </button>
+                      </button> */}
                     </td>
 
                   </tr>

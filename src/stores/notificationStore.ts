@@ -21,6 +21,7 @@ interface NotificationState {
   // Actions
   fetchNotifications: () => Promise<void>;
   notifyAll: (title: string, message: string) => Promise<void>;
+  notifyUser: (title: string, message: string, userId: string) => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearError: () => void;
