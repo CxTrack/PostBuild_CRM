@@ -14,6 +14,7 @@ interface RecentCallsTableProps {
 
 const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, formatPhoneNumber, formatDate }) => {
   const navigate = useNavigate();
+  const [customerNameDialog, setCustomerNameDialog] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -28,33 +29,47 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
 
   const totalPages = Math.ceil(currentCalls.length / itemsPerPage);
 
-useEffect(() => {
-  if (!currentCallsPaginated.length) return;
+  useEffect(() => {
+    if (!currentCallsPaginated.length) return;
 
-  const fetchCustomerNames = async () => {
-    const namesToAdd: { [callId: string]: string } = {};
+    const fetchCustomerNames = async () => {
+      const namesToAdd: { [callId: string]: string } = {};
 
-    await Promise.all(
-      currentCallsPaginated.map(async (call) => {
-        if (customerNames[call.id]) return;
+      await Promise.all(
+        currentCallsPaginated.map(async (call) => {
+          if (customerNames[call.id]) return;
 
-        try {
-          const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
-          const customer = await customerService.getCustomerByPhone(formattedPhone);
-          namesToAdd[call.id] = customer ? customer.name : formatPhoneNumber(call.from_number!);
-        } catch (error) {
-          namesToAdd[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
-        }
-      })
-    );
+          try {
+            const formattedPhone = await formatService.formatPhoneNumberAsInDB(call.from_number!);
+            namesToAdd[call.id] = await getCustomerName(formattedPhone);
+          } catch (error) {
+            namesToAdd[call.id] = formatPhoneNumber(call.from_number!) || 'Unknown';
+          }
+        })
+      );
 
-    if (Object.keys(namesToAdd).length > 0) {
-      setCustomerNames((prev) => ({ ...prev, ...namesToAdd }));
-    }
-  };
+      if (Object.keys(namesToAdd).length > 0) {
+        setCustomerNames((prev) => ({ ...prev, ...namesToAdd }));
+      }
+    };
 
-  fetchCustomerNames();
-}, [currentCallsPaginated]); // ✅ Only when calls change
+    fetchCustomerNames();
+  }, [currentCallsPaginated]); // ✅ Only when calls change
+
+  useEffect(() => {
+    const loadCustomerName = async () => {
+
+
+      if (selectedCall?.from_number) {
+        console.log(selectedCall);
+        const name = await getCustomerName(selectedCall.from_number);
+        console.log(name);
+        setCustomerNameDialog(name);
+      }
+    };
+
+    loadCustomerName();
+  }, [selectedCall?.from_number]);
 
 
   // const handlePageChange = (pageNumber: number) => {
@@ -82,6 +97,12 @@ useEffect(() => {
     setIsModalOpen(false);
     setSelectedCall(null);
   };
+
+  const getCustomerName = async (phone: string) => {
+    const formattedPhone = await formatService.formatPhoneNumberAsInDB(phone);
+    const customer = await customerService.getCustomerByPhone(formattedPhone);
+    return customer?.name ?? formatPhoneNumber(formattedPhone);
+  }
 
   return (
     <>
@@ -137,17 +158,42 @@ useEffect(() => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-dark-800 p-6 rounded-lg text-white max-w-4xl w-full">
             <h3 className="text-xl font-bold mb-4">Call Details</h3>
-            <p><strong>From:</strong> {formatPhoneNumber(selectedCall.from_number!)}</p>
-            <p><strong>To:</strong> {formatPhoneNumber(selectedCall.to_number!)}</p>
-            <p><strong>Start Time:</strong> {selectedCall.start_time ? formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}</p>
-            <p><strong>End Time:</strong> {selectedCall.end_time ? formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}</p>
-            <p><strong>Duration:</strong> {selectedCall.start_time && selectedCall.end_time
-              ? Math.round(
-                (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
-              )
-              : 'N/A'} s</p>
+            <p>From:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-green-400`}>
+                {customerNameDialog} [{selectedCall.from_number}]
+              </span>
+            </p>
+
+            <p>To:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-green-400`}>
+                {formatPhoneNumber(selectedCall.to_number!)}
+              </span>
+            </p>
+
+            <p>Start Time:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.start_time ? formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}
+              </span>
+            </p>
+
+            <p>End Time:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.end_time ? formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}
+              </span>
+            </p>
+
+            <p>Duration:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.start_time && selectedCall.end_time
+                  ? Math.round(
+                    (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
+                  )
+                  : 'N/A'} s
+              </span>
+            </p>
+
             <div className="mt-4 block mb-2">
-              <strong>Recording:</strong>
+              Recording:
               {selectedCall.recording_url ? (
                 <audio controls src={selectedCall.recording_url} className="mt-2 w-full">
                   Download audio
@@ -167,30 +213,34 @@ useEffect(() => {
               )}
             </div>
             <div className="mt-4">
-              <strong>Transcript:</strong>
-              <p> {selectedCall.transcript} </p>
+              Transcript:
+              <p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-large  text-gray-400`}>
+                  {selectedCall.transcript}
+                </span>
+              </p>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-            {selectedCall.user_id && ( //TODO: compare this user is logged user
-            
+              {selectedCall.user_id && ( //TODO: compare this user is logged user
+
+                <button
+                  onClick={async () => {
+                    const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
+                    const foundCustomer = await customerService.getCustomerByPhone(customer);
+                    if (foundCustomer) {
+                      navigate(`/customers/${foundCustomer.id}`);
+                    }
+                  }}
+                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >View User Details</button>
+
+              )}
               <button
-                onClick={async () => {
-                  const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
-                  const foundCustomer = await customerService.getCustomerByPhone(customer);
-                  if (foundCustomer) {
-                    navigate(`/customers/${foundCustomer.id}`);
-                  }
-                }}
-                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >View User Details</button>
-              
-            )}
-            <button
-              onClick={closeModal}
-              className="mt-6 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600"
-            >
-              Close
-            </button>
+                onClick={closeModal}
+                className="mt-6 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
