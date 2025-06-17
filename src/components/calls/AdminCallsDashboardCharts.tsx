@@ -202,7 +202,7 @@ const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls 
         //const reason = call.disconnection_reason || 'Completed'; // Group null/empty as 'Completed'
         //console.log(call);
 
-        const reason = call.disconnection_reason;
+        const reason = call.disconnection_reason.replace('_',' ');
         counts[reason] = (counts[reason] || 0) + 1;
       });
     }
@@ -484,6 +484,7 @@ const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls 
 
       <CallsWidgetsDashboard
         agentsCount={agentsCount} calls={calls}
+        averageCallLenght={averageCallDuration}
         totalCallGrowthThisMonth={totalCallGrowghtThisMonth}
         totalCallGrowthLastMonth={totalCallGrowghtLastMonth}
         totalCallsDuration={totalCallsDuration} 
@@ -509,32 +510,12 @@ const AdminCallsDashboardCharts: React.FC<CallsDashboardChartsProps> = ({ calls 
 
       {/* Three smaller charts in a row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-          <Bar data={averageCallLengthBarData} options={{
-            ...smallChartOptions,
-            plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins.title, text: 'Average Call Length (minutes)' } },
-            scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: false } } // Hide x-axis labels for single bar
-          }} />
-        </div>
-
-        <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
+        {/* <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
           <Pie data={disconnectionReasonPieData} options={{
             ...pieChartOptions,
             plugins: { ...pieChartOptions.plugins }
           }} />
-        </div>
-
-        {/* Calls by Month Bar Chart */}
-        <div className="bg-dark-800 rounded-lg border border-dark-700 p-6 h-80">
-          {/* <Bar
-                      data={callsByMonthBarData}
-                      options={{
-                          ...smallChartOptions,
-                          plugins: { ...smallChartOptions.plugins, title: { ...smallChartOptions.plugins, text: 'Calls by Month' } },
-                          scales: { ...smallChartOptions.scales, y: { ...smallChartOptions.scales.y, beginAtZero: true, display: true }, x: { ...smallChartOptions.scales.x, display: true } }
-                      }}
-                  /> */}
-        </div>
+        </div> */}
       </div>
     </div>
 

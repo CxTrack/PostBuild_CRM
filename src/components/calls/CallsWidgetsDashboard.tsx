@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, Headset, Phone, Timer } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Headset, Phone, Timer, TimerReset } from "lucide-react";
 
 interface CallsWidgetsDashboardProps {
     agentsCount: number;
     calls: { start_time?: string; duration?: number }[];
+    averageCallLenght: number;
     totalCallGrowthThisMonth: number;
     totalCallGrowthLastMonth: number;
     totalCallsDuration: number;
@@ -14,6 +15,7 @@ interface CallsWidgetsDashboardProps {
 export const CallsWidgetsDashboard = ({
     agentsCount,
     calls,
+    averageCallLenght,
     totalCallGrowthThisMonth,
     totalCallGrowthLastMonth,
     totalCallsDuration,
@@ -96,6 +98,21 @@ export const CallsWidgetsDashboard = ({
                         {totalDurationGrowthDiff.toFixed(2)} min
                     </span>
                     <span className="text-gray-500 text-sm ml-1">vs last month</span>
+                </div>
+            </Link>
+
+                        <Link
+                to="/settings?tab=call-agent-setup"
+                className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors"
+            >
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-gray-400 text-sm">Avg Response Time</p>
+                        <h3 className="text-2xl font-bold text-white mt-1">{averageCallLenght} min</h3>
+                    </div>
+                    <div className="p-3 rounded-lg bg-orange-500/20 text-orange-500">
+                        <TimerReset size={24} />
+                    </div>
                 </div>
             </Link>
         </div>
