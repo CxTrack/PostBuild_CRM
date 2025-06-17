@@ -1,37 +1,37 @@
-CREATE TABLE IF NOT EXISTS user_calls (
+CREATE TABLE IF NOT EXISTS user_call_agents (
   call_agent_id text PRIMARY KEY,  -- ✅ OR at least UNIQUE
   user_id uuid REFERENCES auth.users(id) NOT NULL
 );
 
 
 -- Enable Row Level Security
-ALTER TABLE user_calls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_call_agents ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
 -- Policy for users to select agent calls history
 CREATE POLICY "Users can view agent calls history"
-  ON user_calls
+  ON user_call_agents
   FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
 -- Policy for users to insert agent calls history
 CREATE POLICY "Users can insert agent calls history"
-  ON user_calls
+  ON user_call_agents
   FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy for users to update agent calls history
 CREATE POLICY "Users can update agent calls history"
-  ON user_calls
+  ON user_call_agents
   FOR UPDATE
   TO authenticated
   USING (auth.uid() = user_id);
 
 -- Policy for users to delete agent calls history
 CREATE POLICY "Users can delete agent calls history"
-  ON user_calls 
+  ON user_call_agents 
   FOR DELETE
   TO authenticated
   USING (auth.uid() = user_id);
@@ -46,8 +46,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger for updated_at
-DROP TRIGGER IF EXISTS set_user_calls_updated_at ON user_calls;
-CREATE TRIGGER set_user_calls_updated_at
-  BEFORE UPDATE ON user_calls
+DROP TRIGGER IF EXISTS set_user_call_agents_updated_at ON user_call_agents;
+CREATE TRIGGER set_user_call_agents_updated_at
+  BEFORE UPDATE ON user_call_agents
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();

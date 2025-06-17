@@ -5,7 +5,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useProfileStore } from '../../stores/profileStore';
 import { supabase } from '../../lib/supabase';
 import { Edit, Eye, Link, Trash2 } from 'lucide-react';
-import { Agent } from 'retell-sdk/resources.mjs';
 
 interface CallAgent {
   call_agent_id: string;
@@ -31,7 +30,7 @@ const CallAgentTab: React.FC = () => {
     setLoadingAgents(true);
 
     const { data, error } = await supabase
-      .from('user_calls')
+      .from('user_call_agents')
       .select('call_agent_id')
       .eq('user_id', user.id);
 
@@ -53,13 +52,10 @@ const CallAgentTab: React.FC = () => {
       return;
     }
 
-    console.log(agent.call_agent_id);
-
-
     setDeleteAgent(true);
 
     const { data, error } = await supabase
-      .from('user_calls')
+      .from('user_call_agents')
       .delete()
       .eq('call_agent_id', agent.call_agent_id);
 
@@ -67,7 +63,6 @@ const CallAgentTab: React.FC = () => {
       console.error('Error deleting user_call record:', error.message);
       toast.error('Error deleting user_call record:');
     } else {
-      console.log('Deleted record(s):', data);
       toast.success('Agent succesfully deleted.');
       fetchCallAgents();
     }
@@ -83,7 +78,7 @@ const CallAgentTab: React.FC = () => {
 
     setAddingAgent(true);
     const { data, error } = await supabase
-      .from('user_calls')
+      .from('user_call_agents')
       .insert([{ user_id: user.id, call_agent_id: newAgentId }]);
 
     if (error) {

@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS calls (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   from_number text NOT NULL,
   to_number text NOT NULL,
-  call_agent_id text NOT NULL REFERENCES user_calls(call_agent_id),
+  call_agent_id text NOT NULL REFERENCES user_call_agents(call_agent_id),
   -- optionally, include user_id for RLS or filtering
   user_id uuid NOT NULL REFERENCES auth.users(id),
   start_time timestamptz,

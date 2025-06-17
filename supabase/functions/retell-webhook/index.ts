@@ -46,9 +46,9 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // Step 1: Find user_id from user_calls table
+  // Step 1: Find user_id from user_call_agents table
   const { data: userCall, error: userCallError } = await supabase
-    .from('user_calls')
+    .from('user_call_agents')
     .select('user_id')
     .eq('call_agent_id', call_agent_id)
     .single()

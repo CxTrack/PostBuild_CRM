@@ -132,7 +132,7 @@ export const useCallStore = create<CallStore>((set) => ({
       }
 
       const { data: callAgents, error } = await supabase
-        .from('user_calls')
+        .from('user_call_agents')
         .select('call_agent_id')
         .eq('user_id', user!.data?.user?.id);
 
