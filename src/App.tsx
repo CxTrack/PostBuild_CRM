@@ -83,6 +83,7 @@ import Calls from './pages/calls/Calls';
 import AdminCalls from './pages/calls/AdminCalls';
 import AdminUsers from './pages/users/AdminUsers';
 import NotificationSender from './components/NotificationSender';
+import AdminCallAgent from './pages/calls/AdminCallAgent';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -244,6 +245,7 @@ function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
           <Route path="/admin-calls" element={user ? <AdminCalls /> : <Navigate to="/login" />} />
+          <Route path="/admin/call-agent-setup" element={user ? <AdminCallAgent /> : <Navigate to="/login" />} />
           <Route path="/admin-users" element={user ? <AdminUsers /> : <Navigate to="/login" />} />
           <Route path="/admin/sent-notification" element={user ? <NotificationSender /> : <Navigate to="/login" />} />
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />

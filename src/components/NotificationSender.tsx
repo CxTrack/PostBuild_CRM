@@ -110,7 +110,6 @@ const NotificationSender: React.FC = () => {
               </>
             )}
           </button>
-
         </div>
       </form>
     </div>

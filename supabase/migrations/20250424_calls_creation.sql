@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS calls (
   updated_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE calls
+ADD COLUMN name text,
+ADD COLUMN phone_number text,
+ADD COLUMN email text;
+
 -- Enable Row Level Security
 ALTER TABLE calls ENABLE ROW LEVEL SECURITY;
 

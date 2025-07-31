@@ -393,6 +393,15 @@ const DashboardLayout: React.FC = () => {
 
             {(!sidebarOpen || expandedSections.admin) && isAdmin && (
               <>
+                <NavLink to="/admin/call-agent-setup" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
+                  <Settings size={20} />
+                  {sidebarOpen && <span>Call Agents</span>}
+                </NavLink>
+              </>
+            )}
+
+            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
+              <>
                 <NavLink to="/admin-users" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Users</span>}
@@ -408,8 +417,6 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               </>
             )}
-
-           
 
             {sidebarOpen && (
               <div

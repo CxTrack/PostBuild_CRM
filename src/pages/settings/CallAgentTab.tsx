@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
-//import Modal from 'react-modal';
 import { useProfileStore } from '../../stores/profileStore';
 import { supabase } from '../../lib/supabase';
 import { Edit, Eye, Link, Trash2 } from 'lucide-react';
+import { adminStore } from '../../stores/adminStore';
 
 interface CallAgent {
   call_agent_id: string;
@@ -12,28 +12,38 @@ interface CallAgent {
 
 const CallAgentTab: React.FC = () => {
   const { profile, updateProfile, loading, error } = useProfileStore();
+  const { isAdmin, isUserAdmin } = adminStore.getState();
   const { user } = useAuthStore();
   const [callAgents, setCallAgents] = useState<CallAgent[]>([]);
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
   const [newAgentId, setNewAgentId] = useState('');
+  const [newUserId, setNewUserId] = useState('');
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [addingAgent, setAddingAgent] = useState(false);
   const [deletingAgent, setDeleteAgent] = useState(false);
 
   useEffect(() => {
     fetchCallAgents();
+    isUserAdmin();
   }, [user]);
 
 
   const fetchCallAgents = async () => {
     if (!user) return;
+
     setLoadingAgents(true);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('user_call_agents')
-      .select('call_agent_id')
-      .eq('user_id', user.id);
+      .select('call_agent_id');
 
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+
+    
+    const { data, error } = await query;
+console.log(data);
     if (error) {
       console.error('Error fetching call agents:', error);
       toast.error('Failed to fetch call agents.');
@@ -54,7 +64,7 @@ const CallAgentTab: React.FC = () => {
 
     setDeleteAgent(true);
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('user_call_agents')
       .delete()
       .eq('call_agent_id', agent.call_agent_id);
@@ -77,9 +87,20 @@ const CallAgentTab: React.FC = () => {
     }
 
     setAddingAgent(true);
-    const { data, error } = await supabase
+
+    let insertPayload;
+
+    if (isAdmin) {
+      // Admins can specify a different user ID (assumes newUserId is set from input)
+      insertPayload = { user_id: newUserId, call_agent_id: newAgentId };
+    } else {
+      // Regular users can only insert for themselves
+      insertPayload = { user_id: user.id, call_agent_id: newAgentId };
+    }
+
+    const { error } = await supabase
       .from('user_call_agents')
-      .insert([{ user_id: user.id, call_agent_id: newAgentId }]);
+      .insert([insertPayload]);
 
     if (error) {
       console.error('Error adding new agent:', error);
@@ -152,6 +173,15 @@ const CallAgentTab: React.FC = () => {
               value={newAgentId}
               onChange={(e) => setNewAgentId(e.target.value)}
             />
+            {isAdmin && (
+              <input
+                type="text"
+                className="input mb-4"
+                placeholder="Enter User ID"
+                value={newUserId}
+                onChange={(e) => setNewUserId(e.target.value)}
+              />
+            )}
             <button
               onClick={handleAddAgent}
               className="btn btn-primary"

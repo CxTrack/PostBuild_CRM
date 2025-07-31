@@ -117,11 +117,35 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
       }
     };
 
+    const morgageBrokersConfig: TemplateConfig = {
+      name: 'Call Center',
+      sidebarItems: [
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard' },
+        { label: 'Customers', icon: 'Users', path: '/customers' },
+        { label: 'Calls', icon: 'Phone', path: '/calls' },
+        { label: 'CRM', icon: 'Users', path: '/crm' },
+      ],
+      dashboardCards: [
+        { title: 'Customers', icon: 'Users', value: '0', change: '0%', trend: 'up', color: 'text-blue-500' },
+        { title: 'Calls', icon: 'Phone', value: '0', change: '0%', trend: 'up', color: 'text-green-500' }
+      ],
+      dashboardSections: {
+        showPipeline: false,
+        showInventory: false,
+        showExpenses: false,
+        showCalendar: false,
+        showSales: false,
+        showFinance: false
+      }
+    };
+
     switch (templateId) {
       case 'realtors':
         return realtorConfig;
       case 'call-center':
         return callCenterConfig;
+      case 'morgage-brokers':
+        return morgageBrokersConfig;
       default:
         return defaultConfig;
     }
