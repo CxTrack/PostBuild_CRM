@@ -1,5 +1,4 @@
 import {
-  Link,
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
@@ -19,7 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { useCallStore } from '../../stores/callStore';
 import { callsService } from '../../services/callsService';
 import { Call } from '../../types/database.types';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useActivityStore } from '../../stores/activitiesStore';
 
 
@@ -36,19 +35,19 @@ const getRelativeTime = (date: string) => {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  //const [pipelineData, setPipelineData] = useState<any[]>([]);
+  const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts } = useProductStore();
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
-  //const { totalProducts } = useProductStore();
-  //const { suppliers, fetchSuppliers } = useSupplierStore();
+  const { totalProducts } = useProductStore();
+  const { suppliers, fetchSuppliers } = useSupplierStore();
   const [loading, setLoading] = useState(true);
-  //const [totalRevenue, setTotalRevenue] = useState(0);
-  const { activities, getActivities} = useActivityStore();
-  //const [expenses, setExpenses] = useState<any[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const { activities, getActivities } = useActivityStore();
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [dashboardSettings, setDashboardSettings] = useState({
     showSalesChart: true,
@@ -79,40 +78,42 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       try {
         // Fetch recent expenses
-        // const { data: recentExpenses, error: expensesError } = await supabase
-        //   .from('expenses')
-        //   .select('*')
-        //   .order('created_at', { ascending: false })
-        //   .limit(5);
+        const { data: recentExpenses, error: expensesError } = await supabase
+          .from('expenses')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
 
-        // if (expensesError) throw expensesError;
-        // setExpenses(recentExpenses || []);
+        if (expensesError) throw expensesError;
+
+        setExpenses(recentExpenses || []);
 
         // Fetch pipeline data
-        // const { data: pipeline, error: pipelineError } = await supabase
-        //   .rpc('get_pipeline_summary', {
-        //     p_user_id: user?.id
-        //   });
+        const { data: pipeline, error: pipelineError } = await supabase
+          .rpc('get_pipeline_summary', {
+            p_user_id: user?.id
+          });
 
-        // if (pipelineError) throw pipelineError;
-        // setPipelineData(pipeline || []);
+        if (pipelineError) throw pipelineError;
+        setPipelineData(pipeline || []);
 
         await getActivities(); // Fetch recent activities
-      
+
 
         // Calculate total revenue from paid invoices
-        // const revenue = invoices
-        //   .filter(inv => inv.status === 'Paid')
-        //   .reduce((sum, inv) => sum + (inv.total || 0), 0);
-        // setTotalRevenue(revenue);
+        const revenue = invoices
+          .filter(inv => inv.status === 'Paid')
+          .reduce((sum, inv) => sum + (inv.total || 0), 0);
 
-        // await Promise.all([
-        //   fetchCustomers(),
-        //   fetchProducts(),
-        //   fetchInvoices(),
-        //   fetchEvents(),
-        //   fetchSuppliers()
-        // ]);
+        setTotalRevenue(revenue);
+
+        await Promise.all([
+          fetchCustomers(),
+          fetchProducts(),
+          fetchInvoices(),
+          fetchEvents(),
+          fetchSuppliers()
+        ]);
 
         // Load dashboard settings
         const { data: settings } = await supabase
@@ -121,8 +122,8 @@ const Dashboard: React.FC = () => {
           .eq('user_id', user?.id)
           .single();
 
-          //TODO: how to make sure this template is enabled or disabled
-          // if disabled than nedd to recover to default
+        //TODO: how to make sure this template is enabled or disabled
+        // if disabled than nedd to recover to default
 
         if (settings?.dashboard_settings) {
           setDashboardSettings(settings.dashboard_settings);
@@ -352,9 +353,7 @@ const Dashboard: React.FC = () => {
         </Link> */}
       </div>
 
-      <CallsDashboardCharts calls={callsItems} />
-
-      {/* <div className="card bg-dark-800 border border-dark-700">
+      <div className="card bg-dark-800 border border-dark-700">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold text-white flex items-center">
             <span>Pipeline Overview</span>
@@ -409,7 +408,9 @@ const Dashboard: React.FC = () => {
             );
           })}
         </div>
-      </div> */}
+      </div>
+
+      <CallsDashboardCharts calls={callsItems} />
 
       {/* Inventory and Expenses Overview */}
       {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */} {/* when both widgets are enabled */}
