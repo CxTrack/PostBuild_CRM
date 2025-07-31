@@ -268,7 +268,7 @@ const Dashboard: React.FC = () => {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/*  <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Revenue</p>
@@ -304,7 +304,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Link>
 
-        <Link to="/products" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/* <Link to="/products" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Products</p>
@@ -319,9 +319,9 @@ const Dashboard: React.FC = () => {
               <Package size={24} />
             </div>
           </div>
-        </Link>
+        </Link> */}
 
-        <Link to="/invoices" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/* <Link to="/invoices" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Pending Orders</p>
@@ -338,9 +338,9 @@ const Dashboard: React.FC = () => {
               <ShoppingCart size={24} />
             </div>
           </div>
-        </Link>
+        </Link> */}
 
-        <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/* <Link to="/suppliers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Suppliers</p>
@@ -371,9 +371,9 @@ const Dashboard: React.FC = () => {
           {[
             { stage: 'lead', label: 'Leads', color: 'bg-gray-500' },
             { stage: 'opportunity', label: 'Opportunities', color: 'bg-blue-500' },
-            { stage: 'quote', label: 'Quotes', color: 'bg-yellow-500' },
-            { stage: 'invoice_sent', label: 'Invoices (Sent)', color: 'bg-orange-500' },
-            { stage: 'invoice_pending', label: 'Invoices (Pending)', color: 'bg-purple-500' },
+            // { stage: 'quote', label: 'Quotes', color: 'bg-yellow-500' },
+            // { stage: 'invoice_sent', label: 'Invoices (Sent)', color: 'bg-orange-500' },
+            // { stage: 'invoice_pending', label: 'Invoices (Pending)', color: 'bg-purple-500' },
             { stage: 'closed_won', label: 'Closed (Won)', color: 'bg-green-500' }
           ].map((stage) => {
             const stageData = pipelineData?.find(p => p.pipeline_stage === stage.stage) || {

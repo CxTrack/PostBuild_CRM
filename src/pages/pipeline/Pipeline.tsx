@@ -277,9 +277,9 @@ const Pipeline: React.FC = () => {
           {[
             { stage: 'lead', label: 'Leads', color: 'bg-gray-500' },
             { stage: 'opportunity', label: 'Opportunities', color: 'bg-blue-500' },
-            { stage: 'quote', label: 'Quotes', color: 'bg-yellow-500' },
-            { stage: 'invoice_sent', label: 'Invoices (Sent)', color: 'bg-orange-500' },
-            { stage: 'invoice_pending', label: 'Invoices (Pending)', color: 'bg-purple-500' },
+            // { stage: 'quote', label: 'Quotes', color: 'bg-yellow-500' },
+            // { stage: 'invoice_sent', label: 'Invoices (Sent)', color: 'bg-orange-500' },
+            // { stage: 'invoice_pending', label: 'Invoices (Pending)', color: 'bg-purple-500' },
             { stage: 'closed_won', label: 'Closed (Won)', color: 'bg-green-500' }
           ].map((stage) => {
             const stageData = pipelineData?.find(p => p.pipeline_stage === stage.stage);
