@@ -268,7 +268,7 @@ const Dashboard: React.FC = () => {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+        {/* <Link to="/revenue" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Revenue</p>
@@ -285,24 +285,7 @@ const Dashboard: React.FC = () => {
               <DollarSign size={24} />
             </div>
           </div>
-        </Link>
-
-        <Link to="/customers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Customers</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{customers.length}</h3>
-              <div className="flex items-center mt-2">
-                <ArrowUpRight size={16} className="text-green-500" />
-                <span className="text-sm text-green-500 ml-1">8%</span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div>
-            </div>
-            <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
-              <Users size={24} />
-            </div>
-          </div>
-        </Link>
+        </Link> */}
 
         {/* <Link to="/products" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
           <div className="flex justify-between items-start">

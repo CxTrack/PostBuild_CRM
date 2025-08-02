@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload, ArrowUpRight, Users } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { toast } from 'react-hot-toast';
 
@@ -8,20 +8,20 @@ const Customers: React.FC = () => {
   const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  
+
   // Fetch customers on component mount
   useEffect(() => {
     fetchCustomers().catch(err => {
       toast.error('Failed to load customers');
     });
   }, [fetchCustomers]);
-  
-  const filteredCustomers = customers.filter(customer => 
+
+  const filteredCustomers = customers.filter(customer =>
     customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer?.phone?.includes(searchTerm)
   );
-  
+
   const toggleSelectAll = () => {
     if (selectedCustomers.length === filteredCustomers.length) {
       setSelectedCustomers([]);
@@ -29,7 +29,7 @@ const Customers: React.FC = () => {
       setSelectedCustomers(filteredCustomers.map(c => c.id));
     }
   };
-  
+
   const toggleSelectCustomer = (id: string) => {
     if (selectedCustomers.includes(id)) {
       setSelectedCustomers(selectedCustomers.filter(cId => cId !== id));
@@ -37,7 +37,7 @@ const Customers: React.FC = () => {
       setSelectedCustomers([...selectedCustomers, id]);
     }
   };
-  
+
   const handleDeleteCustomer = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
       try {
@@ -48,7 +48,7 @@ const Customers: React.FC = () => {
       }
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,7 +64,27 @@ const Customers: React.FC = () => {
           </Link>
         </div>
       </div>
-      
+
+      {/* Widgets */}
+      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Link to="/customers" className="card bg-dark-800 border border-dark-700 hover:bg-dark-700/50 transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-400 text-sm">Total Customers</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{customers.length}</h3>
+              <div className="flex items-center mt-2">
+                <ArrowUpRight size={16} className="text-green-500" />
+                <span className="text-sm text-green-500 ml-1">8%</span>
+                <span className="text-gray-500 text-sm ml-1">vs last month</span>
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
+              <Users size={24} />
+            </div>
+          </div>
+        </Link>
+      </div> */}
+
       {/* Filters and search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -79,7 +99,7 @@ const Customers: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         {/* <div className="flex gap-2">
           <button className="btn btn-secondary flex items-center space-x-2">
             <Filter size={16} />
@@ -91,14 +111,14 @@ const Customers: React.FC = () => {
           </button>
         </div> */}
       </div>
-      
+
       {/* Error message */}
       {error && (
         <div className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded-md">
           {error}
         </div>
       )}
-      
+
       {/* Loading state */}
       {loading && (
         <div className="text-center py-4">
@@ -106,7 +126,7 @@ const Customers: React.FC = () => {
           <p className="mt-2 text-gray-400">Loading customers...</p>
         </div>
       )}
-      
+
       {/* Customers table */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
         {!loading && filteredCustomers.length > 0 ? (
@@ -157,9 +177,8 @@ const Customers: React.FC = () => {
                       <span className="text-sm text-gray-300">{customer.type || 'Individual'}</span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        customer.status === 'Active' ? 'bg-green-900/30 text-green-400' : 'bg-gray-700/30 text-gray-400'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.status === 'Active' ? 'bg-green-900/30 text-green-400' : 'bg-gray-700/30 text-gray-400'
+                        }`}>
                         {customer.status || 'Active'}
                       </span>
                     </td>
@@ -177,7 +196,7 @@ const Customers: React.FC = () => {
                         <Link to={`/customers/${customer.id}/edit`} className="text-gray-400 hover:text-white">
                           <Edit size={16} />
                         </Link>
-                        <button 
+                        <button
                           className="text-gray-400 hover:text-red-500"
                           onClick={() => handleDeleteCustomer(customer.id)}
                         >
@@ -203,7 +222,7 @@ const Customers: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* Pagination - only show if there are customers */}
         {filteredCustomers.length > 0 && (
           <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">

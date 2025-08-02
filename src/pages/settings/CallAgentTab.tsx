@@ -71,7 +71,7 @@ console.log(data);
 
     if (error) {
       console.error('Error deleting user_call record:', error.message);
-      toast.error('Error deleting user_call record:');
+      toast.error('Error deleting user_call record: ' + error.message);
     } else {
       toast.success('Agent succesfully deleted.');
       fetchCallAgents();
