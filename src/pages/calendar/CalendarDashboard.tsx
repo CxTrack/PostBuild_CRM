@@ -12,12 +12,7 @@ import {
   LineElement, // For Area charts
   Filler, // For Area charts
 } from 'chart.js';
-import { callsService } from '../../services/callsService';
-import { formatService } from '../../services/formatService';
 
-import RecentCallsTable from '../../components/calls/RecentCallsTable';
-import { Call } from '../../types/database.types';
-import CallsDashboardCharts from '../../components/calls/CallsDashboardCharts';
 import Calendar from '../../components/calendar/Calendar';
 
 ChartJS.register(
@@ -35,12 +30,8 @@ ChartJS.register(
 
 const CalendarDashboard: React.FC = () => {
 
-  const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const callsPerPage = 20;
-
 
   useEffect(() => {
     const fetchCalls = async () => {
