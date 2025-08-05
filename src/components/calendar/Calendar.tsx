@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar as BigCalendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import enUS from 'date-fns/locale/en-US';
-import { useCalendarStore } from '../stores/calendarStore';
-import { useProfileStore } from '../stores/profileStore';
+import { useCalendarStore } from '../../stores/calendarStore';
+import { useProfileStore } from '../../stores/profileStore';
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -39,7 +39,7 @@ const Calendar: React.FC<CalendarProps> = ({
   const [date, setDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [eventTypeFilter, setEventTypeFilter] = useState<string[]>(['custom', 'invoice']);
+  //const [eventTypeFilter, setEventTypeFilter] = useState<string[]>(['custom', 'invoice']);
   const [newEvent, setNewEvent] = useState({
     title: '',
     start: new Date(),
@@ -53,18 +53,21 @@ const Calendar: React.FC<CalendarProps> = ({
   }, [fetchEvents]);
   
   // Filter events based on type
-  const filteredEvents = events.filter(event => {
-    const today = new Date();
-    const isToday = isWithinInterval(new Date(event.start), {
-      start: startOfDay(today),
-      end: endOfDay(today)
-    });
-    
-    return eventTypeFilter.includes(event.type) && isToday;
-  });
+  // const filteredEvents = events.filter(event => {
+  //   const today = new Date();
+  //   const isToday = isWithinInterval(new Date(event.start), {
+  //     start: startOfDay(today),
+  //     end: endOfDay(today)
+  //   });
+
+  //   return eventTypeFilter.includes(event.type) && isToday;
+  // });
+  const filteredEvents = events;
 
   const handleEventClick = (event: any) => {
     setSelectedEvent(event);
+    console.log(event);
+    
     setShowEventModal(true);
     
     // If it's an invoice event, navigate to invoice detail
@@ -264,7 +267,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <input
                   type="text"
                   className="input w-full"
-                  value={newEvent.title}
+                  value={selectedEvent ? selectedEvent.title : newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Event title"
                 />
@@ -276,13 +279,13 @@ const Calendar: React.FC<CalendarProps> = ({
                 </label>
                 <select
                   className="input w-full"
-                  value={newEvent.type}
+                  value={selectedEvent ? selectedEvent.type : newEvent.type}
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })}
                 >
                   <option value="custom">Custom Event</option>
                   <option value="task">Task</option>
-                  <option value="invoice">Invoice Due</option>
-                  <option value="expense">Expense</option>
+                  {/* <option value="invoice">Invoice Due</option>
+                  <option value="expense">Expense</option> */}
                 </select>
               </div>
 
@@ -293,7 +296,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <input
                   type="datetime-local"
                   className="input w-full"
-                  value={format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                  value={selectedEvent ? format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm") : format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
                   onChange={(e) => setNewEvent({ ...newEvent, start: new Date(e.target.value) })}
                 />
               </div>
@@ -305,7 +308,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <input
                   type="datetime-local"
                   className="input w-full"
-                  value={format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
+                  value={selectedEvent ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
                   onChange={(e) => setNewEvent({ ...newEvent, end: new Date(e.target.value) })}
                 />
               </div>
@@ -316,8 +319,8 @@ const Calendar: React.FC<CalendarProps> = ({
                 </label>
                 <textarea
                   className="input w-full"
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  value={selectedEvent ? selectedEvent.description : newEvent.description}
+                  onChange={(e) => setNewEvent(selectedEvent ? { ...selectedEvent, description: e.target.value } : { ...newEvent, description: e.target.value })}
                   rows={3}
                   placeholder="Event description"
                 />

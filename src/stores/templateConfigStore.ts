@@ -124,13 +124,14 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
         { label: 'Customers', icon: 'Users', path: '/customers' },
         { label: 'Calls', icon: 'Phone', path: '/calls' },
         { label: 'CRM', icon: 'Users', path: '/crm' },
+        { label: 'Calendar', icon: 'Calendar', path: '/calendar' },
       ],
       dashboardCards: [
         { title: 'Customers', icon: 'Users', value: '0', change: '0%', trend: 'up', color: 'text-blue-500' },
         { title: 'Calls', icon: 'Phone', value: '0', change: '0%', trend: 'up', color: 'text-green-500' }
       ],
       dashboardSections: {
-        showPipeline: false,
+        showPipeline: true, // not sure its working - to check
         showInventory: false,
         showExpenses: false,
         showCalendar: false,

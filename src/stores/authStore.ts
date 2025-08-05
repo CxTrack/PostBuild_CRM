@@ -184,6 +184,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         errorMessage = 'Please enter a valid email address.';
       } else if (error.message.includes('rate limit')) {
         errorMessage = 'Too many attempts. Please try again later.';
+      } else {
+        errorMessage = error.message;
       }
 
       set({ error: errorMessage, loading: false });

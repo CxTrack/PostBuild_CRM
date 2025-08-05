@@ -45,6 +45,15 @@ const CRMDashboard: React.FC = () => {
     )
   );
 
+  // Filter taks based on pipeline stage and search term
+  const tasks = customers.filter(customer =>
+    customer.pipeline_stage === 'task' && (
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
+    )    
+  );
+
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
@@ -299,10 +308,10 @@ const CRMDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">Tasks</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">{stats.tasks.completed}/{stats.tasks.total}</span>
-                    <div className={`flex items-center ml-2 ${stats.tasks.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                    {/* <div className={`flex items-center ml-2 ${stats.tasks.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.tasks.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.tasks.change}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -329,7 +338,30 @@ const CRMDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
-                    {/* Empty state */}
+                    {tasks.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12">
+                          <TrendingUp size={48} className="text-gray-600 mb-4 mx-auto" />
+                          <p className="text-gray-400 text-lg mb-2">No tasks found</p>
+                          <p className="text-gray-500 text-sm mb-6">Add a new task</p>
+                          <button
+                            onClick={() => setShowTaskModal(true)}
+                            className="btn btn-primary flex items-center space-x-2 mx-auto"
+                          >
+                            <Plus size={16} />
+                            <span>Add Task</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      tasks.map((task) => (
+                        <tr key={task.id} className="hover:bg-dark-700/50">
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-white">{task.name}</div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -362,10 +394,10 @@ const CRMDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">Opportunities</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">{stats.opportunities.value}</span>
-                    <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                    {/* <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.opportunities.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.opportunities.change}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

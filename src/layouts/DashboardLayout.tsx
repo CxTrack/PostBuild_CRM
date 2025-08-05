@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { useTemplateStore } from '../stores/templateStore';
 import { useTemplateConfigStore } from '../stores/templateConfigStore';
-import CalendarComponent from '../components/Calendar';
+import CalendarComponent from '../components/calendar/Calendar';
 import { adminStore } from '../stores/adminStore';
 
 const DashboardLayout: React.FC = () => {

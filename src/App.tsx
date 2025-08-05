@@ -84,6 +84,7 @@ import AdminCalls from './pages/calls/AdminCalls';
 import AdminUsers from './pages/users/AdminUsers';
 import NotificationSender from './components/NotificationSender';
 import AdminCallAgent from './pages/calls/AdminCallAgent';
+import CalendarDashboard from './pages/calendar/CalendarDashboard';
 
 function App() {
   const { user, initialized, initialize, checkAuthStatus } = useAuthStore();
@@ -247,19 +248,23 @@ function App() {
           <Route path="/admin-calls" element={user ? <AdminCalls /> : <Navigate to="/login" />} />
           <Route path="/admin/call-agent-setup" element={user ? <AdminCallAgent /> : <Navigate to="/login" />} />
           <Route path="/admin-users" element={user ? <AdminUsers /> : <Navigate to="/login" />} />
+          
           <Route path="/admin/sent-notification" element={user ? <NotificationSender /> : <Navigate to="/login" />} />
           <Route path="/crm" element={user ? <CRMDashboard /> : <Navigate to="/login" />} />
+          <Route path="/Calls" element={user ? <Calls /> : <Navigate to="/login" />} />
+
           <Route path="/customers" element={user ? <Customers /> : <Navigate to="/login" />} />
           <Route path="/customers/new" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
           <Route path="/customers/:id" element={user ? <CustomerDetail /> : <Navigate to="/login" />} />
           <Route path="/customers/:id/edit" element={user ? <NewCustomer /> : <Navigate to="/login" />} />
 
+          <Route path="/calendar" element={user ? <CalendarDashboard /> : <Navigate to="/login" />} />
+
+
           <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
           <Route path="/suppliers/new" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
           <Route path="/suppliers/:id" element={user ? <SupplierDetail /> : <Navigate to="/login" />} />
-          <Route path="/suppliers/:id/edit" element={user ? <NewSupplier /> : <Navigate to="/login" />} />
-
-          <Route path="/Calls" element={user ? <Calls /> : <Navigate to="/login" />} />
+          <Route path="/suppliers/:id/edit" element={user ? <NewSupplier /> : <Navigate to="/login" />} />         
 
           <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
           <Route path="/products/new" element={user ? <NewProduct /> : <Navigate to="/login" />} />
