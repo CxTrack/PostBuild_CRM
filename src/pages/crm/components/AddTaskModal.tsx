@@ -86,7 +86,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
             </label>
             <select className="input w-full" {...register('assignedTo')}>
               <option value="self">Myself</option>
-              <option value="team">Team</option>
+              {/* <option value="team">Team</option> */}
             </select>
           </div>
 

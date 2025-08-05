@@ -62,7 +62,7 @@ const CalendarDashboard: React.FC = () => {
       {loading && <p className="text-white">Loading events...</p>}
       {error && <p className="text-red-500">Error fetching events: {error}</p>}
 
-      {!loading && 
+      {!loading && !error && 
         <Calendar></Calendar>
       }
     </div>
