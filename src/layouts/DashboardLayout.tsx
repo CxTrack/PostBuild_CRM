@@ -222,6 +222,9 @@ const DashboardLayout: React.FC = () => {
                 case 'DollarSign':
                   Icon = DollarSign;
                   break;
+                case 'Calendar':                  
+                  Icon = Calendar;
+                  break;
                 default:
                   Icon = FileText;
               }

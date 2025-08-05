@@ -148,7 +148,7 @@ const CustomerDetail: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer info card */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
@@ -396,7 +396,7 @@ const CustomerDetail: React.FC = () => {
         </div>
 
         {/* Financial summary */}
-        <div className="card bg-dark-800 border border-dark-700">
+        {/* <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Financial Summary</h2>
 
           <div className="space-y-4">
@@ -448,7 +448,7 @@ const CustomerDetail: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Recent activity */}
         <div className="card bg-dark-800 border border-dark-700">
