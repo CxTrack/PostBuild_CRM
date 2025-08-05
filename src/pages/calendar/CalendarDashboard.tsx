@@ -1,32 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement, // For Pie charts
-  PointElement, // For Area charts
-  LineElement, // For Area charts
-  Filler, // For Area charts
-} from 'chart.js';
-
+import React, { useEffect, useState } from 'react';
 import Calendar from '../../components/calendar/Calendar';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement, // Register ArcElement
-  PointElement, // Register PointElement
-  LineElement, // Register LineElement
-  Filler // Register Filler
-);
 
 const CalendarDashboard: React.FC = () => {
 
