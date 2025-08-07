@@ -288,6 +288,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Event title"
+                  disabled={selectedEvent.calcom_id}
                 />
               </div>
 
@@ -298,6 +299,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <select
                   className="input w-full"
                   value={newEvent.type}
+                  disabled={selectedEvent.calcom_id}
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, type: e.target.value as any })
                   }
@@ -312,6 +314,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 type="datetime-local"
                 className="input w-full"
                 value={format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                disabled={selectedEvent.calcom_id}
                 onChange={(e) =>
                   setNewEvent({ ...newEvent, start: new Date(e.target.value) })
                 }
@@ -324,6 +327,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 </label>
                 <input
                   type="datetime-local"
+                  disabled={selectedEvent.calcom_id}
                   className="input w-full"
                   value={format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
                   onChange={(e) =>
@@ -340,6 +344,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <textarea
                   className="input w-full"
                   value={newEvent.description}
+                  disabled={selectedEvent.calcom_id}
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, description: e.target.value })
                   }
