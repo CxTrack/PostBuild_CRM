@@ -52,6 +52,26 @@ const Calendar: React.FC<CalendarProps> = ({
     fetchEvents();
   }, [fetchEvents]);
 
+  useEffect(() => {
+    if (selectedEvent) {
+      setNewEvent({
+        title: selectedEvent.title || '',
+        start: new Date(selectedEvent.start),
+        end: new Date(selectedEvent.end),
+        description: selectedEvent.description || '',
+        type: selectedEvent.type || 'custom',
+      });
+    } else {
+      setNewEvent({
+        title: '',
+        start: new Date(),
+        end: new Date(),
+        description: '',
+        type: 'custom',
+      });
+    }
+  }, [selectedEvent]);
+
   // Filter events based on type
   // const filteredEvents = events.filter(event => {
   //   const today = new Date();
@@ -265,7 +285,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <input
                   type="text"
                   className="input w-full"
-                  value={selectedEvent ? selectedEvent.title : newEvent.title}
+                  value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Event title"
                 />
@@ -277,27 +297,26 @@ const Calendar: React.FC<CalendarProps> = ({
                 </label>
                 <select
                   className="input w-full"
-                  value={selectedEvent ? selectedEvent.type : newEvent.type}
-                  onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })}
+                  value={newEvent.type}
+                  onChange={(e) =>
+                    setNewEvent({ ...newEvent, type: e.target.value as any })
+                  }
                 >
                   <option value="custom">Custom Event</option>
                   <option value="task">Task</option>
-                  {/* <option value="invoice">Invoice Due</option>
-                  <option value="expense">Expense</option> */}
                 </select>
+
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Start Date & Time
-                </label>
-                <input
-                  type="datetime-local"
-                  className="input w-full"
-                  value={selectedEvent ? format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm") : format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
-                  onChange={(e) => setNewEvent({ ...newEvent, start: new Date(e.target.value) })}
-                />
-              </div>
+              <input
+                type="datetime-local"
+                className="input w-full"
+                value={format(newEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, start: new Date(e.target.value) })
+                }
+              />
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -306,9 +325,12 @@ const Calendar: React.FC<CalendarProps> = ({
                 <input
                   type="datetime-local"
                   className="input w-full"
-                  value={selectedEvent ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
-                  onChange={(e) => setNewEvent({ ...newEvent, end: new Date(e.target.value) })}
+                  value={format(newEvent.end, "yyyy-MM-dd'T'HH:mm")}
+                  onChange={(e) =>
+                    setNewEvent({ ...newEvent, end: new Date(e.target.value) })
+                  }
                 />
+
               </div>
 
               <div>
@@ -317,11 +339,14 @@ const Calendar: React.FC<CalendarProps> = ({
                 </label>
                 <textarea
                   className="input w-full"
-                  value={selectedEvent ? selectedEvent.description : newEvent.description}
-                  onChange={(e) => setNewEvent(selectedEvent ? { ...selectedEvent, description: e.target.value } : { ...newEvent, description: e.target.value })}
+                  value={newEvent.description}
+                  onChange={(e) =>
+                    setNewEvent({ ...newEvent, description: e.target.value })
+                  }
                   rows={3}
                   placeholder="Event description"
                 />
+
               </div>
             </div>
 
