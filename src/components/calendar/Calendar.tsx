@@ -326,7 +326,7 @@ const Calendar: React.FC<CalendarProps> = ({
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
-              {!selectedEvent?.calcom_id && (
+              {!selectedEvent?.calcom_id && selectedEvent && (
                 <button
                   onClick={handleDeleteEvent}
                   className={selectedEvent?.calcom_id ? "btn btn-outline-secondary" : "btn btn-danger"}
