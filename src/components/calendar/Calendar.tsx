@@ -331,7 +331,8 @@ const Calendar: React.FC<CalendarProps> = ({
               {selectedEvent && (
                 <button
                   onClick={handleDeleteEvent}
-                  className="btn btn-danger"
+                  className={selectedEvent.calcom_id ? "btn btn-outline-secondary" : "btn btn-danger"}
+                  disabled={selectedEvent.calcom_id}
                 >
                   Delete
                 </button>
@@ -351,7 +352,12 @@ const Calendar: React.FC<CalendarProps> = ({
               >
                 {selectedEvent ? 'Update' : 'Create'}
               </button>
+              
             </div>
+             {selectedEvent.calcom_id && (
+             <div className="flex justify-center"     style={{ width: `font-size: smaller`, color: `cadetblue` }}>
+                <span><i>*This event was created through Cal.com. To delete it, please do so on the Cal.com platform — it will then be automatically removed from this calendar.</i></span>
+             </div>)}
           </div>
         </div>
       )}

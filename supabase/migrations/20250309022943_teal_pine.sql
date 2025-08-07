@@ -89,3 +89,6 @@ CREATE TRIGGER set_calendar_events_updated_at
   BEFORE UPDATE ON calendar_events
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
+
+
+alter table calendar_events add column calcom_id text unique;
