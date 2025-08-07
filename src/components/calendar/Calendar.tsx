@@ -27,8 +27,8 @@ interface CalendarProps {
   onOpenNewWindow?: () => void;
 }
 
-const Calendar: React.FC<CalendarProps> = ({ 
-  className, 
+const Calendar: React.FC<CalendarProps> = ({
+  className,
   isMaximized = false,
   onToggleMaximize,
   onOpenNewWindow
@@ -51,7 +51,7 @@ const Calendar: React.FC<CalendarProps> = ({
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
-  
+
   // Filter events based on type
   // const filteredEvents = events.filter(event => {
   //   const today = new Date();
@@ -67,9 +67,9 @@ const Calendar: React.FC<CalendarProps> = ({
   const handleEventClick = (event: any) => {
     setSelectedEvent(event);
     console.log(event);
-    
+
     setShowEventModal(true);
-    
+
     // If it's an invoice event, navigate to invoice detail
     if (event.type === 'invoice' && event.invoice_id) {
       navigate(`/invoices/${event.invoice_id}`);
@@ -169,17 +169,15 @@ const Calendar: React.FC<CalendarProps> = ({
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setView('month')}
-              className={`px-3 py-1 rounded ${
-                view === 'month' ? 'bg-primary-600 text-white' : 'bg-dark-700 text-gray-300'
-              }`}
+              className={`px-3 py-1 rounded ${view === 'month' ? 'bg-primary-600 text-white' : 'bg-dark-700 text-gray-300'
+                }`}
             >
               Month
             </button>
             <button
               onClick={() => setView('week')}
-              className={`px-3 py-1 rounded ${
-                view === 'week' ? 'bg-primary-600 text-white' : 'bg-dark-700 text-gray-300'
-              }`}
+              className={`px-3 py-1 rounded ${view === 'week' ? 'bg-primary-600 text-white' : 'bg-dark-700 text-gray-300'
+                }`}
             >
               Week
             </button>
@@ -258,7 +256,7 @@ const Calendar: React.FC<CalendarProps> = ({
             <h3 className="text-lg font-semibold text-white mb-4">
               {selectedEvent ? 'Edit Event' : 'New Event'}
             </h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -328,11 +326,10 @@ const Calendar: React.FC<CalendarProps> = ({
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
-              {selectedEvent && (
+              {!selectedEvent?.calcom_id && (
                 <button
                   onClick={handleDeleteEvent}
-                  className={selectedEvent.calcom_id ? "btn btn-outline-secondary" : "btn btn-danger"}
-                  disabled={selectedEvent.calcom_id}
+                  className={selectedEvent?.calcom_id ? "btn btn-outline-secondary" : "btn btn-danger"}
                 >
                   Delete
                 </button>
@@ -342,22 +339,24 @@ const Calendar: React.FC<CalendarProps> = ({
                   setShowEventModal(false);
                   setSelectedEvent(null);
                 }}
-                className="btn btn-secondary"
+                className={selectedEvent?.calcom_id ? "btn btn-outline-secondary" : "btn btn-secondary"}
               >
-                Cancel
+                Close
               </button>
-              <button
-                onClick={handleSaveEvent}
-                className="btn btn-primary"
-              >
-                {selectedEvent ? 'Update' : 'Create'}
-              </button>
-              
+              {!selectedEvent?.calcom_id && (
+                <button
+                  onClick={handleSaveEvent}
+                  className="btn btn-primary"
+                >
+                  {selectedEvent ? 'Update' : 'Create'}
+                </button>
+              )}
+
             </div>
-             {selectedEvent.calcom_id && (
-             <div className="flex justify-center"     style={{ width: `font-size: smaller`, color: `cadetblue` }}>
-                <span><i>*This event was created through Cal.com. To delete it, please do so on the Cal.com platform — it will then be automatically removed from this calendar.</i></span>
-             </div>)}
+            {selectedEvent?.calcom_id && (
+              <div className="flex justify-center" style={{ width: `font-size: smaller`, color: `cadetblue` }}>
+                <span><i>*This event was created through Cal.com. To delete or update it, please do so on the Cal.com platform — it will then be automatically refelcted in this calendar.</i></span>
+              </div>)}
           </div>
         </div>
       )}
