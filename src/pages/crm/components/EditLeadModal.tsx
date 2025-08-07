@@ -106,7 +106,7 @@ const EditLeadModal: React.FC<EditLeadModalProps> = ({ lead, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
+      <div className="bg-dark-800 rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Edit Lead</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -218,11 +218,11 @@ const EditLeadModal: React.FC<EditLeadModalProps> = ({ lead, onClose }) => {
             >
               <option value="lead">Lead</option>
               <option value="opportunity">Convert to Opportunity</option>
-              <option value="quote">Quote</option>
+              {/* <option value="quote">Quote</option>
               <option value="invoice_pending">Invoice Pending</option>
               <option value="invoice_sent">Invoice Sent</option>
               <option value="closed_won">Closed Won</option>
-              <option value="closed_lost">Closed Lost</option>
+              <option value="closed_lost">Closed Lost</option> */}
             </select>
           </div>
 
