@@ -51,7 +51,7 @@ const CRMDashboard: React.FC = () => {
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
-    )    
+    )
   );
 
   useEffect(() => {
@@ -195,7 +195,12 @@ const CRMDashboard: React.FC = () => {
                             />
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{lead.name}</div>
+                              <button
+                                className="text-gray-400 hover:text-red-500"
+                                onClick={() => setSelectedLead(lead)}
+                              >
+                                <div className="text-sm font-medium text-white">{lead.name}</div>
+                              </button>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-300">{lead.company || '-'}</div>
@@ -577,21 +582,19 @@ const CRMDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'tasks'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'tasks'
                 ? 'border-primary-500 text-primary-500'
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-            }`}
+              }`}
           >
             Tasks
           </button>
           <button
             onClick={() => setActiveTab('opportunities')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'opportunities'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'opportunities'
                 ? 'border-primary-500 text-primary-500'
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-            }`}
+              }`}
           >
             Opportunities
           </button>
