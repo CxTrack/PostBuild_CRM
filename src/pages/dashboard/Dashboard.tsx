@@ -393,6 +393,70 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+            {/* Today's Events */}
+      {dashboardSettings.showTodayEvents && (
+        <div className="card bg-dark-800 border border-dark-700 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Today's Events</h3>
+          </div>
+
+          {events.filter(event => {
+            const today = new Date();
+            const eventDate = new Date(event.start);
+            return (
+              eventDate.getDate() === today.getDate() &&
+              eventDate.getMonth() === today.getMonth() &&
+              eventDate.getFullYear() === today.getFullYear()
+            );
+          }).length > 0 ? (
+            <div className="space-y-4">
+              {events.filter(event => {
+                const today = new Date();
+                const eventDate = new Date(event.start);
+                return (
+                  eventDate.getDate() === today.getDate() &&
+                  eventDate.getMonth() === today.getMonth() &&
+                  eventDate.getFullYear() === today.getFullYear()
+                );
+              }).map((event, index) => (
+                <div
+                  key={index}
+                  className="flex items-center space-x-4 p-3 rounded-lg bg-dark-700/50 hover:bg-dark-700 transition-colors"
+                >
+                  <div className={`p-2 rounded-lg ${event.type === 'invoice' ? 'bg-primary-500/20 text-primary-400' :
+                    'bg-gray-500/20 text-gray-400'
+                    }`}>
+                    {/* {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />} */}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium">{event.title}</p>
+                    <p className="text-sm text-gray-400">
+                      {new Date(event.start).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  {/* {event.type === 'invoice' && event.invoice_id && (
+                    <Link
+                      to={`/invoices/${event.invoice_id}`}
+                      className="btn btn-secondary"
+                    >
+                      View Invoice
+                    </Link>
+                  )} */}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <Calendar size={48} className="text-gray-600 mb-4 mx-auto" />
+              <p className="text-gray-400">No events scheduled for today</p>
+            </div>
+          )}
+        </div>
+      )}
+
       <CallsDashboardCharts calls={callsItems} />
 
       {/* Inventory and Expenses Overview */}
@@ -505,72 +569,8 @@ const Dashboard: React.FC = () => {
         </div> */}
       </div>
 
-      {/* Today's Events */}
-      {/* {dashboardSettings.showTodayEvents && (
-        <div className="card bg-dark-800 border border-dark-700 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-white">Today's Events</h3>
-          </div>
-
-          {events.filter(event => {
-            const today = new Date();
-            const eventDate = new Date(event.start);
-            return (
-              eventDate.getDate() === today.getDate() &&
-              eventDate.getMonth() === today.getMonth() &&
-              eventDate.getFullYear() === today.getFullYear()
-            );
-          }).length > 0 ? (
-            <div className="space-y-4">
-              {events.filter(event => {
-                const today = new Date();
-                const eventDate = new Date(event.start);
-                return (
-                  eventDate.getDate() === today.getDate() &&
-                  eventDate.getMonth() === today.getMonth() &&
-                  eventDate.getFullYear() === today.getFullYear()
-                );
-              }).map((event, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-4 p-3 rounded-lg bg-dark-700/50 hover:bg-dark-700 transition-colors"
-                >
-                  <div className={`p-2 rounded-lg ${event.type === 'invoice' ? 'bg-primary-500/20 text-primary-400' :
-                    'bg-gray-500/20 text-gray-400'
-                    }`}>
-                    {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium">{event.title}</p>
-                    <p className="text-sm text-gray-400">
-                      {new Date(event.start).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  {event.type === 'invoice' && event.invoice_id && (
-                    <Link
-                      to={`/invoices/${event.invoice_id}`}
-                      className="btn btn-secondary"
-                    >
-                      View Invoice
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <Calendar size={48} className="text-gray-600 mb-4 mx-auto" />
-              <p className="text-gray-400">No events scheduled for today</p>
-            </div>
-          )}
-        </div>
-      )} */}
-
       {/* Recent Activity */}
-      <div className="card bg-dark-800 border border-dark-700">
+       {/*<div className="card bg-dark-800 border border-dark-700">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
         </div>

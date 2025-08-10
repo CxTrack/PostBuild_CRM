@@ -109,7 +109,7 @@ export type Task = {
   status: TaskStatus;
   calendar_id: string;
 };
-export type TaskStatus = 'pending' | 'In completed';
+export type TaskStatus = 'pending' | 'completed' | 'cancelled';
 
 export type TaskFormData = {
   title: any;

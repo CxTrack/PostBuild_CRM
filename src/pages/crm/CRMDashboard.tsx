@@ -53,7 +53,7 @@ const CRMDashboard: React.FC = () => {
   useEffect(() => {
     fetchCustomers();
     fetchTasks();
-  }, [fetchCustomers]);
+  }, [fetchCustomers, fetchTasks]);
 
   const stats = {
     leads: {
@@ -63,8 +63,8 @@ const CRMDashboard: React.FC = () => {
       trend: 'up'
     },
     tasks: {
-      total: 0,
-      completed: tasks.length,
+      total: tasks.length,
+      completed: tasks.filter(task => task.status === 'pending').length,
       change: '-5%',
       trend: 'down'
     },
@@ -391,7 +391,8 @@ const CRMDashboard: React.FC = () => {
                             <div className="flex items-center justify-end space-x-2">
                               <button
                                 className="text-gray-400 hover:text-green-500"
-                                onClick={() => updateTaskStatus(task.id, 'pending')}
+                                hidden={task.status === 'completed'}
+                                onClick={() => updateTaskStatus(task.id, 'completed')}
                               >
                                 <ChevronDownSquare size={16} />
                               </button>

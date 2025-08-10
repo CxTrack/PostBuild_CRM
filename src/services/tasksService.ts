@@ -29,7 +29,8 @@ export const tasksService = {
       const { data: quotes, error } = await supabase
         .from('tasks')
         .select('*')
-        .order('due_date', { ascending: false });
+        .order('status', { ascending: false }) // will sort 'pending' first than completed
+        .order('due_date', { ascending: true });
 
       if (error) {
         console.error('Error fetching tasks:', error);

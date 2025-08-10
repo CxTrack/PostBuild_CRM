@@ -41,8 +41,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       const newTask = await tasksService.createTask(data, calendarEventId);
 
-      const tasks = [...get().tasks, newTask];
-      set({ tasks, loading: false });
+      // Call fetchTasks to get the latest data
+      await get().fetchTasks();
 
       return newTask;
     } catch (error: any) {
@@ -60,11 +60,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       const updatedTask = await tasksService.updateTaskStatus(id, status);
 
-      const tasks = get().tasks.map(task =>
-        task.id === id ? updatedTask : task
-      );
+      // let tasks = get().tasks.map(task =>
+      //   task.id === id ? updatedTask : task
+      // );
 
-      set({ tasks, loading: false });
+      // Call fetchTasks to get the latest data
+      await get().fetchTasks();
+
       return updatedTask;
     } catch (error: any) {
       console.error('Error in updateTaskStatus:', error);
@@ -81,8 +83,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       await tasksService.deleteTask(id);
 
-      const quotaskses = get().tasks.filter(task => task.id !== id);
-      set({ tasks: quotaskses, loading: false });
+      const tasks = get().tasks.filter(task => task.id !== id);
+      set({ tasks: tasks, loading: false });
     } catch (error: any) {
       console.error('Error in deleteTask:', error);
       set({
