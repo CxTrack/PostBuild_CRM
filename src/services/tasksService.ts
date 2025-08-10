@@ -39,7 +39,7 @@ export const tasksService = {
 
       return quotes || [];
     } catch (error) {
-      console.error('Quote service error:', error);
+      console.error('Task service error:', error);
       throw error;
     }
   },
@@ -84,6 +84,22 @@ export const tasksService = {
   // Update task status
   async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
     try {
+
+      const task = await this.getTask(id);
+      if (!task) {
+        throw new Error(`Task with ID ${id} not found`);
+      }
+
+      console.log(task);
+      
+      if (status === 'completed') {
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('id', task.calendar_id);
+      }
+
+
       const { data, error } = await supabase
         .from('tasks')
         .update({ status })
