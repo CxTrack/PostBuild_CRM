@@ -48,8 +48,6 @@ export const tasksService = {
   async createTask(taskData: TaskFormData, calendarEventId: string): Promise<Task> {
     const { data: userData } = await supabase.auth.getUser();
 
-    console.log(calendarEventId);
-
     if (!userData?.user) {
       throw new Error('User not authenticated');
     }
@@ -90,8 +88,6 @@ export const tasksService = {
         throw new Error(`Task with ID ${id} not found`);
       }
 
-      console.log(task);
-      
       if (status === 'completed') {
         await supabase
           .from('calendar_events')

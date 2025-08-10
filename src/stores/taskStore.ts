@@ -60,10 +60,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       const updatedTask = await tasksService.updateTaskStatus(id, status);
 
-      // let tasks = get().tasks.map(task =>
-      //   task.id === id ? updatedTask : task
-      // );
-
       // Call fetchTasks to get the latest data
       await get().fetchTasks();
 
