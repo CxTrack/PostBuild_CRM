@@ -5,7 +5,7 @@ import { useCalendarStore } from '../../../stores/calendarStore';
 
 interface AddTaskModalProps {
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any, calendarEvent: any) => void;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
@@ -14,8 +14,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
 
   const handleFormSubmit = async (data: any) => {
     try {
+
       // Create calendar event for the task
-      await addEvent({
+      const calendar = await addEvent({
         title: data.title,
         description: data.description || '',
         start: new Date(data.dueDate),
@@ -24,7 +25,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
       });
       
       // Submit the form data
-      onSubmit(data);
+      onSubmit(data, calendar);
     } catch (error) {
       console.error('Error creating calendar event:', error);
     }

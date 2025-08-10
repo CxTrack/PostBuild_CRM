@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
@@ -9,11 +9,16 @@ import { Customer } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
 import QuoteStatusBadge from '../../components/QuoteStatusBadge';
+import { useTaskStore } from '../../stores/taskStore';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
 const CRMDashboard: React.FC = () => {
   const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();
+
+  const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<TabType>('leads');
@@ -45,29 +50,21 @@ const CRMDashboard: React.FC = () => {
     )
   );
 
-  // Filter taks based on pipeline stage and search term
-  const tasks = customers.filter(customer =>
-    customer.pipeline_stage === 'task' && (
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
   useEffect(() => {
     fetchCustomers();
+    fetchTasks();
   }, [fetchCustomers]);
 
   const stats = {
     leads: {
       total: filteredLeads.length,
-      new: 12,
+      new: 0,
       change: '+8%',
       trend: 'up'
     },
     tasks: {
-      total: 45,
-      completed: 28,
+      total: 0,
+      completed: tasks.length,
       change: '-5%',
       trend: 'down'
     },
@@ -81,6 +78,22 @@ const CRMDashboard: React.FC = () => {
 
   const handleDeleteLead = async (id: string) => {
     setLeadToDelete(id);
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    setTaskToDelete(id);
+  };
+
+  const confirmTaskDelete = async () => {
+    if (!taskToDelete) return;
+
+    try {
+      deleteTask(taskToDelete);
+      toast.success('Task deleted successfully');
+      setTaskToDelete(null);
+    } catch (error) {
+      toast.error('Failed to delete task');
+    }
   };
 
   const confirmLeadDelete = async () => {
@@ -195,12 +208,12 @@ const CRMDashboard: React.FC = () => {
                             />
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                              <button
-                                className="text-gray-400 hover:text-red-500"
-                                onClick={() => setSelectedLead(lead)}
-                              >
-                                <div className="text-sm font-medium text-white">{lead.name}</div>
-                              </button>
+                            <button
+                              className="text-gray-400 hover:text-red-500"
+                              onClick={() => setSelectedLead(lead)}
+                            >
+                              <div className="text-sm font-medium text-white">{lead.name}</div>
+                            </button>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-300">{lead.company || '-'}</div>
@@ -339,7 +352,7 @@ const CRMDashboard: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Due Date</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Priority</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Assigned To</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
@@ -362,7 +375,34 @@ const CRMDashboard: React.FC = () => {
                       tasks.map((task) => (
                         <tr key={task.id} className="hover:bg-dark-700/50">
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{task.name}</div>
+                            <div className="text-sm font-medium text-white">{task.title}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+
+                            <div className="text-sm font-medium text-white"> {new Date(task.due_date).toLocaleDateString()}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-white">{task.priority}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-white">{task.status}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                className="text-gray-400 hover:text-green-500"
+                                onClick={() => updateTaskStatus(task.id, 'pending')}
+                              >
+                                <ChevronDownSquare size={16} />
+                              </button>
+                              <button
+                                className="text-gray-400 hover:text-red-500"
+                                //onClick={() => deleteTask(task.id)}
+                                onClick={() => handleDeleteTask(task.id)}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -370,20 +410,19 @@ const CRMDashboard: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-
-              <div className="text-center py-12">
-                <CheckSquare size={48} className="text-gray-600 mb-4 mx-auto" />
-                <p className="text-gray-400 text-lg mb-2">No tasks found</p>
-                <p className="text-gray-500 text-sm mb-6">Get started by adding your first task</p>
-                <button
-                  onClick={() => setShowTaskModal(true)}
-                  className="btn btn-primary flex items-center space-x-2 mx-auto"
-                >
-                  <Plus size={16} />
-                  <span>Add Task</span>
-                </button>
-              </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+              isOpen={!!taskToDelete}
+              onClose={() => setTaskToDelete(null)}
+              onConfirm={confirmTaskDelete}
+              title="Delete item?"
+              message="Are you sure?"
+              confirmButtonText="Delete"
+              cancelButtonText="Cancel"
+              isDanger={true}
+            />
           </div>
         );
 
@@ -583,8 +622,8 @@ const CRMDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('tasks')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'tasks'
-                ? 'border-primary-500 text-primary-500'
-                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              ? 'border-primary-500 text-primary-500'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               }`}
           >
             Tasks
@@ -592,8 +631,8 @@ const CRMDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('opportunities')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'opportunities'
-                ? 'border-primary-500 text-primary-500'
-                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              ? 'border-primary-500 text-primary-500'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               }`}
           >
             Opportunities
@@ -627,8 +666,10 @@ const CRMDashboard: React.FC = () => {
       {showTaskModal && (
         <AddTaskModal
           onClose={() => setShowTaskModal(false)}
-          onSubmit={(data) => {
+          onSubmit={(data, calendarEvent) => {
             console.log('New task:', data);
+            console.log('New event:', calendarEvent);
+            createTask(data, calendarEvent.id);
             setShowTaskModal(false);
             // TODO: Implement task creation
           }}

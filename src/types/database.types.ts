@@ -1,4 +1,8 @@
 export type Customer = {
+  pipeline_stage: any;
+  opportunity_value: any;
+  opportunity_probability: number;
+  opportunity_close_date: any;
   id: string;
   name: string;
   email?: string | null;
@@ -93,6 +97,26 @@ export type Quote = {
   created_at: string;
   updated_at: string;
   user_id: string;
+};
+
+export type Task = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  due_date: string;
+  priority: string;
+  status: TaskStatus;
+  calendar_id: string;
+};
+export type TaskStatus = 'pending' | 'In completed';
+
+export type TaskFormData = {
+  title: any;
+  description: any;
+  dueDate: any;
+  status: any;
+  priority: any;
 };
 
 type QuoteItem = {
