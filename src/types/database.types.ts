@@ -119,6 +119,18 @@ export type TaskFormData = {
   priority: any;
 };
 
+export type PipelineItem = {
+  id: string;
+  customer_id: string;
+  stage: string;
+  closing_date: string;
+  closing_probability: string;
+  dollar_value: string;
+  created_at: string;
+  updated_at: string;
+  customers: Customer;
+};
+
 type QuoteItem = {
   id?: string;
   product_id?: string | null;

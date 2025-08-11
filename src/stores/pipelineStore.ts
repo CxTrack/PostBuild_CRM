@@ -1,0 +1,99 @@
+import { create } from 'zustand';
+import { PipelineItem } from '../types/database.types';
+import { piplelineService } from '../services/pipelineService';
+
+interface PipelineItemState {
+  pipelines: PipelineItem[];
+  leads: PipelineItem[];
+  opportunities: PipelineItem[];
+  loading: boolean;
+  error: string | null;
+
+  // Actions
+  fetchPipelineItem: () => Promise<void>;
+  //createTask: (data: TaskFormData, calendarEventId: string) => Promise<Task>;
+  //updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
+  deletePipelineItem: (id: string) => Promise<void>;
+  // clearError: () => void;
+}
+
+export const usePipelineStore = create<PipelineItemState>((set, get) => ({
+  pipelines: [], // leads & opportunities combined
+  leads: [],
+  opportunities: [],
+  loading: false,
+  error: null,
+
+  clearError: () => set({ error: null }),
+
+  fetchPipelineItem: async () => {
+    set({ loading: true, error: null });
+    try {
+      const pipelines = await piplelineService.getPipelines();
+      const filteredLeads = pipelines.filter(item => item.stage === 'lead')
+      const filteredOpportunity = pipelines.filter(item => item.stage === 'opportunity')
+
+      set({ pipelines: pipelines, leads: filteredLeads, opportunities: filteredOpportunity, loading: false });
+    } catch (error: any) {
+      console.error('Error in fetchLeads:', error);
+      set({
+        error: error.message || 'Failed to fetch leads',
+        loading: false
+      });
+    }
+  },
+
+  // createTask: async (data: TaskFormData, calendarEventId: string) => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     const newTask = await tasksService.createTask(data, calendarEventId);
+
+  //     // Call fetchTasks to get the latest data
+  //     await get().fetchTasks();
+
+  //     return newTask;
+  //   } catch (error: any) {
+  //     console.error('Error in createTask:', error);
+  //     set({
+  //       error: error.message || 'Failed to create task',
+  //       loading: false
+  //     });
+  //     throw error;
+  //   }
+  // },
+
+  // updateTaskStatus: async (id: string, status: TaskStatus) => {
+  //   set({ loading: true, error: null });
+  //   try {
+  //     const updatedTask = await tasksService.updateTaskStatus(id, status);
+
+  //     // Call fetchTasks to get the latest data
+  //     await get().fetchTasks();
+
+  //     return updatedTask;
+  //   } catch (error: any) {
+  //     console.error('Error in updateTaskStatus:', error);
+  //     set({
+  //       error: error.message || 'Failed to update task status',
+  //       loading: false
+  //     });
+  //     throw error;
+  //   }
+  // },
+
+   deletePipelineItem: async (id: string) => {
+     set({ loading: true, error: null });
+     try {
+       await piplelineService.deletePipelineItems(id);
+
+      await get().fetchPipelineItem();
+     } catch (error: any) {
+       console.error('Error in deletePipelineItem:', error);
+       set({
+         error: error.message || 'Failed to delete pipeline',
+         loading: false
+       });
+       throw error;
+     }
+  }
+}));

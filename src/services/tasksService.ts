@@ -26,7 +26,7 @@ export const tasksService = {
 
   async getTasks(): Promise<Task[]> {
     try {
-      const { data: quotes, error } = await supabase
+      const { data: tasks, error } = await supabase
         .from('tasks')
         .select('*')
         .order('status', { ascending: false }) // will sort 'pending' first than completed
@@ -37,7 +37,7 @@ export const tasksService = {
         throw error;
       }
 
-      return quotes || [];
+      return tasks || [];
     } catch (error) {
       console.error('Task service error:', error);
       throw error;
