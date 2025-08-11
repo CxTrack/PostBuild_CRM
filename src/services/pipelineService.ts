@@ -54,39 +54,38 @@ export const piplelineService = {
   },
 
   // Create a new pipeline
-  // async createPipeline(taskData: TaskFormData, calendarEventId: string): Promise<PipelineItem> {
-  //   const { data: userData } = await supabase.auth.getUser();
+  async createPipeline(taskData: PipelineItem): Promise<PipelineItem> {
+    const { data: userData } = await supabase.auth.getUser();
 
-  //   if (!userData?.user) {
-  //     throw new Error('User not authenticated');
-  //   }
+    if (!userData?.user) {
+      throw new Error('User not authenticated');
+    }
 
-  //   try {
-  //     const { data: newPipelineItem, error: taskError } = await supabase
-  //       .from('pipline_items')
-  //       .insert([{
-  //         user_id: userData.user.id,
-  //         title: taskData.title,
-  //         description: taskData.description,
-  //         due_date: taskData.dueDate,
-  //         status: 'pending',
-  //         priority: taskData.priority,
-  //         calendar_id: calendarEventId
-  //       }])
-  //       .select()
-  //       .single();
+    try {
+      const { data: newPipelineItem, error: taskError } = await supabase
+        .from('pipeline_items')
+        .insert([{
+            user_id: userData.user.id,
+            customer_id: taskData.customer_id,
+            stage: taskData.stage,
+            closing_date: taskData.closing_date,
+            closing_probability: taskData.closing_probability,
+            dollar_value: taskData.dollar_value,
+        }])
+        .select()
+        .single();
 
-  //     if (taskError) {
-  //       console.log(taskError)
-  //     }
+      if (taskError) {
+        console.log(taskError)
+      }
 
-  //     return newPipelineItem;
+      return newPipelineItem;
 
-  //   } catch (error) {
-  //     console.error('Task service error:', error);
-  //     throw error;
-  //   }
-  // },
+    } catch (error) {
+      console.error('Task service error:', error);
+      throw error;
+    }
+  },
 
   // // Update task status
   // async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
@@ -129,7 +128,7 @@ export const piplelineService = {
     try {
 
       console.log(id);
-      
+
       const { error } = await supabase
         .from('pipeline_items')
         .delete()

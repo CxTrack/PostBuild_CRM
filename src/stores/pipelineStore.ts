@@ -5,13 +5,14 @@ import { piplelineService } from '../services/pipelineService';
 interface PipelineItemState {
   pipelines: PipelineItem[];
   leads: PipelineItem[];
+  probabilities: string[];
   opportunities: PipelineItem[];
   loading: boolean;
   error: string | null;
 
   // Actions
   fetchPipelineItems: () => Promise<void>;
-  //createTask: (data: TaskFormData, calendarEventId: string) => Promise<Task>;
+  createOpportunity: (data: PipelineItem) => Promise<PipelineItem>;
   //updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
   deletePipelineItem: (id: string) => Promise<void>;
   // clearError: () => void;
@@ -21,6 +22,7 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
   pipelines: [], // leads & opportunities combined
   leads: [],
   opportunities: [],
+  probabilities: ["Preapproval - 20%", "Approved Preapproval - 40%", "Live Deal - 60%", "Approved Live Deal - 80%",],
   loading: false,
   error: null,
 
@@ -43,24 +45,23 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
     }
   },
 
-  // createTask: async (data: TaskFormData, calendarEventId: string) => {
-  //   set({ loading: true, error: null });
-  //   try {
-  //     const newTask = await tasksService.createTask(data, calendarEventId);
+  createOpportunity: async (data: PipelineItem) => {
+    set({ loading: true, error: null });
+    try {
+      const newOpportunity = await piplelineService.createPipeline(data);
 
-  //     // Call fetchTasks to get the latest data
-  //     await get().fetchTasks();
+      await get().fetchPipelineItems();
 
-  //     return newTask;
-  //   } catch (error: any) {
-  //     console.error('Error in createTask:', error);
-  //     set({
-  //       error: error.message || 'Failed to create task',
-  //       loading: false
-  //     });
-  //     throw error;
-  //   }
-  // },
+      return newOpportunity;
+    } catch (error: any) {
+      console.error('Error in createOpportunity:', error);
+      set({
+        error: error.message || 'Failed to create opportunity',
+        loading: false
+      });
+      throw error;
+    }
+  },
 
   // updateTaskStatus: async (id: string, status: TaskStatus) => {
   //   set({ loading: true, error: null });
@@ -81,19 +82,19 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
   //   }
   // },
 
-   deletePipelineItem: async (id: string) => {
-     set({ loading: true, error: null });
-     try {
-       await piplelineService.deletePipelineItems(id);
+  deletePipelineItem: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      await piplelineService.deletePipelineItems(id);
 
       await get().fetchPipelineItems();
-     } catch (error: any) {
-       console.error('Error in deletePipelineItem:', error);
-       set({
-         error: error.message || 'Failed to delete pipeline',
-         loading: false
-       });
-       throw error;
-     }
+    } catch (error: any) {
+      console.error('Error in deletePipelineItem:', error);
+      set({
+        error: error.message || 'Failed to delete pipeline',
+        loading: false
+      });
+      throw error;
+    }
   }
 }));

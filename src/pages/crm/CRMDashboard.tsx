@@ -20,7 +20,7 @@ const CRMDashboard: React.FC = () => {
   const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
-  const { leads, opportunities, loading, error, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
+  const { leads, opportunities, loading, error, createOpportunity, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
 
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
@@ -35,27 +35,8 @@ const CRMDashboard: React.FC = () => {
   const [selectedLead, setSelectedLead] = useState<PipelineItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter leads based on pipeline stage and search term
-  // const filteredLeads = customers.filter(customer =>
-  //   customer.pipeline_stage === 'lead' && (
-  //     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
-  //   )
-  // );
-
   const filteredLeads = leads;
   const filteredOpportunities = opportunities;
-
-  // Filter opportunities based on pipeline stage and search term
-  // const opportunities = customers.filter(customer =>
-  //   customer.pipeline_stage === 'opportunity' && (
-  //     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
-  //   )
-
-  //);
 
   useEffect(() => {
     fetchTasks();
@@ -706,10 +687,8 @@ const CRMDashboard: React.FC = () => {
           onClose={() => setShowTaskModal(false)}
           onSubmit={(data, calendarEvent) => {
             console.log('New task:', data);
-            console.log('New event:', calendarEvent);
             createTask(data, calendarEvent.id);
             setShowTaskModal(false);
-            // TODO: Implement task creation
           }}
         />
       )}
@@ -718,9 +697,10 @@ const CRMDashboard: React.FC = () => {
         <AddOpportunityModal
           onClose={() => setShowOpportunityModal(false)}
           onSubmit={(data) => {
-            console.log('New opportunity:', data);
+            console.log(data);
+            
+            createOpportunity(data);
             setShowOpportunityModal(false);
-            // TODO: Implement opportunity creation
           }}
         />
       )}

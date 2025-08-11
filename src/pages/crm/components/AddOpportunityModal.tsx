@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { useCalendarStore } from '../../../stores/calendarStore';
+import { useCustomerStore } from '../../../stores/customerStore';
+import { usePipelineStore } from '../../../stores/pipelineStore';
 
 interface AddOpportunityModalProps {
   onClose: () => void;
@@ -9,26 +11,40 @@ interface AddOpportunityModalProps {
 }
 
 const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSubmit }) => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
-  const { addEvent } = useCalendarStore();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm({
+    defaultValues: {
+      stage: "opportunity"
+    }
+  });
+  const { customers, fetchCustomers } = useCustomerStore();
+  const { probabilities } = usePipelineStore();
+  //const { addEvent } = useCalendarStore();
 
   const handleFormSubmit = async (data: any) => {
     try {
       // Create calendar event for opportunity close date
-      await addEvent({
-        title: `${data.name} - Expected Close`,
-        description: `Opportunity: ${data.name}\nValue: $${data.value}\nProbability: ${data.probability}%\n\nNotes: ${data.notes || 'None'}`,
-        start: new Date(data.closeDate),
-        end: new Date(new Date(data.closeDate).getTime() + 60 * 60000), // 1 hour duration
-        type: 'task'
-      });
-      
+      // await addEvent({
+      //   title: `${data.name} - Expected Close`,
+      //   description: `Opportunity: ${data.name}\nValue: $${data.value}\nProbability: ${data.probability}%\n\nNotes: ${data.notes || 'None'}`,
+      //   start: new Date(data.closeDate),
+      //   end: new Date(new Date(data.closeDate).getTime() + 60 * 60000), // 1 hour duration
+      //   type: 'task'
+      // });
+
       // Submit the form data
       onSubmit(data);
     } catch (error) {
       console.error('Error creating calendar event:', error);
     }
   };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -42,22 +58,23 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className="input w-full"
-              {...register('name', { required: 'Name is required' })}
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-400">{errors.name.message as string}</p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Chose customer:
+              </label>
+              <select className="input w-full" {...register('customer_id')}>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Value <span className="text-red-500">*</span>
+              Dollar Value <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -68,7 +85,7 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
                 className="input w-full pl-8"
                 step="0.01"
                 min="0"
-                {...register('value', { 
+                {...register('dollar_value', {
                   required: 'Value is required',
                   min: { value: 0, message: 'Value must be positive' }
                 })}
@@ -81,15 +98,14 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Stage
+              Probability
             </label>
-            <select className="input w-full" {...register('stage')}>
-              <option value="lead">Lead</option>
-              <option value="opportunity">Opportunity</option>
-              <option value="quote">Quote</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="closing">Closing</option>
-            </select>
+            <select className="input w-full" {...register('closing_probability')}>
+              {probabilities.map((probability) => (
+                <option key={probability} value={probability}>
+                  {probability}
+                </option>
+              ))}</select>
           </div>
 
           <div>
@@ -99,24 +115,11 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
             <input
               type="date"
               className="input w-full"
-              {...register('closeDate')}
+              {...register('closing_date')}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Probability (%)
-            </label>
-            <input
-              type="number"
-              className="input w-full"
-              min="0"
-              max="100"
-              {...register('probability')}
-            />
-          </div>
-
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Notes
             </label>
@@ -125,7 +128,7 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
               rows={3}
               {...register('notes')}
             ></textarea>
-          </div>
+          </div> */}
 
           <div className="flex justify-end space-x-2 mt-6">
             <button
