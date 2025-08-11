@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Save, DollarSign, Calendar } from 'lucide-react';
-import { Customer } from '../../../types/database.types';
+import { Customer, PipelineItem } from '../../../types/database.types';
 import { toast } from 'react-hot-toast';
 import { useCustomerStore } from '../../../stores/customerStore';
 import { supabase } from '../../../lib/supabase';
@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 const PHONE_REGEX = /^\d{10}$/;
 
 interface EditLeadModalProps {
-  lead: Customer;
+  pipelineItem: PipelineItem;
   onClose: () => void;
 }
 
@@ -26,7 +26,7 @@ interface OpportunityDetails {
   expected_close: string;
 }
 
-const EditLeadModal: React.FC<EditLeadModalProps> = ({ lead, onClose }) => {
+const EditLeadModal: React.FC<EditLeadModalProps> = ({ pipelineItem, onClose }) => {
   const { updateCustomer } = useCustomerStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneValue, setPhoneValue] = useState(lead.phone || '');
@@ -75,7 +75,7 @@ const EditLeadModal: React.FC<EditLeadModalProps> = ({ lead, onClose }) => {
         }
       }
 
-      await updateCustomer(lead.id, {
+      await updateCustomer(pipelineItem.id, {
         name: `${data.first_name} ${data.last_name}`,
         email: data.email,
         phone: data.phone,

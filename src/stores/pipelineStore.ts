@@ -10,7 +10,7 @@ interface PipelineItemState {
   error: string | null;
 
   // Actions
-  fetchPipelineItem: () => Promise<void>;
+  fetchPipelineItems: () => Promise<void>;
   //createTask: (data: TaskFormData, calendarEventId: string) => Promise<Task>;
   //updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
   deletePipelineItem: (id: string) => Promise<void>;
@@ -26,7 +26,7 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  fetchPipelineItem: async () => {
+  fetchPipelineItems: async () => {
     set({ loading: true, error: null });
     try {
       const pipelines = await piplelineService.getPipelines();
@@ -86,7 +86,7 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
      try {
        await piplelineService.deletePipelineItems(id);
 
-      await get().fetchPipelineItem();
+      await get().fetchPipelineItems();
      } catch (error: any) {
        console.error('Error in deletePipelineItem:', error);
        set({
