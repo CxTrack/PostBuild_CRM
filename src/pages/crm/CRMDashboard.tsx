@@ -20,7 +20,7 @@ const CRMDashboard: React.FC = () => {
   const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
-  const { leads, opportunities, loading, error, createOpportunity, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
+  const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
 
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
@@ -676,7 +676,7 @@ const CRMDashboard: React.FC = () => {
       {showLeadModal && (
         <AddLeadModal
           onClose={() => {
-            setShowLeadModal(false);
+            setShowLeadModal(false);            
             fetchPipelineItems(); // Refresh leads after modal closes
           }}
         />
@@ -699,7 +699,7 @@ const CRMDashboard: React.FC = () => {
           onSubmit={(data) => {
             console.log(data);
             
-            createOpportunity(data);
+            createPipelineItem(data);
             setShowOpportunityModal(false);
           }}
         />

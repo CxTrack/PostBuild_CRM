@@ -123,12 +123,12 @@ export type PipelineItem = {
   id: string;
   customer_id: string;
   stage: string;
-  closing_date: string;
+  closing_date: string | null;
   closing_probability: string;
   dollar_value: string;
   created_at: string;
   updated_at: string;
-  customers: Customer;
+  customers: Customer | null;
 };
 
 type QuoteItem = {

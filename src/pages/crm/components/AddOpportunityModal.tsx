@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
-import { useCalendarStore } from '../../../stores/calendarStore';
 import { useCustomerStore } from '../../../stores/customerStore';
 import { usePipelineStore } from '../../../stores/pipelineStore';
 
@@ -17,24 +16,18 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
     formState: { errors }
   } = useForm({
     defaultValues: {
-      stage: "opportunity"
+      stage: "opportunity",
+      customer_id: '',
+      dollar_value: '',
+      closing_probability: '',
+      closing_date: ''
     }
   });
   const { customers, fetchCustomers } = useCustomerStore();
   const { probabilities } = usePipelineStore();
-  //const { addEvent } = useCalendarStore();
 
   const handleFormSubmit = async (data: any) => {
     try {
-      // Create calendar event for opportunity close date
-      // await addEvent({
-      //   title: `${data.name} - Expected Close`,
-      //   description: `Opportunity: ${data.name}\nValue: $${data.value}\nProbability: ${data.probability}%\n\nNotes: ${data.notes || 'None'}`,
-      //   start: new Date(data.closeDate),
-      //   end: new Date(new Date(data.closeDate).getTime() + 60 * 60000), // 1 hour duration
-      //   type: 'task'
-      // });
-
       // Submit the form data
       onSubmit(data);
     } catch (error) {
@@ -60,7 +53,7 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
           <div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Chose customer:
+                Choose customer:
               </label>
               <select className="input w-full" {...register('customer_id')}>
                 {customers.map((customer) => (

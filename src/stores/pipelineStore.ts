@@ -12,7 +12,7 @@ interface PipelineItemState {
 
   // Actions
   fetchPipelineItems: () => Promise<void>;
-  createOpportunity: (data: PipelineItem) => Promise<PipelineItem>;
+  createPipelineItem: (data: PipelineItem) => Promise<PipelineItem>;
   //updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
   deletePipelineItem: (id: string) => Promise<void>;
   // clearError: () => void;
@@ -45,18 +45,18 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
     }
   },
 
-  createOpportunity: async (data: PipelineItem) => {
+  createPipelineItem: async (data: PipelineItem) => {
     set({ loading: true, error: null });
     try {
-      const newOpportunity = await piplelineService.createPipeline(data);
+      const newItem = await piplelineService.createPipeline(data);
 
       await get().fetchPipelineItems();
 
-      return newOpportunity;
+      return newItem;
     } catch (error: any) {
-      console.error('Error in createOpportunity:', error);
+      console.error('Error in createPipelineItem:', error);
       set({
-        error: error.message || 'Failed to create opportunity',
+        error: error.message || 'Failed to create pipline item',
         loading: false
       });
       throw error;
