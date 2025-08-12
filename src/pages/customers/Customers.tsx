@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Download, Trash2, Edit, Eye, UserPlus, Upload, ArrowUpRight, Users } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { toast } from 'react-hot-toast';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const Customers: React.FC = () => {
   const { customers, loading, error, fetchCustomers, deleteCustomer } = useCustomerStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
 
   // Fetch customers on component mount
@@ -38,14 +40,12 @@ const Customers: React.FC = () => {
     }
   };
 
-  const handleDeleteCustomer = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      try {
-        await deleteCustomer(id);
-        toast.success('Customer deleted successfully');
-      } catch (error) {
-        toast.error('Failed to delete customer');
-      }
+  const handleDeleteCustomer = async () => {
+    try {
+      await deleteCustomer(customerToDelete!);
+      toast.success('Customer deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete customer');
     }
   };
 
@@ -198,7 +198,9 @@ const Customers: React.FC = () => {
                         </Link>
                         <button
                           className="text-gray-400 hover:text-red-500"
-                          onClick={() => handleDeleteCustomer(customer.id)}
+                          onClick={() =>
+                            setCustomerToDelete(customer.id)
+                          }
                         >
                           <Trash2 size={16} />
                         </button>
@@ -260,6 +262,18 @@ const Customers: React.FC = () => {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={!!customerToDelete}
+        onClose={() => setCustomerToDelete(null)}
+        onConfirm={handleDeleteCustomer}
+        title="Delete Customer?"
+        message={"Deleting Customer will delete all associated data (leads, tasks, opportunities and etc..)\n\nAre you sure? "}
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
+
     </div>
   );
 };

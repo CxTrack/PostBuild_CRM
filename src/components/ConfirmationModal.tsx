@@ -6,7 +6,7 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: React.ReactNode; // now supports JSX or string
   confirmButtonText?: string;
   cancelButtonText?: string;
   isDanger?: boolean;
@@ -34,7 +34,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </button>
         </div>
         
-        <p className="text-gray-300 mb-6">{message}</p>
+        <p
+          className="text-gray-300 mb-6"
+          style={{ whiteSpace: 'pre-line' }}
+        >
+          {message}
+        </p>
         
         <div className="flex justify-end space-x-2">
           <button

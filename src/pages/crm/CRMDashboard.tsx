@@ -4,11 +4,10 @@ import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
 import EditLeadModal from './components/EditLeadModal';
-import { useCustomerStore } from '../../stores/customerStore';
-import { Customer, PipelineItem } from '../../types/database.types';
+import { PipelineItem } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
-import QuoteStatusBadge from '../../components/QuoteStatusBadge';
+//import QuoteStatusBadge from '../../components/QuoteStatusBadge';
 import { useTaskStore } from '../../stores/taskStore';
 import { usePipelineStore } from '../../stores/pipelineStore';
 
@@ -201,17 +200,17 @@ const CRMDashboard: React.FC = () => {
                               className="text-gray-400 hover:text-red-500"
                               onClick={() => setSelectedLead(lead)}
                             >
-                              <div className="text-sm font-medium text-white">{lead.customers.name}</div>
+                              <div className="text-sm font-medium text-white">{lead.customers?.name}</div>
                             </button>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-300">{lead.customers.company || '-'}</div>
+                            <div className="text-sm text-gray-300">{lead.customers?.company || '-'}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-300">{lead.customers.email || '-'}</div>
+                            <div className="text-sm text-gray-300">{lead.customers?.email || '-'}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-300">{lead.customers.phone || '-'}</div>
+                            <div className="text-sm text-gray-300">{lead.customers?.phone || '-'}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
                             {new Date(lead.created_at).toLocaleDateString()}
@@ -478,7 +477,7 @@ const CRMDashboard: React.FC = () => {
                       filteredOpportunities.map((opportunity) => (
                         <tr key={opportunity.id} className="hover:bg-dark-700/50">
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{opportunity.customers.name}</div>
+                            <div className="text-sm font-medium text-white">{opportunity.customers?.name}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-300">{opportunity.stage}</div>
@@ -676,7 +675,7 @@ const CRMDashboard: React.FC = () => {
       {showLeadModal && (
         <AddLeadModal
           onClose={() => {
-            setShowLeadModal(false);            
+            setShowLeadModal(false);
             fetchPipelineItems(); // Refresh leads after modal closes
           }}
         />
@@ -698,7 +697,7 @@ const CRMDashboard: React.FC = () => {
           onClose={() => setShowOpportunityModal(false)}
           onSubmit={(data) => {
             console.log(data);
-            
+
             createPipelineItem(data);
             setShowOpportunityModal(false);
           }}

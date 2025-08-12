@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { useCallStore } from '../stores/callStore';
 import { Call, Customer } from '../types/database.types';
 import { CallResponse } from 'retell-sdk/resources.mjs';
+import { customerService } from './customerService';
 
 export const callsService = {
 
@@ -79,6 +80,28 @@ export const callsService = {
     } catch (err) {
       console.error('Unhandled error in fetchCustomerCalls:', err);
       return undefined;
+    }
+  },
+
+      // Delete a customer's pipeline item
+  async deleteCustomerCallRecording(customer_id: string): Promise<void> {
+    try {
+
+      const { data: userData } = await supabase.auth.getUser();
+      const customer = await customerService.getCustomerById(customer_id);
+      if (!customer) {
+        throw new Error('Can not find customer!');
+      }
+
+      await supabase
+        .from('calls')
+        .delete()
+        .eq('user_id', userData.user?.id)
+        .eq('from_number', customer.phone);
+
+    } catch (error) {
+      //console.error('Pipleine service error:', error);
+      throw error;
     }
   },
 };

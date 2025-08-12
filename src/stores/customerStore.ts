@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { customerService } from '../services/customerService';
 import { Customer, CustomerFormData } from '../types/database.types';
 import { supabase } from '../lib/supabase';
+import { piplelineService } from '../services/pipelineService';
+import { callsService } from '../services/callsService';
 
 interface CustomerState {
   customers: Customer[];
@@ -21,6 +23,8 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
   loading: false,
   error: null,
+
+  
   
   clearError: () => set({ error: null }),
   
@@ -123,6 +127,13 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   deleteCustomer: async (id: string) => {
     set({ loading: true, error: null });
     try {
+
+      // Delete Leads (+ lead events), Opportunities
+      await piplelineService.deleteCustomerPipelineItems(id)
+      
+      // Delete calls
+      await callsService.deleteCustomerCallRecording(id);
+
       await customerService.deleteCustomer(id);
       
       // Remove the deleted customer from the list

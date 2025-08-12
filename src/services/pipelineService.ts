@@ -144,5 +144,20 @@ export const piplelineService = {
       throw error;
     }
   },
+
+    // Delete a customer's pipeline item
+  async deleteCustomerPipelineItems(customer_id: string): Promise<void> {
+    try {
+
+      await supabase
+        .from('pipeline_items')
+        .delete()
+        .eq('customer_id', customer_id);
+
+    } catch (error) {
+      //console.error('Pipleine service error:', error);
+      throw error;
+    }
+  },
 };
 
