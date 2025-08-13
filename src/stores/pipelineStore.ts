@@ -13,7 +13,7 @@ interface PipelineItemState {
   // Actions
   fetchPipelineItems: () => Promise<void>;
   createPipelineItem: (data: PipelineItem) => Promise<PipelineItem>;
-  //updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
+  updatePipelineItem: (item: PipelineItem) => Promise<PipelineItem>;
   deletePipelineItem: (id: string) => Promise<void>;
   // clearError: () => void;
 }
@@ -63,24 +63,24 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
     }
   },
 
-  // updateTaskStatus: async (id: string, status: TaskStatus) => {
-  //   set({ loading: true, error: null });
-  //   try {
-  //     const updatedTask = await tasksService.updateTaskStatus(id, status);
 
-  //     // Call fetchTasks to get the latest data
-  //     await get().fetchTasks();
+  updatePipelineItem: async (item: PipelineItem) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedPipeline = await piplelineService.updatePipelineItem(item);
 
-  //     return updatedTask;
-  //   } catch (error: any) {
-  //     console.error('Error in updateTaskStatus:', error);
-  //     set({
-  //       error: error.message || 'Failed to update task status',
-  //       loading: false
-  //     });
-  //     throw error;
-  //   }
-  // },
+      await get().fetchPipelineItems();
+
+      return updatedPipeline;
+    } catch (error: any) {
+      console.error('Error in updatePipelineItem:', error);
+      set({
+        error: error.message || 'Failed to update task pipline item',
+        loading: false
+      });
+      throw error;
+    }
+  },
 
   deletePipelineItem: async (id: string) => {
     set({ loading: true, error: null });

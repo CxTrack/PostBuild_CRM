@@ -483,13 +483,13 @@ const CRMDashboard: React.FC = () => {
                             <div className="text-sm text-gray-300">{opportunity.stage}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-right">
-                            <div className="text-sm text-gray-300">${opportunity.dollar_value?.toLocaleString() || '0'}</div>
+                            <div className="text-sm text-gray-300">${opportunity.dollar_value || '0'}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-right">
                             <div className="text-sm text-gray-300">{opportunity.closing_probability || 0}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                            {opportunity.closing_date ? new Date(opportunity.closing_date).toLocaleDateString() : '-'}
+                            {opportunity.closing_date ? new Date(opportunity.closing_date).toISOString().split('T')[0] : '-'}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-2">

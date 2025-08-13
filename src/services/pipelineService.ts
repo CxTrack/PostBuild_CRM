@@ -7,7 +7,7 @@ export const piplelineService = {
   async getPipelineItem(id: string): Promise<PipelineItem> {
     try {
       const { data: pipeline, error } = await supabase
-        .from('pipline_items')
+        .from('pipeline_items')
         .select('*')
         .eq('id', id)
         .single();
@@ -65,12 +65,12 @@ export const piplelineService = {
       const { data: newPipelineItem, error: taskError } = await supabase
         .from('pipeline_items')
         .insert([{
-            user_id: userData.user.id,
-            customer_id: taskData.customer_id,
-            stage: taskData.stage,
-            closing_date: taskData.closing_date,
-            closing_probability: taskData.closing_probability,
-            dollar_value: taskData.dollar_value,
+          user_id: userData.user.id,
+          customer_id: taskData.customer_id,
+          stage: taskData.stage,
+          closing_date: taskData.closing_date,
+          closing_probability: taskData.closing_probability,
+          dollar_value: taskData.dollar_value,
         }])
         .select()
         .single();
@@ -87,41 +87,34 @@ export const piplelineService = {
     }
   },
 
-  // // Update task status
-  // async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
-  //   try {
+  async updatePipelineItem(item: PipelineItem): Promise<PipelineItem> {
+    try {
 
-  //     const task = await this.getPipeline(id);
-  //     if (!task) {
-  //       throw new Error(`Task with ID ${id} not found`);
-  //     }
+      const task = await this.getPipelineItem(item.id);
+      if (!task) {
+        throw new Error(`PipelineItem with id ${item.id} was not found`);
+      }
 
-  //     if (status === 'completed') {
-  //       await supabase
-  //         .from('calendar_events')
-  //         .delete()
-  //         .eq('id', task.calendar_id);
-  //     }
+      const { customers, ...updateData } = item; // remove joined object
 
+      const { data, error } = await supabase
+        .from('pipeline_items')
+        .update(updateData)
+        .eq('id', item.id)
+        .select()
+        .single();
 
-  //     const { data, error } = await supabase
-  //       .from('tasks')
-  //       .update({ status })
-  //       .eq('id', id)
-  //       .select()
-  //       .single();
+      if (error) {
+        console.error('Error updating task status:', error);
+        throw error;
+      }
 
-  //     if (error) {
-  //       console.error('Error updating task status:', error);
-  //       throw error;
-  //     }
-
-  //     return data;
-  //   } catch (error) {
-  //     console.error('Task service error:', error);
-  //     throw error;
-  //   }
-  // },
+      return data;
+    } catch (error) {
+      console.error('Pipeline service error:', error);
+      throw error;
+    }
+  },
 
   // Delete a pipeline item
   async deletePipelineItems(id: string): Promise<void> {
@@ -145,7 +138,7 @@ export const piplelineService = {
     }
   },
 
-    // Delete a customer's pipeline item
+  // Delete a customer's pipeline item
   async deleteCustomerPipelineItems(customer_id: string): Promise<void> {
     try {
 
