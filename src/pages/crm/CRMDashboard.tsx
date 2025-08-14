@@ -57,7 +57,7 @@ const CRMDashboard: React.FC = () => {
     },
     tasks: {
       total: tasks.length,
-      completed: tasks.filter(task => task.status === 'pending').length,
+      completed: tasks.filter(task => task.status === 'completed').length,
       //change: '-5%',
       //trend: 'down'
     },
