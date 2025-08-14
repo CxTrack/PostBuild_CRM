@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import { useTaskStore } from '../../stores/taskStore';
 import { usePipelineStore } from '../../stores/pipelineStore';
 
+import { TooltipButton } from '../../components/ToolTip'
+
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
 const CRMDashboard: React.FC = () => {
@@ -20,8 +22,8 @@ const CRMDashboard: React.FC = () => {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
-
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
+
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<TabType>('leads');
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -87,7 +89,6 @@ const CRMDashboard: React.FC = () => {
     if (!pipeloneItemToDelete) return;
 
     try {
-      //await deleteCustomer(leadToDelete); //-- TODO: implement for lead
       deletePipelineItem(pipeloneItemToDelete);
       toast.success('Lead deleted successfully');
       setPipelineItemToDelete(null);
@@ -176,11 +177,11 @@ const CRMDashboard: React.FC = () => {
                           </div>
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Company</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Phone</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Company</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Phone</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-700">
@@ -203,32 +204,34 @@ const CRMDashboard: React.FC = () => {
                               <div className="text-sm font-medium text-white">{lead.customers?.name}</div>
                             </button>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{lead.customers?.company || '-'}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{lead.customers?.email || '-'}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{lead.customers?.phone || '-'}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-center align-middle">
                             {new Date(lead.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end space-x-2">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
+                            <div className="flex items-center justify-center space-x-2">
                               {/* <Eye to={`/leads/${lead.id}`} className="text-gray-400 hover:text-white" size={16}>
                               </Eye> */}
-                              <Edit to={`/leads/${lead.id}/edit`} className="text-gray-400 hover:text-white" size={16}
+
+                              <TooltipButton
+                                tooltip="Change stage"
+                                icon={<FolderInput size={16} />}
                                 onClick={() => setSelectedLead(lead)}
-                              >
-                              </Edit>
-                              <button
-                                className="text-gray-400 hover:text-red-500"
+                              />
+
+                              <TooltipButton
+                                tooltip="Delete Lead"
+                                icon={<Trash2 size={16} />}
                                 onClick={() => handleDeletePipelineItem(lead.id)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              />
                             </div>
                           </td>
                         </tr>
@@ -337,10 +340,10 @@ const CRMDashboard: React.FC = () => {
                   <thead>
                     <tr className="bg-dark-700">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Due Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Priority</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider ">Due Date</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Priority</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
@@ -365,32 +368,34 @@ const CRMDashboard: React.FC = () => {
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-white">{task.title}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm font-medium text-white"> {new Date(task.due_date).toLocaleDateString()}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm font-medium text-white">{task.priority}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm font-medium text-white">{task.status}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end space-x-2">
-                              <button
-                                className="text-gray-400 hover:text-green-500"
-                                hidden={task.status === 'completed'}
-                                onClick={() => updateTaskStatus(task.id, 'completed')}
-                              >
-                                <ChevronDownSquare size={16} />
-                              </button>
-                              <button
-                                className="text-gray-400 hover:text-red-500"
-                                //onClick={() => deleteTask(task.id)}
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
+                            <div className="flex items-center justify-center space-x-2">
+
+                              <TooltipButton
+                                tooltip={task.status === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}
+                                icon={<ChevronDownSquare size={16} />}
+                                onClick={() => {
+                                  const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+                                  console.log(newStatus);
+                                  
+                                  updateTaskStatus(task.id, newStatus);
+                                }}
+                              />
+
+                              <TooltipButton
+                                tooltip="Delete Task"
+                                icon={<Trash2 size={16} />}
                                 onClick={() => handleDeleteTask(task.id)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              />
                             </div>
                           </td>
                         </tr>
@@ -450,11 +455,11 @@ const CRMDashboard: React.FC = () => {
                   <thead>
                     <tr className="bg-dark-700">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stage</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Value</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Probability</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expected Close</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Stage</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Value</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Probability</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Expected Close</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700">
@@ -479,32 +484,34 @@ const CRMDashboard: React.FC = () => {
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-white">{opportunity.customers?.name}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{opportunity.stage}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">${opportunity.dollar_value || '0'}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right">
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{opportunity.closing_probability || 0}</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-center align-middle">
                             {opportunity.closing_date ? new Date(opportunity.closing_date).toISOString().split('T')[0] : '-'}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end space-x-2">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
+                            <div className="flex items-center justify-center space-x-2">
                               {/* <Eye to={`/leads/${lead.id}`} className="text-gray-400 hover:text-white" size={16}>
                               </Eye> */}
-                              <Edit to={`/opportunity/${opportunity.id}/edit`} className="text-gray-400 hover:text-white" size={16}
+
+                              <TooltipButton
+                                tooltip="Change Stage"
+                                icon={<FolderOutput size={16} />}
                                 onClick={() => setSelectedLead(opportunity)}
-                              >
-                              </Edit>
-                              <button
-                                className="text-gray-400 hover:text-red-500"
+                              />
+
+                              <TooltipButton
+                                tooltip="Delete Opportunity"
+                                icon={<Trash2 size={16} />}
                                 onClick={() => handleDeletePipelineItem(opportunity.id)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              />
                             </div>
                           </td>
                         </tr>

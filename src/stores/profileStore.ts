@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
 
 interface ProfileData {
   id?: string;
@@ -9,7 +8,7 @@ interface ProfileData {
   address: string;
   city: string;
   state: string;
-  zipCode: string;
+  zipcode: string;
   country: string;
   phone: string;
   created_at?: string;
@@ -48,7 +47,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             address: '',
             city: '',
             state: '',
-            zipCode: '',
+            zipcode: '',
             country: '',
             phone: ''
           },
@@ -82,7 +81,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         address: '',
         city: '',
         state: '',
-        zipCode: '',
+        zipcode: '',
         country: '',
         phone: ''
       };
@@ -123,7 +122,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           address: '',
           city: '',
           state: '',
-          zipCode: '',
+          zipcode: '',
           country: '',
           phone: ''
         },

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Task, TaskFormData, TaskStatus } from '../types/database.types';
+import { useCalendarStore } from '../stores/calendarStore';
 
 export const tasksService = {
 
@@ -88,17 +89,36 @@ export const tasksService = {
         throw new Error(`Task with ID ${id} not found`);
       }
 
-      if (status === 'completed') {
+      let eventId: string | null = null;
+
+      if (status === 'pending') {
+
+        const { addEvent } = useCalendarStore.getState();
+
+        const startDate = new Date(task.due_date);
+        const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes in ms
+        const newEventId = await addEvent({ id: crypto.randomUUID(), type: 'task', title: task.title, start: new Date(task.due_date), end: endDate });
+
+        eventId = newEventId.id;
+
+      } else if (status === 'completed') {
+
         await supabase
           .from('calendar_events')
           .delete()
           .eq('id', task.calendar_id);
       }
 
+      const updateData: Partial<{ status: TaskStatus; calendar_id: string | null }> = { status };
+      if (eventId !== null) {
+        updateData.calendar_id = eventId;
+      }
+
+      console.log(updateData);
 
       const { data, error } = await supabase
         .from('tasks')
-        .update({ status })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -144,4 +164,8 @@ export const tasksService = {
     }
   },
 };
+
+function uuidv4(): string | undefined {
+  throw new Error('Function not implemented.');
+}
 

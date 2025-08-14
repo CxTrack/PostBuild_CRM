@@ -21,7 +21,7 @@ export const generateInvoicePDF = (invoice: Invoice): jsPDF => {
     address: '',
     city: '',
     state: '',
-    zipCode: '',
+    zipcode: '',
     country: ''
   };
   
@@ -94,7 +94,7 @@ export const generateInvoicePDF = (invoice: Invoice): jsPDF => {
   doc.text(profile.company || 'CxTrack', 150, 65);
   doc.text(profile.phone || 'company@example.com', 150, 70);
   doc.text(profile.address || '123 Business Street', 150, 75);
-  doc.text(`${profile.city || 'City'}, ${profile.state || 'State'} ${profile.zipCode || 'ZIP'}`, 150, 80);
+  doc.text(`${profile.city || 'City'}, ${profile.state || 'State'} ${profile.zipcode || 'ZIP'}`, 150, 80);
   doc.text(profile.country || 'Country', 150, 85);
   
   // Invoice items table
@@ -175,7 +175,7 @@ export const generateQuotePDF = (quote: Quote): jsPDF => {
     address: '',
     city: '',
     state: '',
-    zipCode: '',
+    zipcode: '',
     country: ''
   };
   
@@ -239,7 +239,7 @@ export const generateQuotePDF = (quote: Quote): jsPDF => {
   doc.text(profile.company || 'CxTrack', 150, 65);
   doc.text(profile.phone || 'company@example.com', 150, 70);
   doc.text(profile.address || '123 Business Street', 150, 75);
-  doc.text(`${profile.city || 'City'}, ${profile.state || 'State'} ${profile.zipCode || 'ZIP'}`, 150, 80);
+  doc.text(`${profile.city || 'City'}, ${profile.state || 'State'} ${profile.zipcode || 'ZIP'}`, 150, 80);
   doc.text(profile.country || 'Country', 150, 85);
   
   // Quote items table

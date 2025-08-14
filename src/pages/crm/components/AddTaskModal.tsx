@@ -15,6 +15,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
   const handleFormSubmit = async (data: any) => {
     try {
 
+      console.log('call addEvent()');
+      
       // Create calendar event for the task
       const calendar = await addEvent({
         title: data.title,

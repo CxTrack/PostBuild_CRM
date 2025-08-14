@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase, refreshSession, clearAuthStorage } from '../lib/supabase';
+import { error } from 'console';
 
 interface User {
   id: string;
@@ -89,7 +90,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await new Promise(r => setTimeout(r, 300));
 
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
+      if (signInError){
+        throw signInError;
+      }
+        
 
       await new Promise((r) => setTimeout(r, 500)) // let session persist
       const session = await supabase.auth.getSession()
