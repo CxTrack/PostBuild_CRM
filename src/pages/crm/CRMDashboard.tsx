@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen, PersonStanding, User } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
-import EditLeadModal from './components/EditOpportunityModal';
+//import EditLeadModal from './components/EditOpportunityModal';
 import { PipelineItem } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
@@ -14,15 +14,13 @@ import { usePipelineStore } from '../../stores/pipelineStore';
 import { TooltipButton } from '../../components/ToolTip'
 import ChangeLeadStatusModal from './components/ChangeLeadStatusModal';
 import EditOpportunityModal from './components/EditOpportunityModal';
+import { useNavigate } from 'react-router-dom';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
 const CRMDashboard: React.FC = () => {
-  //const { loading, error, fetchCustomers } = useCustomerStore();
-
   const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-
   const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
 
@@ -38,6 +36,9 @@ const CRMDashboard: React.FC = () => {
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const navigate = useNavigate();
+  
 
   const filteredLeads = leads;
   const filteredOpportunities = opportunities;
@@ -169,7 +170,7 @@ const CRMDashboard: React.FC = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-dark-700">
-                        <th className="px-4 py-3 text-left">
+                        {/* <th className="px-4 py-3 text-left">
                           <div className="flex items-center">
                             <input
                               type="checkbox"
@@ -178,7 +179,7 @@ const CRMDashboard: React.FC = () => {
                               onChange={toggleSelectAllLeads}
                             />
                           </div>
-                        </th>
+                        </th> */}
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
                         <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Company</th>
                         <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
@@ -190,7 +191,7 @@ const CRMDashboard: React.FC = () => {
                     <tbody className="divide-y divide-dark-700">
                       {filteredLeads.map((lead) => (
                         <tr key={lead.id} className="hover:bg-dark-700/50">
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          {/* <td className="px-4 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-gray-600 bg-dark-800 text-primary-600 focus:ring-primary-500"
@@ -198,11 +199,11 @@ const CRMDashboard: React.FC = () => {
                               //onChange={() => toggleSelectQuote(lead.id)}
                               onClick={() => setSelectedLead(lead)}
                             />
-                          </td>
+                          </td> */}
                           <td className="px-4 py-4 whitespace-nowrap">
                             <button
                               className="text-gray-400 hover:text-red-500"
-                              onClick={() => setSelectedLead(lead)}
+                              //onClick={() => setSelectedLead(lead)}
                             >
                               <div className="text-sm font-medium text-white">{lead.customers?.name}</div>
                             </button>
@@ -223,6 +224,12 @@ const CRMDashboard: React.FC = () => {
                             <div className="flex items-center justify-center space-x-2">
                               {/* <Eye to={`/leads/${lead.id}`} className="text-gray-400 hover:text-white" size={16}>
                               </Eye> */}
+
+                              <TooltipButton
+                                tooltip="Go to Customer"
+                                icon={<User size={16} />}
+                                onClick={() => navigate(`/customers/${lead.customer_id}`)}
+                              />
 
                               <TooltipButton
                                 tooltip="Change stage"
@@ -687,7 +694,7 @@ const CRMDashboard: React.FC = () => {
 
       {/* Modals */}
       {selectedLead && (
-        <EditLeadModal
+        <ChangeLeadStatusModal
           pipelineItem={selectedLead}
           onClose={() => {
             setSelectedLead(null);

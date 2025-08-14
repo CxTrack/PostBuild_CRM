@@ -4,8 +4,8 @@ import { X, Save, DollarSign, Calendar } from 'lucide-react';
 import { PipelineItem } from '../../../types/database.types';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
-import { format } from 'date-fns';
 import { usePipelineStore } from '../../../stores/pipelineStore';
+import { useCustomerStore } from '../../../stores/customerStore';
 
 //const PHONE_REGEX = /^\d{10}$/;
 
@@ -14,17 +14,12 @@ interface ChangeLeadStatusModalProps {
   onClose: () => void;
 }
 
-// const formatPhoneNumber = (phone: string) => {
-//   const digits = phone.replace(/\D/g, '');
-//   const truncated = digits.slice(0, 10);
-//   return truncated.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
-// };
-
 const ChangeLeadStatusModal: React.FC<ChangeLeadStatusModalProps> = ({ pipelineItem, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOpportunityFields, setShowOpportunityFields] = useState(false);
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const { probabilities, updatePipelineItem } = usePipelineStore();
+  const {customers} = useCustomerStore();
 
   const currentStage = watch('pipeline_stage');
 
