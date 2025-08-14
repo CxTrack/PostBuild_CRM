@@ -38,7 +38,7 @@ const CRMDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const navigate = useNavigate();
-  
+
 
   const filteredLeads = leads;
   const filteredOpportunities = opportunities;
@@ -203,7 +203,7 @@ const CRMDashboard: React.FC = () => {
                           <td className="px-4 py-4 whitespace-nowrap">
                             <button
                               className="text-gray-400 hover:text-red-500"
-                              //onClick={() => setSelectedLead(lead)}
+                            //onClick={() => setSelectedLead(lead)}
                             >
                               <div className="text-sm font-medium text-white">{lead.customers?.name}</div>
                             </button>
@@ -512,9 +512,15 @@ const CRMDashboard: React.FC = () => {
                               </Eye> */}
 
                               <TooltipButton
+                                tooltip="Go to Customer"
+                                icon={<User size={16} />}
+                                onClick={() => navigate(`/customers/${opportunity.customer_id}`)}
+                              />
+
+                              <TooltipButton
                                 tooltip="Edit"
                                 icon={<Pen size={16} />}
-                                onClick={() => {                                 
+                                onClick={() => {
                                   setEditLead(opportunity);
                                   console.log(editLead);
                                 }
