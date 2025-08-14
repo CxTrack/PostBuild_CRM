@@ -690,7 +690,7 @@ const CRMDashboard: React.FC = () => {
 
       {/* Modals */}
       {selectedLead && (
-        <ChangeLeadStatusModal
+        <EditOpportunityModal
           pipelineItem={selectedLead}
           onClose={() => {
             setSelectedLead(null);
