@@ -1,8 +1,4 @@
 export type Customer = {
-  pipeline_stage: any;
-  opportunity_value: any;
-  opportunity_probability: number;
-  opportunity_close_date: any;
   id: string;
   name: string;
   email?: string | null;
