@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
-import EditLeadModal from './components/EditLeadModal';
+import EditLeadModal from './components/EditOpportunityModal';
 import { PipelineItem } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
@@ -12,6 +12,8 @@ import { useTaskStore } from '../../stores/taskStore';
 import { usePipelineStore } from '../../stores/pipelineStore';
 
 import { TooltipButton } from '../../components/ToolTip'
+import ChangeLeadStatusModal from './components/ChangeLeadStatusModal';
+import EditOpportunityModal from './components/EditOpportunityModal';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
@@ -30,6 +32,7 @@ const CRMDashboard: React.FC = () => {
   //const [showDeleteLeadModal, setDeleteLeadModal] = useState(false);
   const [pipeloneItemToDelete, setPipelineItemToDelete] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [editLead, setEditLead] = useState<PipelineItem | null>(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
@@ -386,7 +389,7 @@ const CRMDashboard: React.FC = () => {
                                 onClick={() => {
                                   const newStatus = task.status === 'completed' ? 'pending' : 'completed';
                                   console.log(newStatus);
-                                  
+
                                   updateTaskStatus(task.id, newStatus);
                                 }}
                               />
@@ -502,9 +505,23 @@ const CRMDashboard: React.FC = () => {
                               </Eye> */}
 
                               <TooltipButton
+                                tooltip="Edit"
+                                icon={<Pen size={16} />}
+                                onClick={() => {                                 
+                                  setEditLead(opportunity);
+                                  console.log(editLead);
+                                }
+                                }
+                              />
+
+                              <TooltipButton
                                 tooltip="Change Stage"
                                 icon={<FolderOutput size={16} />}
-                                onClick={() => setSelectedLead(opportunity)}
+                                onClick={() => {
+                                  setSelectedLead(opportunity)
+                                  console.log(selectedLead);
+                                }
+                                }
                               />
 
                               <TooltipButton
@@ -674,7 +691,17 @@ const CRMDashboard: React.FC = () => {
           pipelineItem={selectedLead}
           onClose={() => {
             setSelectedLead(null);
-            fetchPipelineItems(); // Refresh leads after editing
+            fetchPipelineItems(); // Refresh after editing
+          }}
+        />
+      )}
+
+      {editLead && (
+        <EditOpportunityModal
+          pipelineItem={editLead}
+          onClose={() => {
+            setEditLead(null);
+            fetchPipelineItems(); // Refresh after editing
           }}
         />
       )}
@@ -683,7 +710,7 @@ const CRMDashboard: React.FC = () => {
         <AddLeadModal
           onClose={() => {
             setShowLeadModal(false);
-            fetchPipelineItems(); // Refresh leads after modal closes
+            fetchPipelineItems(); // Refresh after modal closes
           }}
         />
       )}
@@ -692,7 +719,6 @@ const CRMDashboard: React.FC = () => {
         <AddTaskModal
           onClose={() => setShowTaskModal(false)}
           onSubmit={(data, calendarEvent) => {
-            console.log('New task:', data);
             createTask(data, calendarEvent.id);
             setShowTaskModal(false);
           }}
@@ -703,8 +729,6 @@ const CRMDashboard: React.FC = () => {
         <AddOpportunityModal
           onClose={() => setShowOpportunityModal(false)}
           onSubmit={(data) => {
-            console.log(data);
-
             createPipelineItem(data);
             setShowOpportunityModal(false);
           }}
