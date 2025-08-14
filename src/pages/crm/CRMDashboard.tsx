@@ -528,16 +528,6 @@ const CRMDashboard: React.FC = () => {
                               />
 
                               <TooltipButton
-                                tooltip="Change Stage"
-                                icon={<FolderOutput size={16} />}
-                                onClick={() => {
-                                  setSelectedLead(opportunity)
-                                  console.log(selectedLead);
-                                }
-                                }
-                              />
-
-                              <TooltipButton
                                 tooltip="Delete Opportunity"
                                 icon={<Trash2 size={16} />}
                                 onClick={() => handleDeletePipelineItem(opportunity.id)}
