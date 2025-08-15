@@ -42,25 +42,11 @@ const DashboardLayout: React.FC = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Handle calendar maximize/minimize
-  const handleCalendarMaximize = () => {
-    setCalendarMaximized(!calendarMaximized);
-    // Close sidebar when maximizing calendar
-    if (!calendarMaximized) {
-      setSidebarOpen(false);
-    }
-  };
-
   // Watch calendar state changes
   useEffect(() => {
-
     getActiveTemplate();
     isUserAdmin();
-
-    if (calendarMaximized) {
-      setSidebarOpen(false);
-    }
-  }, [calendarMaximized]);
+  });
 
   // Watch sidebar state changes
   useEffect(() => {
@@ -92,76 +78,6 @@ const DashboardLayout: React.FC = () => {
 
   // Check if we're in the AI Agents section
   const isAIAgentsActive = location.pathname === '/settings' && location.search === '?tab=ai-agents';
-
-  const openCalendarInNewWindow = () => {
-    const calendarWindow = window.open(
-      '',
-      'CxTrack Calendar',
-      'width=1024,height=768,menubar=no,toolbar=no,location=no,status=no'
-    );
-
-    if (calendarWindow) {
-      calendarWindow.document.write(`
-        <!DOCTYPE html>
-        <html class="dark">
-          <head>
-            <title>CxTrack Calendar</title>
-            <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-            <style>
-              ${document.querySelector('style')?.innerHTML || ''}
-              body { 
-                margin: 0;
-                padding: 20px;
-                background-color: #020617;
-                font-family: 'Inter', sans-serif;
-              }
-              .calendar-wrapper {
-                background-color: rgb(30, 41, 59);
-                border: 1px solid rgb(51, 65, 85);
-                border-radius: 0.5rem;
-                padding: 1rem;
-                height: calc(100vh - 40px);
-              }
-              .calendar-dark .rbc-toolbar button {
-                color: #fff;
-                border: 1px solid rgb(51, 65, 85);
-                background-color: rgb(30, 41, 59);
-              }
-              .calendar-dark .rbc-toolbar button:hover {
-                background-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-toolbar button.rbc-active {
-                background-color: #4f46e5;
-                border-color: #4f46e5;
-              }
-              .calendar-dark .rbc-month-view,
-              .calendar-dark .rbc-time-view {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-header,
-              .calendar-dark .rbc-time-header-cell {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-day-bg {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-today {
-                background-color: rgba(79, 70, 229, 0.1);
-              }
-            </style>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body class="bg-dark-950">
-            <div id="calendar-container" class="calendar-wrapper">
-              ${document.getElementById('calendar-wrapper')?.innerHTML || ''}
-            </div>
-          </body>
-        </html>
-      `);
-      calendarWindow.document.close();
-    }
-  };
 
   return (
     <div className="min-h-screen bg-dark-950 flex">

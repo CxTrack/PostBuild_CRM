@@ -15,7 +15,6 @@ import { toast } from 'react-hot-toast';
 import CallsDashboardCharts from '../../components/calls/CallsDashboardCharts';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../../lib/supabase';
-import { useCallStore } from '../../stores/callStore';
 import { callsService } from '../../services/callsService';
 import { Call } from '../../types/database.types';
 import { Link, useNavigate } from 'react-router-dom';
@@ -124,7 +123,7 @@ const Dashboard: React.FC = () => {
           .single();
 
         //TODO: how to make sure this template is enabled or disabled
-        // if disabled than nedd to recover to default
+        // if disabled than need to recover to default
 
         if (settings?.dashboard_settings) {
           setDashboardSettings(settings.dashboard_settings);
