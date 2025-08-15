@@ -123,58 +123,58 @@ const Templates: React.FC = () => {
     //     'Market analysis tools'
     //   ]
     // },
-    // {
-    //   id: 'mortgage-brokers',
-    //   name: 'Mortgage Brokers',
-    //   description: 'Specialized for mortgage and lending professionals',
-    //   isActive: activeTemplate === 'mortgage-brokers',
-    //   items: [
-    //     {
-    //       type: 'Client Types',
-    //       data: [
-    //         'First-time Buyer',
-    //         'Refinancing',
-    //         'Investment Property',
-    //         'Commercial Loan'
-    //       ]
-    //     },
-    //     {
-    //       type: 'Loan Types',
-    //       data: [
-    //         'Conventional',
-    //         'FHA',
-    //         'VA',
-    //         'Commercial'
-    //       ]
-    //     },
-    //     {
-    //       type: 'Document Categories',
-    //       data: [
-    //         'Income Verification',
-    //         'Credit Reports',
-    //         'Property Appraisals',
-    //         'Loan Applications'
-    //       ]
-    //     },
-    //     {
-    //       type: 'Status Tracking',
-    //       data: [
-    //         'Pre-Approval',
-    //         'Application',
-    //         'Underwriting',
-    //         'Closing'
-    //       ]
-    //     }
-    //   ],
-    //   features: [
-    //     'Loan application tracking',
-    //     'Document collection system',
-    //     'Rate comparison tools',
-    //     'Payment calculators',
-    //     'Automated follow-ups',
-    //     'Lender relationship management'
-    //   ]
-    // },
+     {
+       id: 'mortgage-brokers',
+       name: 'Mortgage Brokers',
+      description: 'Specialized for mortgage and lending professionals',
+       isActive: activeTemplate === 'mortgage-brokers',
+       items: [
+         {
+           type: 'Client Types',
+           data: [
+             'First-time Buyer',
+             'Refinancing',
+             'Investment Property',
+             'Commercial Loan'
+           ]
+         },
+         {
+           type: 'Loan Types',
+           data: [
+             'Conventional',
+             'FHA',
+             'VA',
+             'Commercial'
+           ]
+         },
+         {
+           type: 'Document Categories',
+           data: [
+             'Income Verification',
+             'Credit Reports',
+             'Property Appraisals',
+             'Loan Applications'
+           ]
+         },
+         {
+           type: 'Status Tracking',
+           data: [
+             'Pre-Approval',
+             'Application',
+             'Underwriting',
+             'Closing'
+           ]
+         }
+       ],
+       features: [
+         'Loan application tracking',
+         'Document collection system',
+         'Rate comparison tools',
+         'Payment calculators',
+         'Automated follow-ups',
+         'Lender relationship management'
+       ]
+     },
     // {
     //   id: 'insurance-brokers',
     //   name: 'Insurance Brokers',
