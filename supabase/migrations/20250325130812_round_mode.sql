@@ -51,7 +51,7 @@ BEGIN
       false,
       'authenticated',
       'authenticated'
-    )
+    ) 
     RETURNING id INTO dev_user_id;
 
     -- Create auth identity
