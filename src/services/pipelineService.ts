@@ -45,7 +45,7 @@ export const piplelineService = {
                   company
                 )
           `)
-        .eq('customer_id', userData.user.id);
+        .eq('user_id', userData.user.id);
       //.order('status', { ascending: false }) // will sort 'pending' first than completed
       //.order('due_date', { ascending: true });
 
