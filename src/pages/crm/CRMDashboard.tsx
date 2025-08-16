@@ -39,7 +39,6 @@ const CRMDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-
   const filteredLeads = leads;
   const filteredOpportunities = opportunities;
 

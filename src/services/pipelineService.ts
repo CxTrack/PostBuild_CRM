@@ -26,6 +26,13 @@ export const piplelineService = {
 
   async getPipelines(): Promise<PipelineItem[]> {
     try {
+
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data: pipelines, error } = await supabase
         .from('pipeline_items')
         .select(`*,
@@ -37,7 +44,8 @@ export const piplelineService = {
                   address,
                   company
                 )
-          `);
+          `)
+        .eq('customer_id', userData.user.id);
       //.order('status', { ascending: false }) // will sort 'pending' first than completed
       //.order('due_date', { ascending: true });
 
