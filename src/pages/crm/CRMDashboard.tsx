@@ -44,7 +44,7 @@ const CRMDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
-    fetchPipelineItems();
+    fetchPipelineItems(); 
   }, [fetchTasks, fetchPipelineItems]);
 
   const stats = {
