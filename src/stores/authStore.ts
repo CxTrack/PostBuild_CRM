@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         password,
         options: {
           data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: redirectUrl
         },
       });
 
@@ -268,7 +268,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   }
 }));
 
-// 👇 Subscribe to Supabase auth state changes (optional, but robust)
+
+const redirectUrl = process.env.NODE_ENV === 'production'
+  ? 'https://cxtrack.com/auth/callback'
+  : 'http://localhost:5173/auth/callback';
+
+
 supabase.auth.onAuthStateChange(async (_event, session) => {
   if (session?.user) {
     useAuthStore.setState({ user: { email: session.user.email!, id: session.user.id }, initialized: true });
