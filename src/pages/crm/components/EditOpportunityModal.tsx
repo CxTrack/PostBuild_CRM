@@ -19,6 +19,7 @@ const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineIte
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
       value: pipelineItem.dollar_value || '',
+      stage: 'opportunity',
       closing_probability: pipelineItem.closing_probability || '',
       expected_close: pipelineItem.closing_date
         ? format(new Date(pipelineItem.closing_date), 'yyyy-MM-dd')
@@ -26,7 +27,7 @@ const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineIte
     }
   });
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (pipeline: any) => {
     try {
       setIsSubmitting(true);
 
@@ -36,17 +37,17 @@ const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineIte
         throw new Error('User not authenticated');
       }
 
-      if (!data.value || data.value <= 0) {
+      if (!pipeline.value || pipeline.value <= 0) {
         throw new Error('Please enter a valid opportunity value');
       }
-      if (!data.expected_close) {
+      if (!pipeline.expected_close) {
         throw new Error('Please enter an expected close date');
       }
 
-      pipelineItem.stage = data.pipeline_stage;
-      pipelineItem.closing_date = data.expected_close;
-      pipelineItem.closing_probability = data.closing_probability;
-      pipelineItem.dollar_value = data.value;
+      pipelineItem.stage = pipeline.stage;
+      pipelineItem.closing_date = pipeline.expected_close;
+      pipelineItem.closing_probability = pipeline.closing_probability;
+      pipelineItem.dollar_value = pipeline.value;
 
       await updatePipelineItem(pipelineItem);
 

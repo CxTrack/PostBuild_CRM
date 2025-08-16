@@ -68,9 +68,9 @@ export const usePipelineStore = create<PipelineItemState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const updatedPipeline = await piplelineService.updatePipelineItem(item);
-
+      
       await get().fetchPipelineItems();
-
+      
       return updatedPipeline;
     } catch (error: any) {
       console.error('Error in updatePipelineItem:', error);
