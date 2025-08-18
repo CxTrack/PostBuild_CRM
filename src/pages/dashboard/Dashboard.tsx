@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
   const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { customers, fetchCustomers } = useCustomerStore();
+  //const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts } = useProductStore();
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
         setTotalRevenue(revenue);
 
         await Promise.all([
-          fetchCustomers(),
+          //fetchCustomers(),
           fetchProducts(),
           fetchInvoices(),
           fetchEvents(),
@@ -121,7 +121,7 @@ const Dashboard: React.FC = () => {
     };
 
     loadData();
-  }, [fetchCustomers, fetchProducts, fetchInvoices, fetchEvents, user?.id]);
+  }, [fetchProducts, fetchInvoices, fetchEvents, user?.id]);
 
   useEffect(() => {
     const fetchCalls = async () => {
