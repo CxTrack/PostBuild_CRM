@@ -14,6 +14,7 @@ export const customerService = {
       const { data: customers, error } = await supabase
         .from('customers')
         .select('*')
+        .eq('user_id', userData.user?.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -41,6 +42,7 @@ export const customerService = {
         .from('customers')
         .select('*')
         .eq('id', id)
+        .eq('user_id', userData.user?.id)
         .single();
 
       if (error) {
@@ -138,6 +140,7 @@ export const customerService = {
         .from('customers')
         .select('*')
         .eq('phone', phoneNum)
+        .eq('user_id', userData.user?.id)
         .single();
 
       if (error) {
