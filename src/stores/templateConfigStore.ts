@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { DashboardSettings } from '../types/dashboard.settings';
 
 interface SidebarItem {
   label: string;
@@ -21,14 +22,7 @@ interface TemplateConfig {
   name: string;
   sidebarItems: SidebarItem[];
   dashboardCards: DashboardCard[];
-  dashboardSections: {
-    showPipeline: boolean;
-    showInventory: boolean;
-    showExpenses: boolean;
-    showSales: boolean;
-    showFinance: boolean;
-    showCalendar: boolean;
-  };
+  dashboardSections: DashboardSettings;
 }
 
 interface TemplateConfigState {
@@ -61,12 +55,15 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
         { title: 'Pending Orders', icon: 'ShoppingCart', value: '0', change: '0%', trend: 'up', color: 'text-amber-500' }
       ],
       dashboardSections: {
-        showPipeline: true,
-        showInventory: true,
-        showExpenses: true,
-        showCalendar: true,
-        showSales: true,
-        showFinance: true
+        activeTemplate: 'small-business',
+        showPipelineOverview: true,
+        showInventoryStatus: true,
+        showRecentExpenses: true,
+        showSalesChart: true,
+        showLowStockItems: false,
+        showPurchasesChart: false,
+        showRecentActivity: false,
+        showTodayEvents: false
       }
     };
 
@@ -87,12 +84,15 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
         { title: 'Showings This Week', icon: 'Calendar', value: '0', change: '0%', trend: 'up', color: 'text-amber-500' }
       ],
       dashboardSections: {
-        showPipeline: true,
-        showInventory: false,
-        showExpenses: true,
-        showCalendar: true,
-        showSales: true,
-        showFinance: true
+        activeTemplate: 'realtors',
+        showPipelineOverview: true,
+        showInventoryStatus: true,
+        showRecentExpenses: true,
+        showSalesChart: true,
+        showLowStockItems: false,
+        showPurchasesChart: false,
+        showRecentActivity: false,
+        showTodayEvents: false
       }
     };
 
@@ -109,12 +109,15 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
         { title: 'Calls', icon: 'Phone', value: '0', change: '0%', trend: 'up', color: 'text-green-500' }
       ],
       dashboardSections: {
-        showPipeline: true,
-        showInventory: false,
-        showExpenses: false,
-        showCalendar: false,
-        showSales: false,
-        showFinance: false
+        activeTemplate: 'call-center',
+        showPipelineOverview: true,
+        showInventoryStatus: true,
+        showRecentExpenses: true,
+        showSalesChart: true,
+        showLowStockItems: false,
+        showPurchasesChart: false,
+        showRecentActivity: false,
+        showTodayEvents: false
       }
     };
 
@@ -132,12 +135,15 @@ export const useTemplateConfigStore = create<TemplateConfigState>(() => ({
         { title: 'Calls', icon: 'Phone', value: '0', change: '0%', trend: 'up', color: 'text-green-500' }
       ],
       dashboardSections: {
-        showPipeline: true, // not sure its working - to check
-        showInventory: false,
-        showExpenses: false,
-        showCalendar: false,
-        showSales: false,
-        showFinance: false
+        activeTemplate: 'mortgage-brokers',
+        showPipelineOverview: true,
+        showInventoryStatus: false,
+        showRecentExpenses: false,
+        showSalesChart: false,
+        showLowStockItems: false,
+        showPurchasesChart: false,
+        showRecentActivity: false,
+        showTodayEvents: false
       }
     };
 

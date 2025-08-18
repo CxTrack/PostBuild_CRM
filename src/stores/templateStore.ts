@@ -1,21 +1,32 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { DashboardSettings } from '../types/dashboard.settings';
 
 interface TemplateState {
-  activeTemplate: string;
+  activeTemplateSettings: DashboardSettings;
   loading: boolean;
   error: string | null;
   
   // Actions
-  setActiveTemplate: (templateId: string) => Promise<void>;
+  setActiveTemplate: (dashboardSettings: DashboardSettings) => Promise<void>;
   getActiveTemplate: () => Promise<void>;
   clearError: () => void;
 }
 
 export const useTemplateStore = create<TemplateState>((set, get) => ({
-  activeTemplate: 'mortgage-brokers',
   loading: false,
   error: null,
+  activeTemplateSettings: {
+    activeTemplate: '',
+    showInventoryStatus: false,
+    showLowStockItems: false,
+    showPipelineOverview: false,
+    showPurchasesChart: false,
+    showRecentActivity: false,
+    showRecentExpenses: false,
+    showSalesChart: false,
+    showTodayEvents: false
+  },
   
   clearError: () => set({ error: null }),
   
@@ -28,9 +39,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         .single();
       
       if (settings?.dashboard_settings?.activeTemplate) {
-        set({ activeTemplate: settings.dashboard_settings.activeTemplate });
+        set({ activeTemplateSettings: settings.dashboard_settings });
       }
-      
+
       set({ loading: false });
     } catch (error: any) {
       console.error('Error getting active template:', error);
@@ -41,30 +52,19 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }
   },
   
-  setActiveTemplate: async (templateId: string) => {
+  setActiveTemplate: async (dashboardSettings: DashboardSettings) => {
     set({ loading: true, error: null });
     try {
-      // Get current settings
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('dashboard_settings')
-        .single();
-      
-      // Update settings with new template
-      const updatedSettings = {
-        ...settings?.dashboard_settings,
-        activeTemplate: templateId
-      };
-      
+
       // Save to database
       const { error } = await supabase
         .from('user_settings')
-        .update({ dashboard_settings: updatedSettings })
+        .update({ dashboard_settings: dashboardSettings })
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
       
       if (error) throw error;
       
-      set({ activeTemplate: templateId, loading: false });
+      set({ activeTemplateSettings: dashboardSettings, loading: false });
     } catch (error: any) {
       console.error('Error setting active template:', error);
       set({ 

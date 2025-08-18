@@ -11,7 +11,6 @@ import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { useTemplateStore } from '../stores/templateStore';
 import { useTemplateConfigStore } from '../stores/templateConfigStore';
-import CalendarComponent from '../components/calendar/Calendar';
 import { adminStore } from '../stores/adminStore';
 
 const DashboardLayout: React.FC = () => {
@@ -19,7 +18,7 @@ const DashboardLayout: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMaximized, setCalendarMaximized] = useState(false);
-  const { activeTemplate, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
+  const { activeTemplateSettings, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     sales: true,
     finance: true,
@@ -30,7 +29,7 @@ const DashboardLayout: React.FC = () => {
   const { user, signOut } = useAuthStore();
   const { currentSubscription } = useSubscriptionStore();
   const { getConfig } = useTemplateConfigStore();
-  const templateConfig = getConfig(activeTemplate);
+  const templateConfig = getConfig(activeTemplateSettings.activeTemplate);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isUserAdmin } = adminStore.getState();
@@ -93,75 +92,75 @@ const DashboardLayout: React.FC = () => {
   // Check if we're in the AI Agents section
   const isAIAgentsActive = location.pathname === '/settings' && location.search === '?tab=ai-agents';
 
-  const openCalendarInNewWindow = () => {
-    const calendarWindow = window.open(
-      '',
-      'CxTrack Calendar',
-      'width=1024,height=768,menubar=no,toolbar=no,location=no,status=no'
-    );
+  // const openCalendarInNewWindow = () => {
+  //   const calendarWindow = window.open(
+  //     '',
+  //     'CxTrack Calendar',
+  //     'width=1024,height=768,menubar=no,toolbar=no,location=no,status=no'
+  //   );
 
-    if (calendarWindow) {
-      calendarWindow.document.write(`
-        <!DOCTYPE html>
-        <html class="dark">
-          <head>
-            <title>CxTrack Calendar</title>
-            <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-            <style>
-              ${document.querySelector('style')?.innerHTML || ''}
-              body { 
-                margin: 0;
-                padding: 20px;
-                background-color: #020617;
-                font-family: 'Inter', sans-serif;
-              }
-              .calendar-wrapper {
-                background-color: rgb(30, 41, 59);
-                border: 1px solid rgb(51, 65, 85);
-                border-radius: 0.5rem;
-                padding: 1rem;
-                height: calc(100vh - 40px);
-              }
-              .calendar-dark .rbc-toolbar button {
-                color: #fff;
-                border: 1px solid rgb(51, 65, 85);
-                background-color: rgb(30, 41, 59);
-              }
-              .calendar-dark .rbc-toolbar button:hover {
-                background-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-toolbar button.rbc-active {
-                background-color: #4f46e5;
-                border-color: #4f46e5;
-              }
-              .calendar-dark .rbc-month-view,
-              .calendar-dark .rbc-time-view {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-header,
-              .calendar-dark .rbc-time-header-cell {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-day-bg {
-                border-color: rgb(51, 65, 85);
-              }
-              .calendar-dark .rbc-today {
-                background-color: rgba(79, 70, 229, 0.1);
-              }
-            </style>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body class="bg-dark-950">
-            <div id="calendar-container" class="calendar-wrapper">
-              ${document.getElementById('calendar-wrapper')?.innerHTML || ''}
-            </div>
-          </body>
-        </html>
-      `);
-      calendarWindow.document.close();
-    }
-  };
+  //   if (calendarWindow) {
+  //     calendarWindow.document.write(`
+  //       <!DOCTYPE html>
+  //       <html class="dark">
+  //         <head>
+  //           <title>CxTrack Calendar</title>
+  //           <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  //           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  //           <style>
+  //             ${document.querySelector('style')?.innerHTML || ''}
+  //             body { 
+  //               margin: 0;
+  //               padding: 20px;
+  //               background-color: #020617;
+  //               font-family: 'Inter', sans-serif;
+  //             }
+  //             .calendar-wrapper {
+  //               background-color: rgb(30, 41, 59);
+  //               border: 1px solid rgb(51, 65, 85);
+  //               border-radius: 0.5rem;
+  //               padding: 1rem;
+  //               height: calc(100vh - 40px);
+  //             }
+  //             .calendar-dark .rbc-toolbar button {
+  //               color: #fff;
+  //               border: 1px solid rgb(51, 65, 85);
+  //               background-color: rgb(30, 41, 59);
+  //             }
+  //             .calendar-dark .rbc-toolbar button:hover {
+  //               background-color: rgb(51, 65, 85);
+  //             }
+  //             .calendar-dark .rbc-toolbar button.rbc-active {
+  //               background-color: #4f46e5;
+  //               border-color: #4f46e5;
+  //             }
+  //             .calendar-dark .rbc-month-view,
+  //             .calendar-dark .rbc-time-view {
+  //               border-color: rgb(51, 65, 85);
+  //             }
+  //             .calendar-dark .rbc-header,
+  //             .calendar-dark .rbc-time-header-cell {
+  //               border-color: rgb(51, 65, 85);
+  //             }
+  //             .calendar-dark .rbc-day-bg {
+  //               border-color: rgb(51, 65, 85);
+  //             }
+  //             .calendar-dark .rbc-today {
+  //               background-color: rgba(79, 70, 229, 0.1);
+  //             }
+  //           </style>
+  //           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  //         </head>
+  //         <body class="bg-dark-950">
+  //           <div id="calendar-container" class="calendar-wrapper">
+  //             ${document.getElementById('calendar-wrapper')?.innerHTML || ''}
+  //           </div>
+  //         </body>
+  //       </html>
+  //     `);
+  //     calendarWindow.document.close();
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-dark-950 flex">
@@ -222,7 +221,7 @@ const DashboardLayout: React.FC = () => {
                 case 'DollarSign':
                   Icon = DollarSign;
                   break;
-                case 'Calendar':                  
+                case 'Calendar':
                   Icon = Calendar;
                   break;
                 default:
@@ -240,7 +239,7 @@ const DashboardLayout: React.FC = () => {
               );
             })}
 
-            {sidebarOpen && templateConfig.dashboardSections.showSales && (
+            {sidebarOpen && templateConfig.dashboardSections.showSalesChart && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('sales')}
@@ -254,7 +253,7 @@ const DashboardLayout: React.FC = () => {
               </div>
             )}
 
-            {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSales) && (
+            {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSalesChart) && (
               <>{templateConfig.sidebarItems
                 .filter(item => item.section === 'sales')
                 .map((item, index) => {
@@ -340,17 +339,17 @@ const DashboardLayout: React.FC = () => {
               </div>
             )} */}
 
-            {(!sidebarOpen || expandedSections.finance) && templateConfig.dashboardSections.showFinance && (
+            {/* {(!sidebarOpen || expandedSections.finance) && templateConfig.dashboardSections.showFinance && (
               <>
                 <NavLink to="/revenue" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <DollarSign size={20} />
                   {sidebarOpen && <span>Revenue</span>}
                 </NavLink>
 
-                {/* <NavLink to="/expenses" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/expenses" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Receipt size={20} />
                   {sidebarOpen && <span>Expenses</span>}
-                </NavLink> */}
+                </NavLink>
 
                 <NavLink to="/products" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Package size={20} />
@@ -362,12 +361,12 @@ const DashboardLayout: React.FC = () => {
                   {sidebarOpen && <span>Inventory</span>}
                 </NavLink>
 
-                {/* <NavLink to="/purchases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/purchases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <ShoppingCart size={20} />
                   {sidebarOpen && <span>Purchases</span>}
-                </NavLink> */}
+                </NavLink> 
               </>
-            )}
+            )} */}
 
 
             {/* ADMIN area */}
@@ -391,29 +390,17 @@ const DashboardLayout: React.FC = () => {
                   <Settings size={20} />
                   {sidebarOpen && <span>Calls</span>}
                 </NavLink>
-              </>
-            )}
 
-            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
-              <>
                 <NavLink to="/admin/call-agent-setup" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Call Agents</span>}
                 </NavLink>
-              </>
-            )}
 
-            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
-              <>
                 <NavLink to="/admin-users" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Users</span>}
                 </NavLink>
-              </>
-            )}
 
-            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
-              <>
                 <NavLink to="/admin/sent-notification" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
                   <Settings size={20} />
                   {sidebarOpen && <span>Send Notification</span>}

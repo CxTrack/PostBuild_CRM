@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen, PersonStanding, User } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen, PersonStanding, User, DollarSign, CircleDollarSign, Banknote, StopCircle, BadgeDollarSign } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
@@ -44,7 +44,7 @@ const CRMDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
-    fetchPipelineItems(); 
+    fetchPipelineItems();
   }, [fetchTasks, fetchPipelineItems]);
 
   const stats = {
@@ -509,6 +509,19 @@ const CRMDashboard: React.FC = () => {
                             <div className="flex items-center justify-center space-x-2">
                               {/* <Eye to={`/leads/${lead.id}`} className="text-gray-400 hover:text-white" size={16}>
                               </Eye> */}
+
+                              {/* <TooltipButton
+                                tooltip="Sale"
+                                icon={<BadgeDollarSign size={16} color='green' />}
+                                onClick={() => { }}
+                              />
+
+                              <TooltipButton
+                                tooltip="No Sale"
+                                icon={<StopCircle size={16} color='red' />}
+                                onClick={() => { }}
+                              />
+                              <span> | </span> */}
 
                               <TooltipButton
                                 tooltip="Go to Customer"

@@ -11,25 +11,13 @@ import { useProductStore } from '../../stores/productStore';
 import { useInvoiceStore } from '../../stores/invoiceStore';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { useAuthStore } from '../../stores/authStore';
-import { toast } from 'react-hot-toast';
 import CallsDashboardCharts from '../../components/calls/CallsDashboardCharts';
-import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import { callsService } from '../../services/callsService';
 import { Call } from '../../types/database.types';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActivityStore } from '../../stores/activitiesStore';
-
-
-// Function to format relative time
-const getRelativeTime = (date: string) => {
-  try {
-    return formatDistanceToNow(new Date(date), { addSuffix: true });
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return format(new Date(date), 'MMM d, yyyy h:mm a');
-  }
-};
+import { useTemplateStore } from '../../stores/templateStore';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -41,21 +29,16 @@ const Dashboard: React.FC = () => {
   const { products, fetchProducts } = useProductStore();
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
-  const { totalProducts } = useProductStore();
+  //const { totalProducts } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const { activities, getActivities } = useActivityStore();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [dashboardSettings, setDashboardSettings] = useState({
-    //showSalesChart: true,
-    //showPurchasesChart: true,
-    //showInventoryStatus: true,
-    showTodayEvents: true,
-    showPipeline: true
-  });
 
+  const { activeTemplateSettings, setActiveTemplate, getActiveTemplate } = useTemplateStore();
+  
   const [callsItems, setCalls] = useState<Call[]>([]);
 
   // Update time every second
@@ -74,6 +57,8 @@ const Dashboard: React.FC = () => {
       return; // Ensure user is authenticated before loading data
     }
 
+    getActiveTemplate();
+    
     const loadData = async () => {
       setLoading(true);
       try {
@@ -125,9 +110,9 @@ const Dashboard: React.FC = () => {
         //TODO: how to make sure this template is enabled or disabled
         // if disabled than need to recover to default
 
-        if (settings?.dashboard_settings) {
-          setDashboardSettings(settings.dashboard_settings);
-        }
+        // if (settings?.dashboard_settings) {
+        //   setDashboardSettings(settings.dashboard_settings);
+        // }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       } finally {
@@ -337,7 +322,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Pipeline */}
-      {dashboardSettings.showPipeline && (
+      {activeTemplateSettings.showPipelineOverview && (
         <div className="card bg-dark-800 border border-dark-700">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold text-white flex items-center">
@@ -397,7 +382,7 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Today's Events */}
-      {dashboardSettings.showTodayEvents && (
+      {activeTemplateSettings.showTodayEvents && (
         <div className="card bg-dark-800 border border-dark-700 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Today's Events</h3>
@@ -666,10 +651,10 @@ const Dashboard: React.FC = () => {
                 <span className="text-gray-300">Show Pipeline</span>
                 <input
                   type="checkbox"
-                  checked={dashboardSettings.showPipeline}
-                  onChange={(e) => setDashboardSettings({
-                    ...dashboardSettings,
-                    showPipeline: e.target.checked
+                  checked={activeTemplateSettings.showPipelineOverview}
+                  onChange={(e) => setActiveTemplate({
+                    ...activeTemplateSettings,
+                    showPipelineOverview: e.target.checked
                   })}
                   className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-600"
                 />
@@ -679,9 +664,9 @@ const Dashboard: React.FC = () => {
                 <span className="text-gray-300">Show Today's Events</span>
                 <input
                   type="checkbox"
-                  checked={dashboardSettings.showTodayEvents}
-                  onChange={(e) => setDashboardSettings({
-                    ...dashboardSettings,
+                  checked={activeTemplateSettings.showTodayEvents}
+                  onChange={(e) => setActiveTemplate({
+                    ...activeTemplateSettings,
                     showTodayEvents: e.target.checked
                   })}
                   className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-600"
@@ -694,16 +679,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => setShowSettingsModal(false)}
                 className="btn btn-secondary"
               >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  //saveDashboardSettings(dashboardSettings);
-                  setShowSettingsModal(false);
-                }}
-                className="btn btn-primary"
-              >
-                Save Changes
+                Close
               </button>
             </div>
           </div>

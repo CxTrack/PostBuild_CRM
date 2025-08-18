@@ -5,7 +5,7 @@ import { useTemplateStore } from '../../stores/templateStore';
 import { toast } from 'react-hot-toast';
 
 const Templates: React.FC = () => {
-  const { activeTemplate, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
+  const { activeTemplateSettings, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
 
   useEffect(() => {
     getActiveTemplate();
@@ -13,7 +13,13 @@ const Templates: React.FC = () => {
 
   const handleTemplateSwitch = async (templateId: string) => {
     try {
-      await setActiveTemplate(templateId);
+      console.log(activeTemplateSettings);
+      
+      await setActiveTemplate({
+                    ...activeTemplateSettings,
+                    activeTemplate: templateId
+                  });
+
       toast.success(`Successfully switched to ${templates.find(t => t.id === templateId)?.name} template`);
     } catch (error) {
       toast.error('Failed to switch template');
@@ -127,7 +133,7 @@ const Templates: React.FC = () => {
        id: 'mortgage-brokers',
        name: 'Mortgage Brokers',
       description: 'Specialized for mortgage and lending professionals',
-       isActive: activeTemplate === 'mortgage-brokers',
+       isActive: activeTemplateSettings.activeTemplate === 'mortgage-brokers',
        items: [
          {
            type: 'Client Types',
@@ -232,7 +238,7 @@ const Templates: React.FC = () => {
       id: 'call-center',
       name: 'Call Center',
       description: 'Optimized for businesses with high call volumes and agent management needs.',
-      isActive: activeTemplate === 'call-center',
+      isActive: activeTemplateSettings.activeTemplate === 'call-center',
       items: [
         {
           type: 'Call Template Features',
