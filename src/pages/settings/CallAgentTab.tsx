@@ -8,6 +8,8 @@ import { adminStore } from '../../stores/adminStore';
 
 interface CallAgent {
   call_agent_id: string;
+  id: string;
+  email: string;
 }
 
 const CallAgentTab: React.FC = () => {
@@ -33,23 +35,21 @@ const CallAgentTab: React.FC = () => {
 
     setLoadingAgents(true);
 
-    let query = supabase
-      .from('user_call_agents')
-      .select('call_agent_id');
+    const { data, error } = await supabase
+      .from('user_call_agents_with_users')
+      .select('*');
 
-    if (!isAdmin) {
-      query = query.eq('user_id', user.id);
-    }
+    // if (!isAdmin) {
+    //   query = query.eq('user_id', user.id);
+    // }
 
-    
-    const { data, error } = await query;
-console.log(data);
+
     if (error) {
       console.error('Error fetching call agents:', error);
       toast.error('Failed to fetch call agents.');
     } else {
 
-      setCallAgents(data as CallAgent[]);
+      setCallAgents(data as unknown as CallAgent[]);
     }
 
     setLoadingAgents(false);
@@ -138,6 +138,7 @@ console.log(data);
           <thead>
             <tr>
               <th className="text-left py-2 px-4 text-gray-300 border-b border-dark-700">Agent ID</th>
+              <th className="text-left py-2 px-4 text-gray-300 border-b border-dark-700">User Email</th>
               <th className="text-left py-2 px-4 text-gray-300 border-b border-dark-700">Actions</th>
             </tr>
           </thead>
@@ -145,6 +146,7 @@ console.log(data);
             {callAgents.map((agent, index) => (
               <tr key={index} className="hover:bg-dark-700">
                 <td className="py-2 px-4 text-gray-400 border-b border-dark-700">{agent.call_agent_id}</td>
+                <td className="py-2 px-4 text-gray-400 border-b border-dark-700">{agent.email}</td>
                 <td className="py-2 px-4 text-gray-400 border-b border-dark-700 text-right text-sm font-medium">
                   <div className="flex items-center justify space-x-2">
                     <button
