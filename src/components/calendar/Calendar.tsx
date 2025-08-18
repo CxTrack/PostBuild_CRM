@@ -86,7 +86,6 @@ const Calendar: React.FC<CalendarProps> = ({
 
   const handleEventClick = (event: any) => {
     setSelectedEvent(event);
-    console.log(event);
 
     setShowEventModal(true);
 
