@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotificationStore } from '../stores/notificationStore';
-import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { format } from 'date-fns';
 
@@ -11,27 +10,12 @@ const NotificationBell: React.FC = () => {
   const { user } = useAuthStore();
 
   useEffect(() => {
-    fetchNotifications();
-    
-    if (!user) return;
-    
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
+    if (!user)
+      return;
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    fetchNotifications();
   }, [fetchNotifications, user]);
+
 
   const handleNotificationClick = (id: string) => {
     markAsRead(id);
@@ -74,15 +58,13 @@ const NotificationBell: React.FC = () => {
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification.id)}
-                    className={`p-4 cursor-pointer transition-colors ${
-                      notification.read ? 'bg-dark-800' : 'bg-dark-700'
-                    } hover:bg-dark-700`}
+                    className={`p-4 cursor-pointer transition-colors ${notification.read ? 'bg-dark-800' : 'bg-dark-700'
+                      } hover:bg-dark-700`}
                   >
                     <div className="flex items-start">
                       <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          notification.read ? 'text-gray-300' : 'text-white'
-                        }`}>
+                        <p className={`text-sm font-medium ${notification.read ? 'text-gray-300' : 'text-white'
+                          }`}>
                           {notification.title}
                         </p>
                         <p className="text-sm text-gray-400 mt-1">
