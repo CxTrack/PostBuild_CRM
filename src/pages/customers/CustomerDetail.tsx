@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Edit, Trash2, Mail, Phone, MapPin, Building, User, FileText,
   ShoppingCart, Clock, Calendar, DollarSign, ArrowLeft, Eye, Star, Briefcase, UserPlus,
-  CircleUser
+  CircleUser,
+  Plus
 } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { Customer } from '../../types/database.types';
@@ -12,39 +13,31 @@ import { formatPhoneNumber } from '../../utils/formatters';
 import { useCallStore } from '../../stores/callStore';
 import RecentCallsTable from '../../components/calls/RecentCallsTable';
 import { formatService } from '../../services/formatService';
+import { usePipelineStore } from '../../stores/pipelineStore';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { customers, getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
+  const { getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
+  
   const { calls, fetchCustomerCalls } = useCallStore();
-
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
+  const { createPipelineItem } = usePipelineStore();
+  const [showLeadModal, setShowLeadModal] = useState(false);
+
   useEffect(() => {
+    if (!id) return;
+    const timer = setTimeout(() => {
+      getCustomerById(id).then(setCustomer);
+      fetchCustomerCalls(id);
+    }, 300); // wait 300ms
 
-    const loadData = async () => {
-      if (id) {
-        getCustomerById(id)
-          .then(async data => {
-            if (data) {
-              setCustomer(data);
-              await fetchCustomerCalls(id);
-            } else {
-              toast.error('Customer not found');
-              navigate('/customers');
-            }
-          })
-          .catch(err => {
-            toast.error('Failed to load customer details');
-          });
-      }
-    };
+    return () => clearTimeout(timer);
+  }, [id]);
 
-    loadData();
-  }, [id, customers]);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -59,6 +52,26 @@ const CustomerDetail: React.FC = () => {
       }
     }
   };
+
+
+  const handleCreateLead = async () => {
+    createPipelineItem({
+      id: '',
+      customer_id: customer?.id!,
+      stage: 'lead',
+      closing_date: null,
+      closing_probability: '',
+      dollar_value: '',
+      created_at: '',
+      updated_at: '',
+      customers: null,
+      final_status: null
+    });
+    console.log(customer?.id!);
+    
+    toast.success('Lead has been succesfully created');
+  };
+  
 
   const handleStartEdit = (field: string, value: string) => {
     setEditingField(field);
@@ -131,10 +144,14 @@ const CustomerDetail: React.FC = () => {
           <Edit size={16} />
           <span>Edit Customer</span>
         </Link>
-        <Link to={`/crm?customer=${id}&action=create-lead`} className="btn btn-secondary flex items-center space-x-2">
-          <UserPlus size={16} />
-          <span>Create Lead</span>
-        </Link>
+        <button
+          onClick={() => handleCreateLead()}
+          className="btn btn-secondary flex items-center space-x-2"
+        >
+          <Plus size={16} />
+          <span>Add Lead</span>
+        </button>
+
         <Link to={`/invoices/create?customer=${id}`} className="btn btn-secondary flex items-center space-x-2">
           <FileText size={16} />
           <span>Create Invoice</span>
