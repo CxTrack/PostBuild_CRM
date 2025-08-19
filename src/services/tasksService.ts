@@ -165,7 +165,3 @@ export const tasksService = {
   },
 };
 
-function uuidv4(): string | undefined {
-  throw new Error('Function not implemented.');
-}
-

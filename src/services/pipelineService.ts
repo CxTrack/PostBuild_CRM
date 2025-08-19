@@ -113,7 +113,7 @@ export const piplelineService = {
         .single();
 
       if (error) {
-        console.error('Error updating task status:', error);
+        console.error('Error updating pipline item status:', error);
         throw error;
       }
 

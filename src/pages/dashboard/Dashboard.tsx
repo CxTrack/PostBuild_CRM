@@ -19,6 +19,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useActivityStore } from '../../stores/activitiesStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import CalendarEventEdit from '../../components/calendar/CalendarEventEdit';
+import { CalendarEvent } from '../../types/calendar.event';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const Dashboard: React.FC = () => {
   const { activeTemplateSettings, setActiveTemplate, getActiveTemplate } = useTemplateStore();
 
   const [callsItems, setCalls] = useState<Call[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   // Update time every second
   useEffect(() => {

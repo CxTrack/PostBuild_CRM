@@ -2,11 +2,13 @@ import { Trash, Trash2 } from "lucide-react";
 
 interface TooltipButtonProps {
   tooltip: string;
+  isDisabled: boolean;
+  isHidden: boolean;
   onClick?: () => void;
   icon: React.ReactNode; // pass an icon or any JSX
 }
 
-export const TooltipButton: React.FC<TooltipButtonProps> = ({ tooltip, onClick, icon }) => {
+export const TooltipButton: React.FC<TooltipButtonProps> = ({ tooltip, onClick, icon, isDisabled, isHidden }) => {
   const handleClick = () => {
     onClick?.(); // call external function if provided
   };
@@ -15,6 +17,8 @@ export const TooltipButton: React.FC<TooltipButtonProps> = ({ tooltip, onClick, 
     <div className="relative group inline-block">
       <button
         onClick={handleClick}
+        disabled={isDisabled}
+        hidden={isHidden}
         className={`text-gray-400 hover:${
           ((icon as any)?.type === Trash || (icon as any)?.type === Trash2 ) ? 'text-red-500' : 'text-green-500'
         }`}

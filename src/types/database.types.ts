@@ -125,7 +125,10 @@ export type PipelineItem = {
   created_at: string;
   updated_at: string;
   customers: Customer | null;
+  final_status: OpportunityStatus | null; // symbolize opportunity status
 };
+
+export type OpportunityStatus = 'Sale' | 'No Sale';
 
 type QuoteItem = {
   id?: string;

@@ -12,7 +12,6 @@ import { useTaskStore } from '../../stores/taskStore';
 import { usePipelineStore } from '../../stores/pipelineStore';
 
 import { TooltipButton } from '../../components/ToolTip'
-import ChangeLeadStatusModal from './components/ChangeLeadStatusModal';
 import EditOpportunityModal from './components/EditOpportunityModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,7 +20,7 @@ type TabType = 'leads' | 'tasks' | 'opportunities';
 const CRMDashboard: React.FC = () => {
   const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-  const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, deletePipelineItem } = usePipelineStore();
+  const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
 
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
@@ -40,7 +39,17 @@ const CRMDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const filteredLeads = leads;
-  const filteredOpportunities = opportunities;
+  const filteredOpportunities = [...opportunities].sort((a, b) => {
+    const order = (status: string | null) => {
+      if (status === null) return 0;              // first
+      if (status !== "Sale" && status !== "No Sale") return 1; // second (anything else)
+      if (status === "Sale") return 2;            // third
+      if (status === "No Sale") return 3;         // last
+      return 4; // fallback
+    };
+
+    return order(a.final_status) - order(b.final_status);
+  });;
 
   useEffect(() => {
     fetchTasks();
@@ -227,18 +236,24 @@ const CRMDashboard: React.FC = () => {
                               <TooltipButton
                                 tooltip="Go to Customer"
                                 icon={<User size={16} />}
+                                isDisabled={false}
+                                isHidden={false}
                                 onClick={() => navigate(`/customers/${lead.customer_id}`)}
                               />
 
                               <TooltipButton
                                 tooltip="Change stage"
                                 icon={<FolderInput size={16} />}
+                                isDisabled={false}
+                                isHidden={false}
                                 onClick={() => setSelectedLead(lead)}
                               />
 
                               <TooltipButton
                                 tooltip="Delete Lead"
                                 icon={<Trash2 size={16} />}
+                                isDisabled={false}
+                                isHidden={false}
                                 onClick={() => handleDeletePipelineItem(lead.id)}
                               />
                             </div>
@@ -392,6 +407,8 @@ const CRMDashboard: React.FC = () => {
                               <TooltipButton
                                 tooltip={task.status === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}
                                 icon={<ChevronDownSquare size={16} />}
+                                isDisabled={false}
+                                isHidden={false}
                                 onClick={() => {
                                   const newStatus = task.status === 'completed' ? 'pending' : 'completed';
                                   console.log(newStatus);
@@ -403,6 +420,8 @@ const CRMDashboard: React.FC = () => {
                               <TooltipButton
                                 tooltip="Delete Task"
                                 icon={<Trash2 size={16} />}
+                                isDisabled={false}
+                                isHidden={false}
                                 onClick={() => handleDeleteTask(task.id)}
                               />
                             </div>
@@ -440,7 +459,10 @@ const CRMDashboard: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Opportunities</h3>
                   <div className="flex items-center mt-1">
-                    <span className="text-2xl font-bold text-white">{stats.opportunities.value}</span>
+                    <span className="text-2xl font-bold text-white">
+                      {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
+                        .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
+                    </span>
                     {/* <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.opportunities.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       <span className="ml-1">{stats.opportunities.change}</span>
@@ -468,6 +490,7 @@ const CRMDashboard: React.FC = () => {
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Value</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Probability</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Expected Close</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Status</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider text-center align-middle">Actions</th>
                     </tr>
                   </thead>
@@ -489,7 +512,16 @@ const CRMDashboard: React.FC = () => {
                       </tr>
                     ) : (
                       filteredOpportunities.map((opportunity) => (
-                        <tr key={opportunity.id} className="hover:bg-dark-700/50">
+                        <tr key={opportunity.id}
+                          className={
+                            opportunity.final_status === "Sale"
+                              ? "bg-green-700/50"
+                              : opportunity.final_status === "No Sale"
+                                ? "bg-red-700/50"
+                                : opportunity.final_status === null
+                                  ? "bg-gray-700/50"
+                                  : "hover:bg-dark-700/50"
+                          }>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-white">{opportunity.customers?.name}</div>
                           </td>
@@ -505,36 +537,55 @@ const CRMDashboard: React.FC = () => {
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-center align-middle">
                             {opportunity.closing_date ? new Date(opportunity.closing_date).toISOString().split('T')[0] : '-'}
                           </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-center align-middle">
+                            {opportunity.final_status ? opportunity.final_status : 'Active'}
+                          </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
                             <div className="flex items-center justify-center space-x-2">
                               {/* <Eye to={`/leads/${lead.id}`} className="text-gray-400 hover:text-white" size={16}>
                               </Eye> */}
 
-                              {/* <TooltipButton
+                              <TooltipButton
                                 tooltip="Sale"
                                 icon={<BadgeDollarSign size={16} color='green' />}
-                                onClick={() => { }}
+                                isDisabled={false}
+                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
+                                onClick={() => {
+                                  opportunity.final_status = 'Sale';
+                                  updatePipelineItem(opportunity);
+                                }
+                                }
                               />
 
                               <TooltipButton
                                 tooltip="No Sale"
+                                isDisabled={false}
+                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
                                 icon={<StopCircle size={16} color='red' />}
-                                onClick={() => { }}
+                                onClick={() => {
+                                  opportunity.final_status = 'No Sale';
+                                  updatePipelineItem(opportunity);
+                                }
+                                }
                               />
-                              <span> | </span> */}
+
+                              {(opportunity.final_status != 'Sale') && (opportunity.final_status != 'No Sale') && <span> | </span>}
 
                               <TooltipButton
                                 tooltip="Go to Customer"
                                 icon={<User size={16} />}
+                                isDisabled={false}
+                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
                                 onClick={() => navigate(`/customers/${opportunity.customer_id}`)}
                               />
 
                               <TooltipButton
                                 tooltip="Edit"
                                 icon={<Pen size={16} />}
+                                isDisabled={false}
+                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
                                 onClick={() => {
                                   setEditLead(opportunity);
-                                  console.log(editLead);
                                 }
                                 }
                               />
@@ -542,6 +593,8 @@ const CRMDashboard: React.FC = () => {
                               <TooltipButton
                                 tooltip="Delete Opportunity"
                                 icon={<Trash2 size={16} />}
+                                isDisabled={false}
+                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
                                 onClick={() => handleDeletePipelineItem(opportunity.id)}
                               />
                             </div>
@@ -644,7 +697,10 @@ const CRMDashboard: React.FC = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Pipeline Value</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{stats.opportunities.value}</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">
+                {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
+                  .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
+              </h3>
               {/* <div className="flex items-center mt-2">
                 {stats.opportunities.trend === 'up' ? (
                   <ArrowUpRight size={16} className="text-green-500" />
