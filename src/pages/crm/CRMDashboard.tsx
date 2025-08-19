@@ -14,6 +14,7 @@ import { usePipelineStore } from '../../stores/pipelineStore';
 import { TooltipButton } from '../../components/ToolTip'
 import EditOpportunityModal from './components/EditOpportunityModal';
 import { useNavigate } from 'react-router-dom';
+import { calculatePercentage } from '../../utils/general';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
@@ -36,6 +37,9 @@ const CRMDashboard: React.FC = () => {
   const [selectedLead, setSelectedLead] = useState<PipelineItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [pipeLineValueLastMonth, setPipeLineValueLastMonth] = useState(0);
+  const [pipeLineValueThisMonth, setPipeLineValueThisMonth] = useState(0);
+
   const navigate = useNavigate();
 
   const filteredLeads = leads;
@@ -49,11 +53,12 @@ const CRMDashboard: React.FC = () => {
     };
 
     return order(a.final_status) - order(b.final_status);
-  });;
+  });
 
   useEffect(() => {
     fetchTasks();
     fetchPipelineItems();
+    calculateOpportunityChange();
   }, [fetchTasks, fetchPipelineItems]);
 
   const stats = {
@@ -72,10 +77,47 @@ const CRMDashboard: React.FC = () => {
     opportunities: {
       total: opportunities.length,
       value: `$${opportunities.reduce((sum, opp) => sum + (Number(opp.dollar_value) || 0), 0).toLocaleString()}`,
-      //change: '+12%',
-      //trend: 'up'
+      change: calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '%',
+      trend: pipeLineValueThisMonth >= pipeLineValueLastMonth ? 'up' : 'down'
     }
   };
+
+  const calculateOpportunityChange = () => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+    // this month value
+    const pipeLineValueThisMonth = filteredOpportunities
+      .filter((o: any) => {
+        const date = new Date(o.created_at);
+        return (
+          o.final_status !== "No Sale" &&
+          date.getMonth() === thisMonth &&
+          date.getFullYear() === thisYear
+        );
+      })
+      .reduce((sum, o: any) => sum + Number(o.dollar_value), 0);
+
+    setPipeLineValueThisMonth(pipeLineValueThisMonth);
+
+    // last month value
+    const pipeLineValueLastMonth = filteredOpportunities
+      .filter((o: any) => {
+        const date = new Date(o.created_at);
+        return (
+          o.final_status !== "No Sale" &&
+          date.getMonth() === lastMonth &&
+          date.getFullYear() === lastMonthYear
+        );
+      })
+      .reduce((sum, o: any) => sum + Number(o.dollar_value), 0);
+
+    setPipeLineValueLastMonth(pipeLineValueLastMonth);
+  }
 
   const handleDeletePipelineItem = async (id: string) => {
     setPipelineItemToDelete(id);
@@ -701,7 +743,7 @@ const CRMDashboard: React.FC = () => {
                 {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
                   .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
               </h3>
-              {/* <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 {stats.opportunities.trend === 'up' ? (
                   <ArrowUpRight size={16} className="text-green-500" />
                 ) : (
@@ -711,7 +753,7 @@ const CRMDashboard: React.FC = () => {
                   {stats.opportunities.change}
                 </span>
                 <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
               <TrendingUp size={24} />
