@@ -1,4 +1,4 @@
-import create from 'zustand';
+import { create } from 'zustand'
 import { callsService } from '../services/callsService';
 import { customerService } from '../services/customerService';
 import Retell from 'retell-sdk';

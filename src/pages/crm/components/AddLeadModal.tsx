@@ -32,7 +32,8 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ onClose }) => {
         id: '',
         stage: 'lead',
         updated_at: '',
-        customers: null
+        customers: null,
+        final_status: null
       });
 
     toast.success('Lead created successfully');
