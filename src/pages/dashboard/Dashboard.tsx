@@ -18,6 +18,7 @@ import { Call } from '../../types/database.types';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActivityStore } from '../../stores/activitiesStore';
 import { useTemplateStore } from '../../stores/templateStore';
+import CalendarEventEdit from '../../components/calendar/CalendarEventEdit';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -38,8 +39,9 @@ const Dashboard: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const { activeTemplateSettings, setActiveTemplate, getActiveTemplate } = useTemplateStore();
-  
+
   const [callsItems, setCalls] = useState<Call[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
 
   // Update time every second
   useEffect(() => {
@@ -58,7 +60,7 @@ const Dashboard: React.FC = () => {
     }
 
     getActiveTemplate();
-    
+
     const loadData = async () => {
       setLoading(true);
       try {
@@ -414,10 +416,17 @@ const Dashboard: React.FC = () => {
                   <div className={`p-2 rounded-lg ${event.type === 'invoice' ? 'bg-primary-500/20 text-primary-400' :
                     'bg-gray-500/20 text-gray-400'
                     }`}>
-                    {/* {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />} */}
+                    {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />}
+                    
                   </div>
                   <div className="flex-1">
-                    <p className="text-white font-medium">{event.title}</p>
+                    <p
+                      key={event.id}
+                      className="text-white font-medium cursor-pointer hover:underline"
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      {event.title}
+                    </p>
                     <p className="text-sm text-gray-400">
                       {new Date(event.start).toLocaleTimeString([], {
                         hour: '2-digit',
@@ -600,6 +609,14 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Event Modal */}
+      {selectedEvent && (
+        <CalendarEventEdit
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
 
       {/* Settings Modal */}
       {showSettingsModal && (
