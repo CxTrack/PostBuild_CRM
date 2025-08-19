@@ -78,7 +78,7 @@ export const piplelineService = {
           stage: taskData.stage,
           closing_date: taskData.closing_date,
           closing_probability: taskData.closing_probability,
-          dollar_value: taskData.dollar_value,
+          dollar_value: taskData.dollar_value == ''  ? 0 : taskData.dollar_value
         }])
         .select()
         .single();
@@ -98,12 +98,13 @@ export const piplelineService = {
   async updatePipelineItem(item: PipelineItem): Promise<PipelineItem> {
     try {
 
-      const task = await this.getPipelineItem(item.id);
-      if (!task) {
+      const pipeline = await this.getPipelineItem(item.id);
+      if (!pipeline) {
         throw new Error(`PipelineItem with id ${item.id} was not found`);
       }
 
       const { customers, ...updateData } = item; // remove joined object
+      updateData.dollar_value = item.dollar_value ?? 0;
 
       const { data, error } = await supabase
         .from('pipeline_items')
