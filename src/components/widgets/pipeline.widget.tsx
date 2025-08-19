@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 
 interface PipelineWidgetProps {
-    pipeline: any;
 }
 
 const PipelineWidget: React.FC<PipelineWidgetProps> = ({ }) => {
