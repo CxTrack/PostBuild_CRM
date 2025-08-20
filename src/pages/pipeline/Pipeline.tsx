@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FileText, Users, DollarSign, Filter, Search, ArrowUpRight, 
+import {
+  FileText, Users, DollarSign, Filter, Search, ArrowUpRight,
   ArrowDownRight, ChevronDown, Calendar, Clock, Filter as FilterIcon
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
+import PipelineValueWidget from '../../components/widgets/pipeline.value.widget';
+import { usePipelineStore } from '../../stores/pipelineStore';
+import { calculatePercentage } from '../../utils/general';
+import PipelineOpportunitiesAmountWidget from '../../components/widgets/pipeline.opportunities.amount.widget';
+import PipelineOpportunitiesAverageWidget from '../../components/widgets/pipeline.opportunities.average.widget';
 
 interface PipelineData {
   pipeline_stage: string;
@@ -42,19 +47,26 @@ const Pipeline: React.FC = () => {
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  const [pipeLineValueLastMonth, setPipeLineValueLastMonth] = useState(0);
+  const [pipeLineValueThisMonth, setPipeLineValueThisMonth] = useState(0);
+
+  const { leads, opportunities, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
+  const stats = {
+    opportunities: {
+      total: opportunities.length,
+      value: `$${opportunities.reduce((sum, opp) => sum + (Number(opp.dollar_value) || 0), 0).toLocaleString()}`,
+      change: calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '%',
+      trend: pipeLineValueThisMonth >= pipeLineValueLastMonth ? 'up' : 'down'
+    }
+  };
+
   useEffect(() => {
     const loadPipelineData = async () => {
       try {
         setLoading(true);
 
-        // Get pipeline summary
-        const { data: summary, error: summaryError } = await supabase
-          .rpc('get_pipeline_summary', { 
-            p_user_id: user?.id 
-          });
-
-        if (summaryError) throw summaryError;
-        setPipelineData(summary || []);
+        fetchPipelineItems();
+        calculateOpportunityChange();
 
         // Get detailed pipeline items
         const quotesPromise = supabase
@@ -113,6 +125,44 @@ const Pipeline: React.FC = () => {
     loadPipelineData();
   }, [user?.id]);
 
+
+  const calculateOpportunityChange = () => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+    // this month value
+    const pipeLineValueThisMonth = opportunities
+      .filter((o: any) => {
+        const date = new Date(o.created_at);
+        return (
+          o.final_status !== "No Sale" &&
+          date.getMonth() === thisMonth &&
+          date.getFullYear() === thisYear
+        );
+      })
+      .reduce((sum, o: any) => sum + Number(o.dollar_value), 0);
+
+    setPipeLineValueThisMonth(pipeLineValueThisMonth);
+
+    // last month value
+    const pipeLineValueLastMonth = opportunities
+      .filter((o: any) => {
+        const date = new Date(o.created_at);
+        return (
+          o.final_status !== "No Sale" &&
+          date.getMonth() === lastMonth &&
+          date.getFullYear() === lastMonthYear
+        );
+      })
+      .reduce((sum, o: any) => sum + Number(o.dollar_value), 0);
+
+    setPipeLineValueLastMonth(pipeLineValueLastMonth);
+  }
+
   // Filter and sort pipeline items
   const filteredItems = pipelineItems
     .filter(item => {
@@ -134,40 +184,40 @@ const Pipeline: React.FC = () => {
       if (dateRange !== 'all') {
         const itemDate = new Date(item.created_at);
         const now = new Date();
-        
+
         switch (dateRange) {
           case 'week':
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay());
             weekStart.setHours(0, 0, 0, 0);
             return itemDate >= weekStart;
-            
+
           case 'month':
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             return itemDate >= monthStart;
-            
+
           case 'quarter':
             const quarterStart = new Date(now);
             quarterStart.setMonth(Math.floor(now.getMonth() / 3) * 3, 1);
             return itemDate >= quarterStart;
-            
+
           case 'year':
             const yearStart = new Date(now.getFullYear(), 0, 1);
             return itemDate >= yearStart;
-            
+
           case 'ytd':
             const ytdStart = new Date(now.getFullYear(), 0, 1);
             return itemDate >= ytdStart;
-            
+
           case 'custom':
             const startDate = customDateRange.start ? new Date(customDateRange.start) : null;
             const endDate = customDateRange.end ? new Date(customDateRange.end) : null;
-            
+
             if (startDate && endDate) {
               return itemDate >= startDate && itemDate <= endDate;
             }
             return true;
-            
+
           default:
             return true;
         }
@@ -209,62 +259,9 @@ const Pipeline: React.FC = () => {
 
       {/* Pipeline Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Pipeline Value</p>
-              <h3 className="text-2xl font-bold text-white mt-1">
-                ${totalValue.toLocaleString()}
-              </h3>
-              {/* <div className="flex items-center mt-2">
-                <ArrowUpRight size={16} className="text-green-500" />
-                <span className="text-sm text-green-500 ml-1">12%</span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
-            </div>
-            <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
-              <DollarSign size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Deals</p>
-              <h3 className="text-2xl font-bold text-white mt-1">
-                {totalDeals}
-              </h3>
-              {/* <div className="flex items-center mt-2">
-                <ArrowUpRight size={16} className="text-green-500" />
-                <span className="text-sm text-green-500 ml-1">8%</span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
-            </div>
-            <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
-              <FileText size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Average Deal Value</p>
-              <h3 className="text-2xl font-bold text-white mt-1">
-                ${averageDealValue.toLocaleString()}
-              </h3>
-              {/* <div className="flex items-center mt-2">
-                <ArrowDownRight size={16} className="text-red-500" />
-                <span className="text-sm text-red-500 ml-1">3%</span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
-            </div>
-            <div className="p-3 rounded-lg bg-purple-500/20 text-purple-500">
-              <Users size={24} />
-            </div>
-          </div>
-        </div>
+        <PipelineValueWidget opportunities={opportunities} stats={stats.opportunities} />
+        <PipelineOpportunitiesAmountWidget opportunities={opportunities} />
+        <PipelineOpportunitiesAverageWidget opportunities={opportunities} />
       </div>
 
       {/* Pipeline Stages */}
@@ -272,7 +269,7 @@ const Pipeline: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold text-white">Pipeline Stages</h2>
         </div>
-        
+
         <div className="space-y-4">
           {[
             { stage: 'lead', label: 'Leads', color: 'bg-gray-500' },
@@ -286,13 +283,12 @@ const Pipeline: React.FC = () => {
             const value = stageData?.total_value || 0;
             const count = stageData?.deal_count || 0;
             const percentage = stageData?.completion_percentage || 0;
-            
+
             return (
               <button
                 key={stage.stage}
-                className={`w-full relative ${
-                  selectedStage === stage.stage ? 'ring-2 ring-primary-500 rounded-lg' : 'hover:bg-dark-700/50'
-                }`}
+                className={`w-full relative ${selectedStage === stage.stage ? 'ring-2 ring-primary-500 rounded-lg' : 'hover:bg-dark-700/50'
+                  }`}
                 onClick={() => setSelectedStage(
                   selectedStage === stage.stage ? null : stage.stage
                 )}
@@ -300,11 +296,10 @@ const Pipeline: React.FC = () => {
                 <div className="flex justify-between items-center mb-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-300">{stage.label}</span>
-                    <FilterIcon 
-                      size={14} 
-                      className={`text-gray-400 transition-colors ${
-                        selectedStage === stage.stage ? 'text-primary-400' : 'text-gray-500'
-                      }`} 
+                    <FilterIcon
+                      size={14}
+                      className={`text-gray-400 transition-colors ${selectedStage === stage.stage ? 'text-primary-400' : 'text-gray-500'
+                        }`}
                     />
                   </div>
                   <span className="text-sm text-gray-400">
@@ -312,10 +307,9 @@ const Pipeline: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${stage.color} transition-all duration-300 ${
-                      selectedStage === stage.stage ? 'opacity-100' : 'opacity-75'
-                    }`}
+                  <div
+                    className={`h-full ${stage.color} transition-all duration-300 ${selectedStage === stage.stage ? 'opacity-100' : 'opacity-75'
+                      }`}
                     style={{ width: `${percentage * 100}%` }}
                   />
                 </div>
@@ -340,9 +334,9 @@ const Pipeline: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-2">
-            <select 
+            <select
               className="bg-dark-800 border border-dark-700 text-white rounded-md px-3 py-2"
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
@@ -355,7 +349,7 @@ const Pipeline: React.FC = () => {
               <option value="ytd">Year to Date</option>
               <option value="custom">Custom Range</option>
             </select>
-            
+
             {dateRange === 'custom' && (
               <div className="flex gap-2">
                 <input
@@ -378,8 +372,8 @@ const Pipeline: React.FC = () => {
                 />
               </div>
             )}
-            
-            <button 
+
+            <button
               className="btn btn-secondary flex items-center space-x-2"
               onClick={() => {
                 if (sortBy === 'date') {
@@ -391,15 +385,14 @@ const Pipeline: React.FC = () => {
               }}
             >
               <Calendar size={16} />
-              <ChevronDown 
-                size={16} 
-                className={`transform transition-transform ${
-                  sortBy === 'date' && sortOrder === 'asc' ? 'rotate-180' : ''
-                }`}
+              <ChevronDown
+                size={16}
+                className={`transform transition-transform ${sortBy === 'date' && sortOrder === 'asc' ? 'rotate-180' : ''
+                  }`}
               />
             </button>
-            
-            <button 
+
+            <button
               className="btn btn-secondary flex items-center space-x-2"
               onClick={() => {
                 if (sortBy === 'value') {
@@ -411,11 +404,10 @@ const Pipeline: React.FC = () => {
               }}
             >
               <DollarSign size={16} />
-              <ChevronDown 
-                size={16} 
-                className={`transform transition-transform ${
-                  sortBy === 'value' && sortOrder === 'asc' ? 'rotate-180' : ''
-                }`}
+              <ChevronDown
+                size={16}
+                className={`transform transition-transform ${sortBy === 'value' && sortOrder === 'asc' ? 'rotate-180' : ''
+                  }`}
               />
             </button>
           </div>
@@ -437,7 +429,7 @@ const Pipeline: React.FC = () => {
               {filteredItems.map((item) => (
                 <tr key={`${item.type}-${item.id}`} className="hover:bg-dark-700/50">
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <Link 
+                    <Link
                       to={`/${item.type}s/${item.id}`}
                       className="text-white hover:text-primary-400"
                     >
@@ -448,16 +440,15 @@ const Pipeline: React.FC = () => {
                     {item.customer_name}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      item.pipeline_stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.pipeline_stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
                       item.pipeline_stage === 'closed_lost' ? 'bg-red-900/30 text-red-400' :
-                      item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
-                      item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
-                      item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
-                      item.pipeline_stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
-                      'bg-gray-900/30 text-gray-400'
-                    }`}>
-                      {item.pipeline_stage.split('_').map(word => 
+                        item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
+                          item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
+                            item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
+                              item.pipeline_stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
+                                'bg-gray-900/30 text-gray-400'
+                      }`}>
+                      {item.pipeline_stage.split('_').map(word =>
                         word.charAt(0).toUpperCase() + word.slice(1)
                       ).join(' ')}
                     </span>

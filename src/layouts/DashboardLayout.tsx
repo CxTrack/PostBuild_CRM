@@ -298,6 +298,11 @@ const DashboardLayout: React.FC = () => {
               </>
             )} */}
 
+            <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <DollarSign size={20} />
+              {sidebarOpen && <span>Pipeline</span>}
+            </NavLink>
+
 
             {/* ADMIN area */}
             {sidebarOpen && isAdmin && (

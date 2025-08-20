@@ -4,10 +4,10 @@ import { FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 
-interface PipelineWidgetProps {
+interface PipelineOverviewWidgetProps {
 }
 
-const PipelineWidget: React.FC<PipelineWidgetProps> = ({ }) => {
+const PipelineOverviewWidget: React.FC<PipelineOverviewWidgetProps> = ({ }) => {
     const [pipelineData, setPipelineData] = useState<any[]>([]);
     const { user } = useAuthStore();
 
@@ -90,4 +90,4 @@ const PipelineWidget: React.FC<PipelineWidgetProps> = ({ }) => {
     );
 };
 
-export default PipelineWidget;
+export default PipelineOverviewWidget;
