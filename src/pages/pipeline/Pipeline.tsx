@@ -13,30 +13,9 @@ import { calculatePercentage } from '../../utils/general';
 import PipelineOpportunitiesAmountWidget from '../../components/widgets/pipeline.opportunities.amount.widget';
 import PipelineOpportunitiesAverageWidget from '../../components/widgets/pipeline.opportunities.average.widget';
 
-interface PipelineData {
-  pipeline_stage: string;
-  deal_count: number;
-  total_value: number;
-  completion_percentage: number;
-}
-
-interface PipelineItem {
-  id: string;
-  title: string;
-  customer_name: string;
-  total: number;
-  created_at: string;
-  due_date?: string;
-  type: 'quote' | 'invoice';
-  status: string;
-  pipeline_stage: string;
-}
-
 const Pipeline: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [pipelineData, setPipelineData] = useState<PipelineData[]>([]);
-  const [pipelineItems, setPipelineItems] = useState<PipelineItem[]>([]);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<string>('all');
   const [customDateRange, setCustomDateRange] = useState({
@@ -50,7 +29,7 @@ const Pipeline: React.FC = () => {
   const [pipeLineValueLastMonth, setPipeLineValueLastMonth] = useState(0);
   const [pipeLineValueThisMonth, setPipeLineValueThisMonth] = useState(0);
 
-  const { leads, opportunities, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
+  const { opportunities, pipelines, leads, fetchPipelineItems } = usePipelineStore();
   const stats = {
     opportunities: {
       total: opportunities.length,
@@ -69,51 +48,51 @@ const Pipeline: React.FC = () => {
         calculateOpportunityChange();
 
         // Get detailed pipeline items
-        const quotesPromise = supabase
-          .from('quotes')
-          .select('*')
-          .eq('user_id', user?.id)
-          .filter('status', 'not.in', '("Declined","Expired")');
+        // const quotesPromise = supabase
+        //   .from('quotes')
+        //   .select('*')
+        //   .eq('user_id', user?.id)
+        //   .filter('status', 'not.in', '("Declined","Expired")');
 
-        const invoicesPromise = supabase
-          .from('invoices')
-          .select('*')
-          .eq('user_id', user?.id)
-          .neq('status', 'Cancelled');
+        // const invoicesPromise = supabase
+        //   .from('invoices')
+        //   .select('*')
+        //   .eq('user_id', user?.id)
+        //   .neq('status', 'Cancelled');
 
-        const [quotesResult, invoicesResult] = await Promise.all([
-          quotesPromise,
-          invoicesPromise
-        ]);
+        // const [quotesResult, invoicesResult] = await Promise.all([
+        //   quotesPromise,
+        //   invoicesPromise
+        // ]);
 
-        if (quotesResult.error) throw quotesResult.error;
-        if (invoicesResult.error) throw invoicesResult.error;
+        // if (quotesResult.error) throw quotesResult.error;
+        // if (invoicesResult.error) throw invoicesResult.error;
 
-        const quotes = (quotesResult.data || []).map(quote => ({
-          id: quote.id,
-          title: quote.quote_number,
-          customer_name: quote.customer_name,
-          total: quote.total,
-          created_at: quote.created_at,
-          due_date: quote.expiry_date,
-          status: quote.status,
-          pipeline_stage: quote.pipeline_stage,
-          type: 'quote' as const
-        }));
+        // const quotes = (quotesResult.data || []).map(quote => ({
+        //   id: quote.id,
+        //   title: quote.quote_number,
+        //   customer_name: quote.customer_name,
+        //   total: quote.total,
+        //   created_at: quote.created_at,
+        //   due_date: quote.expiry_date,
+        //   status: quote.status,
+        //   pipeline_stage: quote.pipeline_stage,
+        //   type: 'quote' as const
+        // }));
 
-        const invoices = (invoicesResult.data || []).map(invoice => ({
-          id: invoice.id,
-          title: invoice.invoice_number,
-          customer_name: invoice.customer_name,
-          total: invoice.total,
-          created_at: invoice.created_at,
-          due_date: invoice.due_date,
-          status: invoice.status,
-          pipeline_stage: invoice.pipeline_stage,
-          type: 'invoice' as const
-        }));
+        // const invoices = (invoicesResult.data || []).map(invoice => ({
+        //   id: invoice.id,
+        //   title: invoice.invoice_number,
+        //   customer_name: invoice.customer_name,
+        //   total: invoice.total,
+        //   created_at: invoice.created_at,
+        //   due_date: invoice.due_date,
+        //   status: invoice.status,
+        //   pipeline_stage: invoice.pipeline_stage,
+        //   type: 'invoice' as const
+        // }));
 
-        setPipelineItems([...quotes, ...invoices]);
+        // setPipelineItems([...quotes, ...invoices]);
       } catch (error) {
         console.error('Error loading pipeline data:', error);
         toast.error('Failed to load pipeline data');
@@ -164,10 +143,10 @@ const Pipeline: React.FC = () => {
   }
 
   // Filter and sort pipeline items
-  const filteredItems = pipelineItems
+  const filteredItems = pipelines
     .filter(item => {
       // Stage filter
-      if (selectedStage && item.pipeline_stage !== selectedStage) {
+      if (selectedStage && item.stage !== selectedStage) {
         return false;
       }
 
@@ -175,8 +154,14 @@ const Pipeline: React.FC = () => {
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         return (
-          item.title.toLowerCase().includes(searchLower) ||
-          item.customer_name.toLowerCase().includes(searchLower)
+          item.customers?.name.toLowerCase().includes(searchLower) ||
+          item.customers?.company?.toLowerCase().includes(searchLower) ||
+          item.customers?.email?.toLowerCase().includes(searchLower) ||
+          item.customers?.phone?.toLowerCase().includes(searchLower) ||
+          item.customers?.title?.toLowerCase().includes(searchLower) ||
+          item.closing_probability?.toLowerCase().includes(searchLower) ||
+          item.dollar_value.toLowerCase().includes(searchLower) ||
+          item.final_status?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -232,16 +217,12 @@ const Pipeline: React.FC = () => {
           : new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       } else {
         return sortOrder === 'desc'
-          ? b.total - a.total
-          : a.total - b.total;
+          ? Number(b.dollar_value) - Number(a.dollar_value)
+          : Number(a.dollar_value) - Number(b.dollar_value);
       }
     });
 
   // Calculate totals
-  const totalValue = filteredItems.reduce((sum, item) => sum + item.total, 0);
-  const totalDeals = filteredItems.length;
-  const averageDealValue = totalDeals > 0 ? totalValue / totalDeals : 0;
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -277,21 +258,21 @@ const Pipeline: React.FC = () => {
             // { stage: 'quote', label: 'Quotes', color: 'bg-yellow-500' },
             // { stage: 'invoice_sent', label: 'Invoices (Sent)', color: 'bg-orange-500' },
             // { stage: 'invoice_pending', label: 'Invoices (Pending)', color: 'bg-purple-500' },
-            { stage: 'closed_won', label: 'Closed (Won)', color: 'bg-green-500' }
+            // { stage: 'closed_won', label: 'Closed (Won)', color: 'bg-green-500' }
           ].map((stage) => {
-            const stageData = pipelineData?.find(p => p.pipeline_stage === stage.stage);
-            const value = stageData?.total_value || 0;
-            const count = stageData?.deal_count || 0;
-            const percentage = stageData?.completion_percentage || 0;
+            const stageData = pipelines?.filter(p => p.stage == stage.stage);
+            const value = stageData.reduce((sum, item) => sum + (Number(item.dollar_value) ?? 0), 0);
+            const count = stageData.length || 0;
+            const percentage = 1; // stageData?.dollar_value || 0;
 
             return (
               <button
                 key={stage.stage}
                 className={`w-full relative ${selectedStage === stage.stage ? 'ring-2 ring-primary-500 rounded-lg' : 'hover:bg-dark-700/50'
                   }`}
-                onClick={() => setSelectedStage(
-                  selectedStage === stage.stage ? null : stage.stage
-                )}
+                onClick={() => {
+                  setSelectedStage(selectedStage === stage.stage ? null : stage.stage);
+                }}
               >
                 <div className="flex justify-between items-center mb-1">
                   <div className="flex items-center space-x-2">
@@ -427,40 +408,41 @@ const Pipeline: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-dark-700">
               {filteredItems.map((item) => (
-                <tr key={`${item.type}-${item.id}`} className="hover:bg-dark-700/50">
+                <tr key={`${item.stage}-${item.id}`} className="hover:bg-dark-700/50">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <Link
-                      to={`/${item.type}s/${item.id}`}
+                      to={`/${item.stage}s/${item.id}`}
                       className="text-white hover:text-primary-400"
                     >
-                      {item.title}
+                      {item.stage}
                     </Link>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-gray-300">
-                    {item.customer_name}
+                    {item.customers?.name}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.pipeline_stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
-                      item.pipeline_stage === 'closed_lost' ? 'bg-red-900/30 text-red-400' :
-                        item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
-                          item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
-                            item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
-                              item.pipeline_stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
-                                'bg-gray-900/30 text-gray-400'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                    ${item.stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
+                        // item.pipeline_stage === 'closed_lost' ? 'bg-red-900/30 text-red-400' :
+                        //   item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
+                        //     item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
+                        //       item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
+                        item.stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
+                          'bg-gray-900/30 text-gray-400'
                       }`}>
-                      {item.pipeline_stage.split('_').map(word =>
+                      {item.stage.split('_').map(word =>
                         word.charAt(0).toUpperCase() + word.slice(1)
                       ).join(' ')}
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-gray-300">
-                    ${item.total.toLocaleString()}
+                    ${item.dollar_value.toLocaleString()}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-gray-300">
                     {new Date(item.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-gray-300">
-                    {item.due_date ? new Date(item.due_date).toLocaleDateString() : '-'}
+                    {item.closing_date ? new Date(item.closing_date).toLocaleDateString() : '-'}
                   </td>
                 </tr>
               ))}

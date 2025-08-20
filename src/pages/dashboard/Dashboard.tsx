@@ -20,7 +20,7 @@ import { useActivityStore } from '../../stores/activitiesStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import CalendarEventEdit from '../../components/calendar/CalendarEventEdit';
 import { CalendarEvent } from '../../types/calendar.event';
-import PipelineWidget from '../../components/widgets/pipeline.widget';
+import PipelineOverviewWidget from '../../components/widgets/pipeline.overview.widget';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -318,7 +318,7 @@ const Dashboard: React.FC = () => {
 
       {/* Pipeline */}
       {activeTemplateSettings.showPipelineOverview && (
-        <PipelineWidget pipeline={pipelineData} />
+        <PipelineOverviewWidget />
       )}
 
       {/* Today's Events */}

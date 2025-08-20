@@ -19,9 +19,6 @@ const PipelineOpportunitiesAverageWidget: React.FC<PipelineValueWidgetProps> = (
       (o: any) => o.final_status === null
     );
 
-    console.log(opportunities);
-    
-
     if (activeOpps.length === 0) {
       setAverageDealValue(0);
       return;
