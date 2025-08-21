@@ -733,7 +733,7 @@ const AuthLayout: React.FC = () => {
       />
 
       {/* Floating AI Agent Active Button */}
-      <div 
+      {/* <div 
         className="fixed bottom-6 right-6 bg-primary-800 p-4 rounded-lg shadow-xl cursor-pointer hover:bg-primary-700 transition-colors group z-50"
         onClick={() => setShowChat(true)}
         role="button"
@@ -747,7 +747,7 @@ const AuthLayout: React.FC = () => {
             <p className="text-sm text-primary-300 group-hover:text-primary-200">Click to chat with me</p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Footer */}
       <footer className="bg-dark-900 border-t border-dark-800 py-8">
