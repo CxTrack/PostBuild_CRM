@@ -4,7 +4,6 @@ import {
   FileText, Users, DollarSign, Filter, Search, ArrowUpRight,
   ArrowDownRight, ChevronDown, Calendar, Clock, Filter as FilterIcon
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
 import PipelineValueWidget from '../../components/widgets/pipeline.value.widget';
@@ -17,6 +16,7 @@ const Pipeline: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [percentageRange, setPercentageRange] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('all');
   const [customDateRange, setCustomDateRange] = useState({
     start: '',
@@ -163,6 +163,14 @@ const Pipeline: React.FC = () => {
           item.dollar_value.toLowerCase().includes(searchLower) ||
           item.final_status?.toLowerCase().includes(searchLower)
         );
+      }
+
+      switch (percentageRange) {
+        case '20': return item.closing_probability === 'Preapproval - 20%';
+        case '40': return item.closing_probability == 'Approved Preapproval - 40%';
+        case '60': return item.closing_probability == 'Live Deal - 60%';
+        case '80': return item.closing_probability == 'Approved Live Deal - 80%';
+        default: return true;
       }
 
       // Date range filter
@@ -319,6 +327,18 @@ const Pipeline: React.FC = () => {
           <div className="flex gap-2">
             <select
               className="bg-dark-800 border border-dark-700 text-white rounded-md px-3 py-2"
+              value={percentageRange}
+              onChange={(e) => setPercentageRange(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="20">Preapproval - 20%</option>
+              <option value="40">Approved Preapproval - 40%</option>
+              <option value="60">Live Deal - 60%</option>
+              <option value="80">Approved Live Deal - 80%</option>
+            </select>
+
+            <select
+              className="bg-dark-800 border border-dark-700 text-white rounded-md px-3 py-2"
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
             >
@@ -402,6 +422,7 @@ const Pipeline: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stage</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Value</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Probability</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Due Date</th>
               </tr>
@@ -422,13 +443,13 @@ const Pipeline: React.FC = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                    ${item.stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
-                        // item.pipeline_stage === 'closed_lost' ? 'bg-red-900/30 text-red-400' :
-                        //   item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
-                        //     item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
-                        //       item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
-                        item.stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
-                          'bg-gray-900/30 text-gray-400'
+                    ${//item.stage === 'closed_won' ? 'bg-green-900/30 text-green-400' :
+                      // item.pipeline_stage === 'closed_lost' ? 'bg-red-900/30 text-red-400' :
+                      //   item.pipeline_stage === 'invoice_pending' ? 'bg-purple-900/30 text-purple-400' :
+                      //     item.pipeline_stage === 'invoice_sent' ? 'bg-orange-900/30 text-orange-400' :
+                      //       item.pipeline_stage === 'quote' ? 'bg-yellow-900/30 text-yellow-400' :
+                      item.stage === 'opportunity' ? 'bg-blue-900/30 text-blue-400' :
+                        'bg-gray-900/30 text-gray-400'
                       }`}>
                       {item.stage.split('_').map(word =>
                         word.charAt(0).toUpperCase() + word.slice(1)
@@ -437,6 +458,12 @@ const Pipeline: React.FC = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-gray-300">
                     ${item.dollar_value.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-gray-300 ">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                    ${item.stage === 'opportunity' ? 'bg-green-900/30 text-green-400' : ''}`}>
+                      {item?.closing_probability}
+                    </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-gray-300">
                     {new Date(item.created_at).toLocaleDateString()}
