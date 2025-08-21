@@ -4,7 +4,7 @@ import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
 //import EditLeadModal from './components/EditOpportunityModal';
-import { PipelineItem } from '../../types/database.types';
+import { Customer, PipelineItem } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
 //import QuoteStatusBadge from '../../components/QuoteStatusBadge';
@@ -15,6 +15,8 @@ import { TooltipButton } from '../../components/ToolTip'
 import EditOpportunityModal from './components/EditOpportunityModal';
 import { useNavigate } from 'react-router-dom';
 import { calculatePercentage } from '../../utils/general';
+import { customerService } from '../../services/customerService';
+import { useCustomerStore } from '../../stores/customerStore';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
@@ -23,12 +25,12 @@ const CRMDashboard: React.FC = () => {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
-
+  const { getCustomerById } = useCustomerStore();
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<TabType>('leads');
   const [showLeadModal, setShowLeadModal] = useState(false);
   //const [showDeleteLeadModal, setDeleteLeadModal] = useState(false);
-  const [pipeloneItemToDelete, setPipelineItemToDelete] = useState<string | null>(null);
+  const [pipelineItemToDelete, setPipelineItemToDelete] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [editLead, setEditLead] = useState<PipelineItem | null>(null);
 
@@ -60,6 +62,25 @@ const CRMDashboard: React.FC = () => {
     fetchPipelineItems();
     calculateOpportunityChange();
   }, [fetchTasks, fetchPipelineItems]);
+
+  const [taskCustomers, setTaskCustomers] = useState<Record<string, Customer>>({});
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const results = await Promise.all(
+        tasks.map(t => getCustomerById(t.customer_id))
+      );
+
+      // Build lookup object: { customerId: customer }
+      const customerMap: Record<string, Customer> = {};
+      results.forEach(c => {
+        if (c) customerMap[c.id] = c;
+      });
+      setTaskCustomers(customerMap);
+    };
+
+    if (tasks.length) fetchCustomers();
+  }, [tasks]);
 
   const stats = {
     leads: {
@@ -140,10 +161,10 @@ const CRMDashboard: React.FC = () => {
   };
 
   const confirmPipelineItemDelete = async () => {
-    if (!pipeloneItemToDelete) return;
+    if (!pipelineItemToDelete) return;
 
     try {
-      deletePipelineItem(pipeloneItemToDelete);
+      deletePipelineItem(pipelineItemToDelete);
       toast.success('Lead deleted successfully');
       setPipelineItemToDelete(null);
     } catch (error) {
@@ -359,7 +380,7 @@ const CRMDashboard: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             <ConfirmationModal
-              isOpen={!!pipeloneItemToDelete}
+              isOpen={!!pipelineItemToDelete}
               onClose={() => setPipelineItemToDelete(null)}
               onConfirm={confirmPipelineItemDelete}
               title="Delete item?"
@@ -407,6 +428,7 @@ const CRMDashboard: React.FC = () => {
                     <tr className="bg-dark-700">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider ">Due Date</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider ">Customer</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Priority</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
@@ -438,6 +460,9 @@ const CRMDashboard: React.FC = () => {
                             <div className="text-sm font-medium text-white"> {new Date(task.due_date).toLocaleDateString()}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
+                            <div className="text-sm font-medium text-white">{taskCustomers[task.customer_id]?.name ?? "Loading..."}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm font-medium text-white">{task.priority}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
@@ -453,8 +478,6 @@ const CRMDashboard: React.FC = () => {
                                 isHidden={false}
                                 onClick={() => {
                                   const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-                                  console.log(newStatus);
-
                                   updateTaskStatus(task.id, newStatus);
                                 }}
                               />
@@ -651,7 +674,7 @@ const CRMDashboard: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             <ConfirmationModal
-              isOpen={!!pipeloneItemToDelete}
+              isOpen={!!pipelineItemToDelete}
               onClose={() => setPipelineItemToDelete(null)}
               onConfirm={confirmPipelineItemDelete}
               title="Delete item?"

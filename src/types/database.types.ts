@@ -104,6 +104,7 @@ export type Task = {
   priority: string;
   status: TaskStatus;
   calendar_id: string;
+  customer_id: string;
 };
 export type TaskStatus = 'pending' | 'completed' | 'cancelled';
 
@@ -113,6 +114,7 @@ export type TaskFormData = {
   dueDate: any;
   status: any;
   priority: any;
+  customer_id: string;
 };
 
 export type PipelineItem = {

@@ -5,7 +5,6 @@ import {
   Phone
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useCustomerStore } from '../../stores/customerStore';
 import { useSupplierStore } from '../../stores/supplierStore';
 import { useProductStore } from '../../stores/productStore';
 import { useInvoiceStore } from '../../stores/invoiceStore';

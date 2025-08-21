@@ -63,7 +63,8 @@ export const tasksService = {
           due_date: taskData.dueDate,
           status: 'pending',
           priority: taskData.priority,
-          calendar_id: calendarEventId
+          calendar_id: calendarEventId,
+          customer_id: taskData.customer_id
         }])
         .select()
         .single();
@@ -113,8 +114,6 @@ export const tasksService = {
       if (eventId !== null) {
         updateData.calendar_id = eventId;
       }
-
-      console.log(updateData);
 
       const { data, error } = await supabase
         .from('tasks')

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { useCalendarStore } from '../../../stores/calendarStore';
+import { useCustomerStore } from '../../../stores/customerStore';
 
 interface AddTaskModalProps {
   onClose: () => void;
@@ -11,12 +12,17 @@ interface AddTaskModalProps {
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const { addEvent } = useCalendarStore();
+  const { customers, fetchCustomers } = useCustomerStore()
 
+    useEffect(() => {
+      fetchCustomers();
+    }, [customers]);
+    
   const handleFormSubmit = async (data: any) => {
     try {
 
       console.log('call addEvent()');
-      
+
       // Create calendar event for the task
       const calendar = await addEvent({
         title: data.title,
@@ -25,8 +31,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
         end: new Date(new Date(data.dueDate).getTime() + 60 * 60000), // 1 hour duration
         type: 'task'
       });
-      
+
       // Submit the form data
+      console.log(data);
+      
       onSubmit(data, calendar);
     } catch (error) {
       console.error('Error creating calendar event:', error);
@@ -56,6 +64,21 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onSubmit }) => {
             {errors.title && (
               <p className="mt-1 text-sm text-red-400">{errors.title.message as string}</p>
             )}
+          </div>
+
+          <div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Choose customer:
+              </label>
+              <select className="input w-full" {...register('customer_id')}>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
