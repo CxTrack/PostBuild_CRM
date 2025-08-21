@@ -6,11 +6,11 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
-import PipelineValueWidget from '../../components/widgets/pipeline.value.widget';
+import PipelineValueWidget from '../../components/widgets/pipeline/pipeline.value.widget';
 import { usePipelineStore } from '../../stores/pipelineStore';
 import { calculatePercentage } from '../../utils/general';
-import PipelineOpportunitiesAmountWidget from '../../components/widgets/pipeline.opportunities.amount.widget';
-import PipelineOpportunitiesAverageWidget from '../../components/widgets/pipeline.opportunities.average.widget';
+import PipelineOpportunitiesAmountWidget from '../../components/widgets/pipeline/pipeline.opportunities.amount.widget';
+import PipelineOpportunitiesAverageWidget from '../../components/widgets/pipeline/pipeline.opportunities.average.widget';
 
 const Pipeline: React.FC = () => {
   const { user } = useAuthStore();
@@ -211,7 +211,7 @@ const Pipeline: React.FC = () => {
             const endDate = customDateRange.end ? new Date(customDateRange.end) : null;
 
             if (startDate && endDate) {
-              return itemDate >= startDate && itemDate <= endDate;
+              return itemDate >= startDate! && itemDate <= endDate!;
             }
             return true;
 

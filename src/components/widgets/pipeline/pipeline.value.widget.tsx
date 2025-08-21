@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../../stores/authStore';
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
-import { PipelineItem } from '../../types/database.types';
+import { PipelineItem } from '../../../types/database.types';
 
 interface PipelineValueWidgetProps {
     opportunities: PipelineItem[];

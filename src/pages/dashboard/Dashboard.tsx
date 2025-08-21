@@ -20,7 +20,7 @@ import { useActivityStore } from '../../stores/activitiesStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import CalendarEventEdit from '../../components/calendar/CalendarEventEdit';
 import { CalendarEvent } from '../../types/calendar.event';
-import PipelineOverviewWidget from '../../components/widgets/pipeline.overview.widget';
+import PipelineOverviewWidget from '../../components/widgets/pipeline/pipeline.overview.widget';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();

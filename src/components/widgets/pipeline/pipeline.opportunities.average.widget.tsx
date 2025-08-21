@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
-import { PipelineItem } from '../../types/database.types';
+import { PipelineItem } from '../../../types/database.types';
 
 interface PipelineValueWidgetProps {
   opportunities: PipelineItem[];
