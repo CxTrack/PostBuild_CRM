@@ -740,7 +740,7 @@ const CRMDashboard: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">Pipeline Value</p>
               <h3 className="text-2xl font-bold text-white mt-1">
-                {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
+                $ {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
                   .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
               </h3>
               <div className="flex items-center mt-2">
