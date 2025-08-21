@@ -1,23 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Bot, FileText, Users, Building, DollarSign, Newspaper, Info, Lightbulb, History, Briefcase, Users2, Phone, Heart, Shield, Code, ListChecks, LogIn, UserPlus, Menu, X, ShoppingBag, Calendar, Check, ArrowRight, Package
+  Bot, FileText, Users, Building, DollarSign, Newspaper, Info, Lightbulb, History, Briefcase, Users2, Phone, Heart, Shield, Code, ListChecks, LogIn, UserPlus, Menu, X, ShoppingBag, Calendar, Check, ArrowRight, Package, Mail, Copy
 } from 'lucide-react';
 import PricingSection from '../components/PricingSection';
 import ChatBot from '../components/ChatBot';
+import { toast } from 'react-hot-toast';
 
 interface FeatureCardProps {
   icon: React.ComponentType<{ size: number; className: string }>;
   title: string;
   description: string;
   link: string;
+  comingSoon?: boolean;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, description, link }) => (
+const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, description, link, comingSoon = false }) => (
   <Link 
     to={link} 
-    className="feature-card bg-primary-800/30 p-4 rounded-lg hover:bg-primary-700/30 transition-all transform hover:scale-105 duration-300"
+    className={`feature-card bg-primary-800/30 p-4 rounded-lg hover:bg-primary-700/30 transition-all transform hover:scale-105 duration-300 relative ${comingSoon ? 'opacity-75' : ''}`}
   >
+    {comingSoon && (
+      <div className="absolute -top-2 -right-2 bg-yellow-500 text-dark-900 text-xs font-bold px-2 py-1 rounded-full">
+        Coming Soon
+      </div>
+    )}
     <div className="flex items-center space-x-3 mb-2">
       <div className="p-2 rounded-lg bg-primary-500/20">
         <Icon className="text-primary-300" size={20} />
@@ -34,6 +41,23 @@ const AuthLayout: React.FC = () => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+
+  const handleCallAIAgent = () => {
+    const phoneNumber = '+1-431-816-4727';
+    const telLink = `tel:${phoneNumber}`;
+    
+    // Check if device supports tel: links (mobile devices)
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // On mobile, try to initiate the call
+      window.location.href = telLink;
+    } else {
+      // On desktop, show the phone number modal
+      setShowPhoneModal(true);
+    }
+  };
 
   // Handle mouse enter/leave for entire nav item
   const handleMouseEnter = (key: string) => {
@@ -101,29 +125,6 @@ const AuthLayout: React.FC = () => {
       { label: 'Regional Availability', href: '/gdpr', icon: Info }
     ]
   };
-
-  // Intersection Observer for animations
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate');
-          }
-        });
-      },
-      {
-        threshold: 0.2,
-        rootMargin: '50px'
-      }
-    );
-
-    document.querySelectorAll('.feature-section').forEach(section => {
-      observer.observe(section);
-    });
-
-    return () => observer.disconnect();
-  }, []);
 
   // Intersection Observer for animations
   useEffect(() => {
@@ -526,6 +527,7 @@ const AuthLayout: React.FC = () => {
                   title="Smart Invoicing"
                   description="Automated billing & tracking"
                   link="/features/invoicing"
+                  comingSoon={true}
                 />
                 <FeatureCard
                   icon={Users}
@@ -538,18 +540,21 @@ const AuthLayout: React.FC = () => {
                   title="Inventory"
                   description="Real-time stock management"
                   link="/features/inventory-tracking"
+                  comingSoon={true}
                 />
                 <FeatureCard
                   icon={DollarSign}
                   title="Expenses"
                   description="AI-powered receipt scanning"
                   link="/features/expenses"
+                  comingSoon={true}
                 />
                 <FeatureCard
                   icon={FileText}
                   title="Quotes"
                   description="Professional quote management"
                   link="/features/quotes"
+                  comingSoon={true}
                 />
               </div>
             </div>
@@ -559,20 +564,32 @@ const AuthLayout: React.FC = () => {
                 alt="Dashboard Preview"
                 className="rounded-lg shadow-2xl"
               />
-              <div 
-                className="absolute -bottom-4 -right-4 bg-primary-800 p-4 rounded-lg shadow-xl cursor-pointer hover:bg-primary-700 transition-colors group"
-                onClick={() => setShowChat(true)}
-                role="button"
-                tabIndex={0}
-                aria-label="Chat with AI Agent"
-              >
-                <div className="flex items-center space-x-2">
-                  <Bot className="text-primary-400 group-hover:text-primary-300" size={24} />
-                  <div>
-                    <p className="text-white font-semibold group-hover:text-primary-50">AI Agent Active</p>
-                    <p className="text-sm text-primary-300 group-hover:text-primary-200">Click to chat with me</p>
-                  </div>
-                </div>
+              
+              {/* Action Buttons */}
+              <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
+                <Link 
+                  to="/demo" 
+                  className="bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-semibold px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg hover:shadow-yellow-500/25"
+                >
+                  <Calendar size={20} />
+                  <span>Book an Appointment Now</span>
+                </Link>
+                
+                <Link 
+                  to="/contact" 
+                  className="bg-dark-700 hover:bg-dark-600 text-white font-semibold px-6 py-3 rounded-lg border border-dark-600 hover:border-dark-500 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg"
+                >
+                  <Mail size={20} />
+                  <span>Contact Us</span>
+                </Link>
+                
+                <button 
+                  onClick={handleCallAIAgent}
+                  className="bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg hover:shadow-primary-500/25"
+                >
+                  <Bot size={20} />
+                  <span>Call our AI Agent!</span>
+                </button>
               </div>
             </div>
           </div>
@@ -581,6 +598,8 @@ const AuthLayout: React.FC = () => {
 
       {/* Feature Sections */}
       {features.map((feature, index) => (
+        // Skip rendering expense feature section since it's coming soon
+        feature.id === 'expenses' ? null : (
         <section 
           key={feature.id}
           className={`feature-section py-24 ${index % 2 === 0 ? 'bg-dark-950' : 'bg-dark-900'}`}
@@ -700,6 +719,7 @@ const AuthLayout: React.FC = () => {
             </div>
           </div>
         </section>
+        )
       ))}
 
       {/* Pricing Section */}
@@ -710,6 +730,88 @@ const AuthLayout: React.FC = () => {
         isOpen={showChat} 
         onClose={() => setShowChat(false)} 
       />
+
+      {/* Floating AI Agent Active Button */}
+      <div 
+        className="fixed bottom-6 right-6 bg-primary-800 p-4 rounded-lg shadow-xl cursor-pointer hover:bg-primary-700 transition-colors group z-50"
+        onClick={() => setShowChat(true)}
+        role="button"
+        tabIndex={0}
+        aria-label="Chat with AI Agent"
+      >
+        <div className="flex items-center space-x-2">
+          <Bot className="text-primary-400 group-hover:text-primary-300" size={24} />
+          <div>
+            <p className="text-white font-semibold group-hover:text-primary-50">AI Agent Active</p>
+            <p className="text-sm text-primary-300 group-hover:text-primary-200">Click to chat with me</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-dark-900 border-t border-dark-800 py-8">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center space-x-3 mb-4 md:mb-0">
+              <img src="/logo.svg" alt="CxTrack Logo" className="h-8 w-8 logo-glow" />
+              <span className="brand-logo text-xl font-bold text-white brand-text">CxTrack</span>
+            </div>
+            <div className="flex flex-wrap justify-center md:justify-end gap-6 text-sm text-gray-400">
+              <Link to="/legal/privacy-policy" className="hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/legal/terms-of-service" className="hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/legal/cookie-policy" className="hover:text-white transition-colors">
+                Cookie Policy
+              </Link>
+              <Link to="/contact" className="hover:text-white transition-colors">
+                Contact
+              </Link>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-dark-800 text-center text-sm text-gray-500">
+            <p>&copy; 2025 CxTrack. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Phone Number Modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-lg p-8 max-w-md m-4 text-center">
+            <div className="bg-primary-900/30 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <Phone size={32} className="text-primary-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">Call Our AI Agent</h3>
+            <p className="text-gray-300 mb-6">
+              Dial the number below to speak with our AI agent:
+            </p>
+            <div className="bg-dark-700 rounded-lg p-4 mb-6">
+              <p className="text-2xl font-bold text-primary-400">+1-431-816-4727</p>
+            </div>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText('+1-431-816-4727');
+                  toast.success('Phone number copied to clipboard');
+                }}
+                className="btn btn-secondary flex items-center space-x-2"
+              >
+                <Copy size={16} />
+                <span>Copy Number</span>
+              </button>
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="btn btn-primary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
