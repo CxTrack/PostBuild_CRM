@@ -568,7 +568,8 @@ const AuthLayout: React.FC = () => {
               {/* Action Buttons */}
               <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
                 <Link 
-                  to="/demo" 
+                  to="https://cal.com/admincxtrack/30min?overlayCalendar=true" 
+                  target='_blank'
                   className="bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-semibold px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg hover:shadow-yellow-500/25"
                 >
                   <Calendar size={20} />
