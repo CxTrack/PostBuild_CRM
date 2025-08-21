@@ -165,12 +165,16 @@ const Pipeline: React.FC = () => {
         );
       }
 
-      switch (percentageRange) {
-        case '20': return item.closing_probability === 'Preapproval - 20%';
-        case '40': return item.closing_probability == 'Approved Preapproval - 40%';
-        case '60': return item.closing_probability == 'Live Deal - 60%';
-        case '80': return item.closing_probability == 'Approved Live Deal - 80%';
-        default: return true;
+      if (percentageRange == '') {
+        return true;
+      } else {
+        switch (percentageRange) {
+          case '20': return item.closing_probability == 'Preapproval - 20%';
+          case '40': return item.closing_probability == 'Approved Preapproval - 40%';
+          case '60': return item.closing_probability == 'Live Deal - 60%';
+          case '80': return item.closing_probability == 'Approved Live Deal - 80%';
+          default: return true;
+        }
       }
 
       // Date range filter
