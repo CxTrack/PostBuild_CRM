@@ -22,7 +22,7 @@ const CalendarDashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Callendar Dashboard</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">Calendar Dashboard</h1>
 
       {loading && <p className="text-white">Loading events...</p>}
       {error && <p className="text-red-500">Error fetching events: {error}</p>}
