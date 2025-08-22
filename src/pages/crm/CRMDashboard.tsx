@@ -561,7 +561,7 @@ const CRMDashboard: React.FC = () => {
                   <div className="flex items-center mt-1">
                     <span className="text-2xl font-bold text-white">
                       {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
-                        .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
+                        .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0).toLocaleString('en-US')}
                     </span>
                     {/* <div className={`flex items-center ml-2 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                       {stats.opportunities.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
