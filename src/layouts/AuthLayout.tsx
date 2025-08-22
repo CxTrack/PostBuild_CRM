@@ -508,10 +508,12 @@ const AuthLayout: React.FC = () => {
                   Start Free
                 </Link>
                 <Link 
-                  to="/demo" 
-                  className="btn btn-secondary border-2 border-white text-white px-8 py-3 rounded-lg text-lg hover:bg-white/10 transform transition-transform duration-300"
+                  to="https://cal.com/admincxtrack/30min?overlayCalendar=true" 
+                  target='_blank'
+                  className="bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-semibold px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg hover:shadow-yellow-500/25"
                 >
-                  Schedule Demo
+                  <Calendar size={20} />
+                  <span>Book an Appointment Now</span>
                 </Link>
               </div>
 
@@ -566,16 +568,7 @@ const AuthLayout: React.FC = () => {
               />
               
               {/* Action Buttons */}
-              <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
-                <Link 
-                  to="https://cal.com/admincxtrack/30min?overlayCalendar=true" 
-                  target='_blank'
-                  className="bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-semibold px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg hover:shadow-yellow-500/25"
-                >
-                  <Calendar size={20} />
-                  <span>Book an Appointment Now</span>
-                </Link>
-                
+              <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">              
                 <Link 
                   to="/contact" 
                   className="bg-dark-700 hover:bg-dark-600 text-white font-semibold px-6 py-3 rounded-lg border border-dark-600 hover:border-dark-500 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 shadow-lg"
