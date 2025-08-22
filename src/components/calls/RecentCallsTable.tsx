@@ -113,10 +113,9 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
             <table className="min-w-full divide-y divide-dark-700">
               <thead>
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">From</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">To</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Start Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">End Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">Duration (s)</th>
                 </tr>
               </thead>
@@ -130,12 +129,9 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
                         <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.to_number!)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatPhoneNumber(call.from_number!)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time ? formatDate(new Date(call.start_time).toLocaleString()) : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {call.end_time ? formatDate(new Date(call.end_time).toLocaleString()) : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {call.start_time && call.end_time
