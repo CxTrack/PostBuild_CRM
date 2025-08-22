@@ -41,7 +41,7 @@ const PipelineOpportunitiesAverageWidget: React.FC<PipelineValueWidgetProps> = (
         <div>
           <p className="text-gray-400 text-sm">Average Deal Value</p>
           <h3 className="text-2xl font-bold text-white mt-1">
-            ${averageDealValue.toLocaleString()}
+            ${averageDealValue.toLocaleString('en-US')}
           </h3>
         </div>
         <div className="p-3 rounded-lg bg-purple-500/20 text-purple-500">

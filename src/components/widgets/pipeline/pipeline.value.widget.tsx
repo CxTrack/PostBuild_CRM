@@ -28,7 +28,7 @@ const PipelineValueWidget: React.FC<PipelineValueWidgetProps> = ({ opportunities
               <p className="text-gray-400 text-sm">Pipeline Value</p>
               <h3 className="text-2xl font-bold text-white mt-1">
                 $ {opportunities.filter((o: any) => o.final_status !== "No Sale")
-                  .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0)}
+                  .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0).toLocaleString('en-US')}
               </h3>
               <div className="flex items-center mt-2">
                 {stats.trend === 'up' ? (
