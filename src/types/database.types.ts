@@ -111,7 +111,7 @@ export type TaskStatus = 'pending' | 'completed' | 'cancelled';
 export type TaskFormData = {
   title: any;
   description: any;
-  dueDate: any;
+  due_date: any;
   status: any;
   priority: any;
   customer_id: string;

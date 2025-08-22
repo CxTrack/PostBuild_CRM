@@ -4,7 +4,7 @@ import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
 //import EditLeadModal from './components/EditOpportunityModal';
-import { Customer, PipelineItem } from '../../types/database.types';
+import { Customer, PipelineItem, Task } from '../../types/database.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import toast from 'react-hot-toast';
 //import QuoteStatusBadge from '../../components/QuoteStatusBadge';
@@ -21,7 +21,7 @@ import { useCustomerStore } from '../../stores/customerStore';
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
 const CRMDashboard: React.FC = () => {
-  const { tasks, fetchTasks, createTask, updateTaskStatus, deleteTask } = useTaskStore();
+  const { tasks, fetchTasks, updateTask, updateTaskStatus, deleteTask } = useTaskStore();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
@@ -35,12 +35,15 @@ const CRMDashboard: React.FC = () => {
   const [editLead, setEditLead] = useState<PipelineItem | null>(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [pipeLineValueLastMonth, setPipeLineValueLastMonth] = useState(0);
   const [pipeLineValueThisMonth, setPipeLineValueThisMonth] = useState(0);
+
+  //const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const navigate = useNavigate();
 
@@ -340,6 +343,20 @@ const CRMDashboard: React.FC = () => {
                 </div>
               )}
 
+              {/* {selectedTask && (
+                <AddTaskModal
+                  onClose={() => {
+                    setShowTaskModal(false);
+                    setSelectedTask(null);
+                  }}
+                  onSubmit={(data, calendarEvent) => {
+                    createTask(data, calendarEvent.id);
+                    setShowTaskModal(false);
+                    setSelectedTask(null);
+                  }}
+                />
+              )} */}
+
               {/* Pagination - only show if there are quotes */}
               {filteredLeads.length > 0 && (
                 <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">
@@ -412,7 +429,10 @@ const CRMDashboard: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setShowTaskModal(true)}
+                onClick={() => {
+                  setSelectedTask(null);
+                  setShowTaskModal(true)
+                }}
                 className="btn btn-primary flex items-center space-x-2"
               >
                 <Plus size={16} />
@@ -441,20 +461,24 @@ const CRMDashboard: React.FC = () => {
                           <TrendingUp size={48} className="text-gray-600 mb-4 mx-auto" />
                           <p className="text-gray-400 text-lg mb-2">No tasks found</p>
                           <p className="text-gray-500 text-sm mb-6">Add a new task</p>
-                          <button
-                            onClick={() => setShowTaskModal(true)}
-                            className="btn btn-primary flex items-center space-x-2 mx-auto"
-                          >
-                            <Plus size={16} />
-                            <span>Add Task</span>
-                          </button>
                         </td>
                       </tr>
                     ) : (
                       tasks.map((task) => (
                         <tr key={task.id} className="hover:bg-dark-700/50">
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{task.title}</div>
+                            <div className="text-sm font-medium text-white">
+                              <p
+                                key={task.id}
+                                className="text-white font-medium cursor-pointer hover:underline"
+                                onClick={() => {
+                                  setSelectedTask(task);
+                                  setShowTaskModal(true)
+                                }}
+                              >
+                                {task.title}
+                              </p>
+                            </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm font-medium text-white"> {new Date(task.due_date).toLocaleDateString()}</div>
@@ -470,6 +494,17 @@ const CRMDashboard: React.FC = () => {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
                             <div className="flex items-center justify-center space-x-2">
+
+                              <TooltipButton
+                                tooltip={'Edit'}
+                                icon={<Pen size={16} />}
+                                isDisabled={task.status === 'completed'}
+                                isHidden={task.status === 'completed'}
+                                onClick={() => {
+                                  setSelectedTask(task);
+                                   setShowTaskModal(true)
+                                }}
+                              />
 
                               <TooltipButton
                                 tooltip={task.status === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}
@@ -853,9 +888,9 @@ const CRMDashboard: React.FC = () => {
 
       {showTaskModal && (
         <AddTaskModal
+          task={selectedTask}
           onClose={() => setShowTaskModal(false)}
-          onSubmit={(data, calendarEvent) => {
-            createTask(data, calendarEvent.id);
+          onSubmit={() => {
             setShowTaskModal(false);
           }}
         />

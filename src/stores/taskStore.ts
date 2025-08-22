@@ -10,6 +10,7 @@ interface TaskState {
   // Actions
   fetchTasks: () => Promise<void>;
   createTask: (data: TaskFormData, calendarEventId: string) => Promise<Task>;
+  updateTask: (data: TaskFormData, taskId: string) => Promise<Task>;
   updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
   // clearError: () => void;
@@ -47,6 +48,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       return newTask;
     } catch (error: any) {
       console.error('Error in createTask:', error);
+      set({
+        error: error.message || 'Failed to create task',
+        loading: false
+      });
+      throw error;
+    }
+  },
+
+  updateTask: async (task: TaskFormData, taskId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const newTask = await tasksService.updateTask(task, taskId);
+
+      // Call fetchTasks to get the latest data
+      await get().fetchTasks();
+
+      return newTask;
+    } catch (error: any) {
+      console.error('Error in updateTask:', error);
       set({
         error: error.message || 'Failed to create task',
         loading: false

@@ -60,7 +60,7 @@ export const tasksService = {
           user_id: userData.user.id,
           title: taskData.title,
           description: taskData.description,
-          due_date: taskData.dueDate,
+          due_date: taskData.due_date,
           status: 'pending',
           priority: taskData.priority,
           calendar_id: calendarEventId,
@@ -74,6 +74,38 @@ export const tasksService = {
       }
 
       return newTask;
+
+    } catch (error) {
+      console.error('Task service error:', error);
+      throw error;
+    }
+  },
+
+    // Create a new task
+  async updateTask(task: TaskFormData, taskId: string): Promise<Task> {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData?.user) {
+      throw new Error('User not authenticated');
+    }
+
+    if (!task) {
+      throw new Error('No taks for update');
+    }
+
+    try {
+      const { data: updatedTask, error: taskError } = await supabase
+        .from('tasks')
+        .update(task)
+        .eq('id', taskId)
+        .select()
+        .single();
+
+      if (taskError) {
+        console.log(taskError)
+      }
+
+      return updatedTask;
 
     } catch (error) {
       console.error('Task service error:', error);
