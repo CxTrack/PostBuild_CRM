@@ -502,7 +502,7 @@ const CRMDashboard: React.FC = () => {
                                 isHidden={task.status === 'completed'}
                                 onClick={() => {
                                   setSelectedTask(task);
-                                   setShowTaskModal(true)
+                                  setShowTaskModal(true)
                                 }}
                               />
 
@@ -649,7 +649,7 @@ const CRMDashboard: React.FC = () => {
                                 tooltip="Sale"
                                 icon={<BadgeDollarSign size={16} color='green' />}
                                 isDisabled={false}
-                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
+                                isHidden={opportunity.final_status == 'Sale'}
                                 onClick={() => {
                                   opportunity.final_status = 'Sale';
                                   updatePipelineItem(opportunity);
@@ -660,7 +660,7 @@ const CRMDashboard: React.FC = () => {
                               <TooltipButton
                                 tooltip="No Sale"
                                 isDisabled={false}
-                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
+                                isHidden={opportunity.final_status == 'No Sale'}
                                 icon={<StopCircle size={16} color='red' />}
                                 onClick={() => {
                                   opportunity.final_status = 'No Sale';
@@ -669,13 +669,13 @@ const CRMDashboard: React.FC = () => {
                                 }
                               />
 
-                              {(opportunity.final_status != 'Sale') && (opportunity.final_status != 'No Sale') && <span> | </span>}
+                              {<span> | </span>}
 
                               <TooltipButton
                                 tooltip="Go to Customer"
                                 icon={<User size={16} />}
                                 isDisabled={false}
-                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
+                                isHidden={false}
                                 onClick={() => navigate(`/customers/${opportunity.customer_id}`)}
                               />
 
@@ -694,7 +694,7 @@ const CRMDashboard: React.FC = () => {
                                 tooltip="Delete Opportunity"
                                 icon={<Trash2 size={16} />}
                                 isDisabled={false}
-                                isHidden={opportunity.final_status == 'Sale' || opportunity.final_status == 'No Sale'}
+                                isHidden={false}
                                 onClick={() => handleDeletePipelineItem(opportunity.id)}
                               />
                             </div>
