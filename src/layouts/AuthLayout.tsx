@@ -375,7 +375,7 @@ const AuthLayout: React.FC = () => {
                 </div>
               </div>
 
-              <div 
+              {/* <div 
                 className="flex items-center"
               >
                 <Link 
@@ -385,7 +385,7 @@ const AuthLayout: React.FC = () => {
                   <DollarSign size={18} className="mr-1" />
                   <span>Pricing</span>
                 </Link>
-              </div>
+              </div> */}
             </div>
 
             {/* Auth Buttons */}
@@ -717,13 +717,13 @@ const AuthLayout: React.FC = () => {
       ))}
 
       {/* Pricing Section */}
-      <PricingSection />
+      {/* <PricingSection /> */}
 
       {/* Chat Bot - Only render when showChat is true */}
-      <ChatBot 
+      {/* <ChatBot 
         isOpen={showChat} 
         onClose={() => setShowChat(false)} 
-      />
+      /> */}
 
       {/* Floating AI Agent Active Button */}
       {/* <div 

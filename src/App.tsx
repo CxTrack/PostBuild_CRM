@@ -233,7 +233,7 @@ function App() {
           <Route path="/enterprise/solutions" element={<Solutions />} />
           <Route path="/enterprise/security" element={<Security />} />
           <Route path="/enterprise/custom" element={<CustomDevelopment />} />
-          <Route path="/pricing" element={<Pricing />} />
+          {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/pricing/compare" element={<ComparePlans />} />
           <Route path="/features/:planId" element={<PlanDetails />} />
         </Route>
