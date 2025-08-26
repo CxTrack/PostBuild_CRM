@@ -173,7 +173,7 @@ const NavHeader: React.FC = () => {
               </div>
             </div>
 
-            <div 
+            {/* <div 
               className="flex items-center"
             >
               <Link 
@@ -183,7 +183,7 @@ const NavHeader: React.FC = () => {
                 <DollarSign size={18} className="mr-1" />
                 <span>Pricing</span>
               </Link>
-            </div>
+            </div> */}
           </div>
 
           {/* Auth Buttons */}

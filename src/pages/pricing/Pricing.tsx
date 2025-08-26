@@ -139,12 +139,12 @@ const Pricing: React.FC = () => {
         </div>
 
         {/* Compare Features Link */}
-        <div className="text-center mt-12">
+        {/* <div className="text-center mt-12">
           <Link to="/pricing/compare" className="text-primary-400 hover:text-primary-300 flex items-center justify-center">
             <Star className="mr-2" size={16} />
             Compare all features
           </Link>
-        </div>
+        </div> */}
       </div>
 
       {/* FAQ Section */}
