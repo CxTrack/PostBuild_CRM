@@ -25,6 +25,7 @@
       img-src 'self' data: https://*.unsplash.com https://*.stripe.com;
       font-src 'self' https://fonts.gstatic.com;
       connect-src 'self' https://*.supabase.co https://*.stripe.com wss://*.supabase.co https://api.retellai.com;
+      media-src 'self' https://*.cloudfront.net;
     """
 
 [functions]
