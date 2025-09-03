@@ -461,7 +461,7 @@ const Pipeline: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-gray-300">
-                    ${item.dollar_value.toLocaleString()}
+                    ${Number(item.dollar_value).toLocaleString('en-US')}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-gray-300 ">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
