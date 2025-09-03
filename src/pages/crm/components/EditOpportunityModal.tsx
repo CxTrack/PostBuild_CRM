@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import { usePipelineStore } from '../../../stores/pipelineStore';
+import { useActivityStore } from '../../../stores/activitiesStore';
 
 interface EditOpportunityModalProps {
   pipelineItem: PipelineItem;
@@ -15,6 +16,7 @@ interface EditOpportunityModalProps {
 const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineItem, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { probabilities, updatePipelineItem } = usePipelineStore();
+  const { addActivity } = useActivityStore();
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
@@ -23,11 +25,12 @@ const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineIte
       closing_probability: pipelineItem.closing_probability || '',
       expected_close: pipelineItem.closing_date
         ? format(new Date(pipelineItem.closing_date), 'yyyy-MM-dd')
-        : ''
-    }
+        : '',
+      customer_id: pipelineItem.customer_id
+    } 
   });
 
-  const handleFormSubmit = async (pipeline: any) => {
+  const handleFormSubmit = async (pipelineForm: any) => {
     try {
       setIsSubmitting(true);
 
@@ -37,19 +40,21 @@ const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ pipelineIte
         throw new Error('User not authenticated');
       }
 
-      if (!pipeline.value || pipeline.value <= 0) {
+      if (!pipelineForm.value || pipelineForm.value <= 0) {
         throw new Error('Please enter a valid opportunity value');
       }
-      if (!pipeline.expected_close) {
+      if (!pipelineForm.expected_close) {
         throw new Error('Please enter an expected close date');
       }
 
-      pipelineItem.stage = pipeline.stage;
-      pipelineItem.closing_date = pipeline.expected_close;
-      pipelineItem.closing_probability = pipeline.closing_probability;
-      pipelineItem.dollar_value = pipeline.value;
+      pipelineItem.stage = pipelineForm.stage;
+      pipelineItem.closing_date = pipelineForm.expected_close;
+      pipelineItem.closing_probability = pipelineForm.closing_probability;
+      pipelineItem.dollar_value = pipelineForm.value;
 
       await updatePipelineItem(pipelineItem);
+
+      await addActivity(`Lead moved to opportunity - Probability: 60% | Value: $${Number(pipelineItem.dollar_value).toLocaleString("en-US")} | Expected: ${pipelineItem.closing_date}`, 'opportunity', pipelineItem.customer_id);
 
       toast.success('Opportunity has been updated');
       onClose();

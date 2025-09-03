@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { useCustomerStore } from '../../../stores/customerStore';
 import { usePipelineStore } from '../../../stores/pipelineStore';
+import { useActivityStore } from '../../../stores/activitiesStore';
 
 interface AddOpportunityModalProps {
   onClose: () => void;
@@ -24,11 +25,17 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
     }
   });
   const { customers, fetchCustomers } = useCustomerStore();
+  const { createPipelineItem } = usePipelineStore();
   const { probabilities } = usePipelineStore();
+  const { addActivity } = useActivityStore();
 
   const handleFormSubmit = async (data: any) => {
     try {
-      // Submit the form data
+
+      createPipelineItem(data);
+
+      await addActivity(`Opportunity created — $ ${Number(data.dollar_value).toLocaleString('en-US')} with closing probability of ${data.closing_probability} with closing date: ${data.closing_date}`, 'opportunity', data.customer_id);
+
       onSubmit(data);
     } catch (error) {
       console.error('Error creating calendar event:', error);
@@ -84,8 +91,8 @@ const AddOpportunityModal: React.FC<AddOpportunityModalProps> = ({ onClose, onSu
                 })}
               />
             </div>
-            {errors.value && (
-              <p className="mt-1 text-sm text-red-400">{errors.value.message as string}</p>
+            {errors.dollar_value && (
+              <p className="mt-1 text-sm text-red-400">{errors.dollar_value.message as string}</p>
             )}
           </div>
 

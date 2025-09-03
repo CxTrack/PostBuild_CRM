@@ -2,7 +2,9 @@ import {
   Users, Package, FileText, ShoppingCart, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Filter, Download, Trash2, Edit, Eye, Settings, Receipt,
   Calendar, Settings as SettingsIcon, Truck,
-  Phone
+  Phone,
+  Handshake,
+  PhoneIncoming
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSupplierStore } from '../../stores/supplierStore';
@@ -20,6 +22,10 @@ import { useTemplateStore } from '../../stores/templateStore';
 import CalendarEventEdit from '../../components/calendar/CalendarEventEdit';
 import { CalendarEvent } from '../../types/calendar.event';
 import PipelineOverviewWidget from '../../components/widgets/pipeline/pipeline.overview.widget';
+import { formatDateTimeUTC } from '../../utils/formatters';
+import { useCustomerStore } from '../../stores/customerStore';
+import RecentActivities from '../../components/recent-activities/RecentActivities';
+import { RecentActivityType } from '../../types/recent.activity.type';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +33,7 @@ const Dashboard: React.FC = () => {
   const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  //const { customers, fetchCustomers } = useCustomerStore();
+  const { getCustomerById } = useCustomerStore();
   const { products, fetchProducts } = useProductStore();
   const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoiceStore();
   const { events, fetchEvents } = useCalendarStore();
@@ -35,7 +41,7 @@ const Dashboard: React.FC = () => {
   const { suppliers, fetchSuppliers } = useSupplierStore();
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const { activities, getActivities } = useActivityStore();
+  const { activities, getActivitiesByType } = useActivityStore();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
@@ -75,9 +81,6 @@ const Dashboard: React.FC = () => {
         if (expensesError) throw expensesError;
 
         setExpenses(recentExpenses || []);
-
-        await getActivities(); // Fetch recent activities
-
 
         // Calculate total revenue from paid invoices
         const revenue = invoices
@@ -354,7 +357,6 @@ const Dashboard: React.FC = () => {
                     'bg-gray-500/20 text-gray-400'
                     }`}>
                     {event.type === 'invoice' ? <FileText size={20} /> : <Calendar size={20} />}
-                    
                   </div>
                   <div className="flex-1">
                     <p
@@ -504,48 +506,11 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Activity */}
-      {/*<div className="card bg-dark-800 border border-dark-700">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
-        </div>
-        {activities!.length > 0 ? (
-          <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-            {activities!.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-md bg-dark-700/50 hover:bg-dark-700 transition-colors">
-                <div className={`p-2 rounded-md ${activity.type === 'invoice' ? 'bg-blue-500/20 text-blue-500' :
-                  activity.type === 'purchase' ? 'bg-purple-500/20 text-purple-500' :
-                    activity.type === 'customer' ? 'bg-green-500/20 text-green-500' :
-                      'bg-amber-500/20 text-amber-500'
-                  }`}>
-                  {activity.type === 'invoice' && <FileText size={18} />}
-                  {activity.type === 'purchase' && <ShoppingCart size={18} />}
-                  {activity.type === 'customer' && <Users size={18} />}
-                  {activity.type === 'product' && <Package size={18} />}
-                </div>
-                <div className="flex-1">
-                  <p className="text-white font-medium">{activity.title}</p>
-                  <div className="text-sm text-gray-400 mt-1">
-                    {activity.customer && <div>Customer: {activity.customer}</div>}
-                    {activity.supplier && <div>Supplier: {activity.supplier}</div>}
-                    {activity.product && <div>Product: {activity.product}</div>}
-                    {activity.amount && <div>Amount: ${activity.amount.toLocaleString()}</div>}
-                    {activity.quantity && <div>Quantity: {activity.quantity.toLocaleString()}</div>}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">{getRelativeTime(activity.created_at)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6">
-            <div className="flex flex-col items-center justify-center">
-              <FileText size={48} className="text-gray-600 mb-4" />
-              <p className="text-gray-400 text-lg mb-2">No recent activity</p>
-              <p className="text-gray-500 text-sm mb-6">Your recent activities will appear here</p>
-            </div>
-          </div>
-        )}
-      </div>
+      <RecentActivities
+        activityTypes={['system', 'calender_event', 'call'] as RecentActivityType[]}
+        fetchFunction={getActivitiesByType}
+        title="Recent System Activity"
+      />
 
       {/* Event Modal */}
       {selectedEvent && (

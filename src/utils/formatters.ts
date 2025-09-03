@@ -13,3 +13,17 @@ export const formatPhoneNumber = (phone: string | null | undefined): string => {
   
   return phone;
 };
+
+
+export const formatDateTimeUTC = (value: string | Date) => {
+  const date = new Date(value);
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+};

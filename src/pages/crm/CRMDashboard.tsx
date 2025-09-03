@@ -15,24 +15,28 @@ import { TooltipButton } from '../../components/ToolTip'
 import EditOpportunityModal from './components/EditOpportunityModal';
 import { useNavigate } from 'react-router-dom';
 import { calculatePercentage } from '../../utils/general';
-import { customerService } from '../../services/customerService';
 import { useCustomerStore } from '../../stores/customerStore';
+import { useActivityStore } from '../../stores/activitiesStore';
+import { formatDateTimeUTC } from '../../utils/formatters';
+import { useCalendarStore } from '../../stores/calendarStore';
 
 type TabType = 'leads' | 'tasks' | 'opportunities';
 
 const CRMDashboard: React.FC = () => {
   const { tasks, fetchTasks, updateTask, updateTaskStatus, deleteTask } = useTaskStore();
-  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-  const { leads, opportunities, loading, error, createPipelineItem, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const { leads, opportunities, loading, error, fetchPipelineItems, updatePipelineItem, deletePipelineItem } = usePipelineStore();
   // const { quotes, loading, error, fetchQuotes, deleteQuote } = useLeadStore();
   const { getCustomerById } = useCustomerStore();
   const [statusLeadsFilter, setStatusLeadsFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<TabType>('leads');
   const [showLeadModal, setShowLeadModal] = useState(false);
   //const [showDeleteLeadModal, setDeleteLeadModal] = useState(false);
-  const [pipelineItemToDelete, setPipelineItemToDelete] = useState<string | null>(null);
+  const [pipelineItemToDelete, setPipelineItemToDelete] = useState<PipelineItem | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [editLead, setEditLead] = useState<PipelineItem | null>(null);
+  const { addActivity } = useActivityStore();
+  const { deleteEvent } = useCalendarStore();
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -143,19 +147,27 @@ const CRMDashboard: React.FC = () => {
     setPipeLineValueLastMonth(pipeLineValueLastMonth);
   }
 
-  const handleDeletePipelineItem = async (id: string) => {
-    setPipelineItemToDelete(id);
+  const handleDeletePipelineItem = async (pipelineItem: PipelineItem) => {
+    setPipelineItemToDelete(pipelineItem);
   };
 
-  const handleDeleteTask = async (id: string) => {
-    setTaskToDelete(id);
+  const handleDeleteTask = async (task: Task) => {
+    setTaskToDelete(task);
   };
 
   const confirmTaskDelete = async () => {
     if (!taskToDelete) return;
 
     try {
-      deleteTask(taskToDelete);
+
+      deleteEvent(taskToDelete.calendar_id);
+
+      await addActivity(`“${taskToDelete.title}” ❌ deleted`, 'calender_event', taskToDelete.customer_id);
+
+      deleteTask(taskToDelete.id);
+
+      await addActivity(`Task “${taskToDelete.title}title” ❌ deleted`, 'task', taskToDelete.customer_id);
+
       toast.success('Task deleted successfully');
       setTaskToDelete(null);
     } catch (error) {
@@ -167,8 +179,19 @@ const CRMDashboard: React.FC = () => {
     if (!pipelineItemToDelete) return;
 
     try {
-      deletePipelineItem(pipelineItemToDelete);
-      toast.success('Lead deleted successfully');
+      deletePipelineItem(pipelineItemToDelete.id);
+
+      if (pipelineItemToDelete.stage === 'lead') {
+        const customer = await getCustomerById(pipelineItemToDelete.customer_id);
+        await addActivity(`Lead is ❌ deleted for customer: ${customer?.name})`, 'opportunity', pipelineItemToDelete.customer_id);
+        toast.success('Lead deleted successfully');
+      }
+
+      if (pipelineItemToDelete.stage == 'opportunity') {
+        const customer = await getCustomerById(pipelineItemToDelete.customer_id);
+        await addActivity(`Opportunity is ❌ deleted for customer: ${customer?.name})`, 'opportunity', pipelineItemToDelete.customer_id);
+      }
+
       setPipelineItemToDelete(null);
     } catch (error) {
       toast.error('Failed to delete lead');
@@ -320,7 +343,7 @@ const CRMDashboard: React.FC = () => {
                                 icon={<Trash2 size={16} />}
                                 isDisabled={false}
                                 isHidden={false}
-                                onClick={() => handleDeletePipelineItem(lead.id)}
+                                onClick={() => handleDeletePipelineItem(lead)}
                               />
                             </div>
                           </td>
@@ -511,9 +534,12 @@ const CRMDashboard: React.FC = () => {
                                 icon={<ChevronDownSquare size={16} />}
                                 isDisabled={false}
                                 isHidden={false}
-                                onClick={() => {
+                                onClick={async () => {
                                   const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+                                  const displayStatus = newStatus === 'completed' ? newStatus + ' ✅' : ' set ' + newStatus + ' ❌';
                                   updateTaskStatus(task.id, newStatus);
+
+                                  await addActivity(`Task “${task.title}” ${displayStatus} date ${formatDateTimeUTC(task.due_date)}}`, 'task', task.customer_id);
                                 }}
                               />
 
@@ -522,7 +548,11 @@ const CRMDashboard: React.FC = () => {
                                 icon={<Trash2 size={16} />}
                                 isDisabled={false}
                                 isHidden={false}
-                                onClick={() => handleDeleteTask(task.id)}
+                                onClick={async () => {
+                                  handleDeleteTask(task);
+                                  await addActivity(`Task “${task.title}" ❌ deleted`, 'task', task.customer_id);
+                                }
+                                }
                               />
                             </div>
                           </td>
@@ -650,9 +680,10 @@ const CRMDashboard: React.FC = () => {
                                 icon={<BadgeDollarSign size={16} color='green' />}
                                 isDisabled={false}
                                 isHidden={opportunity.final_status == 'Sale'}
-                                onClick={() => {
+                                onClick={async () => {
                                   opportunity.final_status = 'Sale';
                                   updatePipelineItem(opportunity);
+                                  await addActivity(`Opportunity updated to ${opportunity.final_status} ✅ + $${Number(opportunity.dollar_value).toLocaleString("en-US")}`, 'opportunity', opportunity.customer_id);
                                 }
                                 }
                               />
@@ -662,9 +693,10 @@ const CRMDashboard: React.FC = () => {
                                 isDisabled={false}
                                 isHidden={opportunity.final_status == 'No Sale'}
                                 icon={<StopCircle size={16} color='red' />}
-                                onClick={() => {
+                                onClick={async () => {
                                   opportunity.final_status = 'No Sale';
                                   updatePipelineItem(opportunity);
+                                  await addActivity(`Opportunity updated to ${opportunity.final_status} ❌ - $${Number(opportunity.dollar_value).toLocaleString("en-US")}`, 'opportunity', opportunity.customer_id);
                                 }
                                 }
                               />
@@ -695,7 +727,10 @@ const CRMDashboard: React.FC = () => {
                                 icon={<Trash2 size={16} />}
                                 isDisabled={false}
                                 isHidden={false}
-                                onClick={() => handleDeletePipelineItem(opportunity.id)}
+                                onClick={async () => {
+                                  handleDeletePipelineItem(opportunity);
+                                }
+                                }
                               />
                             </div>
                           </td>
@@ -900,7 +935,6 @@ const CRMDashboard: React.FC = () => {
         <AddOpportunityModal
           onClose={() => setShowOpportunityModal(false)}
           onSubmit={(data) => {
-            createPipelineItem(data);
             setShowOpportunityModal(false);
           }}
         />

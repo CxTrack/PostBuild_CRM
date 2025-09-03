@@ -10,3 +10,13 @@
     return percentChange;
   }
   
+
+  export function convertActivitiesToLocalTime<T extends { created_at: string }>(
+  activities: T[]
+) {
+  return activities.map(activity => {
+    const createdUTC = new Date(activity.created_at); // UTC from DB
+    const localTime = createdUTC.toLocaleString(); // Convert to user's local time
+    return { ...activity, created_at_local: localTime };
+  });
+}

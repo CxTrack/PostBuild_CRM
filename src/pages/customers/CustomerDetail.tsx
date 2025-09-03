@@ -4,22 +4,30 @@ import {
   Edit, Trash2, Mail, Phone, MapPin, Building, User, FileText,
   ShoppingCart, Clock, Calendar, DollarSign, ArrowLeft, Eye, Star, Briefcase, UserPlus,
   CircleUser,
-  Plus
+  Plus,
+  Handshake,
+  PhoneCall,
+  PhoneIncoming,
+  Settings
 } from 'lucide-react';
 import { useCustomerStore } from '../../stores/customerStore';
 import { Customer } from '../../types/database.types';
 import { toast } from 'react-hot-toast';
-import { formatPhoneNumber } from '../../utils/formatters';
+import { formatDateTimeUTC, formatPhoneNumber } from '../../utils/formatters';
 import { useCallStore } from '../../stores/callStore';
 import RecentCallsTable from '../../components/calls/RecentCallsTable';
 import { formatService } from '../../services/formatService';
 import { usePipelineStore } from '../../stores/pipelineStore';
+import { useActivityStore } from '../../stores/activitiesStore';
+import RecentActivities from '../../components/recent-activities/RecentActivities';
+import { RecentActivityType } from '../../types/recent.activity.type';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCustomerById, updateCustomer, deleteCustomer, loading, error } = useCustomerStore();
-  
+  const { activities, getActivitiesByType } = useActivityStore();
+
   const { calls, fetchCustomerCalls } = useCallStore();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -27,17 +35,18 @@ const CustomerDetail: React.FC = () => {
 
   const { createPipelineItem } = usePipelineStore();
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const { addActivity } = useActivityStore();
 
   useEffect(() => {
     if (!id) return;
     const timer = setTimeout(() => {
       getCustomerById(id).then(setCustomer);
+
       fetchCustomerCalls(id);
     }, 300); // wait 300ms
 
     return () => clearTimeout(timer);
   }, [id]);
-
 
   const handleDelete = async () => {
     if (!id) return;
@@ -53,7 +62,6 @@ const CustomerDetail: React.FC = () => {
     }
   };
 
-
   const handleCreateLead = async () => {
     createPipelineItem({
       id: '',
@@ -67,11 +75,12 @@ const CustomerDetail: React.FC = () => {
       customers: null,
       final_status: null
     });
-    console.log(customer?.id!);
-    
+
+    await addActivity(`A new lead was created`, 'lead', customer?.id!);
+
     toast.success('Lead has been succesfully created');
   };
-  
+
 
   const handleStartEdit = (field: string, value: string) => {
     setEditingField(field);
@@ -165,7 +174,7 @@ const CustomerDetail: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Customer info card */}
         <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
@@ -413,7 +422,7 @@ const CustomerDetail: React.FC = () => {
         </div>
 
         {/* Financial summary */}
-        {/* <div className="card bg-dark-800 border border-dark-700">
+        <div className="card bg-dark-800 border border-dark-700">
           <h2 className="text-lg font-semibold text-white mb-4">Financial Summary</h2>
 
           <div className="space-y-4">
@@ -465,32 +474,15 @@ const CustomerDetail: React.FC = () => {
               </div>
             </div>
           </div>
-        </div> */}
+        </div>
 
         {/* Recent activity */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-
-          <div className="text-center py-6">
-            <p className="text-gray-400">No recent activity</p>
-          </div>
-        </div>
+        <RecentActivities
+          activityTypes={['lead', 'call', 'task', 'opportunity', 'calender_event'] as RecentActivityType[]}
+          fetchFunction={getActivitiesByType}
+          title="Recent System Activity"
+        />
       </div>
-
-      {/* Invoices */}
-      {/* <div className="card bg-dark-800 border border-dark-700">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-white">Invoices</h2>
-          <Link to={`/invoices/create?customer=${id}`} className="btn btn-primary flex items-center space-x-2">
-            <FileText size={16} />
-            <span>Create Invoice</span>
-          </Link>
-        </div>
-        
-        <div className="text-center py-6">
-          <p className="text-gray-400">No invoices found for this customer</p>
-        </div>
-      </div> */}
 
       <div className="card bg-dark-800 border border-dark-700">
         <div className="text-left py-6">

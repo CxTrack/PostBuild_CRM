@@ -5,6 +5,7 @@ import { useProfileStore } from '../../stores/profileStore';
 import { supabase } from '../../lib/supabase';
 import { Edit, Eye, Link, Trash2 } from 'lucide-react';
 import { adminStore } from '../../stores/adminStore';
+import { useActivityStore } from '../../stores/activitiesStore';
 
 interface CallAgent {
   call_agent_id: string;
@@ -16,6 +17,7 @@ const CallAgentTab: React.FC = () => {
   const { profile, updateProfile, loading, error } = useProfileStore();
   const { isAdmin, isUserAdmin } = adminStore.getState();
   const { user } = useAuthStore();
+  const { addActivity } = useActivityStore();
   const [callAgents, setCallAgents] = useState<CallAgent[]>([]);
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
   const [newAgentId, setNewAgentId] = useState('');
@@ -68,6 +70,8 @@ const CallAgentTab: React.FC = () => {
       .from('user_call_agents')
       .delete()
       .eq('call_agent_id', agent.call_agent_id);
+
+    await addActivity(`AI agent removed ❌.`, 'system', null);
 
     if (error) {
       console.error('Error deleting user_call record:', error.message);
@@ -185,7 +189,11 @@ const CallAgentTab: React.FC = () => {
               />
             )}
             <button
-              onClick={handleAddAgent}
+              onClick={async () => {
+                await addActivity(`AI agent added ✅.`, 'system', null);
+                handleAddAgent();
+              }
+              }
               className="btn btn-primary"
               disabled={addingAgent}
             >

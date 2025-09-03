@@ -1,26 +1,50 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { RecentActivityType } from '../types/recent.activity.type';
+import { convertActivitiesToLocalTime } from '../utils/general';
 
 interface ActivitiesState {
   activities: any[] | null;
   loading: boolean;
 
   // Actions
-  //setActivity: (templateId: string) => Promise<void>;
-  getActivities: () => Promise<void>;
+  getActivitiesByType: (user_id?: string, types?: RecentActivityType[]) => Promise<void>;
+  getCustomerActivities: (customer_id: string) => Promise<void>;
+  addActivity: (activity: string, activity_type: RecentActivityType, customer_id: string | null) => Promise<void>;
 }
 
 export const useActivityStore = create<ActivitiesState>((set, get) => ({
   activities: [],
   loading: false,
 
-  getActivities: async () => {
+  getActivitiesByType: async (user_id?: string, types?: RecentActivityType[]) => {
+    if (!user_id) return; // nothing to fetch
+    if (!types || types.length === 0) types = ['system']; // default type
+
+    set({ activities: [], loading: true });
+
+    const { data: recentActivities, error } = await supabase
+      .from('recent_activities')
+      .select('*')
+      .eq('user_id', user_id)
+      .in('activity_type', types)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const activitiesWithLocalTime = convertActivitiesToLocalTime(recentActivities);
+
+    set({ activities: activitiesWithLocalTime || [], loading: false });
+  },
+
+  getCustomerActivities: async (customer_id: string) => {
     set({ activities: [], loading: true });
     let { data: recentActivities, error: activitiesError } = await supabase
       .from('recent_activities')
       .select('*')
+      .eq('customer_id', customer_id)
       .order('created_at', { ascending: false })
-      .limit(50);
+    //.limit(50);
 
     if (activitiesError) throw activitiesError;
 
@@ -28,22 +52,28 @@ export const useActivityStore = create<ActivitiesState>((set, get) => ({
       recentActivities = [];
     }
 
-    set({ activities: recentActivities, loading: false });
+    const activitiesWithLocalTime = convertActivitiesToLocalTime(recentActivities);
+    
+    set({ activities: activitiesWithLocalTime, loading: false });
   },
 
-  // setActivity: async (title: string) => {
-  //   // Get the current user's ID
-  //   const { data: { user } } = await supabase.auth.getUser();
+  addActivity: async (activity: string, activity_type: RecentActivityType, customer_id: string | null) => {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
 
-  //   if (!user) {
-  //     throw new Error('User not authenticated');
-  //   }
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
 
-  //   // Log activity
-  //   await supabase.rpc('add_activity', {
-  //     p_user_id: user.id,
-  //     p_type: 'customer',
-  //     p_title: title,
-  //   });
-  // }
+    await supabase
+      .from('recent_activities')
+      .insert([{
+        user_id: user.id,
+        customer_id: customer_id,
+        activity_type: activity_type,
+        activity: activity,
+      }])
+      .select()
+      .single();
+  }
 }));

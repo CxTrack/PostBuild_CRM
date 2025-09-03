@@ -5,6 +5,8 @@ import { useCalendarStore } from '../../../stores/calendarStore';
 import { useCustomerStore } from '../../../stores/customerStore';
 import { Task } from '../../../types/database.types';
 import { useTaskStore } from '../../../stores/taskStore';
+import { useActivityStore } from '../../../stores/activitiesStore';
+import { formatDateTimeUTC } from '../../../utils/formatters';
 
 interface AddTaskModalProps {
   task: Task | null;
@@ -23,6 +25,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ task, onClose, onSubmit }) 
   const { addEvent, updateEvent } = useCalendarStore();
   const { customers, fetchCustomers } = useCustomerStore();
   const { createTask, updateTask } = useTaskStore();
+  const { addActivity } = useActivityStore();
 
   useEffect(() => {
     fetchCustomers();
@@ -46,11 +49,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ task, onClose, onSubmit }) 
 
   const handleFormSubmit = async (data: any) => {
     try {
-      console.log(task);
-
       let calendar: any;
 
       if (task && task.calendar_id) {
+        
+        await updateTask(data, task.id);
+        await addActivity(`Task ${data.title} completed — `, 'task', data.customer_id);
+
         calendar = await updateEvent(task.calendar_id, {
           title: data.title,
           description: data.description || '',
@@ -58,9 +63,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ task, onClose, onSubmit }) 
           end: new Date(new Date(data.due_date).getTime() + 60 * 60000),
           type: 'task',
         });
-
-        await updateTask(data, task.id);
+        
+        await addActivity(`“${data.title}” rescheduled to date ${formatDateTimeUTC(data.due_date)}`, 'calender_event', data.customer_id);        
       } else {
+
         calendar = await addEvent({
           title: data.title,
           description: data.description || '',
@@ -70,6 +76,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ task, onClose, onSubmit }) 
         });
 
         createTask(data, calendar.id);
+
+        await addActivity(`Task created — “${data.title}”`, 'task', data.customer_id);
+        await addActivity(`“${data.title}” scheduled for date ${formatDateTimeUTC(data.due_date)}`, 'calender_event', data.customer_id);
       }
 
       onSubmit(data, calendar);
