@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { productService } from '../services/productService';
 import { supabase } from '../lib/supabase';
 import { Product } from '../types/database.types';
+import { useActivityStore } from './activitiesStore';
 
 interface ProductState {
   products: Product[];
@@ -72,15 +73,6 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const newProduct = await productService.createProduct(data);
-      
-      // Log activity
-      await supabase.rpc('add_activity', {
-        p_user_id: (await supabase.auth.getUser()).data.user?.id,
-        p_type: 'product',
-        p_title: 'Product Created',
-        p_product: data.name,
-        p_quantity: data.stock
-      });
 
       // Update the products list with the new product
       const products = [...get().products, newProduct];
@@ -104,20 +96,20 @@ export const useProductStore = create<ProductState>((set, get) => ({
   updateProduct: async (id: string, data: Partial<Product>) => {
     set({ loading: true, error: null });
     try {
-      const oldProduct = get().products.find(p => p.id === id);
+      //const oldProduct = get().products.find(p => p.id === id);
       const updatedProduct = await productService.updateProduct(id, data);
       
       // Log activity if stock changed
-      if ('stock' in data && oldProduct) {
-        const stockChange = (data.stock || 0) - (oldProduct.stock || 0);
-        await supabase.rpc('add_activity', {
-          p_user_id: (await supabase.auth.getUser()).data.user?.id,
-          p_type: 'product',
-          p_title: `Stock ${stockChange > 0 ? 'Increased' : 'Decreased'}`,
-          p_product: oldProduct.name,
-          p_quantity: Math.abs(stockChange)
-        });
-      }
+      // if ('stock' in data && oldProduct) {
+      //   const stockChange = (data.stock || 0) - (oldProduct.stock || 0);
+      //   await supabase.rpc('add_activity', {
+      //     p_user_id: (await supabase.auth.getUser()).data.user?.id,
+      //     p_type: 'product',
+      //     p_title: `Stock ${stockChange > 0 ? 'Increased' : 'Decreased'}`,
+      //     p_product: oldProduct.name,
+      //     p_quantity: Math.abs(stockChange)
+      //   });
+      // }
 
       // Update the products list with the updated product
       const products = get().products.map(product => 

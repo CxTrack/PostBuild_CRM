@@ -5,10 +5,12 @@ import { ArrowLeft, Save, Package } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useProductStore } from '../../stores/productStore';
 import { Product } from '../../types/database.types';
+import { useActivityStore } from '../../stores/activitiesStore';
 
 const NewProduct: React.FC = () => {
   const navigate = useNavigate();
   const { createProduct, loading, error, clearError } = useProductStore();
+  const { addActivity } = useActivityStore();
   
   const { register, handleSubmit, formState: { errors } } = useForm<Partial<Product>>({
     defaultValues: {
@@ -29,6 +31,9 @@ const NewProduct: React.FC = () => {
       // Create the product in the database
       const newProduct = await createProduct(data);
       
+      // log it
+      await addActivity(`Product “${newProduct.name}” has been created`, 'product', null);
+
       // Show success message
       toast.success('Product created successfully!');
       

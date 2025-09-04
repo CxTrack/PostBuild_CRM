@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, Calendar, DollarSign, FileText, Handshake, PhoneIncoming, Settings } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Calendar, DollarSign, FileText, Handshake, PhoneIncoming, Settings, ShoppingCart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActivityStore } from '../../stores/activitiesStore';
 import { RecentActivityType } from '../../types/recent.activity.type';
@@ -73,6 +73,7 @@ const RecentActivities: React.FC<RecentActivitiesProps> = ({
                 {activity.activity_type === 'opportunity' && <DollarSign size={18} />}
                 {activity.activity_type === 'calender_event' && <Calendar size={18} />}
                 {activity.activity_type === 'system' && <Settings size={18} />}
+                {activity.activity_type === 'product' && <ShoppingCart size={18} />}
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium">{activity.title}</p>

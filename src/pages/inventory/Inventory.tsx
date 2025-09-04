@@ -4,82 +4,86 @@ import { Plus, Search, Filter, Download, Trash2, Edit, Eye, Package, ArrowUp, Ar
 import { useProductStore } from '../../stores/productStore';
 import Papa from 'papaparse';
 import { toast } from 'react-hot-toast';
+import { TooltipButton } from '../../components/ToolTip';
+import { Product } from '../../types/database.types';
+import { useActivityStore } from '../../stores/activitiesStore';
 
 const Inventory: React.FC = () => {
   const { products, loading, error, fetchProducts, deleteProduct, updateProduct } = useProductStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [editingCell, setEditingCell] = useState<{id: string; field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
-  const { totalProducts } = useProductStore();
+  // const { totalProducts } = useProductStore();
   const [uploading, setUploading] = useState(false);
-  
+  const { addActivity } = useActivityStore();
+
   // Fetch products on component mount
   useEffect(() => {
     fetchProducts().catch(err => {
       toast.error('Failed to load products');
     });
   }, [fetchProducts]);
-  
-  const filteredInventory = products.filter(product => 
+
+  const filteredInventory = products.filter(product =>
     product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product?.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
-  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    setUploading(true);
-    
-    try {
-      const text = await file.text();
-      
-      Papa.parse(text, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          const { data, errors } = results;
-          
-          if (errors.length > 0) {
-            toast.error('Error parsing CSV file');
-            console.error('CSV parsing errors:', errors);
-            return;
-          }
+  // const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (!file) return;
 
-          let successCount = 0;
-          let errorCount = 0;
+  //   setUploading(true);
 
-          for (const row of data) {
-            try {
-              // Map CSV columns to inventory fields
-              const inventoryData = {
-                product_id: row.product_id,
-                quantity: parseInt(row.quantity) || 0,
-                location: row.location,
-                notes: row.notes
-              };
+  //   try {
+  //     const text = await file.text();
 
-              // Add validation and processing logic here
-              successCount++;
-            } catch (error) {
-              console.error('Error importing inventory:', error);
-              errorCount++;
-            }
-          }
+  //     Papa.parse(text, {
+  //       header: true,
+  //       skipEmptyLines: true,
+  //       complete: async (results) => {
+  //         const { data, errors } = results;
 
-          toast.success(`Imported ${successCount} items successfully${errorCount > 0 ? ` (${errorCount} failed)` : ''}`);
-        }
-      });
-    } catch (error) {
-      console.error('File upload error:', error);
-      toast.error('Failed to upload file');
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-    }
-  };
+  //         if (errors.length > 0) {
+  //           toast.error('Error parsing CSV file');
+  //           console.error('CSV parsing errors:', errors);
+  //           return;
+  //         }
+
+  //         let successCount = 0;
+  //         let errorCount = 0;
+
+  //         for (const row of data) {
+  //           try {
+  //             // Map CSV columns to inventory fields
+  //             const inventoryData = {
+  //               product_id: row.product_id,
+  //               quantity: parseInt(row.quantity) || 0,
+  //               location: row.location,
+  //               notes: row.notes
+  //             };
+
+  //             // Add validation and processing logic here
+  //             successCount++;
+  //           } catch (error) {
+  //             console.error('Error importing inventory:', error);
+  //             errorCount++;
+  //           }
+  //         }
+
+  //         toast.success(`Imported ${successCount} items successfully${errorCount > 0 ? ` (${errorCount} failed)` : ''}`);
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error('File upload error:', error);
+  //     toast.error('Failed to upload file');
+  //   } finally {
+  //     setUploading(false);
+  //     event.target.value = '';
+  //   }
+  // };
 
   const handleStartEdit = (id: string, field: string, value: string | number) => {
     setEditingCell({ id, field });
@@ -90,6 +94,10 @@ const Inventory: React.FC = () => {
     try {
       const value = field === 'stock' ? parseInt(editValue) : editValue;
       await updateProduct(id, { [field]: value, updated_at: new Date().toISOString() });
+      
+    // log it
+      //await addActivity(`Product “${product.name}” is deleted`, 'product', null);
+
       setEditingCell(null);
       setEditValue('');
       toast.success('Updated successfully');
@@ -108,29 +116,38 @@ const Inventory: React.FC = () => {
     }
   };
 
-  const handleStockAdjustment = async (id: string, adjustment: number) => {
-    const product = products.find(p => p.id === id);
-    if (!product) return;
-    
-    const newStock = Math.max(0, (product.stock || 0) + adjustment);
-    try {
-      await updateProduct(id, { 
-        stock: newStock,
-        updated_at: new Date().toISOString()
-      });
-      toast.success(`Stock ${adjustment > 0 ? 'increased' : 'decreased'} successfully`);
-    } catch (error) {
-      console.error('Error adjusting stock:', error);
-      toast.error('Failed to adjust stock');
-    }
-  };
+  // const handleStockAdjustment = async (id: string, adjustment: number) => {
+  //   const product = products.find(p => p.id === id);
+  //   if (!product) return;
+
+  //   const newStock = Math.max(0, (product.stock || 0) + adjustment);
+  //   try {
+  //     await updateProduct(id, {
+  //       stock: newStock,
+  //       updated_at: new Date().toISOString()
+  //     });
+  //     toast.success(`Stock ${adjustment > 0 ? 'increased' : 'decreased'} successfully`);
+  //   } catch (error) {
+  //     console.error('Error adjusting stock:', error);
+  //     toast.error('Failed to adjust stock');
+  //   }
+  // };
+
+  const handleDelete = async (product: Product) => {
+    await deleteProduct(product.id);
+
+    // log it
+    await addActivity(`Product “${product.name}” is deleted`, 'product', null);
+
+    toast.success(`Product ${product.name} is deleted successfully`);
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
         <div className="flex space-x-2">
-          <div className="relative">
+          {/* <div className="relative">
             <input
               type="file"
               accept=".csv"
@@ -146,49 +163,49 @@ const Inventory: React.FC = () => {
               <Upload size={16} className={uploading ? 'animate-bounce' : ''} />
               <span>{uploading ? 'Importing...' : 'Import CSV'}</span>
             </label>
-          </div>
+          </div> */}
           {/* <button className="btn btn-primary flex items-center space-x-2">
             <RefreshCw size={16} />
             <span>Sync with Shopify</span>
           </button> */}
-          <button className="btn btn-secondary flex items-center space-x-2">
+          {/* <button className="btn btn-secondary flex items-center space-x-2">
             <Package size={16} />
             <span>Adjust Stock</span>
-          </button>
+          </button> */}
         </div>
       </div>
-      
+
       {/* Inventory summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card bg-dark-800 border border-dark-700">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total Products</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{totalProducts}</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{products.length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
               <Package size={24} />
             </div>
           </div>
         </div>
-        
+
         <div className="card bg-dark-800 border border-dark-700">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Low Stock Items</p>
-              <h3 className="text-2xl font-bold text-white mt-1">0</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{products.filter(p => p.status == 'Low Stock').length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-yellow-500/20 text-yellow-500">
               <ArrowDown size={24} />
             </div>
           </div>
         </div>
-        
+
         <div className="card bg-dark-800 border border-dark-700">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Out of Stock Items</p>
-              <h3 className="text-2xl font-bold text-white mt-1">0</h3>
+              <h3 className="text-2xl font-bold text-white mt-1">{products.filter(p => p.status == 'Out of Stock').length}</h3>
             </div>
             <div className="p-3 rounded-lg bg-red-500/20 text-red-500">
               <ArrowDown size={24} />
@@ -196,7 +213,7 @@ const Inventory: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Filters and search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -211,19 +228,23 @@ const Inventory: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <div className="flex gap-2">
-          <button className="btn btn-secondary flex items-center space-x-2">
+          <Link to="/products/new" className="btn btn-primary flex items-center space-x-2">
+            <Package size={16} />
+            <span>Add Product</span>
+          </Link>
+          {/* <button className="btn btn-secondary flex items-center space-x-2">
             <Filter size={16} />
             <span>Filter</span>
           </button>
           <button className="btn btn-secondary flex items-center space-x-2">
             <Download size={16} />
             <span>Export</span>
-          </button>
+          </button> */}
         </div>
       </div>
-      
+
       {/* Inventory table */}
       <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
         {filteredInventory.length > 0 ? (
@@ -234,8 +255,7 @@ const Inventory: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Product</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Current Stock</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Min Stock</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Reorder Point</th>
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Min Stock</th> */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last Updated</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
@@ -247,7 +267,7 @@ const Inventory: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div>
-                          <div 
+                          <div
                             className="text-sm font-medium text-white cursor-pointer hover:text-primary-400"
                             onClick={() => handleStartEdit(item.id, 'name', item.name)}
                           >
@@ -270,7 +290,7 @@ const Inventory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div 
+                      <div
                         className="text-sm text-gray-300 cursor-pointer hover:text-primary-400"
                         onClick={() => handleStartEdit(item.id, 'category', item.category || '')}
                       >
@@ -290,7 +310,7 @@ const Inventory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <div 
+                      <div
                         className="cursor-pointer hover:text-primary-400"
                         onClick={() => handleStartEdit(item.id, 'stock', item.stock || 0)}
                       >
@@ -310,10 +330,10 @@ const Inventory: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <div 
+                    {/* <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div
                         className="cursor-pointer hover:text-primary-400"
-                        onClick={() => handleStartEdit(item.id, 'minStock', item.minStock || 0)}
+                        onClick={() => handleStartEdit(item.id, 'minStock', item.stock || 0)}
                       >
                         {editingCell?.id === item.id && editingCell.field === 'minStock' ? (
                           <input
@@ -327,62 +347,48 @@ const Inventory: React.FC = () => {
                             autoFocus
                           />
                         ) : (
-                          item.minStock || 0
+                          item.stock || 0
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <div 
-                        className="cursor-pointer hover:text-primary-400"
-                        onClick={() => handleStartEdit(item.id, 'reorderPoint', item.reorderPoint || 0)}
-                      >
-                        {editingCell?.id === item.id && editingCell.field === 'reorderPoint' ? (
-                          <input
-                            type="number"
-                            min="0"
-                            className="input py-1 px-2 w-24 text-right"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={() => handleSaveEdit(item.id, 'reorderPoint')}
-                            onKeyDown={(e) => handleKeyPress(e, item.id, 'reorderPoint')}
-                            autoFocus
-                          />
-                        ) : (
-                          item.reorderPoint || 0
-                        )}
-                      </div>
-                    </td>
+                    </td> */}
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
                       {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'In Stock' ? 'bg-green-900/30 text-green-400' : 
-                        item.status === 'Low Stock' ? 'bg-yellow-900/30 text-yellow-400' : 
-                        'bg-red-900/30 text-red-400'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'In Stock' ? 'bg-green-900/30 text-green-400' :
+                        item.status === 'Low Stock' ? 'bg-yellow-900/30 text-yellow-400' :
+                          'bg-red-900/30 text-red-400'
+                        }`}>
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button 
+                    <td className="px-8 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-4">
+                        {/* <button
                           className="text-gray-400 hover:text-green-500"
                           onClick={() => handleStockAdjustment(item.id, 1)}
                           title="Increase stock"
                         >
                           <ArrowUp size={16} />
                         </button>
-                        <button 
+                        <button
                           className="text-gray-400 hover:text-red-500"
                           onClick={() => handleStockAdjustment(item.id, -1)}
                           title="Decrease stock"
                         >
                           <ArrowDown size={16} />
-                        </button>
-                        <button className="text-gray-400 hover:text-white">
+                        </button> */}
+                        {/* <button className="text-gray-400 hover:text-white">
                           <Edit size={16} />
-                        </button>
+                        </button> */}
+
+                        <TooltipButton
+                          tooltip="Delete"
+                          icon={<Trash2 size={16} />}
+                          isDisabled={false}
+                          isHidden={false}
+                          onClick={() => handleDelete(item)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -403,7 +409,7 @@ const Inventory: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* Pagination - only show if there are items */}
         {filteredInventory.length > 0 && (
           <div className="bg-dark-800 px-4 py-3 flex items-center justify-between border-t border-dark-700">

@@ -507,7 +507,7 @@ const Dashboard: React.FC = () => {
 
       {/* Recent Activity */}
       <RecentActivities
-        activityTypes={['system', 'calender_event', 'call'] as RecentActivityType[]}
+        activityTypes={['system', 'calender_event', 'call','product'] as RecentActivityType[]}
         fetchFunction={getActivitiesByType}
         title="Recent System Activity"
       />
