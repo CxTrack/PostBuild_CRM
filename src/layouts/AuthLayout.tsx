@@ -542,7 +542,7 @@ const AuthLayout: React.FC = () => {
                   title="Inventory"
                   description="Real-time stock management"
                   link="/features/inventory-tracking"
-                  comingSoon={true}
+                  comingSoon={false}
                 />
                 <FeatureCard
                   icon={DollarSign}
