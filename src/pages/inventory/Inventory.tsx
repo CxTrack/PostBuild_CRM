@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { TooltipButton } from '../../components/ToolTip';
 import { Product } from '../../types/database.types';
 import { useActivityStore } from '../../stores/activitiesStore';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const Inventory: React.FC = () => {
   const { products, loading, error, fetchProducts, deleteProduct, updateProduct } = useProductStore();
@@ -17,6 +18,7 @@ const Inventory: React.FC = () => {
   // const { totalProducts } = useProductStore();
   const [uploading, setUploading] = useState(false);
   const { addActivity } = useActivityStore();
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Fetch products on component mount
   useEffect(() => {
@@ -94,8 +96,8 @@ const Inventory: React.FC = () => {
     try {
       const value = field === 'stock' ? parseInt(editValue) : editValue;
       await updateProduct(id, { [field]: value, updated_at: new Date().toISOString() });
-      
-    // log it
+
+      // log it
       //await addActivity(`Product “${product.name}” is deleted`, 'product', null);
 
       setEditingCell(null);
@@ -133,14 +135,37 @@ const Inventory: React.FC = () => {
   //   }
   // };
 
-  const handleDelete = async (product: Product) => {
-    await deleteProduct(product.id);
+  const confirmProductDelete = async () => {
 
-    // log it
-    await addActivity(`Product “${product.name}” is deleted`, 'product', null);
+    if (!productToDelete) {
+      toast.error(`Unable to delete product ${productToDelete!.name}`);
+      return;
+    }
 
-    toast.success(`Product ${product.name} is deleted successfully`);
-  }
+    try {
+
+      await deleteProduct(productToDelete.id);
+
+      // log it
+      await addActivity(`Product “${productToDelete.name}” is deleted`, 'product', null);
+
+      toast.success(`Product ${productToDelete.name} is deleted successfully`);
+
+      setProductToDelete(null);
+    } catch (error) {
+      toast.error('Failed to delete lead');
+    }
+  };
+
+
+  // const handleDelete = async (product: Product) => {
+  //   await deleteProduct(product.id);
+
+  //   // log it
+  //   await addActivity(`Product “${product.name}” is deleted`, 'product', null);
+
+  //   toast.success(`Product ${product.name} is deleted successfully`);
+  // }
 
   return (
     <div className="space-y-6">
@@ -387,7 +412,7 @@ const Inventory: React.FC = () => {
                           icon={<Trash2 size={16} />}
                           isDisabled={false}
                           isHidden={false}
-                          onClick={() => handleDelete(item)}
+                          onClick={() => setProductToDelete(item)}
                         />
                       </div>
                     </td>
@@ -447,6 +472,16 @@ const Inventory: React.FC = () => {
           </div>
         )}
       </div>
+      <ConfirmationModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={() => confirmProductDelete()}
+        title="Delete item?"
+        message="Are you sure?"
+        confirmButtonText="Delete"
+        cancelButtonText="Cancel"
+        isDanger={true}
+      />
     </div>
   );
 };
