@@ -224,7 +224,7 @@ const Quotes: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expiry Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th> */}
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -256,9 +256,9 @@ const Quotes: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
                       ${quote.total.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    {/* <td className="px-4 py-4 whitespace-nowrap">
                       <QuoteStatusBadge status={quote.status} />
-                    </td>
+                    </td> */}
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <Link to={`/quotes/${quote.id}`} className="text-gray-400 hover:text-white">
