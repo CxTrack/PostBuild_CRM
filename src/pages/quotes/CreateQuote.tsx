@@ -373,13 +373,13 @@ const CreateQuote: React.FC = () => {
               
               <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">
-                  Internal Notes
+                  Notes
                 </label>
                 <textarea
                   id="notes"
                   rows={4}
                   className="input"
-                  placeholder="Add internal notes..."
+                  placeholder="Add notes... They will appear on the quote"
                   {...register('notes')}
                 ></textarea>
               </div>

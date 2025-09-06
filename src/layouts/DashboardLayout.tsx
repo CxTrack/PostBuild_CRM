@@ -281,16 +281,6 @@ const DashboardLayout: React.FC = () => {
                   {sidebarOpen && <span>Expenses</span>}
                 </NavLink>
 
-                <NavLink to="/products" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <Package size={20} />
-                  {sidebarOpen && <span>Products</span>}
-                </NavLink>
-
-                <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <Layers size={20} />
-                  {sidebarOpen && <span>Inventory</span>}
-                </NavLink>
-
                 <NavLink to="/purchases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <ShoppingCart size={20} />
                   {sidebarOpen && <span>Purchases</span>}
@@ -308,6 +298,29 @@ const DashboardLayout: React.FC = () => {
               {sidebarOpen && <span>Pipeline</span>}
             </NavLink>
 
+            {/* FINANACE */}
+            {sidebarOpen && (
+              <div
+                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
+                onClick={() => toggleSection('finance')}
+              >
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</span>
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.finance ? 'rotate-180' : ''
+                    }`}
+                />
+              </div>
+            )}
+
+            {(sidebarOpen && expandedSections.finance && (
+
+              <NavLink to="/quotes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <Receipt size={20} />
+                {sidebarOpen && <span>Quotes</span>}
+              </NavLink>
+
+            ))}
 
             {/* ADMIN area */}
             {sidebarOpen && isAdmin && (

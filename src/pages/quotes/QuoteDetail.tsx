@@ -160,14 +160,14 @@ const QuoteDetail: React.FC = () => {
           <Download size={16} />
           <span>PDF</span>
         </button>
-        <button 
+        {/* <button 
           onClick={() => setShowEmailModal(true)}
           className="btn btn-secondary flex items-center space-x-2"
           disabled={!quote.customer_email}
         >
           <Send size={16} />
           <span>Send to Customer</span>
-        </button>
+        </button> */}
         {quote.status === 'Draft' && (
           <button 
             onClick={() => handleStatusChange('Sent')}
@@ -302,7 +302,7 @@ const QuoteDetail: React.FC = () => {
             </div>
             
             <div>
-              <h3 className="text-md font-medium text-white mb-2">Internal Notes</h3>
+              <h3 className="text-md font-medium text-white mb-2">Notes</h3>
               <p className="text-gray-300">{quote.notes || 'No notes provided'}</p>
             </div>
           </div>
