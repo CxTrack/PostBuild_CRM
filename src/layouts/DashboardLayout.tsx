@@ -42,13 +42,13 @@ const DashboardLayout: React.FC = () => {
   };
 
   // Handle calendar maximize/minimize
-  const handleCalendarMaximize = () => {
-    setCalendarMaximized(!calendarMaximized);
-    // Close sidebar when maximizing calendar
-    if (!calendarMaximized) {
-      setSidebarOpen(false);
-    }
-  };
+  // const handleCalendarMaximize = () => {
+  //   setCalendarMaximized(!calendarMaximized);
+  //   // Close sidebar when maximizing calendar
+  //   if (!calendarMaximized) {
+  //     setSidebarOpen(false);
+  //   }
+  // };
 
   // Watch calendar state changes
   useEffect(() => {
@@ -183,7 +183,7 @@ const DashboardLayout: React.FC = () => {
               </div>
             )} */}
 
-            {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSalesChart) && (
+            {/* {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSalesChart) && (
               <>{templateConfig.sidebarItems
                 .filter(item => item.section === 'sales')
                 .map((item, index) => {
@@ -209,7 +209,7 @@ const DashboardLayout: React.FC = () => {
                     </NavLink>
                   );
                 })}</>
-            )}
+            )} */}
             {/* 
             {sidebarOpen && (
               <div
