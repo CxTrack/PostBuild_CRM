@@ -168,7 +168,7 @@ const DashboardLayout: React.FC = () => {
                 </NavLink>
               );
             })}
-
+{/* 
             {sidebarOpen && templateConfig.dashboardSections.showSalesChart && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
@@ -181,7 +181,7 @@ const DashboardLayout: React.FC = () => {
                     }`}
                 />
               </div>
-            )}
+            )} */}
 
             {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSalesChart) && (
               <>{templateConfig.sidebarItems
