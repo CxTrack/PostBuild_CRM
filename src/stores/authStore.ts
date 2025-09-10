@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase, refreshSession, clearAuthStorage } from '../lib/supabase';
-import { error } from 'console';
 
 interface User {
   id: string;

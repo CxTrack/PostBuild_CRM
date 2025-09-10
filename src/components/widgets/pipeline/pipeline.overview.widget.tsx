@@ -24,7 +24,6 @@ const PipelineOverviewWidget: React.FC<PipelineOverviewWidgetProps> = ({ }) => {
         }
 
         loadData();
-        console.log(pipelineData);
         
     });
 

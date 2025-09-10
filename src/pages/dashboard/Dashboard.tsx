@@ -215,7 +215,7 @@ const Dashboard: React.FC = () => {
           </button>
           {showMobileMenu && (
             <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-md shadow-lg py-1 z-50 border border-dark-700">
-              <Link
+              {/* <Link
                 to="/invoices/create"
                 className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
                 onClick={() => setShowMobileMenu(false)}
@@ -235,7 +235,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => setShowMobileMenu(false)}
               >
                 New Expense
-              </Link>
+              </Link> */}
               <Link
                 to="/quotes/create"
                 className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"

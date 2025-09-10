@@ -339,3 +339,14 @@ export type SystemUser = {
   created_at: string;
   email: string;
 };
+
+export type UserProfile = {
+  company: string;
+  address: string;
+  city: string;
+  stat:string;
+  zipcode: string;
+  country: string;
+  phone: string;
+  
+}

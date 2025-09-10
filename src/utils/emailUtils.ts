@@ -3,6 +3,7 @@ import { generateInvoicePDF, generateQuotePDF } from './pdfUtils';
 import { emailService } from '../services/emailService';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
+import { userService } from '../services/usersService';
 
 export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: string = '', attachPdf: boolean = true): Promise<boolean> => {
   try {
@@ -45,8 +46,6 @@ export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: stri
         invoice.customer_email,
         template.subject,
         emailBody,
-        user.id,
-        undefined,
         pdfAttachment ? [pdfAttachment] : undefined
       );
 
@@ -65,7 +64,7 @@ export const sendInvoiceEmail = async (invoice: Invoice, additionalMessage: stri
   }
 };
 
-export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '', attachPdf: boolean = true): Promise<boolean> => {
+export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '', attachPdf: boolean = true, subject: string): Promise<boolean> => {
   try {
     if (!quote.customer_email) {
       throw new Error('Customer email is not available');
@@ -77,15 +76,18 @@ export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '
       throw new Error('User not authenticated');
     }
 
+    var profile = await userService.getProfile();
+
     // Check if user has configured email settings
     const hasEmailConfig = await emailService.checkEmailConfiguration(user.id);
     if (!hasEmailConfig) {
       throw new Error('Please configure your email settings in your profile before sending emails');
     }
 
+    
     // Generate email content
-    const template = emailService.getQuoteEmailTemplate(quote.quote_number, quote.total);
-    const emailBody = `${template.body}\n\n${additionalMessage}`;
+    const template = emailService.getQuoteEmailTemplate(quote.quote_number, quote.total, profile, additionalMessage, subject);
+    const emailBody = `${template.body}`;
 
     // Generate PDF for attachment
     let pdfAttachment = null;
@@ -101,13 +103,10 @@ export const sendQuoteEmail = async (quote: Quote, additionalMessage: string = '
     }
 
     try {
-      // Send the email with the user's ID for SMTP configuration
       const success = await emailService.sendEmail(
         quote.customer_email,
-        template.subject,
+        subject,
         emailBody,
-        user.id,
-        undefined,
         pdfAttachment ? [pdfAttachment] : undefined
       );
 
