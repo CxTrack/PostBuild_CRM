@@ -97,8 +97,8 @@ function App() {
   useEffect(() => {
     // Handle OAuth callback
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        navigate('/dashboard');
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/login');
       }
     });
 
