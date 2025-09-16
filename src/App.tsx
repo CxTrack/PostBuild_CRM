@@ -97,7 +97,7 @@ function App() {
   useEffect(() => {
     // Handle OAuth callback
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
+      if (event === 'SIGNED_OUT' && !session) {
         navigate('/login');
       }
     });
@@ -240,7 +240,6 @@ function App() {
 
         {/* Contact & Demo Pages */}
         <Route path="/contact" element={<Contact />} />
-        <Route path="/demo" element={<DemoWaitlist />} />
 
         {/* Protected Routes */}
         <Route element={<DashboardLayout />}>
@@ -279,7 +278,7 @@ function App() {
           <Route path="/pipeline" element={user ? <Pipeline /> : <Navigate to="/login" />} />
           <Route path="/pipeline/:stage" element={user ? <PipelineDetail /> : <Navigate to="/login" />} />
           <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
-          {/* <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} /> */}
+          <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} />
           <Route path="/quotes" element={user ? <Quotes /> : <Navigate to="/login" />} />
           <Route path="/quotes/create" element={user ? <CreateQuote /> : <Navigate to="/login" />} />
           <Route path="/quotes/:id" element={user ? <QuoteDetail /> : <Navigate to="/login" />} />
@@ -297,9 +296,9 @@ function App() {
       </Routes>
 
       {/* Chat Bot */}
-      {!user && !location.pathname.includes('/dashboard') && !location.pathname.includes('/login') && !location.pathname.includes('/register') && (
+      {/* {!user && !location.pathname.includes('/dashboard') && !location.pathname.includes('/login') && !location.pathname.includes('/register') && (
         <ChatBot isOpen={false} />
-      )}
+      )} */}
     </>
   );
 }

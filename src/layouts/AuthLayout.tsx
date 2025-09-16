@@ -36,7 +36,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 );
 
 const AuthLayout: React.FC = () => {
-  const [showChat, setShowChat] = useState(false);
+  // const [showChat, setShowChat] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -556,7 +556,7 @@ const AuthLayout: React.FC = () => {
                   title="Quotes"
                   description="Professional quote management"
                   link="/features/quotes"
-                  comingSoon={true}
+                  comingSoon={false}
                 />
               </div>
             </div>
