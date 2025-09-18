@@ -1,4 +1,3 @@
-import { sub } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { useProfileStore } from '../stores/profileStore';
 import { UserProfile } from '../types/database.types';
@@ -238,34 +237,25 @@ export const emailService = {
       // // Add attachments if provided
       if (attachments && attachments.length > 0) {
         emailData.attachments = attachments;
-        // }
-
-        try {
-
-          // Use Supabase Edge Function to proxy the Resend API call
-          // This avoids CORS issues by making the request server-side
-          const { data, error: functionError } = await supabase.functions.invoke('send-email-resend', {
-            body: emailData
-          });
-
-
-          if (functionError) {
-            console.error('Error sending email through edge function:', functionError);
-            throw functionError;
-          }
-
-          if (!data?.id) {
-            throw new Error('Failed to send email through Resend');
-          }
-
-          return data;
-        } catch (err) {
-          console.error('Error sending email:', err);
-          throw err instanceof Error
-            ? err
-            : new Error('Failed to send email. Please try again or contact support.');
-        }
       }
+
+      // Use Supabase Edge Function to proxy the Resend API call
+      // This avoids CORS issues by making the request server-side
+      const { data, error: functionError } = await supabase.functions.invoke('send-email-resend', {
+        body: emailData
+      });
+
+
+      if (functionError) {
+        console.error('Error sending email through edge function:', functionError);
+        throw functionError;
+      }
+
+      if (!data?.id) {
+        throw new Error('Failed to send email through Resend');
+      }
+
+      return data;
 
     } catch (e) {
       console.error('Email service error:', e);
@@ -322,17 +312,17 @@ export const emailService = {
     return {
       subject: `Payment Reminder: Invoice ${invoiceNumber}`,
       body: `
-Dear Customer,
-<br>
-This is a courteous reminder that invoice <b>${invoiceNumber}</b> for <b>$${amount.toFixed(2)}</b> is due on <b>${dueDate}</b>.
-<br>
-If you have already made the payment, please disregard this reminder.
-<br>
-Thank you for your business!
-<br>
-<br>
-Best regards,
-CxTrack Team
+        Dear Customer,
+        <br>
+        This is a courteous reminder that invoice <b>${invoiceNumber}</b> for <b>$${amount.toFixed(2)}</b> is due on <b>${dueDate}</b>.
+        <br>
+        If you have already made the payment, please disregard this reminder.
+        <br>
+        Thank you for your business!
+        <br>
+        <br>
+        Best regards,
+        CxTrack Team
       `.trim()
     };
   }

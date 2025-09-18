@@ -18,11 +18,11 @@ const Contact: React.FC = () => {
   const onSubmit = async (data: ContactFormData) => {
     try {
       const emailBody = `
-Name: ${data.name}
-Email: ${data.email}
+        Name: ${data.name}
+        Email: ${data.email}
 
-Message:
-${data.message}
+        Message:
+        ${data.message}
       `.trim();
 
       const success = await emailService.sendEmail(
@@ -61,7 +61,7 @@ ${data.message}
               <span className="brand-logo text-xl font-bold text-white brand-text">CxTrack</span>
             </Link>
           </div>
-          
+
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Contact Our Sales Team
@@ -91,7 +91,7 @@ ${data.message}
 
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-8">
             <h2 className="text-2xl font-bold text-white mb-6">Send us a message</h2>
-            
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
