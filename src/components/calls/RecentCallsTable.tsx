@@ -92,6 +92,11 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
     return customer?.name ?? formatPhoneNumber(formattedPhone);
   }
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedCall(null);
+  };
+
   return (
     <>
       <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl border border-slate-600/50 shadow-2xl">
@@ -173,6 +178,98 @@ const RecentCallsTable: React.FC<RecentCallsTableProps> = ({ currentCalls, forma
           </div>
         )}
       </div>
+
+      {isModalOpen && selectedCall && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 p-6 rounded-lg text-white max-w-4xl w-full">
+            <h3 className="text-xl font-bold mb-4">Call Details</h3>
+            <p>From:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-green-400`}>
+                {customerNameDialog} [{selectedCall.from_number}]
+              </span>
+            </p>
+
+            <p>To:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-green-400`}>
+                {formatPhoneNumber(selectedCall.to_number!)}
+              </span>
+            </p>
+
+            <p>Start Time:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.start_time ? formatService.formatDate(new Date(selectedCall.start_time).toLocaleString()) : 'N/A'}
+              </span>
+            </p>
+
+            <p>End Time:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.end_time ? formatService.formatDate(new Date(selectedCall.end_time).toLocaleString()) : 'N/A'}
+              </span>
+            </p>
+
+            <p>Duration:
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 'bg-green-900/30 text-gray-400`}>
+                {selectedCall.start_time && selectedCall.end_time
+                  ? Math.round(
+                    (new Date(selectedCall.end_time).getTime() - new Date(selectedCall.start_time).getTime()) / 1000
+                  )
+                  : 'N/A'} s
+              </span>
+            </p>
+
+            <div className="mt-4 block mb-2">
+              Recording:
+              {selectedCall.recording_url ? (
+                <audio controls src={selectedCall.recording_url} className="mt-2 w-full">
+                  Download audio
+                </audio>
+              ) : (
+                <button onClick={async () => {
+                  const apiCallDetails = await callsService.getCallRecording(selectedCall.provider_call_id);
+                  if (apiCallDetails?.recording_url) {
+                    setSelectedCall({
+                      ...selectedCall!,
+                      recording_url: apiCallDetails.recording_url
+                    });
+                  }
+                }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >Load Recording</button>
+              )}
+            </div>
+            <div className="mt-4">
+              Transcript:
+              <p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-large  text-gray-400`}>
+                  {selectedCall.transcript}
+                </span>
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              {selectedCall.user_id && ( //TODO: compare this user is logged user
+
+                <button
+                  onClick={async () => {
+                    const customer = await formatService.formatPhoneNumberAsInDB(selectedCall.from_number!);
+                    const foundCustomer = await customerService.getCustomerByPhone(customer);
+                    if (foundCustomer) {
+                      navigate(`/customers/${foundCustomer.id}`);
+                    }
+                  }}
+                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >View User Details</button>
+
+              )}
+              <button
+                onClick={closeModal}
+                className="mt-6 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
