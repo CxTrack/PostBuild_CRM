@@ -26,8 +26,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement, 
-  PointElement, 
+  ArcElement,
+  PointElement,
   LineElement,
   Filler
 );
@@ -57,11 +57,11 @@ const AdminCalls: React.FC = () => {
     fetchCalls();
   }, []);
 
-   // Get current calls
+  // Get current calls
   const indexOfLastCall = currentPage * callsPerPage;
   const indexOfFirstCall = indexOfLastCall - callsPerPage;
   const currentCalls = useMemo(() => calls.slice(indexOfFirstCall, indexOfLastCall), [calls, currentPage]);
- 
+
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
@@ -115,6 +115,7 @@ const AdminCalls: React.FC = () => {
           {/* Recent Calls Table */}
           <RecentCallsTable
             currentCalls={currentCalls}
+            preview={false}
             formatPhoneNumber={formatService.formatPhoneNumber}
             formatDate={formatService.formatDate}
           />

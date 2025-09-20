@@ -489,6 +489,7 @@ const CustomerDetail: React.FC = () => {
           {/* Recent Calls Table */}
           <RecentCallsTable
             currentCalls={calls}
+            preview={false}
             formatPhoneNumber={formatService.formatPhoneNumber}
             formatDate={formatService.formatDate}
           />

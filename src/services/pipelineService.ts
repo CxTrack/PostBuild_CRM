@@ -129,8 +129,6 @@ export const piplelineService = {
   async deletePipelineItems(id: string): Promise<void> {
     try {
 
-      console.log(id);
-
       const { error } = await supabase
         .from('pipeline_items')
         .delete()

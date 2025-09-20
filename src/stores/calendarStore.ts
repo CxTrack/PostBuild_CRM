@@ -1,19 +1,11 @@
 import { create } from 'zustand';
-import { format, addDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  description?: string;
-  type: 'invoice' | 'expense' | 'task' | 'custom' | 'holiday';
-  allDay?: boolean;
-}
+import { CalendarEvent } from '../types/calendar.event';
 
 interface CalendarState {
   events: CalendarEvent[];
+  todaysEvents: CalendarEvent[];
+  upcomingEvents: CalendarEvent[];
   loading: boolean;
   error: string | null;
   currentDate: Date;
@@ -31,6 +23,8 @@ interface CalendarState {
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
   events: [],
+  todaysEvents: [],
+  upcomingEvents: [],
   loading: false,
   error: null,
   currentDate: new Date(),
@@ -52,14 +46,41 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
       if (error) throw error;
 
-      // Convert date strings to Date objects
-      const formattedEvents = (data || []).map(event => ({
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // First, convert all to Date objects
+      const formattedAllEvents = (data || []).map(event => ({
         ...event,
         start: new Date(event.start),
-        end: new Date(event.end)
+        end: new Date(event.end),
       }));
 
-      set({ events: formattedEvents, loading: false });
+      // Then filter for today’s events
+      const todaysEvents = formattedAllEvents.filter(event => {
+        if (event.allDay) {
+          return event.start <= todayEnd && event.end >= todayStart;
+        }
+
+        if (event.start <= now && event.end >= now) return true;
+        if (event.start >= now && event.start <= todayEnd) return true;
+
+        return false;
+      });
+
+          // Upcoming events (next 3 events starting after today)
+      const upcomingEvents = formattedAllEvents
+        .filter(event => event.start > todayEnd) // after today
+        .sort((a, b) => a.start.getTime() - b.start.getTime())
+        .slice(0, 3); // only 3 next events
+
+      set({
+        events: formattedAllEvents,
+        todaysEvents,
+        upcomingEvents: upcomingEvents,
+        loading: false,
+      });
     } catch (error: any) {
       console.error('Error in fetchEvents:', error);
       set({ 
