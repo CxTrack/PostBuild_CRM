@@ -4,6 +4,7 @@ import { formatService } from '../../services/formatService';
 import { customerService } from '../../services/customerService'
 import { useNavigate } from "react-router-dom";
 import { Loader2, PhoneCall, Timer, UserCheck, UserMinus, XCircle } from "lucide-react";
+import { callsService } from '../../services/callsService';
 
 interface RecentCallsTableProps {
   currentCalls: Call[];
