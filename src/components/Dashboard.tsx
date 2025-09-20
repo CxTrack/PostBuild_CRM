@@ -12,7 +12,7 @@ import { Call, Task } from '../types/database.types';
 import TaskList from './tasks/task-list';
 import { useTaskStore } from '../stores/taskStore';
 import { usePipelineStore } from '../stores/pipelineStore';
-import CalendarStatsWidget from './calendar/calendarStatsWidget';
+import CalendarStatsWidget from './calendar/CalendarStatsWidget';
 
 const Dashboard: React.FC = () => {
   const [calls, setCalls] = useState<Call[]>([]);
