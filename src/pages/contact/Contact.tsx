@@ -76,17 +76,17 @@ const Contact: React.FC = () => {
       {/* Contact Form Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-8 mb-12">
             <div className="bg-dark-800 p-6 rounded-lg border border-dark-700">
               <Mail className="text-primary-500 mb-4" size={24} />
               <h3 className="text-lg font-semibold text-white mb-2">Email</h3>
               <p className="text-gray-400">info@cxtrack.com</p>
             </div>
-            <div className="bg-dark-800 p-6 rounded-lg border border-dark-700">
+            {/* <div className="bg-dark-800 p-6 rounded-lg border border-dark-700">
               <MessageSquare className="text-primary-500 mb-4" size={24} />
               <h3 className="text-lg font-semibold text-white mb-2">Live Chat</h3>
               <p className="text-gray-400">Available 24/7</p>
-            </div>
+            </div> */}
           </div>
 
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-8">
