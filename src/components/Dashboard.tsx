@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
-        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-purple-500/10 hover:border-purple-500/30 transition-all duration-300 hover:scale-105">
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-blue-500/10 hover:border-blue-500/30 transition-all duration-300 hover:scale-105">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg">
               <Target className="w-6 h-6 text-white" />
@@ -206,7 +206,7 @@ const Dashboard: React.FC = () => {
             }`}>{calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '% vs last month'}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-purple-500/10 hover:border-purple-500/30 transition-all duration-300 hover:scale-105">
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/30 transition-all duration-300 hover:scale-105">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg">
               <CheckSquare className="w-6 h-6 text-white" />
