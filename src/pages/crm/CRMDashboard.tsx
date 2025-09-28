@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen, PersonStanding, User, DollarSign, CircleDollarSign, Banknote, StopCircle, BadgeDollarSign } from 'lucide-react';
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, FileText, Upload, CheckSquare, Link, TrendingUp, Users, ArrowDownRight, ArrowUpRight, ChevronDownSquare, Square, XSquare, Trash, FolderOutput, FolderInput, Pen, PersonStanding, User, DollarSign, CircleDollarSign, Banknote, StopCircle, BadgeDollarSign, Building2 } from 'lucide-react';
 import AddLeadModal from './components/AddLeadModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddOpportunityModal from './components/AddOpportunityModal';
@@ -760,98 +760,98 @@ const CRMDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">CRM Dashboard</h1>
-        <div className="flex space-x-2">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400" />
+      {/* Header */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl">
+        <div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+              <Building2 className="w-8 h-8 text-white" />
             </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              CRM Dashboard
+            </h1>
+          </div>
+          <p className="text-slate-300 text-lg">Manage your customer relationships and opportunities</p>
+        </div>
+        {/* <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search..."
-              className="input pl-10 w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 backdrop-blur-sm text-white rounded-xl border border-slate-600/50 focus:border-blue-500/50 focus:outline-none w-64 shadow-lg transition-all duration-300"
             />
           </div>
-          <button className="btn btn-secondary flex items-center space-x-2">
-            <Filter size={16} />
-            <span>Filter</span>
+          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 backdrop-blur-sm text-white rounded-xl border border-slate-600/50 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-blue-500/25">
+            <Filter className="w-4 h-4" />
+            Filter
           </button>
-        </div>
+        </div> */}
       </div>
 
-      {/* Stats Grid */}
+      {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Leads</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{stats.leads.total}</h3>
-              {/* <div className="flex items-center mt-2">
-                {stats.leads.trend === 'up' ? (
-                  <ArrowUpRight size={16} className="text-green-500" />
-                ) : (
-                  <ArrowDownRight size={16} className="text-red-500" />
-                )}
-                <span className={`text-sm ml-1 ${stats.leads.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                  {stats.leads.change}
-                </span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
-              </div> */}
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-green-500/10 hover:border-green-500/30 transition-all duration-300 hover:scale-105">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg">
+              <Users className="w-6 h-6 text-white" />
             </div>
-            <div className="p-3 rounded-lg bg-primary-500/20 text-primary-500">
-              <Users size={24} />
+            <div className="flex-1">
+              <h3 className="text-slate-300 text-sm font-semibold uppercase tracking-wide ">
+                Total Leads
+              </h3>
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-400 bg-clip-text text-transparent mb-2">{stats.leads.total}</div>
             </div>
           </div>
+          {/* <div className={`text-sm font-semibold ${calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) < 0
+            ? "text-red-400"
+            : "text-green-400"
+            }`}>{calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '% vs last month'}</div> */}
         </div>
 
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Tasks</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{stats.tasks.completed}/{stats.tasks.total}</h3>
-              {/* <div className="flex items-center mt-2">
-                {stats.tasks.trend === 'up' ? (
-                  <ArrowUpRight size={16} className="text-green-500" />
-                ) : (
-                  <ArrowDownRight size={16} className="text-red-500" />
-                )}
-                <span className={`text-sm ml-1 ${stats.tasks.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                  {stats.tasks.change}
-                </span>
-                <span className="text-gray-500 text-sm ml-1">completion rate</span>
-              </div> */}
+
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-green-500/10 hover:border-green-500/30 transition-all duration-300 hover:scale-105">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg">
+              <CheckSquare className="w-6 h-6 text-white" />
             </div>
-            <div className="p-3 rounded-lg bg-yellow-500/20 text-yellow-500">
-              <CheckSquare size={24} />
+            <div className="flex-1">
+              <h3 className="text-slate-300  text-sm font-semibold uppercase tracking-wide ">
+                Tasks
+              </h3>
+              <div className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent mb-2">{stats.tasks.completed}/{stats.tasks.total}</div>
             </div>
           </div>
+          {/* <div className={`text-sm font-semibold ${calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) < 0
+            ? "text-red-400"
+            : "text-green-400"
+            }`}>{calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '% vs last month'}</div> */}
         </div>
 
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Pipeline Value</p>
-              <h3 className="text-2xl font-bold text-white mt-1">
+
+
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl hover:shadow-green-500/10 hover:border-green-500/30 transition-all duration-300 hover:scale-105">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 shadow-lg">
+              <DollarSign className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-slate-300  text-sm font-semibold uppercase tracking-wide ">
+                Pipeline Value
+              </h3>
+              <div className="text-3xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
                 $ {filteredOpportunities.filter((o: any) => o.final_status !== "No Sale")
                   .reduce((sum, o) => sum + (Number(o.dollar_value) || 0), 0).toLocaleString('en-US')}
-              </h3>
-              <div className="flex items-center mt-2">
-                {stats.opportunities.trend === 'up' ? (
-                  <ArrowUpRight size={16} className="text-green-500" />
-                ) : (
-                  <ArrowDownRight size={16} className="text-red-500" />
-                )}
-                <span className={`text-sm ml-1 ${stats.opportunities.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                  {stats.opportunities.change}
-                </span>
-                <span className="text-gray-500 text-sm ml-1">vs last month</span>
+
               </div>
             </div>
-            <div className="p-3 rounded-lg bg-green-500/20 text-green-500">
-              <TrendingUp size={24} />
-            </div>
           </div>
+          <div className={`text-sm font-semibold ${calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) < 0
+            ? "text-red-400"
+            : "text-green-400"
+            }`}>{calculatePercentage(pipeLineValueLastMonth, pipeLineValueThisMonth) + '% vs last month'}</div>
         </div>
       </div>
 

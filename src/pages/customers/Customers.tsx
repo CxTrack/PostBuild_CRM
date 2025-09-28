@@ -51,9 +51,21 @@ const Customers: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Customers</h1>
-        <div className="flex space-x-2">
+        
+              {/* Header */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-slate-800/80 to-slate-700/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 shadow-2xl">
+        <div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+              <Users className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Customers
+            </h1>
+          </div>
+          <p className="text-slate-300 text-lg">Manage your customer relationships and contacts</p>
+        </div>
+        <div className="flex items-center gap-3">
           <Link to="/settings?tab=integrations" className="hidden md:flex btn btn-secondary items-center space-x-2">
             <Upload size={16} />
             <span>Import CSV</span>
