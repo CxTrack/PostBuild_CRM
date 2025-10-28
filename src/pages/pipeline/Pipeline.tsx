@@ -436,7 +436,7 @@ const Pipeline: React.FC = () => {
                 <tr key={`${item.stage}-${item.id}`} className="hover:bg-dark-700/50">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <Link
-                      to={`/${item.stage}s/${item.id}`}
+                      to={`/${item.stage}/${item.id}`}
                       className="text-white hover:text-primary-400"
                     >
                       {item.stage}
