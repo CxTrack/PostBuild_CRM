@@ -350,3 +350,8 @@ export type UserProfile = {
   phone: string;
   
 }
+
+export type Industry =  {
+  id: string;
+  name: string;
+}

@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { useProfileStore } from './stores/profileStore';
-import Pipeline from './pages/pipeline/Pipeline';
-import PipelineDetail from './pages/pipeline/PipelineDetail';
+import Pipeline from './components/pipelines/Pipeline';
 import DirectReports from './pages/team/DirectReports';
 import DemoWaitlist from './pages/DemoWaitlist';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
@@ -277,7 +276,6 @@ function App() {
           <Route path="/invoices/:id" element={user ? <InvoiceDetail /> : <Navigate to="/login" />} />
           <Route path="/invoices/:id/edit" element={user ? <EditInvoice /> : <Navigate to="/login" />} />
           <Route path="/pipeline" element={user ? <Pipeline /> : <Navigate to="/login" />} />
-          <Route path="/pipeline/:stage" element={user ? <PipelineDetail /> : <Navigate to="/login" />} />
           <Route path="/suppliers" element={user ? <Suppliers /> : <Navigate to="/login" />} />
           <Route path="/team" element={user ? <DirectReports /> : <Navigate to="/login" />} />
           <Route path="/quotes" element={user ? <Quotes /> : <Navigate to="/login" />} />

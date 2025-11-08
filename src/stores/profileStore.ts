@@ -11,6 +11,8 @@ interface ProfileData {
   zipcode: string;
   country: string;
   phone: string;
+  industry: string | null;
+  industry_id: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -19,10 +21,11 @@ interface ProfileState {
   profile: ProfileData | null;
   loading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchProfile: () => Promise<void>;
   updateProfile: (data: Partial<ProfileData>) => Promise<void>;
+  updateProfileIndustry: (newIndustryId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -30,18 +33,18 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   profile: null,
   loading: false,
   error: null,
-  
+
   clearError: () => set({ error: null }),
-  
+
   fetchProfile: async () => {
     set({ loading: true, error: null });
     try {
       // Get the current user's ID
       const { data: userData } = await supabase.auth.getUser();
-      
+
       if (!userData?.user) {
         console.log('No authenticated user found when fetching profile');
-        set({ 
+        set({
           profile: {
             company: 'CxTrack',
             address: '',
@@ -49,31 +52,34 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             state: '',
             zipcode: '',
             country: '',
-            phone: ''
+            phone: '',
+            industry: null,
+            industry_id: 1
           },
-          loading: false 
+          loading: false
         });
         return;
       }
-      
+
       // First check if profile exists
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`*,
+            industry:industry_id ( id, name, dashboard )`)
         .eq('user_id', userData.user.id)
         .maybeSingle();
-      
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
         throw error;
       }
-      
+
       // If profile exists, use it
       if (data) {
         set({ profile: data, loading: false });
         return;
       }
-      
+
       // If no profile exists yet, create a default one
       const defaultProfile = {
         user_id: userData.user.id,
@@ -83,9 +89,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         state: '',
         zipcode: '',
         country: '',
-        phone: ''
+        phone: '',
+        industry: null
       };
-      
+
       try {
         // Create a new profile
         const { data: newProfile, error: insertError } = await supabase
@@ -93,12 +100,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           .insert([defaultProfile])
           .select()
           .single();
-        
+
         if (insertError) {
           console.error('Error creating default profile:', insertError);
           // Still set a default profile in the store even if DB insert fails
-          set({ 
-            profile: defaultProfile, 
+          set({
+            profile: defaultProfile,
             loading: false,
             error: insertError.message
           });
@@ -107,8 +114,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         }
       } catch (insertErr) {
         console.error('Exception creating profile:', insertErr);
-        set({ 
-          profile: defaultProfile, 
+        set({
+          profile: defaultProfile,
           loading: false,
           error: 'Failed to create profile'
         });
@@ -116,7 +123,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     } catch (error: any) {
       console.error('Error in fetchProfile:', error);
       // Set a default profile even if there's an error
-      set({ 
+      set({
         profile: {
           company: 'CxTrack',
           address: '',
@@ -124,21 +131,22 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           state: '',
           zipcode: '',
           country: '',
-          phone: ''
+          phone: '',
+          industry: null
         },
-        error: error.message || 'Failed to fetch profile', 
-        loading: false 
+        error: error.message || 'Failed to fetch profile',
+        loading: false
       });
     }
   },
-  
+
   updateProfile: async (profileData: Partial<ProfileData>) => {
     // Don't update if there's no actual change
     const currentProfile = get().profile;
     if (!currentProfile) {
       throw new Error('No profile to update');
     }
-    
+
     // Check if any values have actually changed
     let hasChanges = false;
     for (const [key, value] of Object.entries(profileData)) {
@@ -147,33 +155,33 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         break;
       }
     }
-    
+
     // If nothing changed, just return without doing anything
     if (!hasChanges) {
       console.log('No profile changes detected, skipping update');
       return;
     }
-    
+
     set({ loading: true, error: null });
     try {
       // Get the current user's ID
       const { data: userData } = await supabase.auth.getUser();
-      
+
       if (!userData?.user) {
         throw new Error('User not authenticated');
       }
-      
+
       const userId = userData.user.id;
-      
+
       // Check if profile already exists
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', userId)
         .maybeSingle();
-      
+
       let result;
-      
+
       if (existingProfile) {
         // Update existing profile
         result = await supabase
@@ -198,28 +206,76 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           .select()
           .single();
       }
-      
+
       if (result.error) {
         console.error('Error updating profile:', result.error);
         throw result.error;
       }
-      
+
       // Update the profile in the store
-      set({ 
-        profile: { 
-          ...currentProfile, 
+      set({
+        profile: {
+          ...currentProfile,
           ...profileData,
           user_id: userId
-        }, 
-        loading: false 
+        },
+        loading: false
       });
     } catch (error: any) {
       console.error('Error in updateProfile:', error);
-      set({ 
-        error: error.message || 'Failed to update profile', 
-        loading: false 
+      set({
+        error: error.message || 'Failed to update profile',
+        loading: false
       });
       throw error;
     }
+  },
+
+  updateProfileIndustry: async (industryId: string | null) => {
+    const currentProfile = get().profile;
+    if (!currentProfile) throw new Error('No profile to update');
+
+    // Only update if industry actually changed
+    if (currentProfile.industry === industryId) {
+      console.log('Industry not changed, skipping update');
+      return;
+    }
+
+    set({ loading: true, error: null });
+    try {
+      // Get the current user's ID
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) throw new Error('User not authenticated');
+
+      const userId = userData.user.id;
+
+      
+      // Update only the industry_id column in DB
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ industry_id: industryId, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating industry:', error);
+        throw error;
+      }
+
+      // Update store
+      set({
+        profile: {
+          ...currentProfile,
+          industry: industryId
+        },
+        loading: false
+      });
+    } catch (err: any) {
+      console.error('Error in updateProfileIndustry:', err);
+      set({ error: err.message || 'Failed to update industry', loading: false });
+      throw err;
+    }
   }
+
 }));
