@@ -37,7 +37,7 @@ CREATE POLICY "Users can manage their own products"
   WITH CHECK (auth.uid() = user_id);
 
 -- Create updated_at trigger
-CREATE TRIGGER set_products_updated_at
-  BEFORE UPDATE ON products
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
+-- CREATE TRIGGER set_products_updated_at
+--   BEFORE UPDATE ON products
+--   FOR EACH ROW
+--   EXECUTE FUNCTION set_updated_at();

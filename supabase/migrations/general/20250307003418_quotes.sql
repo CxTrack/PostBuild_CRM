@@ -1,14 +1,14 @@
 /*
-  # Add quotes functionality
-  
+  # Create quotes table
+
   1. New Tables
     - `quotes`
       - `id` (uuid, primary key)
       - `quote_number` (text, unique)
-      - `customer_id` (uuid, nullable, references customers)
+      - `customer_id` (uuid, foreign key to customers)
       - `customer_name` (text)
-      - `customer_email` (text, nullable)
-      - `customer_address` (text, nullable)
+      - `customer_email` (text)
+      - `customer_address` (text)
       - `date` (timestamptz)
       - `expiry_date` (timestamptz)
       - `items` (jsonb)
@@ -16,19 +16,34 @@
       - `tax_rate` (numeric)
       - `tax` (numeric)
       - `total` (numeric)
-      - `notes` (text, nullable)
-      - `message` (text, nullable)
+      - `notes` (text)
+      - `message` (text)
       - `status` (text)
       - `created_at` (timestamptz)
       - `updated_at` (timestamptz)
-      - `user_id` (uuid, references auth.users)
+      - `user_id` (uuid, foreign key to users)
 
   2. Security
-    - Enable RLS on quotes table
-    - Add policies for CRUD operations
+    - Enable RLS on `quotes` table
+    - Add policies for authenticated users to:
+      - Create their own quotes
+      - Read their own quotes
+      - Update their own quotes
+      - Delete their own quotes
+
+  3. Changes
+    - Add foreign key constraints for customer_id and user_id
+    - Add status check constraint
+    - Add trigger for updated_at
 */
 
--- Create quotes table
+-- Drop existing policies if they exist
+--DROP POLICY IF EXISTS "Users can create their own quotes" ON quotes;
+--DROP POLICY IF EXISTS "Users can view their own quotes" ON quotes;
+--DROP POLICY IF EXISTS "Users can update their own quotes" ON quotes;
+--DROP POLICY IF EXISTS "Users can delete their own quotes" ON quotes;
+
+-- Create quotes table if it doesn't exist
 CREATE TABLE IF NOT EXISTS quotes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   quote_number text UNIQUE NOT NULL,
@@ -38,7 +53,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   customer_address text,
   date timestamptz NOT NULL,
   expiry_date timestamptz NOT NULL,
-  items jsonb NOT NULL DEFAULT '[]',
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
   subtotal numeric NOT NULL DEFAULT 0,
   tax_rate numeric NOT NULL DEFAULT 0,
   tax numeric NOT NULL DEFAULT 0,
@@ -50,6 +65,15 @@ CREATE TABLE IF NOT EXISTS quotes (
   updated_at timestamptz DEFAULT now(),
   user_id uuid NOT NULL REFERENCES auth.users(id)
 );
+
+-- Add status check constraint
+DO $$ BEGIN
+  ALTER TABLE quotes
+    ADD CONSTRAINT quotes_status_check
+    CHECK (status IN ('Draft', 'Sent', 'Accepted', 'Declined', 'Expired'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Enable RLS
 ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
@@ -81,6 +105,15 @@ CREATE POLICY "Users can delete their own quotes"
   USING (auth.uid() = user_id);
 
 -- Create updated_at trigger
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_quotes_updated_at ON quotes;
 CREATE TRIGGER set_quotes_updated_at
   BEFORE UPDATE ON quotes
   FOR EACH ROW

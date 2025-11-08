@@ -1,8 +1,27 @@
-DO $$
+/*
+  # Fix dummy user creation
+  
+  1. Changes
+    - Split operations into smaller transactions
+    - Add proper error handling
+    - Ensure proper auth schema permissions
+*/
+
+-- Create extension if not exists
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Create dummy user function
+CREATE OR REPLACE FUNCTION create_dummy_user()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER 
+SET search_path = public, auth
+AS $$
 DECLARE
   dummy_user_id uuid;
   dummy_email text := 'info@cxtrack.com';
   dummy_password text := 'Dogfish2023';
+  enterprise_plan_id uuid;
 BEGIN
   -- First check if user exists
   SELECT id INTO dummy_user_id
@@ -27,7 +46,8 @@ BEGIN
       confirmation_token,
       is_super_admin,
       role,
-      aud
+      aud,
+      last_sign_in_at
     )
     VALUES (
       dummy_user_id,
@@ -35,16 +55,17 @@ BEGIN
       dummy_email,
       crypt(dummy_password, gen_salt('bf')),
       now(),
-      jsonb_build_object('full_name', 'Test Account'),
+      jsonb_build_object('full_name', 'Demo Account'),
       now(),
       now(),
       '',
       false,
       'authenticated',
-      'authenticated'
+      'authenticated',
+      now()
     );
 
-    -- Insert into auth.identities with provider_id
+    -- Insert into auth.identities
     INSERT INTO auth.identities (
       id,
       user_id,
@@ -59,7 +80,7 @@ BEGIN
       gen_random_uuid(),
       dummy_user_id,
       jsonb_build_object(
-        'sub', dummy_user_id,
+        'sub', dummy_user_id::text,
         'email', dummy_email,
         'email_verified', true
       ),
@@ -69,12 +90,33 @@ BEGIN
       now(),
       now()
     );
+
+    -- Create profile
+    INSERT INTO profiles (user_id, company)
+    VALUES (dummy_user_id, 'Test Company')
+    ON CONFLICT (user_id) DO NOTHING;
+
+    -- Create user settings
+    INSERT INTO user_settings (user_id)
+    VALUES (dummy_user_id)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    -- Create admin settings
+    INSERT INTO admin_settings (user_id, is_admin, admin_access_level)
+    VALUES (dummy_user_id, false, 'none')
+    ON CONFLICT (user_id) DO NOTHING;
   END IF;
 
   -- Get Enterprise plan ID
-  WITH enterprise_plan AS (
-    SELECT id FROM subscription_plans WHERE name = 'Enterprise Plan' LIMIT 1
-  )
+  SELECT id INTO enterprise_plan_id
+  FROM subscription_plans 
+  WHERE name = 'Enterprise Plan'
+  LIMIT 1;
+
+  IF enterprise_plan_id IS NULL THEN
+    RAISE EXCEPTION 'Enterprise plan not found';
+  END IF;
+
   -- Create or update subscription
   INSERT INTO subscriptions (
     user_id,
@@ -86,35 +128,30 @@ BEGIN
     stripe_subscription_id,
     stripe_customer_id
   )
-  SELECT
+  VALUES (
     dummy_user_id,
-    enterprise_plan.id,
+    enterprise_plan_id,
     'active',
     now(),
     now() + interval '100 years',
     false,
     'dummy_enterprise_sub',
     'dummy_enterprise_customer'
-  FROM enterprise_plan
+  )
   ON CONFLICT (user_id) DO UPDATE SET
     plan_id = EXCLUDED.plan_id,
     status = EXCLUDED.status,
     current_period_end = EXCLUDED.current_period_end,
     updated_at = now();
 
-  -- Create or update profile
-  INSERT INTO profiles (user_id, company)
-  VALUES (dummy_user_id, 'Test Company')
-  ON CONFLICT (user_id) DO NOTHING;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Error creating demo user: %', SQLERRM;
+  RAISE;
+END;
+$$;
 
-  -- Create or update user settings
-  INSERT INTO user_settings (user_id)
-  VALUES (dummy_user_id)
-  ON CONFLICT (user_id) DO NOTHING;
+-- Execute the function
+SELECT create_dummy_user();
 
-  -- Create or update admin settings
-  INSERT INTO admin_settings (user_id, is_admin, admin_access_level)
-  VALUES (dummy_user_id, false, 'none')
-  ON CONFLICT (user_id) DO NOTHING;
-
-END $$;
+-- Drop the function
+DROP FUNCTION create_dummy_user();

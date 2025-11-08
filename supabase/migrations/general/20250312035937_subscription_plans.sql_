@@ -1,10 +1,14 @@
 /*
-  # Set Admin Permissions and Enterprise Access
+  # Set up Enterprise plan and admin access
   
   1. Changes
-    - Create Enterprise plan if not exists
-    - Set up admin permissions
-    - Create Enterprise subscription
+    - Ensures Enterprise plan exists
+    - Sets up admin user with proper permissions
+    - Creates admin subscription
+    
+  2. Security
+    - Uses proper unique constraints
+    - Handles potential errors gracefully
 */
 
 -- First ensure we have the Enterprise plan
@@ -58,7 +62,7 @@ BEGIN
   -- Get the admin user ID
   SELECT id INTO admin_user_id 
   FROM auth.users 
-  WHERE email = 'maniksharmawork@gmail.com';
+  WHERE email = 'info@cxtrack.com';
 
   IF admin_user_id IS NULL THEN
     RAISE EXCEPTION 'Admin user not found';

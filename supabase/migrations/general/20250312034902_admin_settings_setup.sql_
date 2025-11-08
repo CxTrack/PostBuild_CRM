@@ -86,7 +86,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Set up admin access
-SELECT setup_admin_access('maniksharmawork@gmail.com');
+SELECT setup_admin_access('info@cxtrack.com');
 
 -- Clean up
 DROP FUNCTION IF EXISTS setup_admin_access(text);

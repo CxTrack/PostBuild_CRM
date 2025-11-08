@@ -12,13 +12,7 @@ $migrationsDir = Join-Path $baseDir "supabase\migrations"
 
  Write-Host "------ migrationDir: " $migrationsDir
 
-$buildDir = $migrationsDir #Join-Path $migrationsDir "build"
-
-# Clean and recreate build folder
-#if (Test-Path $buildDir) {
-#    Remove-Item -Recurse -Force $buildDir
-#}
-#New-Item -ItemType Directory -Path $buildDir | Out-Null
+$buildDir = $migrationsDir 
 
 # Copy general migrations
 $generalPath = Join-Path $migrationsDir "general\*.sql"
@@ -40,12 +34,11 @@ if (Test-Path (Split-Path $targetPath)) {
 
 # Apply migrations using supabase CLI
 Write-Host "Running supabase db push..."
-& "$baseDir\supabase.exe" db push #--workdir $buildDir
+& "$baseDir\supabase.exe" db push
 
 Write-Host "✅ Migrations applied successfully for target '$Target'!"
 
 Write-Host "✅ Cleaning up migration folder..."
-#[System.Console]::ReadKey($true) | Out-Null
 
 # Clean root of migration folder
 Get-ChildItem -Path $buildDir -File | ForEach-Object {
@@ -54,4 +47,3 @@ Get-ChildItem -Path $buildDir -File | ForEach-Object {
 }
 
 Write-Host "✅ Migration folder cleanup is complete!"
-
