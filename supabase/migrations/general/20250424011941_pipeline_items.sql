@@ -2,11 +2,11 @@
 CREATE TABLE IF NOT EXISTS pipeline_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id uuid NOT NULL REFERENCES customers(id),
-  user_id: uuid,
+  user_id uuid,
   stage text,
   closing_date timestamptz,
   closing_probability text,
-  dollar_value number,
+  dollar_value numeric,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
