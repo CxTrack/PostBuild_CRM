@@ -352,6 +352,6 @@ export type UserProfile = {
 }
 
 export type Industry =  {
-  id: string;
+  id: number;
   name: string;
 }

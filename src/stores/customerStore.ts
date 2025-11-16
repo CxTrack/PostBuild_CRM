@@ -71,12 +71,12 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       const newCustomer = await customerService.createCustomer(data);
       
       // Log activity
-      await supabase.rpc('add_activity', {
-        p_user_id: user.id,
-        p_type: 'customer',
-        p_title: 'Customer Added',
-        p_customer: data.name
-      });
+      // await supabase.rpc('add_activity', {
+      //   p_user_id: user.id,
+      //   p_type: 'customer',
+      //   p_title: 'Customer Added',
+      //   p_customer: data.name
+      // });
 
       // Update the customers list with the new customer
       const customers = [...get().customers, newCustomer];

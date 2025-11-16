@@ -23,7 +23,7 @@ export const industryService = {
   //   }
   // },
 
-  async fetchIndustries(): Promise<Industry[]> {
+  async fetchIndustries(): Promise<Industry> {
     try {
 
       const { data: userData } = await supabase.auth.getUser();
@@ -32,17 +32,18 @@ export const industryService = {
         throw new Error('User not authenticated');
       }
 
-      const { data: pipelines, error } = await supabase
+      const { data: industry, error } = await supabase
         .from('industries')
         .select(`*`)
-        .order('name', { ascending: true });      
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching industries:', error);
         throw error;
       }
 
-      return pipelines || [];
+      return industry;
     } catch (error) {
       console.error('Industries service error:', error);
       throw error;

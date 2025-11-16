@@ -27,8 +27,11 @@ export const useActivityStore = create<ActivitiesState>((set, get) => ({
       .from('recent_activities')
       .select('*')
       .eq('user_id', user_id)
-      .in('activity_type', types)
+      .in('type', types)
       .order('created_at', { ascending: false });
+
+      console.log(recentActivities);
+      
 
     if (error) throw error;
 
@@ -65,13 +68,15 @@ export const useActivityStore = create<ActivitiesState>((set, get) => ({
       throw new Error('User not authenticated');
     }
 
+    console.log('addActivity');
+    
     await supabase
       .from('recent_activities')
       .insert([{
         user_id: user.id,
         customer_id: customer_id,
-        activity_type: activity_type,
-        activity: activity,
+        type: activity_type,
+        title: activity,
       }])
       .select()
       .single();

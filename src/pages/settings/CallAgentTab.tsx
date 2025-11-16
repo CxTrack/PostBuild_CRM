@@ -28,7 +28,7 @@ const CallAgentTab: React.FC = () => {
 
   useEffect(() => {
     fetchCallAgents();
-    isUserAdmin();
+    //isUserAdmin();
   }, [user]);
 
 

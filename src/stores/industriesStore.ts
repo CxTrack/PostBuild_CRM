@@ -3,7 +3,7 @@ import { Industry } from '../types/database.types';
 import { industryService } from '../services/industryService';
 
 interface IndustryState {
-  industries: Industry[];
+  industry: Industry | null;
   loading: boolean;
   error: string | null;
 
@@ -14,7 +14,7 @@ interface IndustryState {
 }
 
 export const useIndustriesStore = create<IndustryState>((set, get) => ({
-  industries: [],
+  industry : null,
   loading: false,
   error: null,
 
@@ -24,8 +24,8 @@ export const useIndustriesStore = create<IndustryState>((set, get) => ({
     set({ loading: true, error: null });
 
      try {
-      const industries = await industryService.fetchIndustries();
-      set({ industries, loading: false });
+      const industry = await industryService.fetchIndustries();
+      set({ industry, loading: false });
       } catch (error: any) {
       }
     }

@@ -11,7 +11,7 @@ import { formatService } from '../../services/formatService';
 import CalendarEventsDisplay from '../calendar/CalendarEventsDisplay';
 import CalendarStatsWidget from '../calendar/CalendarStatsWidget';
 import RecentCallsTable from '../calls/RecentCallsTable';
-import SelectIndustryDialog from '../industry/SelectIndustryDialog';
+//import SelectIndustryDialog from '../industry/SelectIndustryDialog';
 import TaskList from '../tasks/task-list';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { useTaskStore } from '../../stores/taskStore';
@@ -229,7 +229,7 @@ const DefaultDashboard: React.FC = () => {
       </div>
 
       {/* Select Industry Dialog Modal */}
-      <SelectIndustryDialog
+      {/* <SelectIndustryDialog
         isOpen={profile?.industry === null}
         onClose={() => { } }
         onConfirm={() => { } }
@@ -237,7 +237,7 @@ const DefaultDashboard: React.FC = () => {
         message="Please specify you industry. Specifying industry will lead to dashboard tailord to your needs."
         confirmButtonText="Delete"
         cancelButtonText="Cancel"
-        isDanger={true} />
+        isDanger={true} /> */}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

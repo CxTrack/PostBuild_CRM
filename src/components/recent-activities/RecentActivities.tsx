@@ -67,13 +67,13 @@ const RecentActivities: React.FC<RecentActivitiesProps> = ({
                     : 'bg-amber-500/20 text-amber-500'
                 }`}
               >
-                {activity.activity_type === 'lead' && <Handshake size={18} />}
-                {activity.activity_type === 'call' && <PhoneIncoming size={18} />}
-                {activity.activity_type === 'task' && <FileText size={18} />}
-                {activity.activity_type === 'opportunity' && <DollarSign size={18} />}
-                {activity.activity_type === 'calender_event' && <Calendar size={18} />}
-                {activity.activity_type === 'system' && <Settings size={18} />}
-                {activity.activity_type === 'product' && <ShoppingCart size={18} />}
+                {activity.type === 'lead' && <Handshake size={18} />}
+                {activity.type === 'call' && <PhoneIncoming size={18} />}
+                {activity.type === 'task' && <FileText size={18} />}
+                {activity.type === 'opportunity' && <DollarSign size={18} />}
+                {activity.type === 'calender_event' && <Calendar size={18} />}
+                {activity.type === 'system' && <Settings size={18} />}
+                {activity.type === 'product' && <ShoppingCart size={18} />}
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium">{activity.title}</p>
