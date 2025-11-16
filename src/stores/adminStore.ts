@@ -26,7 +26,7 @@ export const adminStore = create<AdminState>((set, get) => ({
 
     if (userRoleError) throw userRoleError;
 
-    const isAdmin = data?.is_admin ?? false;
+    const isAdmin =  Boolean(data?.is_admin);
 
     set({ isAdmin: isAdmin || false });
   },
