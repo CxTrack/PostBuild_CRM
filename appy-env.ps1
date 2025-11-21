@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("mortgage", "accountant", "other")]
+    [ValidateSet("mortgage", "public", "other")]
     [string]$Target
 )
 
