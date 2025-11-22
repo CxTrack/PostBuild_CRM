@@ -171,7 +171,7 @@ const AuthLayout: React.FC = () => {
     {
       id: 'invoicing',
       title: "Smart Invoicing",
-      description: "Create and manage professional invoices with automated payment tracking and reminders.",
+      description: `Create and manage professional invoices with automated payment tracking and reminders. [ ${import.meta.env.VITE_CONTEXT} ]`,
       icon: FileText,
       color: "blue",
       benefits: [
