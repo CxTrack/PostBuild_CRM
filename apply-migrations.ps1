@@ -14,6 +14,29 @@ $migrationsDir = Join-Path $baseDir "supabase\migrations"
 
 $buildDir = $migrationsDir 
 
+
+# connect to correct project using supabase CLI
+
+# 🔥 Mapping of environments to Supabase project refs
+$projectRefs = @{
+    "mortgage"  = "asginuizptcnckqjdlfu"
+    "public" = "jjfwwhjkmfnkmtiikeoz"    
+}
+
+# Validate input target
+if (-not $projectRefs.ContainsKey($Target)) {
+    Write-Host "❌ ERROR: Unknown target '$Target'"
+    Write-Host "Available targets: $($projectRefs.Keys -join ', ')"
+    exit 1
+}
+
+$projectRef = $projectRefs[$Target]
+Write-Host "Using Supabase project-ref: $projectRef"
+
+Write-Host "Connecting to correct project ..."
+& "$baseDir\supabase.exe" link --project-ref $projectRef
+
+
 # Copy general migrations
 $generalPath = Join-Path $migrationsDir "general\*.sql"
 if (Test-Path (Split-Path $generalPath)) {
