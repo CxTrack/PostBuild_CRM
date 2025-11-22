@@ -69,4 +69,10 @@ Get-ChildItem -Path $buildDir -File | ForEach-Object {
     Remove-Item $_.FullName -Force
 }
 
-Write-Host "✅ Migration folder cleanup is complete!"
+
+# Deploy ALL edge functions
+Write-Host "Deploying Supabase edge functions..."
+& "$baseDir\supabase.exe" functions deploy
+
+
+Write-Host "✅ Migration folder cleanup is complete!" .\.bolt
