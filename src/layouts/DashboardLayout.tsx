@@ -288,10 +288,10 @@ const DashboardLayout: React.FC = () => {
               </>
             )} */}
 
-            <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            {/* <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <Layers size={20} />
               {sidebarOpen && <span>Inventory</span>}
-            </NavLink>
+            </NavLink> */}
 
             {/* FINANACE */}
             {sidebarOpen && (
@@ -310,10 +310,10 @@ const DashboardLayout: React.FC = () => {
 
             {(sidebarOpen && expandedSections.finance && (
               <>
-                <NavLink to="/quotes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                {/* <NavLink to="/quotes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <Receipt size={20} />
                   {sidebarOpen && <span>Quotes</span>}
-                </NavLink>
+                </NavLink> */}
 
                 <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                   <DollarSign size={20} />

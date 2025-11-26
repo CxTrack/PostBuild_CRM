@@ -98,11 +98,11 @@ const Dashboard: React.FC = () => {
         ]);
 
         // Load dashboard settings
-        const { data: settings } = await supabase
-          .from('user_settings')
-          .select('dashboard_settings')
-          .eq('user_id', user?.id)
-          .single();
+        // const { data: settings } = await supabase
+        //   .from('user_settings')
+        //   .select('dashboard_settings')
+        //   .eq('user_id', user?.id)
+        //   .single();
 
         //TODO: how to make sure this template is enabled or disabled
         // if disabled than need to recover to default
