@@ -288,10 +288,10 @@ const DashboardLayout: React.FC = () => {
               </>
             )} */}
 
-            {/* <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <Layers size={20} />
               {sidebarOpen && <span>Inventory</span>}
-            </NavLink> */}
+            </NavLink>
 
             {/* FINANACE */}
             {sidebarOpen && (

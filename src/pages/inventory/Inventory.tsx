@@ -8,6 +8,7 @@ import { TooltipButton } from '../../components/ToolTip';
 import { Product } from '../../types/database.types';
 import { useActivityStore } from '../../stores/activitiesStore';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import OneMetricWidget from '../../components/widgets/generic/OneMetricWidget';
 
 const Inventory: React.FC = () => {
   const { products, loading, error, fetchProducts, deleteProduct, updateProduct } = useProductStore();
@@ -202,41 +203,13 @@ const Inventory: React.FC = () => {
 
       {/* Inventory summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Total Products</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{products.length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-blue-500/20 text-blue-500">
-              <Package size={24} />
-            </div>
-          </div>
-        </div>
+        
+        <OneMetricWidget name={'Total Products'} top_value={products.length.toString()} icon={Package} color='blue'></OneMetricWidget>
 
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Low Stock Items</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{products.filter(p => p.status == 'Low Stock').length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-yellow-500/20 text-yellow-500">
-              <ArrowDown size={24} />
-            </div>
-          </div>
-        </div>
+        <OneMetricWidget name={'Low Stock Items'} top_value={products.filter(p => p.status == 'Low Stock').length.toString()} icon={ArrowDown} color='orange'></OneMetricWidget>
 
-        <div className="card bg-dark-800 border border-dark-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 text-sm">Out of Stock Items</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{products.filter(p => p.status == 'Out of Stock').length}</h3>
-            </div>
-            <div className="p-3 rounded-lg bg-red-500/20 text-red-500">
-              <ArrowDown size={24} />
-            </div>
-          </div>
-        </div>
+        <OneMetricWidget name={'Out of Stock Items'} top_value={products.filter(p => p.status == 'Out of Stock').length.toString()} icon={Package} color='red'></OneMetricWidget>
+        
       </div>
 
       {/* Filters and search */}
