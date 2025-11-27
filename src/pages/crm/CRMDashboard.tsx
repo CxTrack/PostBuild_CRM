@@ -659,7 +659,7 @@ const CRMDashboard: React.FC = () => {
                             <div className="text-sm text-gray-300">{opportunity.stage}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
-                            <div className="text-sm text-gray-300">${opportunity.dollar_value || '0'}</div>
+                            <div className="text-sm text-gray-300">${(Number(opportunity.dollar_value).toLocaleString('en-US') || 0)}</div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center align-middle">
                             <div className="text-sm text-gray-300">{opportunity.closing_probability || 0}</div>
@@ -819,7 +819,7 @@ const CRMDashboard: React.FC = () => {
             </div>
             <div className="flex-1">
               <h3 className="text-slate-300  text-sm font-semibold uppercase tracking-wide ">
-                Tasks
+                Completed Tasks
               </h3>
               <div className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent mb-2">{stats.tasks.completed}/{stats.tasks.total}</div>
             </div>

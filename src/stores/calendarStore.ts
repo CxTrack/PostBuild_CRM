@@ -69,9 +69,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         return false;
       });
 
-          // Upcoming events (next 3 events starting after today)
+      // Upcoming events (next 3 events starting after today)
       const upcomingEvents = formattedAllEvents
-        .filter(event => event.start > todayEnd) // after today
+        .filter(event => event.start >= todayEnd) // after today
         .sort((a, b) => a.start.getTime() - b.start.getTime())
         .slice(0, 3); // only 3 next events
 
