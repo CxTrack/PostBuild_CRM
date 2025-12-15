@@ -4,11 +4,12 @@ import { format, parse, startOfWeek, getDay, addWeeks, subWeeks, addMonths, subM
 import { enUS } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useCalendarStore } from '../../stores/calendarStore';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, ExternalLink, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, ExternalLink, Settings } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import CalendarShareModal from './CalendarShareModal';
 import CalendarSelector from './CalendarSelector';
 import { supabase } from '../../lib/supabase';
+import { getEventColor } from '../../utils/calendarColors';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = {
@@ -80,14 +81,14 @@ const Calendar: React.FC<CalendarProps> = ({
     loadData();
   }, []); // Empty deps - only run once on mount
   
-  // Check if current user can delete the selected event
-  const canDeleteEvent = (event: any): boolean => {
+  // Check if current user can edit the selected event
+  const canEditEvent = (event: any): boolean => {
     if (!event || !currentUserId) return false;
     
-    // Can delete if it's the user's own event
+    // Can edit if it's the user's own event
     if (event.user_id === currentUserId) return true;
     
-    // Can delete if user is an editor on a shared calendar where the event owner is the calendar owner
+    // Can edit if user is an editor on a shared calendar where the event owner is the calendar owner
     const isEditor = sharedWithMe.some(
       share => share.owner_id === event.user_id && 
                share.shared_with_id === currentUserId && 
@@ -188,23 +189,7 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const eventStyleGetter = (event: any) => {
-    let backgroundColor = '';
-    switch (event.type) {
-      case 'invoice':
-        backgroundColor = '#4f46e5'; // primary-600
-        break;
-      case 'expense':
-        backgroundColor = '#dc2626'; // red-600
-        break;
-      case 'task':
-        backgroundColor = '#2563eb'; // blue-600
-        break;
-      case 'holiday':
-        backgroundColor = '#9333ea'; // purple-600
-        break;
-      default:
-        backgroundColor = '#059669'; // green-600
-    }
+    const backgroundColor = getEventColor(event.user_id, event.type, currentUserId);
 
     return {
       style: {
@@ -234,18 +219,18 @@ const Calendar: React.FC<CalendarProps> = ({
   return (
     <div className={`bg-dark-800 rounded-lg border border-dark-700 p-4 ${className}`}>
       <div className="flex flex-col space-y-4">
-        {/* Header with Calendar Selector and Share Button */}
+        {/* Header with Calendar Selector and Settings Button */}
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1">
-            <CalendarSelector />
+            <CalendarSelector currentUserId={currentUserId} />
           </div>
           <button
             onClick={() => setShowShareModal(true)}
             className="btn btn-secondary btn-sm flex items-center gap-2"
-            title="Share your calendar"
+            title="Calendar settings"
           >
-            <Share2 size={16} />
-            Share
+            <Settings size={16} />
+            Settings
           </button>
         </div>
 
@@ -444,7 +429,7 @@ const Calendar: React.FC<CalendarProps> = ({
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
-              {!selectedEvent?.calcom_id && selectedEvent && canDeleteEvent(selectedEvent) && (
+              {!selectedEvent?.calcom_id && selectedEvent && canEditEvent(selectedEvent) && (
                 <button
                   onClick={handleDeleteEvent}
                   className="btn btn-danger"
@@ -461,7 +446,7 @@ const Calendar: React.FC<CalendarProps> = ({
               >
                 Close
               </button>
-              {!selectedEvent?.calcom_id && (
+              {!selectedEvent?.calcom_id && (selectedEvent ? canEditEvent(selectedEvent) : true) && (
                 <button
                   onClick={handleSaveEvent}
                   className="btn btn-primary"

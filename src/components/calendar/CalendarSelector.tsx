@@ -1,17 +1,18 @@
 import React from 'react';
 import { Calendar, Check } from 'lucide-react';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { getCalendarColor } from '../../utils/calendarColors';
 
 interface CalendarSelectorProps {
   className?: string;
+  currentUserId?: string | null;
 }
 
-const CalendarSelector: React.FC<CalendarSelectorProps> = ({ className }) => {
+const CalendarSelector: React.FC<CalendarSelectorProps> = ({ className, currentUserId }) => {
   const {
     availableCalendars,
     selectedCalendarIds,
     toggleCalendar,
-    fetchAvailableCalendars,
   } = useCalendarStore();
 
   const getUsername = (email: string) => {
@@ -39,9 +40,8 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({ className }) => {
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div
-                  className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    isSelected ? 'bg-primary-600' : 'bg-gray-500'
-                  }`}
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getCalendarColor(calendar.id, currentUserId) }}
                 />
                 <span
                   className={`text-sm truncate ${
@@ -52,9 +52,17 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({ className }) => {
                   {getUsername(calendar.email)}
                 </span>
               </div>
-              {isSelected && (
-                <Check size={14} className="text-primary-600 flex-shrink-0" />
-              )}
+              <div className="flex items-center gap-2">
+                {/* Color legend indicator */}
+                <div
+                  className="w-4 h-4 rounded flex-shrink-0 border border-gray-600"
+                  style={{ backgroundColor: getCalendarColor(calendar.id, currentUserId) }}
+                  title={`Calendar color: ${getCalendarColor(calendar.id, currentUserId)}`}
+                />
+                {isSelected && (
+                  <Check size={14} className="text-primary-600 flex-shrink-0" />
+                )}
+              </div>
             </button>
           );
         })}
