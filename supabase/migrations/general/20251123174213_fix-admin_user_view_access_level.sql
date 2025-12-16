@@ -1,4 +1,4 @@
-create view public.admin_user_view with (security_invoker = on) as
+create or replace view public.admin_user_view with (security_invoker = on) as
  SELECT a.user_id,
     u.email,
     a.is_admin,

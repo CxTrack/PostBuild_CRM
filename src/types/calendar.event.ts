@@ -6,4 +6,6 @@ export interface CalendarEvent {
   description?: string;
   type: 'invoice' | 'expense' | 'task' | 'custom' | 'holiday';
   allDay?: boolean;
+  user_email?: string;
+  user_id?: string;
 }

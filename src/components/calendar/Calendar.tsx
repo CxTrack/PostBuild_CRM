@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as BigCalendar, dateFnsLocalizer, Views } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-import enUS from 'date-fns/locale/en-US';
+import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
+import { enUS } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { useCalendarStore } from '../../stores/calendarStore';
-import { useProfileStore } from '../../stores/profileStore';
-import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, ExternalLink, Settings } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import CalendarShareModal from './CalendarShareModal';
+import CalendarSelector from './CalendarSelector';
+import { supabase } from '../../lib/supabase';
+import { getEventColor } from '../../utils/calendarColors';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = {
@@ -33,11 +37,22 @@ const Calendar: React.FC<CalendarProps> = ({
   onToggleMaximize,
   onOpenNewWindow
 }) => {
-  const { events, fetchEvents, addEvent, updateEvent, deleteEvent } = useCalendarStore();
-  const { profile } = useProfileStore();
+  const navigate = useNavigate();
+  const { 
+    events, 
+    fetchEvents, 
+    addEvent, 
+    updateEvent, 
+    deleteEvent,
+    fetchCalendarShares,
+    fetchAvailableCalendars,
+    sharedWithMe
+  } = useCalendarStore();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [view, setView] = useState<'month' | 'week'>('month');
   const [date, setDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   //const [eventTypeFilter, setEventTypeFilter] = useState<string[]>(['custom', 'invoice']);
   const [newEvent, setNewEvent] = useState({
@@ -49,8 +64,39 @@ const Calendar: React.FC<CalendarProps> = ({
   });
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    // Load all data in parallel for better performance
+    const loadData = async () => {
+      // Get current user ID first (needed for other calls)
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+      
+      // Run all fetches in parallel
+      await Promise.all([
+        fetchEvents(),
+        fetchCalendarShares(),
+        fetchAvailableCalendars()
+      ]);
+    };
+    
+    loadData();
+  }, []); // Empty deps - only run once on mount
+  
+  // Check if current user can edit the selected event
+  const canEditEvent = (event: any): boolean => {
+    if (!event || !currentUserId) return false;
+    
+    // Can edit if it's the user's own event
+    if (event.user_id === currentUserId) return true;
+    
+    // Can edit if user is an editor on a shared calendar where the event owner is the calendar owner
+    const isEditor = sharedWithMe.some(
+      share => share.owner_id === event.user_id && 
+               share.shared_with_id === currentUserId && 
+               share.role === 'editor'
+    );
+    
+    return isEditor;
+  };
 
   useEffect(() => {
     if (selectedEvent) {
@@ -143,23 +189,7 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const eventStyleGetter = (event: any) => {
-    let backgroundColor = '';
-    switch (event.type) {
-      case 'invoice':
-        backgroundColor = '#4f46e5'; // primary-600
-        break;
-      case 'expense':
-        backgroundColor = '#dc2626'; // red-600
-        break;
-      case 'task':
-        backgroundColor = '#2563eb'; // blue-600
-        break;
-      case 'holiday':
-        backgroundColor = '#9333ea'; // purple-600
-        break;
-      default:
-        backgroundColor = '#059669'; // green-600
-    }
+    const backgroundColor = getEventColor(event.user_id, event.type, currentUserId);
 
     return {
       style: {
@@ -173,9 +203,37 @@ const Calendar: React.FC<CalendarProps> = ({
     };
   };
 
+  // Custom event component to display username
+  const EventComponent = ({ event }: { event: any }) => {
+    const username = event.user_email ? event.user_email.split('@')[0] : 'Unknown';
+    return (
+      <div className="p-1">
+        <div className="font-semibold text-sm">{event.title}</div>
+        {event.user_email && (
+          <div className="text-xs opacity-90 mt-0.5">by {username}</div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={`bg-dark-800 rounded-lg border border-dark-700 p-4 ${className}`}>
       <div className="flex flex-col space-y-4">
+        {/* Header with Calendar Selector and Settings Button */}
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <CalendarSelector currentUserId={currentUserId} />
+          </div>
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="btn btn-secondary btn-sm flex items-center gap-2"
+            title="Calendar settings"
+          >
+            <Settings size={16} />
+            Settings
+          </button>
+        </div>
+
         {/* Current Month Display */}
         <div className="text-center">
           <h2 className="text-2xl font-bold text-white">
@@ -203,7 +261,12 @@ const Calendar: React.FC<CalendarProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setDate(new Date(date.setMonth(date.getMonth() - 1)))}
+              onClick={() => {
+                const newDate = view === 'week' 
+                  ? subWeeks(date, 1) 
+                  : subMonths(date, 1);
+                setDate(newDate);
+              }}
               className="p-1 hover:bg-dark-700 rounded"
             >
               <ChevronLeft className="text-gray-400" size={20} />
@@ -215,7 +278,12 @@ const Calendar: React.FC<CalendarProps> = ({
               Today
             </button>
             <button
-              onClick={() => setDate(new Date(date.setMonth(date.getMonth() + 1)))}
+              onClick={() => {
+                const newDate = view === 'week' 
+                  ? addWeeks(date, 1) 
+                  : addMonths(date, 1);
+                setDate(newDate);
+              }}
               className="p-1 hover:bg-dark-700 rounded"
             >
               <ChevronRight className="text-gray-400" size={20} />
@@ -263,6 +331,7 @@ const Calendar: React.FC<CalendarProps> = ({
             className="calendar-dark"
             components={{
               toolbar: () => null, // Hide default toolbar
+              event: EventComponent, // Custom event component with username
             }}
           />
         </div>
@@ -275,6 +344,11 @@ const Calendar: React.FC<CalendarProps> = ({
             <h3 className="text-lg font-semibold text-white mb-4">
               {selectedEvent ? 'Edit Event' : 'New Event'}
             </h3>
+            {selectedEvent?.user_email && (
+              <div className="text-sm text-gray-400 mb-4">
+                Created by: {selectedEvent.user_email.split('@')[0]}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -355,10 +429,10 @@ const Calendar: React.FC<CalendarProps> = ({
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
-              {!selectedEvent?.calcom_id && selectedEvent && (
+              {!selectedEvent?.calcom_id && selectedEvent && canEditEvent(selectedEvent) && (
                 <button
                   onClick={handleDeleteEvent}
-                  className={selectedEvent?.calcom_id ? "btn btn-outline-secondary" : "btn btn-danger"}
+                  className="btn btn-danger"
                 >
                   Delete
                 </button>
@@ -372,7 +446,7 @@ const Calendar: React.FC<CalendarProps> = ({
               >
                 Close
               </button>
-              {!selectedEvent?.calcom_id && (
+              {!selectedEvent?.calcom_id && (selectedEvent ? canEditEvent(selectedEvent) : true) && (
                 <button
                   onClick={handleSaveEvent}
                   className="btn btn-primary"
@@ -385,10 +459,16 @@ const Calendar: React.FC<CalendarProps> = ({
             {selectedEvent?.calcom_id && (
               <div className="flex justify-center" style={{ width: `font-size: smaller`, color: `cadetblue` }}>
                 <span><i>*This event was created through Cal.com. To delete or update it, please do so on the Cal.com platform — it will then be automatically refelcted in this calendar.</i></span>
-              </div>)}
+              </div>            )}
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <CalendarShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   );
 };

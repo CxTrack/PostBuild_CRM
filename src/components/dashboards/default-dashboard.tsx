@@ -17,9 +17,11 @@ import { useCalendarStore } from '../../stores/calendarStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { usePipelineStore } from '../../stores/pipelineStore';
 import { useProfileStore } from '../../stores/profileStore';
+import { supabase } from '../../lib/supabase';
 
 const DefaultDashboard: React.FC = () => {
   const [calls, setCalls] = useState<Call[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { upcomingEvents, todaysEvents, fetchEvents } = useCalendarStore();
   const { tasks, fetchTasks } = useTaskStore();
   const { leads, opportunities, fetchPipelineItems } = usePipelineStore();
@@ -27,6 +29,15 @@ const DefaultDashboard: React.FC = () => {
 
   const [pipeLineValueLastMonth, setPipeLineValueLastMonth] = useState(0);
   const [pipeLineValueThisMonth, setPipeLineValueThisMonth] = useState(0);
+
+  useEffect(() => {
+    // Get current user ID
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
 
@@ -248,8 +259,16 @@ const DefaultDashboard: React.FC = () => {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
-          <CalendarEventsDisplay displayedEvents={todaysEvents} caption="Today's Events" iconStyle="from-green-500 to-emerald-600" />
-          <CalendarEventsDisplay displayedEvents={upcomingEvents} caption="Upcoming Events" iconStyle="from-purple-500 to-pink-600" />
+          <CalendarEventsDisplay 
+            displayedEvents={todaysEvents.filter(event => event.user_id === currentUserId)} 
+            caption="Today's Events" 
+            iconStyle="from-green-500 to-emerald-600" 
+          />
+          <CalendarEventsDisplay 
+            displayedEvents={upcomingEvents.filter(event => event.user_id === currentUserId)} 
+            caption="Upcoming Events" 
+            iconStyle="from-purple-500 to-pink-600" 
+          />
         </div>
       </div>
 
