@@ -32,7 +32,7 @@ const DashboardLayout: React.FC = () => {
   const templateConfig = getConfig(activeTemplateSettings.activeTemplate);
   const navigate = useNavigate();
   const location = useLocation();
-  //const { isAdmin, isUserAdmin } = adminStore.getState();
+  const { isAdmin, isUserAdmin } = adminStore.getState();
 
   // Check if user has access to premium features
   //const hasPremiumAccess = currentSubscription?.plan_id && ['business', 'enterprise'].includes(currentSubscription.plan_id);
@@ -54,7 +54,7 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
 
     getActiveTemplate();
-    //isUserAdmin();
+    isUserAdmin();
 
     if (calendarMaximized) {
       setSidebarOpen(false);
@@ -323,9 +323,8 @@ const DashboardLayout: React.FC = () => {
             ))}
 
             {/* END FINANACE */}
-
-            {/* ADMIN area */}
-            {/* {sidebarOpen && isAdmin && (
+            
+            {sidebarOpen && isAdmin && (
               <div
                 className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
                 onClick={() => toggleSection('admin')}
@@ -361,7 +360,7 @@ const DashboardLayout: React.FC = () => {
                   {sidebarOpen && <span>Send Notification</span>}
                 </NavLink>
               </>
-            )} */}
+            )}
 
             {sidebarOpen && (
               <div
