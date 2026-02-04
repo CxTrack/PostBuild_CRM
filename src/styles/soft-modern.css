@@ -1,0 +1,452 @@
+/* Elite Soft-Modern Theme - Google Material 3 / Neumorphic Refresh 2026 */
+
+/* ============================================
+   DESIGN TOKENS - Enhanced for Material 3
+   ============================================ */
+
+:root {
+  /* Background Layers - Warmer tone */
+  --sm-bg-base: #F1F3F4;
+  /* Google gray-100 */
+  --sm-bg-surface: #FFFFFF;
+  --sm-bg-elevated: #FFFFFF;
+  --sm-bg-hover: #E8EAED;
+  /* Google gray-200 */
+
+  /* Text Hierarchy */
+  --sm-text-primary: #202124;
+  /* Google gray-900 */
+  --sm-text-secondary: #5F6368;
+  /* Google gray-700 */
+  --sm-text-tertiary: #9AA0A6;
+  /* Google gray-500 */
+  --sm-text-disabled: #DADCE0;
+  /* Google gray-300 */
+
+  /* Borders & Dividers - Subtler */
+  --sm-border-subtle: rgba(0, 0, 0, 0.04);
+  --sm-border-default: rgba(0, 0, 0, 0.08);
+  --sm-border-strong: rgba(0, 0, 0, 0.12);
+
+  /* Accents - Google-inspired vibrant colors */
+  --sm-accent-primary: #1A73E8;
+  /* Google Blue */
+  --sm-accent-success: #1E8E3E;
+  /* Google Green */
+  --sm-accent-warning: #F9AB00;
+  /* Google Yellow */
+  --sm-accent-error: #D93025;
+  /* Google Red */
+  --sm-accent-info: #8430CE;
+  /* Google Purple */
+
+  /* Neumorphic Shadows (Subtle, Material 3 inspired) */
+  --sm-shadow-neumorphic-raised:
+    4px 4px 8px rgba(166, 174, 178, 0.2),
+    -2px -2px 6px rgba(255, 255, 255, 0.85);
+  --sm-shadow-neumorphic-inset:
+    inset 2px 2px 4px rgba(166, 174, 178, 0.15),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.7);
+  --sm-shadow-neumorphic-hover:
+    6px 6px 12px rgba(166, 174, 178, 0.25),
+    -4px -4px 8px rgba(255, 255, 255, 0.9);
+  --sm-shadow-neumorphic-pressed:
+    inset 3px 3px 6px rgba(166, 174, 178, 0.2),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.6);
+
+  /* Material Design Floating Shadows */
+  --sm-shadow-sm: 0 1px 2px rgba(60, 64, 67, 0.08);
+  --sm-shadow-md: 0 1px 3px rgba(60, 64, 67, 0.08), 0 4px 8px rgba(60, 64, 67, 0.06);
+  --sm-shadow-lg: 0 2px 6px rgba(60, 64, 67, 0.08), 0 8px 16px rgba(60, 64, 67, 0.08);
+  --sm-shadow-xl: 0 4px 8px rgba(60, 64, 67, 0.08), 0 16px 32px rgba(60, 64, 67, 0.1);
+
+  /* Border Radius - Rounder for Material 3 */
+  --sm-radius-sm: 8px;
+  --sm-radius-md: 12px;
+  --sm-radius-lg: 16px;
+  --sm-radius-xl: 20px;
+  --sm-radius-2xl: 24px;
+  --sm-radius-full: 9999px;
+
+  /* Spacing (4px base unit) */
+  --sm-space-xs: 4px;
+  --sm-space-sm: 8px;
+  --sm-space-md: 12px;
+  --sm-space-lg: 16px;
+  --sm-space-xl: 24px;
+  --sm-space-2xl: 32px;
+  --sm-space-3xl: 48px;
+  --sm-space-4xl: 64px;
+
+  /* Transitions - Snappy Google-style */
+  --sm-transition-fast: 100ms cubic-bezier(0.2, 0, 0, 1);
+  --sm-transition-normal: 200ms cubic-bezier(0.2, 0, 0, 1);
+  --sm-transition-slow: 350ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+.soft-modern {
+  background-color: var(--sm-bg-base);
+  color: var(--sm-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   CARDS - Neumorphic Style
+   ============================================ */
+
+.soft-modern .card {
+  background: var(--sm-bg-surface);
+  border: 1px solid var(--sm-border-subtle);
+  border-radius: var(--sm-radius-xl);
+  box-shadow: var(--sm-shadow-neumorphic-raised);
+  transition: all var(--sm-transition-normal);
+}
+
+.soft-modern .card:hover {
+  box-shadow: var(--sm-shadow-neumorphic-hover);
+  transform: translateY(-2px);
+}
+
+.soft-modern .card-elevated {
+  background: var(--sm-bg-elevated);
+  border: 1px solid var(--sm-border-subtle);
+  border-radius: var(--sm-radius-xl);
+  box-shadow: var(--sm-shadow-lg);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.soft-modern .btn {
+  border-radius: var(--sm-radius-md);
+  font-weight: 500;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+}
+
+.soft-modern .btn-primary {
+  background: var(--sm-accent-primary);
+  color: white;
+  box-shadow: var(--sm-shadow-sm);
+}
+
+.soft-modern .btn-primary:hover {
+  background: #2563EB;
+  box-shadow: var(--sm-shadow-md);
+  transform: translateY(-1px);
+}
+
+.soft-modern .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--sm-shadow-sm);
+}
+
+.soft-modern .btn-secondary {
+  background: var(--sm-bg-surface);
+  color: var(--sm-text-primary);
+  border: 1px solid var(--sm-border-default);
+  box-shadow: var(--sm-shadow-sm);
+}
+
+.soft-modern .btn-secondary:hover {
+  border-color: var(--sm-border-strong);
+  box-shadow: var(--sm-shadow-md);
+}
+
+.soft-modern .btn-ghost {
+  background: transparent;
+  color: var(--sm-text-secondary);
+  border: none;
+}
+
+.soft-modern .btn-ghost:hover {
+  background: var(--sm-bg-base);
+  color: var(--sm-text-primary);
+}
+
+/* ============================================
+   INPUTS
+   ============================================ */
+
+.soft-modern .input {
+  background: var(--sm-bg-surface);
+  border: 1px solid var(--sm-border-default);
+  border-radius: var(--sm-radius-sm);
+  color: var(--sm-text-primary);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.soft-modern .input::placeholder {
+  color: var(--sm-text-tertiary);
+}
+
+.soft-modern .input:hover {
+  border-color: var(--sm-border-strong);
+}
+
+.soft-modern .input:focus {
+  outline: none;
+  border-color: var(--sm-accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+
+.soft-modern .sidebar {
+  background: var(--sm-bg-surface);
+  border-right: 1px solid var(--sm-border-default);
+}
+
+.soft-modern .nav-item {
+  color: var(--sm-text-secondary);
+  border-radius: var(--sm-radius-md);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.soft-modern .nav-item:hover {
+  color: var(--sm-text-primary);
+  background: var(--sm-bg-base);
+}
+
+.soft-modern .nav-item.active {
+  color: var(--sm-text-primary);
+  background: var(--sm-bg-base);
+}
+
+.soft-modern .nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--sm-accent-primary);
+  border-radius: 0 var(--sm-radius-sm) var(--sm-radius-sm) 0;
+}
+
+/* ============================================
+   BADGES & STATUS
+   ============================================ */
+
+.soft-modern .badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--sm-radius-full);
+  display: inline-flex;
+  align-items: center;
+}
+
+.soft-modern .badge-primary {
+  color: var(--sm-accent-primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.soft-modern .badge-success {
+  color: var(--sm-accent-success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.soft-modern .badge-warning {
+  color: var(--sm-accent-warning);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.soft-modern .badge-error {
+  color: var(--sm-accent-error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.soft-modern .badge-neutral {
+  color: var(--sm-text-secondary);
+  background: var(--sm-bg-base);
+}
+
+/* ============================================
+   ICONS
+   ============================================ */
+
+.soft-modern .icon-container {
+  background: var(--sm-bg-base);
+  border-radius: var(--sm-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.soft-modern .icon-primary {
+  color: var(--sm-accent-primary);
+}
+
+.soft-modern .icon-success {
+  color: var(--sm-accent-success);
+}
+
+.soft-modern .icon-warning {
+  color: var(--sm-accent-warning);
+}
+
+.soft-modern .icon-error {
+  color: var(--sm-accent-error);
+}
+
+/* ============================================
+   DIVIDERS
+   ============================================ */
+
+.soft-modern .divider {
+  background: var(--sm-border-default);
+  height: 1px;
+}
+
+.soft-modern .divider-subtle {
+  background: var(--sm-border-subtle);
+  height: 1px;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.soft-modern table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.soft-modern table thead {
+  background: var(--sm-bg-base);
+  border-bottom: 1px solid var(--sm-border-default);
+}
+
+.soft-modern table th {
+  color: var(--sm-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+}
+
+.soft-modern table td {
+  color: var(--sm-text-primary);
+  padding: 16px;
+  border-bottom: 1px solid var(--sm-border-subtle);
+}
+
+.soft-modern table tbody tr:hover {
+  background: var(--sm-bg-base);
+}
+
+.soft-modern table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+.soft-modern .text-display {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.soft-modern .text-h1 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.soft-modern .text-h2 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.soft-modern .text-h3 {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.soft-modern .text-body-lg {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.soft-modern .text-body {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.soft-modern .text-body-sm {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.soft-modern .text-caption {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--sm-text-tertiary);
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
+.soft-modern .text-primary {
+  color: var(--sm-text-primary);
+}
+
+.soft-modern .text-secondary {
+  color: var(--sm-text-secondary);
+}
+
+.soft-modern .text-tertiary {
+  color: var(--sm-text-tertiary);
+}
+
+.soft-modern .bg-base {
+  background: var(--sm-bg-base);
+}
+
+.soft-modern .bg-surface {
+  background: var(--sm-bg-surface);
+}
+
+.soft-modern .border-default {
+  border-color: var(--sm-border-default);
+}
+
+.soft-modern .border-subtle {
+  border-color: var(--sm-border-subtle);
+}
+
+.soft-modern .shadow-sm {
+  box-shadow: var(--sm-shadow-sm);
+}
+
+.soft-modern .shadow-md {
+  box-shadow: var(--sm-shadow-md);
+}
+
+.soft-modern .shadow-lg {
+  box-shadow: var(--sm-shadow-lg);
+}
+
+.soft-modern .shadow-xl {
+  box-shadow: var(--sm-shadow-xl);
+}

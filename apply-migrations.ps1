@@ -20,7 +20,7 @@ $buildDir = $migrationsDir
 # 🔥 Mapping of environments to Supabase project refs
 $projectRefs = @{
     "mortgage"  = "asginuizptcnckqjdlfu"
-    "public" = "jjfwwhjkmfnkmtiikeoz"    
+    "public" = "iqyvesgglyqexytzstxz"    
 }
 
 # Validate input target
@@ -59,15 +59,15 @@ if (Test-Path (Split-Path $targetPath)) {
 Write-Host "Running supabase db push..."
 & "$baseDir\supabase.exe" db push
 
-Write-Host "✅ Migrations applied successfully for target '$Target'!"
+# Write-Host "✅ Migrations applied successfully for target '$Target'!"
 
-Write-Host "✅ Cleaning up migration folder..."
+# Write-Host "✅ Cleaning up migration folder..."
 
-# Clean root of migration folder
-Get-ChildItem -Path $buildDir -File | ForEach-Object {
-    Write-Host "Deleting file: $($_.FullName)"
-    Remove-Item $_.FullName -Force
-}
+# # Clean root of migration folder
+# Get-ChildItem -Path $buildDir -File | ForEach-Object {
+#     Write-Host "Deleting file: $($_.FullName)"
+#     Remove-Item $_.FullName -Force
+# }
 
 
 # Deploy ALL edge functions

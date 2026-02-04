@@ -41,7 +41,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       // Get the current user's ID
       const { data: userData } = await supabase.auth.getUser();
-      const industry = await industryService.fetchIndustries();
+      //const industry = await industryService.fetchIndustries();
 
       if (!userData?.user) {
         console.log('No authenticated user found when fetching profile');
@@ -54,7 +54,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             zipcode: '',
             country: '',
             phone: '',
-            industry_id: industry?.id
+            industry_id: 0//industry?.id
           },
           loading: false
         });

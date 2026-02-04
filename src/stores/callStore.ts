@@ -1,216 +1,324 @@
-import { create } from 'zustand'
-import { callsService } from '../services/callsService';
-import { customerService } from '../services/customerService';
-import Retell from 'retell-sdk';
-import { CallResponse } from 'retell-sdk/resources.mjs';
-import { Call } from '../types/database.types';
-import { adminStore } from './adminStore';
-import toast from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
+import { create } from 'zustand';
+import { supabase } from '@/lib/supabase';
+import { Call } from '@/types/database.types';
+import { useOrganizationStore } from './organizationStore';
+import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData } from '@/config/demo.config';
+
+interface CallFilters {
+  dateRange?: { start: Date; end: Date };
+  userIds?: string[];
+  agentIds?: string[];
+  callType?: 'all' | 'human' | 'ai_agent';
+  direction?: 'all' | 'inbound' | 'outbound';
+  status?: string[];
+  outcome?: string[];
+  searchQuery?: string;
+}
+
+interface CallStats {
+  total_calls: number;
+  this_week: number;
+  avg_duration_seconds: number;
+  connection_rate: number;
+  human_calls: number;
+  ai_agent_calls: number;
+  inbound_calls: number;
+  outbound_calls: number;
+  positive_outcomes: number;
+  neutral_outcomes: number;
+  negative_outcomes: number;
+}
 
 interface CallStore {
   calls: Call[];
-  agentsCount: number;
+  currentCall: Call | null;
   loading: boolean;
   error: string | null;
-  fetchCallViaAPI: (callId: string) => Promise<CallResponse | undefined>;
-  fetchCustomerCalls: (customerId: string) => Promise<void>;
-  fetchAllCalls: () => Promise<CallResponse | undefined>;
-  fetchCallAgents: () => Promise<void>;
+  filters: CallFilters;
+  stats: CallStats | null;
+
+  fetchCalls: () => Promise<void>;
+  fetchCallsByCustomer: (customerId: string) => Promise<void>;
+  fetchCallById: (id: string) => Promise<void>;
+  fetchCallStats: () => Promise<void>;
+  createCall: (call: Partial<Call>) => Promise<Call | null>;
+  updateCall: (id: string, updates: Partial<Call>) => Promise<void>;
+  deleteCall: (id: string) => Promise<void>;
+  setFilters: (filters: Partial<CallFilters>) => void;
+  subscribeToLiveCalls: () => () => void;
 }
 
-const { isAdmin, isUserAdmin } = adminStore.getState();
-
-export const useCallStore = create<CallStore>((set) => ({
-  calls: [],
-  agentsCount: 0,
+export const useCallStore = create<CallStore>((set, get) => ({
+  calls: DEMO_MODE ? loadDemoData<Call>(DEMO_STORAGE_KEYS.calls) : [],
+  currentCall: null,
   loading: false,
   error: null,
+  filters: {},
+  stats: null,
 
+  fetchCalls: async () => {
+    if (DEMO_MODE) {
+      const calls = loadDemoData<Call>(DEMO_STORAGE_KEYS.calls);
+      set({ calls, loading: false });
+      return;
+    }
 
-  // fetchCallsViaAPI: async () => {
-  //   set({ loading: true, error: null });
-  //   try {
-  //     // Fetch calls from Retell API
-  //     // Ensure you have RETELL_API_KEY set as an environment variable
-  //     const apiKey = "key_b8e3bfa4516f4064f59d0eb60b8f"; //process.env.RETELL_API_KEY;
-  //     if (!apiKey) {
-  //       throw new Error('RETELL_API_KEY is not set.');
-  //     }
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) return;
 
-  //     let allCalls: RetellCall[] = [];
-  //     let paginationKey = '1000';
-
-  //     do {
-
-  //       const response = await fetch('https://api.retellai.com/v2/list-calls', {
-  //         method: 'POST',
-  //         headers: {
-  //           'Authorization': `Bearer ${apiKey}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify({
-  //           'limit': 1000,
-  //           'call_type': ["phone_call"],
-  //           'sort_order': "descending",
-  //           //'user_sentiment': ["Positive", "Negative"],
-  //           //'call_successful': [false]
-  //         }),
-  //       });
-
-  //       if (!response.ok) {
-  //         const errorText = await response.text();
-  //         throw new Error(`Failed to fetch calls from Retell API: ${response.status} - ${response.statusText}. Response body: ${errorText}`);
-  //       }
-
-  //       const data: RetellCall[] = await response.json();
-
-
-  //       // Assuming the returned object has a 'calls' array and a 'pagination_key' for the next batch
-  //       if (data && Array.isArray(data)) {
-  //         allCalls = allCalls.concat(data);
-  //         //console.log(allCalls);
-  //       }
-
-  //       paginationKey = data[0].pagination_key || null; // If no pagination_key, we are done
-
-  //     } while (paginationKey);
-
-
-  //     const retellCalls: RetellCall[] = allCalls;
-
-  //     // Map Retell API response to the expected Call type structure
-  //     const mappedCalls: Call[] = retellCalls.map(retellCall => {
-  //       const start = retellCall.start_timestamp ? new Date(retellCall.start_timestamp).toISOString() : null;
-  //       const end = retellCall.end_timestamp ? new Date(retellCall.end_timestamp).toISOString() : null;
-
-  //       return {
-  //         id: retellCall.call_id,
-  //         call_agent_id: retellCall.agent_id,
-  //         start_time: start,
-  //         end_time: end,
-  //         recording_url: retellCall.recording_url,
-  //         pagination_key: retellCall.pagination_key,
-  //         disconnection_reason: retellCall.end_reason,
-  //         from_number: retellCall.from_number || 'N/A',
-  //         to_number: retellCall.to_number || 'N/A',
-  //       };
-  //     });
-
-  //     const uniqueAgentIds = [...new Set(mappedCalls.map(call => call.call_agent_id).filter((id): id is string => id !== null && id !== 'N/A'))];
-
-  //     // Calculate total duration in minutes from the mapped calls
-  //     const totalDurationInMinutes = mappedCalls.reduce((acc, call) => {
-  //       if (call.start_time && call.end_time) {
-  //         const start = new Date(call.start_time).getTime();
-  //         const end = new Date(call.end_time).getTime();
-  //         const durationInSeconds = (end - start) / 1000;
-  //         const durationInMinutes = durationInSeconds / 60;
-  //         return acc + durationInMinutes;
-  //       }
-  //       return acc;
-  //     }, 0);
-
-  //     // Round total duration to 2 decimal places
-  //     const roundedTotalDuration = parseFloat(totalDurationInMinutes.toFixed(2));
-
-  //     set({ calls: mappedCalls, agents: uniqueAgentIds, totalCallsDuration: roundedTotalDuration, loading: false });
-  //   } catch (error: any) {
-  //     console.error('Error fetching calls:', error);
-  //     set({ error: error.message, loading: false });
-  //   }
-  // },
-
-
-  fetchCallAgents: async () => {
     set({ loading: true, error: null });
     try {
-      const user = await supabase.auth.getUser();
-      if (!user) {
-        set({ error: 'Unable to retrieve call aggents, user is not signed in', loading: false });
-        return;
+      let query = supabase
+        .from('calls')
+        .select('*, customers(first_name, last_name, name, company)')
+        .eq('organization_id', organizationId);
+
+      const filters = get().filters;
+
+      if (filters.callType && filters.callType !== 'all') {
+        query = query.eq('call_type', filters.callType);
       }
 
-      const { data: callAgents, error } = await supabase
-        .from('user_call_agents')
-        .select('call_agent_id')
-        .eq('user_id', user!.data?.user?.id);
+      if (filters.direction && filters.direction !== 'all') {
+        query = query.eq('direction', filters.direction);
+      }
 
-      set({ agentsCount: callAgents?.length, loading: false });
-    }
-    catch (error: any) {
-      console.error('Error fetching callAgents:', error);
+      if (filters.status && filters.status.length > 0) {
+        query = query.in('status', filters.status);
+      }
+
+      if (filters.outcome && filters.outcome.length > 0) {
+        query = query.in('outcome', filters.outcome);
+      }
+
+      if (filters.userIds && filters.userIds.length > 0) {
+        query = query.in('user_id', filters.userIds);
+      }
+
+      if (filters.agentIds && filters.agentIds.length > 0) {
+        query = query.in('agent_id', filters.agentIds);
+      }
+
+      if (filters.dateRange) {
+        query = query
+          .gte('started_at', filters.dateRange.start.toISOString())
+          .lte('started_at', filters.dateRange.end.toISOString());
+      }
+
+      if (filters.searchQuery) {
+        query = query.or(`notes.ilike.%${filters.searchQuery}%,summary.ilike.%${filters.searchQuery}%,transcript.ilike.%${filters.searchQuery}%`);
+      }
+
+      query = query.order('started_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      set({ calls: data || [], loading: false });
+    } catch (error: any) {
       set({ error: error.message, loading: false });
     }
   },
 
-  fetchCustomerCalls: async (customerId: string) => {
+  fetchCallsByCustomer: async (customerId: string) => {
     set({ loading: true, error: null });
     try {
-      const customer = await customerService.getCustomerById(customerId);
-      if (!customer?.phone) {
-        return;
-      }
+      const { data, error } = await supabase
+        .from('calls')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
 
-      const customerCalls = await callsService.fetchCustomerCalls(customer);
-
-      set({ calls: customerCalls, loading: false });
-    }
-    catch (error: any) {
-      console.error('Error fetching calls:', error);
+      if (error) throw error;
+      set({ calls: data || [], loading: false });
+    } catch (error: any) {
       set({ error: error.message, loading: false });
     }
   },
 
-
-  fetchAllCalls: async (): Promise<CallResponse | undefined> => {
+  fetchCallById: async (id: string) => {
     set({ loading: true, error: null });
     try {
+      const { data, error } = await supabase
+        .from('calls')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-      await isUserAdmin();
-      if (!isAdmin) {
-        toast.error('Has to be admin to get all calls');
-        return;
-      }
-
-      const customerCalls = await callsService.fetchAllCalls();
-
-      set({ calls: customerCalls, loading: false });
-    }
-    catch (error: any) {
-      console.error('Error fetching calls:', error);
+      if (error) throw error;
+      set({ currentCall: data, loading: false });
+    } catch (error: any) {
       set({ error: error.message, loading: false });
     }
   },
 
-  fetchCallViaAPI: async (callId: string): Promise<CallResponse | undefined> => {
+  createCall: async (call: Partial<Call>) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) return null;
+
     set({ loading: true, error: null });
     try {
-      const apiKey = "key_b8e3bfa4516f4064f59d0eb60b8f"; //process.env.RETELL_API_KEY;
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // if (!apiKey) {
-      //   throw new Error('RETELL_API_KEY is not set.');
-      // }
+      const { data, error } = await supabase
+        .from('calls')
+        .insert({
+          ...call,
+          organization_id: organizationId,
+          user_id: user?.id,
+        })
+        .select()
+        .single();
 
-      const client = new Retell({
-        apiKey: apiKey,
-      });
+      if (error) throw error;
 
-      const callResponse = await client.call.retrieve(callId, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        }
-      });
+      set((state) => ({
+        calls: [data, ...state.calls],
+        loading: false,
+      }));
 
-      return callResponse;
-
-      set({ loading: false, error: null });
-    }
-    catch (error: any) {
-      console.error('Error fetching calls:', error);
+      return data;
+    } catch (error: any) {
       set({ error: error.message, loading: false });
+      return null;
+    }
+  },
+
+  updateCall: async (id: string, updates: Partial<Call>) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('calls')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      set((state) => ({
+        calls: state.calls.map((c) => (c.id === id ? data : c)),
+        currentCall: state.currentCall?.id === id ? data : state.currentCall,
+        loading: false,
+      }));
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  deleteCall: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('calls')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        calls: state.calls.filter((c) => c.id !== id),
+        loading: false,
+      }));
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  fetchCallStats: async () => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) return;
+
+    try {
+      const { data: calls, error } = await supabase
+        .from('calls')
+        .select('*')
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const stats: CallStats = {
+        total_calls: calls?.length || 0,
+        this_week: calls?.filter(c => new Date(c.started_at!) >= weekAgo).length || 0,
+        avg_duration_seconds: Math.round(
+          (calls?.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) || 0) /
+          (calls?.length || 1)
+        ),
+        connection_rate: calls?.length ?
+          calls.filter(c => c.status === 'completed').length / calls.length : 0,
+        human_calls: calls?.filter(c => c.call_type === 'human').length || 0,
+        ai_agent_calls: calls?.filter(c => c.call_type === 'ai_agent').length || 0,
+        inbound_calls: calls?.filter(c => c.direction === 'inbound').length || 0,
+        outbound_calls: calls?.filter(c => c.direction === 'outbound').length || 0,
+        positive_outcomes: calls?.filter(c => c.outcome === 'positive').length || 0,
+        neutral_outcomes: calls?.filter(c => c.outcome === 'neutral').length || 0,
+        negative_outcomes: calls?.filter(c => c.outcome === 'negative').length || 0,
+      };
+
+      set({ stats });
+    } catch (error: any) {
+      set({ error: error.message });
+    }
+  },
+
+  setFilters: (filters: Partial<CallFilters>) => {
+    set((state) => ({
+      filters: { ...state.filters, ...filters }
+    }));
+    get().fetchCalls();
+  },
+
+  subscribeToLiveCalls: () => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) return () => { };
+
+    if (!supabase || typeof supabase.channel !== 'function') {
+      console.log('Supabase realtime not available, skipping subscription');
+      return () => { };
+    }
+
+    try {
+      const subscription = supabase
+        .channel('calls-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'calls',
+            filter: `organization_id=eq.${organizationId}`,
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              set((state) => ({
+                calls: [payload.new as Call, ...state.calls],
+              }));
+            } else if (payload.eventType === 'UPDATE') {
+              set((state) => ({
+                calls: state.calls.map((c) =>
+                  c.id === payload.new.id ? payload.new as Call : c
+                ),
+                currentCall: state.currentCall?.id === payload.new.id ?
+                  payload.new as Call : state.currentCall,
+              }));
+            } else if (payload.eventType === 'DELETE') {
+              set((state) => ({
+                calls: state.calls.filter((c) => c.id !== payload.old.id),
+              }));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Error subscribing to calls:', error);
+      return () => { };
     }
   },
 }));

@@ -1,5 +1,0 @@
-# Handle password reset routes first
-/reset-password/* /index.html 200
-
-# Handle all other SPA routes
-/* /index.html 200

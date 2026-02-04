@@ -1,1 +1,0 @@
-export type RecentActivityType = 'call' | 'lead' | 'opportunity' | 'task' | 'calender_event' | 'system' | 'product';

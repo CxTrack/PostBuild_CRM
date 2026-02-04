@@ -1,784 +1,504 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Edit, Printer, Download, Send, CreditCard,
-  FileText, Calendar, Clock, User, DollarSign, Star,
-  Mail, AlertCircle, Check, X, MoreHorizontal, Copy, MapPin
-} from 'lucide-react';
-import { useInvoiceStore } from '../../stores/invoiceStore';
-import { useAuthStore } from '../../stores/authStore';
-import { useSubscriptionStore } from '../../stores/subscriptionStore';
-import { Invoice, InvoiceStatus } from '../../types/database.types';
-import { toast } from 'react-hot-toast';
-import InvoiceStatusBadge from '../../components/InvoiceStatusBadge';
-import InvoiceStatusDropdown from '../../components/InvoiceStatusDropdown';
-import MarkAsDropdown from '../../components/MarkAsDropdown';
-import FeatureGate from '../../components/FeatureGate';
-import { downloadInvoicePDF, printInvoicePDF } from '../../utils/pdfUtils';
-import { sendInvoiceEmail, sendPaymentReminder } from '../../utils/emailUtils';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { invoiceService, Invoice } from '@/services/invoice.service';
+import { stripeService } from '@/services/stripe.service';
+import { settingsService } from '@/services/settings.service';
+import { pdfService } from '@/services/pdf.service';
+import { ArrowLeft, Edit, Send, Trash2, Loader2, CreditCard, DollarSign, Link as LinkIcon, Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
+import ShareModal from '@/components/share/ShareModal';
+import toast from 'react-hot-toast';
 
-// Placeholder functions for missing imports
-const generatePublicLink = async (id: string): Promise<string> => `https://example.com/public/invoice/${id}`;
-const generatePaymentLink = async (id: string): Promise<string> => `https://example.com/pay/invoice/${id}`;
-const duplicateInvoice = async (id: string): Promise<Invoice> => {
-  // Simulate duplicating an invoice
-  const originalInvoice = await useInvoiceStore.getState().getInvoiceById(id);
-  if (!originalInvoice) throw new Error("Original invoice not found");
-  const newInvoice = { ...originalInvoice, id: crypto.randomUUID(), invoice_number: `${originalInvoice.invoice_number}-copy`, status: 'Draft' as InvoiceStatus };
-  // In a real scenario, you'd save this new invoice to the store/backend
-  console.log("Duplicated invoice:", newInvoice);
-  return newInvoice;
-};
-
-
-const InvoiceDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export default function InvoiceDetail() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { getInvoiceById, updateInvoiceStatus, deleteInvoice, loading, error } = useInvoiceStore();
-  const { currentSubscription } = useSubscriptionStore();
+  const { currentOrganization } = useOrganizationStore();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailMessage, setEmailMessage] = useState('');
-  const [showReminderModal, setShowReminderModal] = useState(false);
-  const [reminderEmail, setReminderEmail] = useState('');
-  const [reminderDays, setReminderDays] = useState(5);
-  const [publicLink, setPublicLink] = useState<string | null>(null);
-  const [paymentLink, setPaymentLink] = useState<string | null>(null);
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
-  const { user } = useAuthStore();
-
-  // Check if user has access to premium features
-  const hasPremiumAccess =
-    // Check if user is admin
-    user?.email === 'maniksharmawork@gmail.com' ||
-    // Or has premium subscription
-    (currentSubscription?.plan_id && ['business', 'enterprise'].includes(currentSubscription.plan_id));
-
-  // Premium feature click handler
-  const handlePremiumFeature = (feature: string, plan: string) => {
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-dark-900/80 backdrop-blur-sm flex items-center justify-center z-50';
-    modal.innerHTML = `
-        <div class="bg-dark-800 rounded-lg p-8 max-w-md m-4 relative transform scale-100 transition-all duration-200">
-          <div class="text-center">
-            <div class="bg-gradient-to-r from-primary-600 to-primary-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-              </svg>
-            </div>
-            <h3 class="text-2xl font-bold text-white mb-2">Premium Feature</h3>
-            <p class="text-gray-300 text-lg mb-2">${feature} is available on ${plan}</p>
-            <p class="text-gray-400 mb-6">Upgrade to access AI-powered automation and advanced features</p>
-            <a href="/settings?tab=billing" class="btn btn-primary bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 px-8 py-3 text-lg font-medium inline-block">
-              Upgrade Now
-            </a>
-          </div>
-          <button class="absolute top-4 right-4 text-gray-400 hover:text-white">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      `;
-
-    document.body.appendChild(modal);
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal || (e.target as Element).closest('button')) {
-        modal.remove();
-      }
-    });
-  };
+  const [loading, setLoading] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPaymentLinkDialog, setShowPaymentLinkDialog] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('0');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentLink, setPaymentLink] = useState('');
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareModalTab, setShareModalTab] = useState<'email' | 'link' | 'pdf' | 'sms'>('link');
 
   useEffect(() => {
     if (id) {
-      getInvoiceById(id)
-        .then(data => {
-          if (data) {
-            setInvoice(data);
-            if (data.customer_email) {
-              setReminderEmail(data.customer_email);
-            }
-          } else {
-            toast.error('Invoice not found');
-            navigate('/invoices');
-          }
-        })
-        .catch(err => {
-          toast.error('Failed to load invoice details');
-        });
+      loadInvoice();
     }
-  }, [id, getInvoiceById, navigate]);
+  }, [id]);
 
-  const handleStatusChange = async (status: InvoiceStatus) => {
-    if (!id || !invoice) return;
-
-    // Check if trying to mark as paid without premium access
-    if (status === 'Paid' && !hasPremiumAccess) {
-      handlePremiumFeature('Marking invoices as paid', 'Business or Enterprise');
-      // toast.error('Marking invoices as paid is a premium feature. Please upgrade to access this feature.');
-      return;
-    }
-
+  const loadInvoice = async () => {
+    if (!id) return;
     try {
-      const updatedInvoice = await updateInvoiceStatus(id, status);
-      setInvoice(updatedInvoice);
-      toast.success(`Invoice marked as ${status}`);
+      setLoading(true);
+      const data = await invoiceService.getInvoice(id);
+      setInvoice(data);
+      if (data) {
+        setPaymentAmount(data.amount_due.toString());
+      }
     } catch (error) {
-      toast.error('Failed to update invoice status');
+      console.error('Failed to load invoice:', error);
+      toast.error('Failed to load invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!id) return;
+    try {
+      await invoiceService.sendInvoice(id);
+      toast.success('Invoice sent successfully');
+      loadInvoice();
+    } catch (error) {
+      console.error('Failed to send invoice:', error);
+      toast.error('Failed to send invoice');
     }
   };
 
   const handleDelete = async () => {
     if (!id) return;
-
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
-      try {
-        await deleteInvoice(id);
-        toast.success('Invoice deleted successfully');
-        navigate('/invoices');
-      } catch (error) {
-        toast.error('Failed to delete invoice');
-      }
-    }
-  };
-
-  const handleDuplicate = async () => {
-    if (!id) return;
+    if (!confirm('Are you sure you want to delete this invoice?')) return;
 
     try {
-      const duplicatedInvoice = await duplicateInvoice(id);
-      toast.success('Invoice duplicated successfully');
-      navigate(`/invoices/${duplicatedInvoice.id}`);
+      await invoiceService.deleteInvoice(id);
+      toast.success('Invoice deleted successfully');
+      navigate('/invoices');
     } catch (error) {
-      console.error("Duplication Error:", error);
-      toast.error('Failed to duplicate invoice');
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    if (!invoice) return;
-    downloadInvoicePDF(invoice);
-    toast.success('Invoice PDF downloaded');
-  };
-
-  const handlePrintPDF = () => {
-    if (!invoice) return;
-    printInvoicePDF(invoice);
-  };
-
-  const handleSendEmail = async () => {
-    if (!invoice) return;
-
-    if (!invoice.customer_email) {
-      toast.error('Customer email is not available');
-      return;
-    }
-
-    const success = await sendInvoiceEmail(invoice, emailMessage, true);
-
-    if (success) {
-      toast.success('Invoice sent successfully');
-      setShowEmailModal(false);
-      setEmailMessage('');
-
-      // If the invoice is in draft status, update it to issued
-      if (invoice.status === 'Draft') {
-        handleStatusChange('Issued');
-      }
-    } else {
-      toast.error('Failed to send invoice');
-    }
-  };
-
-  const handleSetupReminder = async () => {
-    if (!invoice) return;
-
-    if (!reminderEmail) {
-      toast.error('Please enter an email address for the reminder');
-      return;
-    }
-
-    try {
-      const success = await sendPaymentReminder(invoice, reminderEmail, reminderDays);
-
-      if (success) {
-        toast.success('Payment reminder scheduled');
-        setShowReminderModal(false);
-      }
-    } catch (error: any) {
-      // Show specific error message if available
-      toast.error(error.message || 'Failed to schedule payment reminder');
-
-      // If error is about email settings, offer to redirect
-      if (error.message.includes('configure your email settings')) {
-        if (window.confirm('Would you like to configure your email settings now?')) {
-          navigate('/settings?tab=email');
-        }
-      }
-    }
-  };
-
-  const handleGeneratePublicLink = async () => {
-    if (!id) return;
-
-    try {
-      const link = await generatePublicLink(id);
-      setPublicLink(link);
-      setShowLinkModal(true);
-    } catch (error) {
-      toast.error('Failed to generate public link');
+      console.error('Failed to delete invoice:', error);
+      toast.error('Failed to delete invoice');
     }
   };
 
   const handleGeneratePaymentLink = async () => {
-    if (!id || !hasPremiumAccess) {
-        handlePremiumFeature('Generating Payment Links', 'Business or Enterprise');
-        return;
+    if (!invoice) return;
+
+    try {
+      setGeneratingLink(true);
+      const link = await stripeService.createPaymentLink(
+        invoice.id,
+        invoice.amount_due,
+        'USD'
+      );
+      setPaymentLink(link);
+      setShowPaymentLinkDialog(true);
+    } catch (error) {
+      console.error('Failed to generate payment link:', error);
+      toast.error('Failed to generate payment link. Please ensure Stripe is configured in settings.');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    if (!invoice) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error('Please select a payment method');
+      return;
     }
 
     try {
-      const link = await generatePaymentLink(id);
-      setPaymentLink(link);
-      setShowPaymentLinkModal(true);
+      setRecordingPayment(true);
+      await stripeService.recordPayment(invoice.id, amount, paymentMethod);
+      toast.success('Payment recorded successfully');
+      setShowPaymentDialog(false);
+      loadInvoice();
     } catch (error) {
-      toast.error('Failed to generate payment link');
+      console.error('Failed to record payment:', error);
+      toast.error('Failed to record payment');
+    } finally {
+      setRecordingPayment(false);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Link copied to clipboard');
+  const copyPaymentLink = () => {
+    navigator.clipboard.writeText(paymentLink);
+    toast.success('Payment link copied to clipboard');
   };
 
-  // Check if the invoice is overdue
-  const isOverdue = invoice && new Date(invoice.due_date) < new Date() && invoice.status !== 'Paid';
+  const handleShareOption = async (option: ShareOption) => {
+    if (!invoice || !currentOrganization) return;
+
+    if (option === 'pdf') {
+      try {
+        console.log('🔄 Generating PDF for invoice:', invoice.invoice_number);
+        console.log('Using organization ID:', currentOrganization.id);
+
+        const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
+
+        console.log('📄 Generating PDF with organization info:', organizationInfo);
+        pdfService.generateInvoicePDF(invoice, organizationInfo);
+        toast.success('Invoice PDF downloaded');
+      } catch (error) {
+        console.error('Failed to generate PDF:', error);
+        toast.error('Failed to generate PDF');
+      }
+      return;
+    }
+
+    setShareModalTab(option);
+    setShowShareModal(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'viewed':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'paid':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'overdue':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+  };
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
-        <p className="mt-4 text-gray-400">Loading invoice details...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-400 text-lg">{error}</p>
-        <Link to="/invoices" className="btn btn-primary mt-4">Back to Invoices</Link>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!invoice) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-400 text-lg">Invoice not found</p>
-        <Link to="/invoices" className="btn btn-primary mt-4">Back to Invoices</Link>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="text-center py-12">
+          <p className="text-gray-600 dark:text-gray-400">Invoice not found</p>
+          <Button onClick={() => navigate('/invoices')} className="mt-4">
+            Back to Invoices
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link to="/invoices" className="btn btn-secondary p-2">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-2xl font-bold text-white">Invoice {invoice.invoice_number}</h1>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/invoices')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {invoice.invoice_number}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
+                {invoice.status}
+              </span>
+              {invoice.quote_id && (
+                <button
+                  onClick={() => navigate(`/quotes/${invoice.quote_id}`)}
+                  className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                >
+                  From Quote
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <MarkAsDropdown
-            currentStatus={invoice.status}
-            onStatusChange={handleStatusChange}
-          />
-
-          <div className="relative">
-            <button
-              onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className="btn btn-secondary p-2"
-            >
-              <MoreHorizontal size={20} />
-            </button>
-
-            {showActionsMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-md shadow-lg py-1 z-10 border border-dark-700">
-                <button
-                  onClick={() => {
-                    setShowActionsMenu(false);
-                    handleDuplicate();
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
-                >
-                  Duplicate Invoice
-                </button>
-                <button
-                  onClick={() => {
-                    setShowActionsMenu(false);
-                    handleDelete();
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-700"
-                >
-                  Delete Invoice
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="flex gap-2">
+          {invoice.status === 'draft' && (
+            <Button variant="outline" onClick={handleSend}>
+              <Send className="w-4 h-4 mr-2" />
+              Send Invoice
+            </Button>
+          )}
+          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+            <>
+              <Button variant="outline" onClick={handleGeneratePaymentLink} disabled={generatingLink}>
+                <LinkIcon className="w-4 h-4 mr-2" />
+                {generatingLink ? 'Generating...' : 'Payment Link'}
+              </Button>
+              <Button onClick={() => setShowPaymentDialog(true)}>
+                <DollarSign className="w-4 h-4 mr-2" />
+                Record Payment
+              </Button>
+            </>
+          )}
+          <ShareDropdown onSelect={handleShareOption} buttonText="Share" variant="primary" />
+          {invoice.status !== 'paid' && (
+            <Button variant="outline" onClick={() => navigate(`/invoices/builder/${id}`)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleDelete} className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Link to={`/invoices/${id}/edit`} className="btn btn-primary flex items-center space-x-2">
-          <Edit size={16} />
-          <span>Edit</span>
-        </Link>
-        <button
-          onClick={handlePrintPDF}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <Printer size={16} />
-          <span>Print</span>
-        </button>
-        <button
-          onClick={handleDownloadPDF}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <Download size={16} />
-          <span>PDF</span>
-        </button>
-        <button
-          onClick={() => {
-            if (!hasPremiumAccess) {
-              handlePremiumFeature('Email to Customer', 'Business or Enterprise');
-            } else {
-              setShowEmailModal(true);
-            }
-          }}
-          className="btn btn-secondary flex items-center space-x-2"
-          disabled={!invoice.customer_email && !hasPremiumAccess} // Still disable if no email AND no premium
-        >
-          <div className="relative flex items-center">
-            <Send size={16} className="mr-2" />
-            <span>Email to Customer</span>
-            {!hasPremiumAccess && (
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 absolute -top-2 -right-2" />
-            )}
-          </div>
-        </button>
-        <button
-          onClick={handleGeneratePaymentLink} // This now internally checks for premium access
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <div className="relative flex items-center">
-            <CreditCard size={16} className="mr-2" />
-            <span>Payment Link</span>
-            {!hasPremiumAccess && (
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 absolute -top-2 -right-2" />
-            )}
-          </div>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Invoice status card */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Invoice Status</h2>
-
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <FileText size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Status</p>
-                <InvoiceStatusBadge status={invoice.status} />
-              </div>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-8 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Customer</h3>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{invoice.customer_name}</p>
+              {invoice.customer_email && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">{invoice.customer_email}</p>
+              )}
             </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Calendar size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Invoice Date</p>
-                <p className="text-white">{new Date(invoice.date).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Clock size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Due Date</p>
-                <p className="text-white">{new Date(invoice.due_date).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            {invoice.status === 'Paid' && invoice.payment_date && (
-              <div className="flex items-start space-x-3">
-                <div className="text-gray-400">
-                  <CreditCard size={18} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Payment Date</p>
-                  <p className="text-white">{new Date(invoice.payment_date).toLocaleDateString()}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <DollarSign size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Total Amount</p>
-                <p className="text-xl font-semibold text-white">${invoice.total.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment reminder section */}
-          <div className="mt-6 pt-6 border-t border-dark-700">
-            <h3 className="text-md font-medium text-white mb-2">Payment Reminder</h3>
-            {isOverdue && (
-              <div className="bg-red-900/30 border border-red-800 text-red-400 px-3 py-2 rounded-md mb-3">
-                <div className="flex items-center">
-                  <AlertCircle size={16} className="mr-2" />
-                  <span>This invoice is overdue</span>
-                </div>
-              </div>
-            )}
-            <p className="text-sm text-gray-400 mb-3">
-              Send an automatic reminder to the customer before the due date.
-            </p>
-            <button
-              onClick={() => setShowReminderModal(true)}
-              className={`btn w-full ${!invoice?.customer_email || ['Paid', 'Cancelled'].includes(invoice?.status || '')
-                ? 'btn-secondary opacity-50 cursor-not-allowed'
-                : 'btn-primary'
-                }`}
-              disabled={!invoice?.customer_email || ['Paid', 'Cancelled'].includes(invoice?.status || '')}
-            >
-              {!invoice?.customer_email
-                ? 'No Email Available'
-                : invoice?.status === 'Paid'
-                ? 'Invoice Paid'
-                : invoice?.status === 'Cancelled'
-                ? 'Invoice Cancelled'
-                : 'Schedule Reminder'}
-            </button>
-            {!invoice?.customer_email && (
-              <p className="mt-2 text-sm text-red-400">
-                Customer email is required to schedule reminders
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Invoice Date</h3>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {new Date(invoice.invoice_date).toLocaleDateString()}
               </p>
-            )}
-          </div>
-        </div>
-
-        {/* Customer info */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
-
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <User size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Customer</p>
-                <p className="text-white font-medium">{invoice?.customer_name}</p>
-              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Due: {new Date(invoice.due_date).toLocaleDateString()}
+              </p>
             </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Mail size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Email</p>
-                <p className="text-white">{invoice?.customer_email || 'No email provided'}</p>
-              </div>
-            </div>
-
-            {invoice?.customer_address && (
-              <div className="flex items-start space-x-3">
-                <div className="text-gray-400">
-                  <MapPin size={18} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Address</p>
-                  <p className="text-white">{invoice?.customer_address}</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Notes */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Notes</h2>
-          <p className="text-gray-300">{invoice?.notes || 'No notes provided'}</p>
-
-          {/* Attachments section */}
-          <div className="mt-6 pt-6 border-t border-dark-700">
-            <h3 className="text-md font-medium text-white mb-2">Attachments</h3>
-            <p className="text-sm text-gray-400">
-              No attachments
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Invoice items */}
-      <div className="card bg-dark-800 border border-dark-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Invoice Items</h2>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-dark-700">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Item</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Quantity</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Unit Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-dark-700">
-              {invoice?.items.map((item, index) => (
-                <tr key={index} className="hover:bg-dark-700/50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-white">{item.description}</span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    {item.quantity}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    ${item.unit_price.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    ${item.total.toFixed(2)}
-                  </td>
+        <div className="p-8">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Line Items</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Item</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Qty</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Price</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Total</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-dark-700/50">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">Subtotal</td>
-                <td className="px-4 py-3 text-right text-sm font-medium text-white">${invoice?.subtotal.toFixed(2)}</td>
-              </tr>
-              <tr className="bg-dark-700/50">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">
-                  Tax ({((invoice?.tax_rate || 0) * 100).toFixed(2)}%)
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-medium text-white">${invoice?.tax.toFixed(2)}</td>
-              </tr>
-              <tr className="bg-dark-700">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">Total</td>
-                <td className="px-4 py-3 text-right text-base font-bold text-white">${invoice?.total.toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {invoice.items.map((item, index) => (
+                  <tr key={index} className="border-b border-gray-100 dark:border-gray-700">
+                    <td className="py-4">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{item.product_name}</p>
+                        {item.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-right py-4 text-gray-900 dark:text-white">{item.quantity}</td>
+                    <td className="text-right py-4 text-gray-900 dark:text-white">
+                      ${(item.unit_price ?? 0).toFixed(2)}
+                    </td>
+                    <td className="text-right py-4 font-medium text-gray-900 dark:text-white">
+                      ${(item.line_total ?? 0).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <div className="w-64 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  ${(invoice.subtotal ?? 0).toFixed(2)}
+                </span>
+              </div>
+              {(invoice.discount_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Discount</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    -${(invoice.discount_amount ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Tax</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  ${(invoice.tax_amount ?? 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between">
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
+                  <span className="text-lg font-bold text-blue-600">
+                    ${(invoice.total_amount ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              {(invoice.amount_paid ?? 0) > 0 && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Amount Paid</span>
+                    <span className="font-medium text-green-600">
+                      ${(invoice.amount_paid ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <span className="font-semibold text-gray-900 dark:text-white">Amount Due</span>
+                    <span className="font-bold text-orange-600">
+                      ${(invoice.amount_due ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
+
+        {(invoice.notes || invoice.terms || invoice.payment_terms) && (
+          <div className="p-8 border-t border-gray-200 dark:border-gray-700">
+            {invoice.payment_terms && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Payment Terms</h3>
+                <p className="text-gray-900 dark:text-white">{invoice.payment_terms}</p>
+              </div>
+            )}
+            {invoice.notes && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Notes</h3>
+                <p className="text-gray-900 dark:text-white">{invoice.notes}</p>
+              </div>
+            )}
+            {invoice.terms && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Terms & Conditions</h3>
+                <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{invoice.terms}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Email Modal */}
-      {showEmailModal && invoice && (
+      {showPaymentDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Send Invoice to Customer</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Record Payment
+            </h2>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                To
-              </label>
-              <input
-                type="text"
-                className="input"
-                value={invoice.customer_email || ''}
-                disabled
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Subject
-              </label>
-              <input
-                type="text"
-                className="input"
-                value={`Invoice ${invoice.invoice_number} from Your Company`}
-                disabled
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Message (Optional)
-              </label>
-              <textarea
-                className="input"
-                rows={4}
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                placeholder="Add a personal message to the customer..."
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSendEmail}
-                className="btn btn-primary"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reminder Modal */}
-      {showReminderModal && invoice && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Schedule Payment Reminder</h3>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Send reminder to
-              </label>
-              <input
-                type="email"
-                className="input"
-                value={reminderEmail}
-                onChange={(e) => setReminderEmail(e.target.value)}
-                placeholder="customer@example.com"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Days before due date
-              </label>
-              <input
-                type="number"
-                className="input"
-                value={reminderDays}
-                onChange={(e) => setReminderDays(parseInt(e.target.value))}
-                min={1}
-                max={30}
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowReminderModal(false)}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSetupReminder}
-                className="btn btn-primary flex items-center space-x-1"
-              >
-                <span className="text-yellow-300">★</span>
-                <span>Schedule reminder</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Public Link Modal */}
-      {showLinkModal && publicLink && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Public Invoice Link</h3>
-
-            <div className="mb-4">
-              <p className="text-sm text-gray-300 mb-2">
-                Share this link with anyone to view the invoice. No account required.
-              </p>
-              <div className="flex">
-                <input
-                  type="text"
-                  className="input rounded-r-none"
-                  value={publicLink}
-                  readOnly
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Payment Amount
+                </label>
+                <Input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
                 />
-                <button
-                  onClick={() => copyToClipboard(publicLink)}
-                  className="btn btn-primary rounded-l-none"
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Payment Method
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 >
-                  <Copy size={16} />
-                </button>
+                  <option value="">Select method...</option>
+                  <option value="credit_card">Credit Card</option>
+                  <option value="debit_card">Debit Card</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="stripe">Stripe</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowLinkModal(false)}
-                className="btn btn-secondary"
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentDialog(false)}
+                className="flex-1"
+                disabled={recordingPayment}
               >
-                Close
-              </button>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRecordPayment}
+                className="flex-1"
+                disabled={recordingPayment}
+              >
+                {recordingPayment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Recording...
+                  </>
+                ) : (
+                  'Record Payment'
+                )}
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Payment Link Modal */}
-      {showPaymentLinkModal && paymentLink && (
+      {showPaymentLinkDialog && paymentLink && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Payment Link</h3>
-            <div className="mb-4">
-              <p className="text-sm text-gray-300 mb-2">
-                Share this link with your customer to allow them to pay the invoice online.
-              </p>
-              <div className="flex">
-                <input
-                  type="text"
-                  className="input rounded-r-none"
-                  value={paymentLink}
-                  readOnly
-                />
-                <button
-                  onClick={() => copyToClipboard(paymentLink)}
-                  className="btn btn-primary rounded-l-none"
-                >
-                  <Copy size={16} />
-                </button>
-              </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Payment Link Generated
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Share this link with your customer to accept online payments:
+            </p>
+
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg mb-4">
+              <p className="text-sm text-gray-900 dark:text-white break-all">{paymentLink}</p>
             </div>
 
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowPaymentLinkModal(false)}
-                className="btn btn-secondary"
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentLinkDialog(false)}
+                className="flex-1"
               >
                 Close
-              </button>
+              </Button>
+              <Button onClick={copyPaymentLink} className="flex-1">
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Copy Link
+              </Button>
             </div>
           </div>
         </div>
+      )}
+
+      {showShareModal && invoice && currentOrganization && (
+        <ShareModal
+          documentType="invoice"
+          document={invoice}
+          organizationId={currentOrganization.id}
+          initialTab={shareModalTab}
+          onClose={() => setShowShareModal(false)}
+        />
       )}
     </div>
   );
-};
-
-export default InvoiceDetail;
+}

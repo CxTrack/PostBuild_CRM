@@ -1,182 +1,198 @@
 import { create } from 'zustand';
-import { productService } from '../services/productService';
 import { supabase } from '../lib/supabase';
-import { Product } from '../types/database.types';
-import { useActivityStore } from './activitiesStore';
+import type { Product } from '../types/app.types';
+import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId } from '@/config/demo.config';
+import { MOCK_ADMIN_USER } from '@/contexts/AuthContext';
 
 interface ProductState {
   products: Product[];
   loading: boolean;
   error: string | null;
-  
-  // Actions
-  fetchProducts: () => Promise<void>;
-  getProductById: (id: string) => Promise<Product | null>;
-  createProduct: (data: Partial<Product>) => Promise<Product>;
-  updateProduct: (id: string, data: Partial<Product>) => Promise<Product>;
+  fetchProducts: (organizationId?: string) => Promise<void>;
+  createProduct: (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => Promise<Product | null>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  updateStock: (id: string, quantity: number) => Promise<Product>;
-  clearError: () => void;
+  getProductById: (id: string) => Product | undefined;
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
-  products: [],
+  products: DEMO_MODE ? loadDemoData<Product>(DEMO_STORAGE_KEYS.products) : [],
   loading: false,
   error: null,
-  totalProducts: 0,
-  
-  clearError: () => set({ error: null }),
-  
-  fetchProducts: async () => {
+
+  fetchProducts: async (organizationId?: string) => {
     set({ loading: true, error: null });
+
+    if (DEMO_MODE) {
+      const demoProducts = loadDemoData<Product>(DEMO_STORAGE_KEYS.products);
+      console.log('📦 Loaded demo products:', demoProducts);
+      set({ products: demoProducts, loading: false });
+      return;
+    }
+
     try {
-      // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      let query = supabase.from('products').select('*');
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
       }
 
-      const products = await productService.getProducts();
-      set({ 
-        products, 
-        totalProducts: products.length,
-        loading: false 
-      });
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+      set({ products: data || [], loading: false });
     } catch (error: any) {
-      console.error('Error in fetchProducts:', error);
-      set({ 
-        error: error.message === 'User not authenticated' 
-          ? 'Please sign in to access products'
-          : error.message || 'Failed to fetch products',
-        loading: false 
-      });
-      throw error;
+      set({ error: error.message, loading: false });
     }
   },
-  
-  getProductById: async (id: string) => {
+
+  createProduct: async (product) => {
     set({ loading: true, error: null });
+
+    if (DEMO_MODE) {
+      try {
+        const newProduct: Product = {
+          id: generateDemoId('product'),
+          ...product,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const updatedProducts = [newProduct, ...get().products];
+        saveDemoData(DEMO_STORAGE_KEYS.products, updatedProducts);
+
+        set({
+          products: updatedProducts,
+          loading: false
+        });
+
+        console.log('✅ Demo product created:', newProduct);
+        return newProduct;
+      } catch (error: any) {
+        console.error('Error creating demo product:', error);
+        set({ error: error.message, loading: false });
+        return null;
+      }
+    }
+
     try {
-      const product = await productService.getProductById(id);
-      set({ loading: false });
-      return product;
+      const { data, error } = await supabase
+        .from('products')
+        .insert([product])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      set((state) => ({
+        products: [data, ...state.products],
+        loading: false,
+      }));
+
+      return data;
     } catch (error: any) {
-      console.error('Error in getProductById:', error);
-      set({ 
-        error: error.message || 'Failed to fetch product details', 
-        loading: false 
-      });
+      set({ error: error.message, loading: false });
       return null;
     }
   },
-  
-  createProduct: async (data: Partial<Product>) => {
-    set({ loading: true, error: null });
-    try {
-      const newProduct = await productService.createProduct(data);
 
-      // Update the products list with the new product
-      const products = [...get().products, newProduct];
-      set({ 
-        products, 
-        totalProducts: products.length,
-        loading: false 
-      });
-      
-      return newProduct;
-    } catch (error: any) {
-      console.error('Error in createProduct:', error);
-      set({ 
-        error: error.message || 'Failed to create product', 
-        loading: false 
-      });
-      throw error;
-    }
-  },
-  
-  updateProduct: async (id: string, data: Partial<Product>) => {
+  updateProduct: async (id, updates) => {
     set({ loading: true, error: null });
-    try {
-      //const oldProduct = get().products.find(p => p.id === id);
-      const updatedProduct = await productService.updateProduct(id, data);
-      
-      // Log activity if stock changed
-      // if ('stock' in data && oldProduct) {
-      //   const stockChange = (data.stock || 0) - (oldProduct.stock || 0);
-      //   await supabase.rpc('add_activity', {
-      //     p_user_id: (await supabase.auth.getUser()).data.user?.id,
-      //     p_type: 'product',
-      //     p_title: `Stock ${stockChange > 0 ? 'Increased' : 'Decreased'}`,
-      //     p_product: oldProduct.name,
-      //     p_quantity: Math.abs(stockChange)
-      //   });
-      // }
 
-      // Update the products list with the updated product
-      const products = get().products.map(product => 
-        product.id === id ? updatedProduct : product
-      );
-      
-      set({ 
-        products,
-        totalProducts: products.length,
-        loading: false 
-      });
-      return updatedProduct;
+    if (DEMO_MODE) {
+      try {
+        const products = get().products;
+        const index = products.findIndex(p => p.id === id);
+
+        if (index === -1) {
+          throw new Error('Product not found');
+        }
+
+        const updatedProduct = {
+          ...products[index],
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+
+        const updatedProducts = [
+          ...products.slice(0, index),
+          updatedProduct,
+          ...products.slice(index + 1)
+        ];
+
+        saveDemoData(DEMO_STORAGE_KEYS.products, updatedProducts);
+
+        set({
+          products: updatedProducts,
+          loading: false
+        });
+
+        console.log('✅ Demo product updated:', updatedProduct);
+      } catch (error: any) {
+        console.error('Error updating demo product:', error);
+        set({ error: error.message, loading: false });
+      }
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        products: state.products.map((p) =>
+          p.id === id ? { ...p, ...updates } : p
+        ),
+        loading: false,
+      }));
     } catch (error: any) {
-      console.error('Error in updateProduct:', error);
-      set({ 
-        error: error.message || 'Failed to update product', 
-        loading: false 
-      });
-      throw error;
+      set({ error: error.message, loading: false });
     }
   },
-  
-  deleteProduct: async (id: string) => {
+
+  deleteProduct: async (id) => {
     set({ loading: true, error: null });
+
+    if (DEMO_MODE) {
+      try {
+        const updatedProducts = get().products.filter(p => p.id !== id);
+        saveDemoData(DEMO_STORAGE_KEYS.products, updatedProducts);
+
+        set({
+          products: updatedProducts,
+          loading: false
+        });
+
+        console.log('✅ Demo product deleted');
+      } catch (error: any) {
+        console.error('Error deleting demo product:', error);
+        set({ error: error.message, loading: false });
+      }
+      return;
+    }
+
     try {
-      await productService.deleteProduct(id);
-      
-      // Remove the deleted product from the list
-      const products = get().products.filter(product => product.id !== id);
-      set({ 
-        products,
-        totalProducts: products.length,
-        loading: false 
-      });
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        products: state.products.filter((p) => p.id !== id),
+        loading: false,
+      }));
     } catch (error: any) {
-      console.error('Error in deleteProduct:', error);
-      set({ 
-        error: error.message || 'Failed to delete product', 
-        loading: false 
-      });
-      throw error;
+      set({ error: error.message, loading: false });
     }
   },
-  
-  updateStock: async (id: string, quantity: number) => {
-    set({ loading: true, error: null });
-    try {
-      const updatedProduct = await productService.updateStock(id, quantity);
-      
-      // Update the products list with the updated product
-      const products = get().products.map(product => 
-        product.id === id ? updatedProduct : product
-      );
-      
-      set({ 
-        products,
-        totalProducts: products.length,
-        loading: false 
-      });
-      return updatedProduct;
-    } catch (error: any) {
-      console.error('Error in updateStock:', error);
-      set({ 
-        error: error.message || 'Failed to update product stock', 
-        loading: false 
-      });
-      throw error;
-    }
-  }
+
+  getProductById: (id) => {
+    return get().products.find((p) => p.id === id);
+  },
 }));

@@ -1,285 +1,181 @@
 import { create } from 'zustand';
-import { supabase, refreshSession, clearAuthStorage } from '../lib/supabase';
+import { persist } from 'zustand/middleware';
+import type { User } from '@supabase/supabase-js';
 
-interface User {
-  id: string;
-  email: string;
-  user_metadata?: {
-    full_name?: string;
-  };
-}
+import { supabase, getUserProfile } from '../lib/supabase';
+import type { UserProfile } from '../types/database.types';
 
 interface AuthState {
   user: User | null;
-  initialized: boolean;
+  profile: UserProfile | null;
   loading: boolean;
-  error: string | null;
-  updatePassword: (token: string, newPassword: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  initialized: boolean;
+
+  initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
-  initialize: () => Promise<void>;
-  clearError: () => void;
-  checkAuthStatus: () => Promise<boolean>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  initialized: false,
-  loading: false,
-  error: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      profile: null,
+      loading: false,
+      initialized: false,
 
-  resetPassword: async (email) => {
-    set({ loading: true, error: null });
-    try {
-      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-      const redirectTo = `${baseUrl}/reset-password#`;
+      /* ----------------------------------------
+       * INITIALIZE (run once on app startup)
+       * ---------------------------------------- */
+      initialize: async () => {
+        set({ loading: true });
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
-      });
+        // 1️⃣ Load existing session (Supabase handles refresh automatically)
+        const { data: { session } } = await supabase.auth.getSession();
 
-      if (error) throw error;
+        if (session?.user) {
+          const profile = await getUserProfile(session.user.id);
+          set({
+            user: session.user,
+            profile,
+          });
+        } else {
+          set({
+            user: null,
+            profile: null,
+          });
+        }
 
-      set({ loading: false });
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      set({ error: error.message || 'Failed to send reset instructions', loading: false });
-      throw error;
-    }
-  },
+        set({ initialized: true, loading: false });
 
-  updatePassword: async (token, newPassword) => {
-    set({ loading: true, error: null });
-    try {
-      const { error: setSessionError } = await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: ''
-      });
+        // 2️⃣ Subscribe to auth changes (CRITICAL)
+        supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+          console.log('[Supabase auth event]', event);
 
-      if (setSessionError) throw new Error('Invalid or expired reset link');
+          if (!session || event === 'SIGNED_OUT') {
+            set({ user: null, profile: null });
+            return;
+          }
 
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) throw updateError;
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            const user = session.user;
+            const profile = await getUserProfile(user.id);
+            set({ user, profile });
+          }
+        });
+      },
 
-      await supabase.auth.signOut();
-      clearAuthStorage();
+      /* ----------------------------------------
+       * SIGN IN
+       * ---------------------------------------- */
+      signIn: async (email, password) => {
+        set({ loading: true });
 
-      set({ loading: false });
-    } catch (error: any) {
-      console.error('Password update error:', error);
-      set({
-        error: error.message?.includes('Invalid') || error.message?.includes('expired')
-          ? 'Invalid or expired reset link. Please request a new password reset.'
-          : error.message || 'Failed to update password',
-        loading: false
-      });
-      throw error;
-    }
-  },
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-  signIn: async (email, password) => {
-    set({ loading: true, error: null });
+        if (error) {
+          set({ loading: false });
+          throw error;
+        }
 
-    try {
-      await supabase.auth.signOut();
-      clearAuthStorage();
-      await new Promise(r => setTimeout(r, 300));
+        if (data.user) {
+          const profile = await getUserProfile(data.user.id);
+          set({ user: data.user, profile, loading: false });
+        }
+      },
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError){
-        throw signInError;
-      }
+      /* ----------------------------------------
+       * SIGN UP
+       * ---------------------------------------- */
+      signUp: async (email, password, fullName) => {
+        set({ loading: true });
+
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        console.log({data, error});
         
 
-      await new Promise((r) => setTimeout(r, 500)) // let session persist
-      const session = await supabase.auth.getSession()
-      
-      let user = session?.data?.session?.user;
-
-      if (!user) {
-        throw new Error('Your session has expired. Please sign in again.');
-      }
-      
-      set({user: { id: user.id, email: user.email!}, loading: false });
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      set({ error: error.message || 'Unable to sign in. Please try again.', loading: false });
-      throw error;
-    }
-  },
-
-
-  signInWithGoogle: async () => {
-    set({ loading: true, error: null });
-    try {
-      await supabase.auth.signOut();
-      clearAuthStorage();
-      await new Promise(r => setTimeout(r, 300));
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
-          }
+        if (error) {
+          set({ loading: false });
+          throw error;
         }
-      });
 
-      if (error) throw error;
-
-      set({ loading: false });
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
-      set({
-        error: error.message?.includes('refused to connect')
-          ? 'Please check your Google authentication settings in Supabase'
-          : error.message || 'Unable to sign in with Google',
-        loading: false
-      });
-      throw error;
-    }
-  },
-
-  signUp: async (email, password, fullName) => {
-    set({ loading: true, error: null });
-    try {
-      await supabase.auth.signOut();
-      clearAuthStorage();
-      await new Promise(r => setTimeout(r, 300));
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: redirectUrl
-        },
-      });
-
-      if (error) {
-        if (error.message.includes('User already registered')) {
-          throw new Error('An account with this email already exists');
-        } else if (error.message.includes('rate limit')) {
-          throw new Error('Too many attempts. Please try again in a few minutes.');
+        if (!data.user) {
+          set({ loading: false });
+          return;
         }
-        throw error;
-      }
 
-      if (!data.user) {
-        throw new Error('No user data returned from signup');
-      }
+        // Create profile row
+        // const { error: profileError } = await supabase
+        //   .from('user_profiles')
+        //   .insert({
+        //     id: data.user.id,
+        //     email,
+        //     full_name: fullName,
+        //   });
 
-      set({ loading: false });
-    } catch (error: any) {
-      console.error('Sign up error:', error);
+        // if (profileError) {
+        //   set({ loading: false });
+        //   throw profileError;
+        // }
 
-      let errorMessage = 'Unable to create account. Please try again.';
-      if (error.message.includes('already exists') || error.message.includes('already registered')) {
-        errorMessage = error.message;
-      } else if (error.message.includes('password')) {
-        errorMessage = 'Password must be at least 6 characters long.';
-      } else if (error.message.includes('email')) {
-        errorMessage = 'Please enter a valid email address.';
-      } else if (error.message.includes('rate limit')) {
-        errorMessage = 'Too many attempts. Please try again later.';
-      } else {
-        errorMessage = error.message;
-      }
+        const profile = await getUserProfile(data.user.id);
+        set({ user: data.user, profile, loading: false });
+      },
 
-      set({ error: errorMessage, loading: false });
-      throw error;
+      /* ----------------------------------------
+       * SIGN OUT (invalidates refresh token)
+       * ---------------------------------------- */
+      signOut: async () => {
+        await supabase.auth.signOut();
+        set({ user: null, profile: null });
+      },
+
+      /* ----------------------------------------
+       * RESET PASSWORD
+       * ---------------------------------------- */
+      resetPassword: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) throw error;
+      },
+
+      /* ----------------------------------------
+       * UPDATE PROFILE
+       * ---------------------------------------- */
+      updateProfile: async (data) => {
+        const { user } = get();
+        if (!user) throw new Error('Not authenticated');
+
+        const { error } = await supabase
+          .from('user_profiles')
+          .update(data)
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        const profile = await getUserProfile(user.id);
+        set({ profile });
+      },
+    }),
+    {
+      name: 'auth-storage',
+
+      // ⚠️ Persist ONLY profile (Supabase owns session + user)
+      partialize: (state) => ({
+        profile: state.profile,
+      }),
     }
-  },
-
-  signOut: async () => {
-    set({ loading: true, error: null });
-    try {
-      clearAuthStorage();
-      await new Promise(r => setTimeout(r, 300));
-
-      await supabase.auth.signOut();
-
-      set({
-        user: null,
-        loading: false,
-        error: null,
-        initialized: true
-      });
-    } catch (error: any) {
-      console.error('Sign out error:', error);
-      clearAuthStorage();
-      set({
-        user: null,
-        loading: false,
-        error: 'Failed to sign out properly, but you have been logged out.',
-        initialized: true
-      });
-    }
-  },
-
-  initialize: async () => {
-    set({ loading: true });
-
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (error) throw error;
-
-      if (session) {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-
-        set({ user: {id: user?.id!, email: user?.email! }, initialized: true, loading: false });
-      } else {
-        set({ user: null, initialized: true, loading: false });
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      set({ user: null, initialized: true, loading: false });
-    }
-  },
-
-  clearError: () => set({ error: null }),
-
-  checkAuthStatus: async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (!session || error) 
-        return false;
-
-      const sessionExpiry = new Date(session.expires_at! * 1000);
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-
-      if (sessionExpiry > fiveMinutesAgo) return true;
-
-      const { success } = await refreshSession();
-      return success;
-    } catch (error) {
-      console.error('Auth status check error:', error);
-      return false;
-    }
-  }
-}));
-
-
-const redirectUrl = process.env.NODE_ENV === 'production'
-  ? 'https://cxtrack.com/auth/callback'
-  : 'http://localhost:5173/auth/callback';
-
-
-supabase.auth.onAuthStateChange(async (_event, session) => {
-  if (session?.user) {
-    useAuthStore.setState({ user: { email: session.user.email!, id: session.user.id }, initialized: true });
-  } else {
-    useAuthStore.setState({ user: null, initialized: true });
-  }
-});
-
-// Initialize once on load
-useAuthStore.getState().initialize();
+  )
+);

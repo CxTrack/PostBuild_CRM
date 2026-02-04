@@ -1,567 +1,522 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { useThemeStore } from '../stores/themeStore';
+import { useOrganizationStore } from '../stores/organizationStore';
+import { useAuthContext } from '../contexts/AuthContext';
 import {
-  LayoutGrid, Users, Package, FileText, ShoppingCart,
-  Settings, LogOut, Menu, X, ChevronDown, Bell, Search, DollarSign,
-  CircleUser, BarChart3, Layers, ShoppingBag, FileText as Quote, Bot, Upload, Receipt, Star,
-  Calendar, ChevronLeft, ChevronRight, Maximize2, ExternalLink
+  LayoutGrid,
+  Users,
+  Calendar,
+  FileText,
+  DollarSign,
+  Phone,
+  CheckSquare,
+  Settings,
+  Menu,
+  X,
+  Moon,
+  Sun,
+  Bell,
+  Package,
+  GripVertical,
+  TrendingUp,
+  Shield,
+  MessageCircle,
+  BarChart3,
 } from 'lucide-react';
-import NotificationBell from '../components/NotificationBell';
-import { useAuthStore } from '../stores/authStore';
-import { useSubscriptionStore } from '../stores/subscriptionStore';
-import { useTemplateStore } from '../stores/templateStore';
-import { useTemplateConfigStore } from '../stores/templateConfigStore';
-import { adminStore } from '../stores/adminStore';
 
-const DashboardLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMaximized, setCalendarMaximized] = useState(false);
-  const { activeTemplateSettings, setActiveTemplate, getActiveTemplate, loading } = useTemplateStore();
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    sales: true,
-    finance: true,
-    team: true,
-    system: true,
-    admin: true
-  });
-  const { user, signOut } = useAuthStore();
-  const { currentSubscription } = useSubscriptionStore();
-  const { getConfig } = useTemplateConfigStore();
-  const templateConfig = getConfig(activeTemplateSettings.activeTemplate);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { isAdmin, isUserAdmin } = adminStore.getState();
+import { supabase } from '../lib/supabase';
+import { useCoPilot } from '../contexts/CoPilotContext';
+import { usePreferencesStore } from '../stores/preferencesStore';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { BroadcastBanner } from '../components/BroadcastBanner';
+import { CoPilotIntro } from '../components/tour/SubtleHints';
 
-  // Check if user has access to premium features
-  //const hasPremiumAccess = currentSubscription?.plan_id && ['business', 'enterprise'].includes(currentSubscription.plan_id);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+
+type NavItem = {
+  path: string;
+  icon: any;
+  label: string;
+  tourId?: string;
+};
+
+const DEFAULT_NAV_ITEMS: NavItem[] = [
+  { path: '/customers', icon: Users, label: 'Customers', tourId: 'customers' },
+  { path: '/calendar', icon: Calendar, label: 'Calendar', tourId: 'calendar' },
+  { path: '/products', icon: Package, label: 'Products' },
+  { path: '/quotes', icon: FileText, label: 'Quotes' },
+  { path: '/invoices', icon: DollarSign, label: 'Invoices' },
+  { path: '/calls', icon: Phone, label: 'Calls' },
+  { path: '/pipeline', icon: TrendingUp, label: 'Pipeline', tourId: 'pipeline' },
+  { path: '/tasks', icon: CheckSquare, label: 'Tasks' },
+];
+
+const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home' };
+const SETTINGS_ITEM: NavItem = { path: '/settings', icon: Settings, label: 'Settings' };
+const CHAT_ITEM: NavItem = { path: '/chat', icon: MessageCircle, label: 'Chat' };
+
+interface SortableNavItemProps {
+  item: NavItem;
+  isActive: (path: string) => boolean;
+  theme: string;
+}
+
+const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isActive, theme }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.path });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 0,
   };
-
-  // Handle calendar maximize/minimize
-  // const handleCalendarMaximize = () => {
-  //   setCalendarMaximized(!calendarMaximized);
-  //   // Close sidebar when maximizing calendar
-  //   if (!calendarMaximized) {
-  //     setSidebarOpen(false);
-  //   }
-  // };
-
-  // Watch calendar state changes
-  useEffect(() => {
-
-    getActiveTemplate();
-    isUserAdmin();
-
-    if (calendarMaximized) {
-      setSidebarOpen(false);
-    }
-  }, [calendarMaximized]);
-
-  // Watch sidebar state changes
-  useEffect(() => {
-    if (sidebarOpen && calendarMaximized) {
-      setCalendarMaximized(false);
-    }
-  }, [sidebarOpen]);
-
-  const closeSidebar = () => setSidebarOpen(false);
-
-  // Close sidebar when route changes on mobile
-  useEffect(() => {
-    if (window.innerWidth < 768) {
-      closeSidebar();
-    }
-  }, [location.pathname]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  // Check if we're in the AI Agents section
-  const isAIAgentsActive = location.pathname === '/settings' && location.search === '?tab=ai-agents';
 
   return (
-    <div className="min-h-screen bg-dark-950 flex">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 md:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-30 h-full bg-dark-900 transform transition-transform duration-200 ease-in-out md:relative ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:w-20'
-          }`}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative ${isDragging ? 'z-50' : ''}`}
+    >
+      <Link
+        to={item.path}
+        className={
+          theme === 'soft-modern'
+            ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''}`
+            : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(item.path)
+              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`
+        }
       >
-        <div className="flex flex-col h-full">
-          {/* Sidebar header */}
-          <div className="flex items-center justify-between px-4 py-5 border-b border-dark-800">
-            <Link to="/dashboard" className="flex items-center space-x-3">
-              <img src="/logo.svg" alt="CxTrack Logo" className="h-10 w-10 logo-glow" />
-              {sidebarOpen && (
-                <span className="brand-logo text-2xl font-bold text-white brand-text">CxTrack</span>
-              )}
-            </Link>
-            <button
-              onClick={toggleSidebar}
-              className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-dark-700 md:block"
-              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              <ChevronLeft size={20} className={`transform transition-transform duration-200 ${sidebarOpen ? '' : 'rotate-180'}`} />
-            </button>
-          </div>
-
-          {/* Sidebar links */}
-          <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-            {templateConfig.sidebarItems.map((item, index) => {
-              let Icon;
-              switch (item.icon) {
-                case 'LayoutDashboard':
-                  Icon = LayoutGrid;
-                  break;
-                case 'Users':
-                  Icon = Users;
-                  break;
-                case 'FileText':
-                  Icon = FileText;
-                  break;
-                case 'Package':
-                  Icon = Package;
-                  break;
-                case 'ShoppingCart':
-                  Icon = ShoppingCart;
-                  break;
-                case 'Receipt':
-                  Icon = Receipt;
-                  break;
-                case 'DollarSign':
-                  Icon = DollarSign;
-                  break;
-                case 'Calendar':
-                  Icon = Calendar;
-                  break;
-                default:
-                  Icon = FileText;
-              }
-              return item.section ? null : (
-                <NavLink
-                  key={index}
-                  to={item.path}
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={20} />
-                  {sidebarOpen && <span>{item.label}</span>}
-                </NavLink>
-              );
-            })}
-{/* 
-            {sidebarOpen && templateConfig.dashboardSections.showSalesChart && (
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('sales')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sales</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.sales ? 'rotate-180' : ''
-                    }`}
-                />
-              </div>
-            )} */}
-
-            {/* {((!sidebarOpen || expandedSections.sales) && templateConfig.dashboardSections.showSalesChart) && (
-              <>{templateConfig.sidebarItems
-                .filter(item => item.section === 'sales')
-                .map((item, index) => {
-                  let Icon;
-                  switch (item.icon) {
-                    case 'Quote':
-                      Icon = Quote;
-                      break;
-                    case 'FileText':
-                      Icon = FileText;
-                      break;
-                    default:
-                      Icon = FileText;
-                  }
-                  return (
-                    <NavLink
-                      key={index}
-                      to={item.path}
-                      className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                    >
-                      <Icon size={20} />
-                      {sidebarOpen && <span>{item.label}</span>}
-                    </NavLink>
-                  );
-                })}</>
-            )} */}
-            {/* 
-            {sidebarOpen && (
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('team')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Team</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${
-                    expandedSections.team ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
-            )} */}
-
-            {/* {(!sidebarOpen || expandedSections.team) && (
-              <>
-                <NavLink to="/team" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <Users size={20} />
-                  {sidebarOpen && <span>Direct Reports</span>}
-                </NavLink>
-
-                <NavLink
-                  to="/settings?tab=ai-agents"
-                  className={({isActive}) => `sidebar-link ${isActive && isAIAgentsActive ? 'active' : ''}`}
-                >
-                  <Bot size={20} />
-                  {sidebarOpen && (
-                    <div className="flex items-center">
-                      <span className="ml-3">AI Agents</span>
-                      {!hasPremiumAccess && (
-                        <Star
-                          size={14}
-                          className="ml-2 text-yellow-400 fill-yellow-400"
-                          data-tooltip-id="premium-feature"
-                          data-tooltip-content="Premium Feature"
-                        />
-                      )}
-                    </div>
-                  )}
-                </NavLink>
-              </>
-            )} */}
-            {/* 
-            {sidebarOpen && templateConfig.dashboardSections.showFinance &&(
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('finance')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.finance ? 'rotate-180' : ''
-                    }`}
-                />
-              </div>
-            )} */}
-
-            {/* {(!sidebarOpen || expandedSections.finance) && templateConfig.dashboardSections.showFinance && (
-              <>
-                <NavLink to="/revenue" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <DollarSign size={20} />
-                  {sidebarOpen && <span>Revenue</span>}
-                </NavLink>
-
-                <NavLink to="/expenses" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <Receipt size={20} />
-                  {sidebarOpen && <span>Expenses</span>}
-                </NavLink>
-
-                <NavLink to="/purchases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <ShoppingCart size={20} />
-                  {sidebarOpen && <span>Purchases</span>}
-                </NavLink> 
-              </>
-            )} */}
-
-            <NavLink to="/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-              <Layers size={20} />
-              {sidebarOpen && <span>Inventory</span>}
-            </NavLink>
-
-            {/* FINANACE */}
-            {sidebarOpen && (
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('finance')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.finance ? 'rotate-180' : ''
-                    }`}
-                />
-              </div>
-            )}
-
-            {(sidebarOpen && expandedSections.finance && (
-              <>
-                <NavLink to="/quotes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <Receipt size={20} />
-                  {sidebarOpen && <span>Quotes</span>}
-                </NavLink>
-
-                <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <DollarSign size={20} />
-                  {sidebarOpen && <span>Pipeline</span>}
-                </NavLink>
-              </>
-            ))}
-
-            {/* END FINANACE */}
-            
-            {sidebarOpen && isAdmin && (
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('admin')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.admin ? 'rotate-180' : ''
-                    }`}
-                />
-              </div>
-            )}
-
-            {(!sidebarOpen || expandedSections.admin) && isAdmin && (
-              <>
-                <NavLink to="/admin-calls" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
-                  <Settings size={20} />
-                  {sidebarOpen && <span>Calls</span>}
-                </NavLink>
-
-                <NavLink to="/admin/call-agent-setup" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
-                  <Settings size={20} />
-                  {sidebarOpen && <span>Call Agents</span>}
-                </NavLink>
-
-                <NavLink to="/admin-users" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
-                  <Settings size={20} />
-                  {sidebarOpen && <span>Users</span>}
-                </NavLink>
-
-                <NavLink to="/admin/sent-notification" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
-                  <Settings size={20} />
-                  {sidebarOpen && <span>Send Notification</span>}
-                </NavLink>
-              </>
-            )}
-
-            {sidebarOpen && (
-              <div
-                className="pt-4 pb-2 px-4 flex items-center justify-between cursor-pointer group"
-                onClick={() => toggleSection('system')}
-              >
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">System</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-400 transform transition-transform duration-200 ${expandedSections.system ? 'rotate-180' : ''
-                    }`}
-                />
-              </div>
-            )}
-
-            {(!sidebarOpen || expandedSections.system) && (
-              <>
-                <NavLink to="/settings" end className={({ isActive }) => `sidebar-link ${isActive && !isAIAgentsActive ? 'active' : ''}`}>
-                  <Settings size={20} />
-                  {sidebarOpen && <span>Settings</span>}
-                </NavLink>
-
-                {/* <NavLink to="/settings?tab=integrations" className={({ isActive }) => `sidebar-link ${location.pathname === '/settings' && location.search === '?tab=integrations' ? 'active' : ''}`}>
-                  <Upload size={20} />
-                  {sidebarOpen && <span>Integrations</span>}
-                </NavLink> */}
-
-                <NavLink to="/templates" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                  <FileText size={20} />
-                  {sidebarOpen && <span>Templates</span>}
-                </NavLink>
-              </>
-            )}
-
-            {/* <button
-              onClick={() => {
-                setShowCalendar(!showCalendar);
-                if (!showCalendar && window.innerWidth < 1280) {
-                  setSidebarOpen(false);
-                }
-              }}
-              className={`sidebar-link w-full text-left ${showCalendar ? 'bg-primary-600 text-white' : ''}`}
-            >
-              <Calendar size={20} />
-              {sidebarOpen && <span>Calendar</span>}
-            </button> */}
-
-            <button
-              onClick={handleSignOut}
-              className="sidebar-link text-red-400 hover:text-red-300 w-full text-left"
-            >
-              <LogOut size={20} />
-              {sidebarOpen && <span>Sign Out</span>}
-            </button>
-          </nav>
+        <div {...attributes} {...listeners} className="mr-2 cursor-grab active:cursor-grabbing">
+          <GripVertical
+            size={16}
+            className={theme === 'soft-modern' ? "opacity-0 group-hover:opacity-30 transition-opacity text-tertiary" : "opacity-0 group-hover:opacity-50 transition-opacity"}
+          />
         </div>
-      </aside>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top navbar */}
-        <header className="bg-dark-900 border-b border-dark-800 sticky top-0 z-10">
-          <div className="flex items-center justify-between h-16 px-4">
-            {/* Left side - Toggle button & search */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={toggleSidebar}
-                className="text-gray-400 hover:text-white md:hidden"
-                aria-label="Toggle menu"
-              >
-                <Menu size={24} />
-              </button>
-
-              {/* <div className="hidden md:flex items-center bg-dark-800 rounded-md px-3 py-1.5">
-                <Search size={18} className="text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="bg-transparent border-none focus:outline-none text-white ml-2 w-64"
-                />
-              </div> */}
-            </div>
-
-            {/* Right side - Notifications & user menu */}
-            <div className="flex items-center space-x-4">
-              {/* Removed the wrapping button */}
-              <NotificationBell />
-
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white focus:outline-none"
-                  aria-label="User menu"
-                >
-                  <div className="h-8 w-8 rounded-full bg-primary-700 flex items-center justify-center text-white">
-                    {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </div>
-                  {sidebarOpen && (
-                    <>
-                      <span className="hidden md:inline-block font-medium">
-                        {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
-                      </span>
-                      <ChevronDown size={16} className="hidden md:block" />
-                    </>
-                  )}
-                </button>
-
-                {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-md shadow-lg py-1 z-50">
-                    <NavLink
-                      to="/settings"
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Profile Settings
-                    </NavLink>
-                    <NavLink
-                      to="/settings?tab=billing"
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-700"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Subscription
-                    </NavLink>
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        handleSignOut();
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-700"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile search bar */}
-          {/* <div className="md:hidden px-4 pb-3">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={18} className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                className="input pl-10 w-full"
-              />
-            </div>
-          </div> */}
-        </header>
-
-        {/* Calendar Sidebar */}
-        {/* {showCalendar && (
-          <div
-            id="calendar-wrapper"
-            className={`fixed right-0 top-16 bottom-0 bg-dark-900 border-l border-dark-800 z-20 overflow-hidden transition-all duration-200 flex flex-col ${calendarMaximized ? 'left-64 md:left-20' : 'w-96'
-              }`}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-dark-700">
-              <h2 className="text-lg font-semibold text-white">Calendar</h2>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setShowCalendar(false)}
-                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-dark-700"
-                  title="Close Calendar"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 p-4">
-              <CalendarComponent
-                isMaximized={calendarMaximized}
-                onToggleMaximize={handleCalendarMaximize}
-                onOpenNewWindow={openCalendarInNewWindow}
-              />
-            </div>
-          </div>
-        )} */}
-
-        {/* Sidebar Toggle Button - Only show when sidebar is closed and calendar is maximized */}
-        {/* {!sidebarOpen && calendarMaximized && (
-          <button
-            onClick={toggleSidebar}
-            className="fixed left-4 top-20 z-30 bg-dark-800 text-gray-400 hover:text-white p-2 rounded-lg hover:bg-dark-700 shadow-lg"
-            title="Show Sidebar"
-          >
-            <ChevronRight size={20} />
-          </button>
-        )} */}
-
-        {/* Page content */}
-        <main className={`flex-1 overflow-y-auto bg-dark-950 p-4 md:p-6 transition-all duration-200 ${showCalendar ? (calendarMaximized ? 'mr-[calc(100%-16rem)]' : 'mr-96') : ''
-          }`}>
-          <Outlet />
-        </main>
-      </div>
+        <item.icon size={20} className="mr-3" />
+        <span className="font-medium">{item.label}</span>
+      </Link>
     </div>
   );
 };
 
-export default DashboardLayout;
+export const DashboardLayout: React.FC = () => {
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+
+  const { theme, toggleTheme } = useThemeStore();
+  const { preferences, saveSidebarOrder } = usePreferencesStore();
+  const { fetchUserOrganizations, currentOrganization, demoMode } = useOrganizationStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuthContext();
+  const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
+  const { loadPreferences } = usePreferencesStore();
+
+  useEffect(() => {
+    if (user) {
+      loadPreferences();
+    }
+  }, [user, loadPreferences]);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setIsSuperAdmin(false);
+        return;
+      }
+
+      if (demoMode) {
+        // In demo mode, we'll allow access but show "Dev Mode"
+        setIsSuperAdmin(true);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        setIsSuperAdmin(data?.role === 'super_admin');
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+        setIsSuperAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user, demoMode]);
+
+  const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    if (preferences.sidebarOrder && preferences.sidebarOrder.length > 0) {
+      const orderedItems = preferences.sidebarOrder
+        .map((path) => DEFAULT_NAV_ITEMS.find(item => item.path === path))
+        .filter((item): item is NavItem => !!item);
+
+      // Add any missing default items
+      const existingPaths = new Set(preferences.sidebarOrder);
+      const missingItems = DEFAULT_NAV_ITEMS.filter(item => !existingPaths.has(item.path));
+
+      setNavItems([...orderedItems, ...missingItems]);
+    }
+  }, [preferences.sidebarOrder]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserOrganizations(user.id);
+    }
+  }, [user, fetchUserOrganizations]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = navItems.findIndex(item => item.path === active.id);
+    const newIndex = navItems.findIndex(item => item.path === over.id);
+
+    const newItems = arrayMove(navItems, oldIndex, newIndex);
+    setNavItems(newItems);
+
+    // Save to Supabase via store
+    await saveSidebarOrder(newItems.map(item => item.path));
+  };
+
+  const isModuleShared = (path: string) => {
+    if (!currentOrganization?.metadata?.sharing) return true;
+
+    const pathMap: Record<string, string> = {
+      '/customers': 'customers',
+      '/calendar': 'calendar',
+      '/pipeline': 'pipeline',
+      '/tasks': 'tasks',
+      // Default to shared if not explicitly in the map or metadata
+    };
+
+    const key = pathMap[path];
+    if (!key) return true;
+
+    return currentOrganization.metadata.sharing[key] ?? true;
+  };
+
+  const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
+
+  // Mobile navigation logic: show Home, 3 custom items + "More"
+  const mobileCustomPaths = preferences.mobileNavItems || ['/customers', '/calendar', '/products'];
+
+  // Find the actual nav items for the preferred paths
+  const mobileBottomNavItems = [
+    HOME_ITEM,
+    ...mobileCustomPaths
+      .map(path => DEFAULT_NAV_ITEMS.find(item => item.path === path))
+      .filter((item): item is NavItem => !!item)
+  ].slice(0, 4);
+
+  // All other visible items go to "More"
+  const selectedPaths = new Set(mobileBottomNavItems.map(i => i.path));
+  const moreNavItems = visibleNavItems.filter((item: NavItem) => !selectedPaths.has(item.path));
+
+  // Ensure Settings is in More if not selected
+  if (!selectedPaths.has('/settings') && !moreNavItems.some((i: NavItem) => i.path === '/settings')) {
+    moreNavItems.push(SETTINGS_ITEM);
+  }
+
+  return (
+    <div className="h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
+      <BroadcastBanner />
+      {/* Desktop Sidebar - Hidden on Mobile */}
+      <aside
+        className={`hidden md:flex md:flex-col md:w-64 transition-all duration-300 ${theme === 'soft-modern'
+            ? 'bg-white border-r border-gray-200/60'
+            : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
+          } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
+      >
+        {/* Logo */}
+        <div className={theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} data-tour="sidebar">
+          <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
+        </div>
+
+        {/* Navigation */}
+        <nav className={theme === 'soft-modern' ? "flex-1 overflow-y-auto p-4 space-y-2" : "flex-1 overflow-y-auto p-4 space-y-1"}>
+          <Link
+            to={HOME_ITEM.path}
+            className={
+              theme === 'soft-modern'
+                ? `nav-item flex items-center px-4 py-3 ${isActive(HOME_ITEM.path) ? 'active' : ''}`
+                : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(HOME_ITEM.path)
+                  ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+            }
+          >
+            <HOME_ITEM.icon size={20} className="mr-3" />
+            <span className="font-medium">{HOME_ITEM.label}</span>
+          </Link>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={visibleNavItems.map(item => item.path)}
+              strategy={verticalListSortingStrategy}
+            >
+              {visibleNavItems.map((item) => (
+                <SortableNavItem
+                  key={item.path}
+                  item={item}
+                  isActive={isActive}
+                  theme={theme}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          <Link
+            to={SETTINGS_ITEM.path}
+            className={
+              theme === 'soft-modern'
+                ? `nav-item flex items-center px-4 py-3 ${isActive(SETTINGS_ITEM.path) ? 'active' : ''}`
+                : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
+                  ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+            }
+          >
+            <SETTINGS_ITEM.icon size={20} className="mr-3" />
+            <span className="font-medium">{SETTINGS_ITEM.label}</span>
+          </Link>
+
+        </nav>
+
+        {/* Pinned Chat Section */}
+        <div className={theme === 'soft-modern' ? "px-4 py-2" : "px-4 py-2 border-t border-gray-200 dark:border-gray-700"}>
+          <Link
+            to={CHAT_ITEM.path}
+            className={
+              theme === 'soft-modern'
+                ? `nav-item flex items-center justify-between px-4 py-3 ${isActive(CHAT_ITEM.path) ? 'active' : ''}`
+                : `flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${isActive(CHAT_ITEM.path)
+                  ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+            }
+          >
+            <div className="flex items-center">
+              <MessageCircle size={20} className="mr-3" />
+              <span className="font-medium">Team Chat</span>
+            </div>
+            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+              3
+            </span>
+          </Link>
+
+          {/* Reports Link */}
+          <Link
+            to="/reports"
+            className={
+              theme === 'soft-modern'
+                ? `nav-item flex items-center px-4 py-3 mt-1 ${isActive('/reports') ? 'active' : ''}`
+                : `flex items-center px-3 py-2 mt-1 rounded-lg transition-colors ${isActive('/reports')
+                  ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+            }
+          >
+            <BarChart3 size={20} className="mr-3" />
+            <span className="font-medium">Reports</span>
+          </Link>
+        </div>
+
+        {/* User Profile */}
+        <div className={theme === 'soft-modern' ? "p-4 border-t border-default" : "p-4 border-t border-gray-200 dark:border-gray-700"}>
+          <button
+            onClick={() => isSuperAdmin && navigate('/admin')}
+            className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${theme === 'soft-modern'
+              ? 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+          >
+            <div className="flex items-center">
+              <div
+                className={theme === 'soft-modern' ? "w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-gradient-to-br from-purple-600 to-blue-600 shadow-sm" : "w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm"}
+              >
+                A
+              </div>
+              <div className="ml-3 text-left">
+                <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>Admin User</p>
+                {isSuperAdmin ? (
+                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
+                ) : (
+                  <p className={theme === 'soft-modern' ? "text-[10px] text-tertiary font-bold uppercase" : "text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase"}>Dev Mode</p>
+                )}
+              </div>
+            </div>
+            {isSuperAdmin && (
+              <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400 stroke-[2.5px]" />
+            )}
+          </button>
+
+          <div className="mt-2 flex items-center justify-between px-3">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest transition-colors">Theme</span>
+            <button
+              onClick={toggleTheme}
+              className={theme === 'soft-modern' ? "p-1.5 rounded-lg transition-all btn-ghost" : "p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"}
+            >
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Header - Shown on Mobile Only */}
+      <header className="md:hidden sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between h-14 px-4">
+          <h1 className="text-base font-black text-indigo-600 tracking-tight">CxTrack</h1>
+          <div className="flex items-center">
+            <Link to="/calendar" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
+              <Calendar size={18} />
+            </Link>
+            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative text-gray-500 dark:text-gray-400">
+              <Bell size={18} />
+              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400"
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 transition-all duration-300 ${isCoPilotOpen ? (panelSide === 'left' ? 'md:ml-[400px]' : 'md:mr-[400px]') : ''
+        }`}>
+        <Outlet />
+      </main>
+
+      {/* Mobile Bottom Navigation - Shown on Mobile Only */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 safe-area-bottom">
+        <div className="flex justify-around items-center h-16">
+          {mobileBottomNavItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors ${isActive(item.path)
+                ? 'text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-500 dark:text-gray-400'
+                }`}
+            >
+              <item.icon size={22} />
+              <span className="text-xs mt-1 font-medium">{item.label}</span>
+            </Link>
+          ))}
+          <button
+            onClick={() => setShowMobileMenu(true)}
+            className="flex flex-col items-center justify-center flex-1 py-2 text-gray-500 dark:text-gray-400"
+          >
+            <Menu size={22} />
+            <span className="text-xs mt-1 font-medium">More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      {showMobileMenu && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/50"
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl safe-area-bottom"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">More Options</h2>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-2 max-h-[70vh] overflow-y-auto">
+              {moreNavItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg active:bg-gray-100 dark:active:bg-gray-600 transition-colors"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <item.icon size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
+                  <span className="font-medium text-gray-900 dark:text-white">{item.label}</span>
+                </Link>
+              ))}
+
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
+                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                    A
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Admin User</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Dev Mode</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subtle CoPilot Introduction */}
+      <CoPilotIntro />
+    </div>
+  );
+};

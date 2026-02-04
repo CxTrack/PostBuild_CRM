@@ -1,46 +1,48 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#4f46e5" />
-    <meta name="description" content="CxTrack - AI-powered solution for CRM, invoicing, and business growth" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>CxTrack - AI-Powered Business Management</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Add base tag for SPA routing -->
-    <base href="/" />
-  </head>
-  <body class="bg-dark-950 text-gray-100">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CxTrack - CRM Platform</title>
+    <meta property="og:image" content="https://bolt.new/static/og_default.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
+
     <script>
-      // Fix for iOS Safari to ensure proper viewport height
-      const setVh = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-      };
-      
-      window.addEventListener('resize', setVh);
-      window.addEventListener('orientationchange', setVh);
-      setVh();
+      try {
+        const savedTheme = localStorage.getItem('theme-storage');
+        if (savedTheme) {
+          const themeData = JSON.parse(savedTheme);
+          if (themeData.state && themeData.state.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {
+        document.documentElement.classList.remove('dark');
+      }
     </script>
-    <!-- Add SPA routing fallback script -->
+    
+    <!-- Google Places API - Replace YOUR_API_KEY with a valid key or set via .env -->
     <script>
-      // This script helps with SPA routing when refreshing the page
       (function() {
-        // Handle 404 errors by redirecting to the root and letting the SPA router handle it
-        if (window.location.pathname !== '/' && !window.location.hash) {
-          const path = window.location.pathname;
-          // Store the current path in sessionStorage
-          sessionStorage.setItem('spa_path_redirect', path);
+        // Check for API key - can be set via window.GOOGLE_MAPS_API_KEY or environment
+        var apiKey = window.GOOGLE_MAPS_API_KEY || '';
+        if (apiKey) {
+          var script = document.createElement('script');
+          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
+          script.async = true;
+          document.head.appendChild(script);
         }
       })();
     </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

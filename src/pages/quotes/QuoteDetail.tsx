@@ -1,474 +1,417 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Edit, Printer, Download, Send,
-  FileText, Calendar, Clock, User, DollarSign, Mail, MapPin,
-  Copy, Check, X,
-  FolderInput,
-  SendIcon
-} from 'lucide-react';
-import { useQuoteStore } from '../../stores/quoteStore';
-import { Quote } from '../../types/database.types';
-import { toast } from 'react-hot-toast';
-import ConfirmationModal from '../../components/ConfirmationModal';
-import QuoteStatusBadge from '../../components/QuoteStatusBadge';
-import { downloadQuotePDF, printQuotePDF } from '../../utils/pdfUtils';
-import { sendQuoteEmail } from '../../utils/emailUtils';
-import { TooltipButton } from '../../components/ToolTip';
-import { useUserStore } from '../../stores/userStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { quoteService, Quote } from '@/services/quote.service';
+import { invoiceService } from '@/services/invoice.service';
+import { settingsService } from '@/services/settings.service';
+import { pdfService } from '@/services/pdf.service';
+import { ArrowLeft, Edit, Send, FileText, Trash2, Loader2, Check, X as XIcon, DollarSign, Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
+import ShareModal from '@/components/share/ShareModal';
+import toast from 'react-hot-toast';
 
-const QuoteDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export default function QuoteDetail() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { getQuoteById, updateQuoteStatus, deleteQuote, loading, error } = useQuoteStore();
-  const { currentUserProfile, getCurrentUserProfie } = useUserStore();
-  const { user } = useAuthStore();
+  const { currentOrganization } = useOrganizationStore();
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailMessage, setEmailMessage] = useState('');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [emailSending, setEmailSending] = useState(false);
-
-  useEffect(() => {
-    const getUserProfile = async () => {
-      await getCurrentUserProfie();
-    };
-
-    getUserProfile();
-
-  }, [useUserStore]);
+  const [loading, setLoading] = useState(true);
+  const [converting, setConverting] = useState(false);
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareModalTab, setShareModalTab] = useState<'email' | 'link' | 'pdf' | 'sms'>('link');
 
   useEffect(() => {
     if (id) {
-      getQuoteById(id)
-        .then(data => {
-          if (data) {
-            setQuote(data);
-          } else {
-            toast.error('Quote not found');
-            navigate('/quotes');
-          }
-        })
-        .catch(err => {
-          toast.error('Failed to load quote details');
-        });
+      loadQuote();
     }
-  }, [id, getQuoteById, navigate]);
+  }, [id]);
 
-  const handleStatusChange = async (status: 'Sent' | 'Accepted' | 'Declined' | 'Expired') => {
-    if (!id || !quote) return;
-
+  const loadQuote = async () => {
+    if (!id) return;
     try {
-      const updatedQuote = await updateQuoteStatus(id, status);
-      setQuote(updatedQuote);
-      toast.success(`Quote marked as ${status}`);
+      setLoading(true);
+      const data = await quoteService.getQuote(id);
+      setQuote(data);
     } catch (error) {
-      toast.error('Failed to update quote status');
+      console.error('Failed to load quote:', error);
+      toast.error('Failed to load quote');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!id) return;
+    try {
+      await quoteService.sendQuote(id);
+      toast.success('Quote sent successfully');
+      loadQuote();
+    } catch (error) {
+      console.error('Failed to send quote:', error);
+      toast.error('Failed to send quote');
     }
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!id) return;
+    if (!confirm('Are you sure you want to delete this quote?')) return;
 
     try {
-      await deleteQuote(id);
+      await quoteService.deleteQuote(id);
       toast.success('Quote deleted successfully');
       navigate('/quotes');
     } catch (error) {
+      console.error('Failed to delete quote:', error);
       toast.error('Failed to delete quote');
     }
   };
 
-  const handleDownloadPDF = () => {
-    if (!quote) return;
-    downloadQuotePDF(quote);
-    toast.success('Quote PDF downloaded');
+  const handleConvertToInvoice = async () => {
+    if (!quote || !currentOrganization) return;
+
+    try {
+      setConverting(true);
+      const invoice = await invoiceService.createInvoiceFromQuote(
+        currentOrganization.id,
+        currentOrganization.id,
+        quote,
+        invoiceDate,
+        dueDate
+      );
+      toast.success('Quote converted to invoice successfully');
+      navigate(`/invoices/${invoice.id}`);
+    } catch (error) {
+      console.error('Failed to convert quote:', error);
+      toast.error('Failed to convert quote to invoice');
+    } finally {
+      setConverting(false);
+      setShowConvertDialog(false);
+    }
   };
 
-  const handlePrintPDF = () => {
-    if (!quote) return;
-    printQuotePDF(quote);
-  };
+  const handleShareOption = async (option: ShareOption) => {
+    if (!quote || !currentOrganization) return;
 
-  const handleSendEmail = async () => {
-    if (!quote) return;
+    if (option === 'pdf') {
+      try {
+        console.log('🔄 Generating PDF for quote:', quote.quote_number);
+        console.log('Using organization ID:', currentOrganization.id);
 
-    if (!user?.email) {
-      toast.error('Customer email is not available');
+        const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
+
+        console.log('📄 Generating PDF with organization info:', organizationInfo);
+        pdfService.generateQuotePDF(quote, organizationInfo);
+        toast.success('Quote PDF downloaded');
+      } catch (error) {
+        console.error('Failed to generate PDF:', error);
+        toast.error('Failed to generate PDF');
+      }
       return;
     }
 
-    setEmailSending(true);
-    const success = await sendQuoteEmail(quote, emailMessage, true, `Quote ${quote.quote_number} from ${currentUserProfile?.company}`);
-    setEmailSending(false);
+    setShareModalTab(option);
+    setShowShareModal(true);
+  };
 
-    if (success) {
-      toast.success('Quote sent successfully');
-      setShowEmailModal(false);
-      setEmailMessage('');
-
-      // If the quote is in draft status, update it to sent
-      if (quote.status === 'Draft') {
-        handleStatusChange('Sent');
-      }
-    } else {
-      toast.error('Failed to send quote');
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'viewed':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'accepted':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'declined':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'expired':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+      case 'converted':
+        return 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
-        <p className="mt-4 text-gray-400">Loading quote details...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-400 text-lg">{error}</p>
-        <Link to="/quotes" className="btn btn-primary mt-4">Back to Quotes</Link>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!quote) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-400 text-lg">Quote not found</p>
-        <Link to="/quotes" className="btn btn-primary mt-4">Back to Quotes</Link>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="text-center py-12">
+          <p className="text-gray-600 dark:text-gray-400">Quote not found</p>
+          <Button onClick={() => navigate('/quotes')} className="mt-4">
+            Back to Quotes
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with back button */}
-      <div className="flex items-center space-x-4">
-        <Link to="/quotes" className="btn btn-secondary p-2">
-          <ArrowLeft size={20} />
-        </Link>
-        <h1 className="text-2xl font-bold text-white">Quote {quote.quote_number}</h1>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Link to={`/quotes/${id}/edit`} className="btn btn-primary flex items-center space-x-2">
-          <Edit size={16} />
-          <span>Edit</span>
-        </Link>
-        <button
-          onClick={handlePrintPDF}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <Printer size={16} />
-          <span>Print</span>
-        </button>
-        <button
-          onClick={handleDownloadPDF}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <Download size={16} />
-          <span>PDF</span>
-        </button>
-        <TooltipButton
-          tooltip={!user?.email ? 'Email is missing' : ''}
-          icon={<SendIcon size={16} />}
-          isDisabled={!user?.email}
-          className="btn btn-secondary flex items-center space-x-2"
-          isHidden={false}
-          text='Send to Customer'
-          onClick={() => setShowEmailModal(true)}
-        />
-        {/* <button 
-          onClick={() => setShowEmailModal(true)}
-          className="btn btn-secondary flex items-center space-x-2"
-          disabled={!user.email}
-        >
-          <Send size={16} />
-          <span>Send to Customer</span>
-        </button> */}
-        {quote.status === 'Draft' && (
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <button
-            onClick={() => handleStatusChange('Sent')}
-            className="btn btn-secondary flex items-center space-x-2"
+            onClick={() => navigate('/quotes')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <Send size={16} />
-            <span>Mark as Sent</span>
+            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
-        )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {quote.quote_number}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status)}`}>
+                {quote.status}
+              </span>
+              {quote.converted_to_invoice_id && (
+                <button
+                  onClick={() => navigate(`/invoices/${quote.converted_to_invoice_id}`)}
+                  className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                >
+                  <DollarSign className="w-3 h-3" />
+                  View Invoice
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
-        <button
-          onClick={() => handleStatusChange('Accepted')}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <Check size={16} />
-          <span>Mark as Accepted</span>
-        </button>
-        <button
-          onClick={() => handleStatusChange('Declined')}
-          className="btn btn-secondary flex items-center space-x-2"
-        >
-          <X size={16} />
-          <span>Mark as Declined</span>
-        </button>
-        <button
-          onClick={handleDelete}
-          className="btn btn-danger flex items-center space-x-2"
-        >
-          <X size={16} />
-          <span>Delete</span>
-        </button>
+        <div className="flex gap-2">
+          {quote.status === 'draft' && (
+            <Button variant="outline" onClick={handleSend}>
+              <Send className="w-4 h-4 mr-2" />
+              Send Quote
+            </Button>
+          )}
+          {quote.status !== 'converted' && (
+            <Button variant="outline" onClick={() => navigate(`/quotes/builder/${id}`)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          <ShareDropdown onSelect={handleShareOption} buttonText="Share" variant="primary" />
+          {(quote.status === 'accepted' || quote.status === 'sent') && quote.status !== 'converted' && (
+            <Button onClick={() => setShowConvertDialog(true)}>
+              <FileText className="w-4 h-4 mr-2" />
+              Convert to Invoice
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleDelete} className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quote status card */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Quote Status</h2>
-
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <FileText size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Status</p>
-                <QuoteStatusBadge status={quote.status} />
-              </div>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-8 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Customer</h3>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{quote.customer_name}</p>
+              {quote.customer_email && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">{quote.customer_email}</p>
+              )}
             </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Calendar size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Quote Date</p>
-                <p className="text-white">{new Date(quote.date).toLocaleDateString()}</p>
-              </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Quote Date</h3>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {new Date(quote.quote_date).toLocaleDateString()}
+              </p>
+              {quote.expiry_date && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Expires: {new Date(quote.expiry_date).toLocaleDateString()}
+                </p>
+              )}
             </div>
+          </div>
+        </div>
 
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Clock size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Expiry Date</p>
-                <p className="text-white">{new Date(quote.expiry_date).toLocaleDateString()}</p>
-              </div>
-            </div>
+        <div className="p-8">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Line Items</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Item</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Qty</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Price</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quote.items.map((item, index) => (
+                  <tr key={index} className="border-b border-gray-100 dark:border-gray-700">
+                    <td className="py-4">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{item.product_name}</p>
+                        {item.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-right py-4 text-gray-900 dark:text-white">{item.quantity}</td>
+                    <td className="text-right py-4 text-gray-900 dark:text-white">
+                      ${(item.unit_price ?? 0).toFixed(2)}
+                    </td>
+                    <td className="text-right py-4 font-medium text-gray-900 dark:text-white">
+                      ${(item.line_total ?? 0).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <DollarSign size={18} />
+          <div className="mt-6 flex justify-end">
+            <div className="w-64 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  ${(quote.subtotal ?? 0).toFixed(2)}
+                </span>
               </div>
-              <div>
-                <p className="text-sm text-gray-400">Total Amount</p>
-                <p className="text-xl font-semibold text-white">${quote.total.toLocaleString()}</p>
+              {(quote.discount_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Discount</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    -${(quote.discount_amount ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Tax</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  ${(quote.tax_amount ?? 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between">
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
+                  <span className="text-lg font-bold text-blue-600">
+                    ${(quote.total_amount ?? 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Customer info */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Customer Information</h2>
-
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <User size={18} />
+        {(quote.notes || quote.terms || quote.payment_terms) && (
+          <div className="p-8 border-t border-gray-200 dark:border-gray-700">
+            {quote.payment_terms && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Payment Terms</h3>
+                <p className="text-gray-900 dark:text-white">{quote.payment_terms}</p>
               </div>
+            )}
+            {quote.notes && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Notes</h3>
+                <p className="text-gray-900 dark:text-white">{quote.notes}</p>
+              </div>
+            )}
+            {quote.terms && (
               <div>
-                <p className="text-sm text-gray-400">Customer</p>
-                <p className="text-white font-medium">{quote.customer_name}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="text-gray-400">
-                <Mail size={18} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Email</p>
-                <p className="text-white">{user?.email || 'No email provided'}</p>
-              </div>
-            </div>
-
-            {quote.customer_address && (
-              <div className="flex items-start space-x-3">
-                <div className="text-gray-400">
-                  <MapPin size={18} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Address</p>
-                  <p className="text-white">{quote.customer_address}</p>
-                </div>
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Terms & Conditions</h3>
+                <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{quote.terms}</p>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Notes and Message */}
-        <div className="card bg-dark-800 border border-dark-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Notes & Message</h2>
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-md font-medium text-white mb-2">Message to Customer</h3>
-              <p className="text-gray-300">{quote.message || 'No message provided'}</p>
-            </div>
-
-            <div>
-              <h3 className="text-md font-medium text-white mb-2">Notes</h3>
-              <p className="text-gray-300">{quote.notes || 'No notes provided'}</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Quote items */}
-      <div className="card bg-dark-800 border border-dark-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Quote Items</h2>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-dark-700">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Item</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Quantity</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Unit Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-dark-700">
-              {quote.items.map((item, index) => (
-                <tr key={index} className="hover:bg-dark-700/50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-white">{item.description}</span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    {item.quantity}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    ${item.unit_price.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 text-right">
-                    ${item.total.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-dark-700/50">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">Subtotal</td>
-                <td className="px-4 py-3 text-right text-sm font-medium text-white">${quote.subtotal.toFixed(2)}</td>
-              </tr>
-              <tr className="bg-dark-700/50">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">
-                  Tax ({(quote.tax_rate * 100).toFixed(2)}%)
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-medium text-white">${quote.tax.toFixed(2)}</td>
-              </tr>
-              <tr className="bg-dark-700">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium text-gray-300">Total</td>
-                <td className="px-4 py-3 text-right text-base font-bold text-white">${quote.total.toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      {/* Email Modal */}
-      {showEmailModal && (
+      {showConvertDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Send Quote to Customer</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Convert to Invoice
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              This will create an invoice from this quote. You can edit the invoice after creation.
+            </p>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                To
-              </label>
-              <input
-                type="text"
-                className="input"
-                value={user?.email || ''}
-                disabled
-              />
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Invoice Date
+                </label>
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Subject
-              </label>
-              <input
-                type="text"
-                className="input"
-                value={`Quote ${quote.quote_number} from ${currentUserProfile?.company}`}
-                disabled
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Message (Optional)
-              </label>
-              <textarea
-                className="input"
-                rows={4}
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                placeholder="Add a personal message to the customer..."
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="btn btn-secondary"
-                disabled={emailSending}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowConvertDialog(false)}
+                className="flex-1"
+                disabled={converting}
               >
+                <XIcon className="w-4 h-4 mr-2" />
                 Cancel
-              </button>
-              <button
-                onClick={handleSendEmail}
-                className="btn btn-primary flex items-center justify-center"
-                disabled={emailSending}
+              </Button>
+              <Button
+                onClick={handleConvertToInvoice}
+                className="flex-1"
+                disabled={converting}
               >
-                {emailSending ? (
+                {converting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Sending...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Converting...
                   </>
                 ) : (
-                  "Send"
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Convert
+                  </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={confirmDelete}
-        title="Delete item?"
-        message="Are you sure?"
-        confirmButtonText="Delete"
-        cancelButtonText="Cancel"
-        isDanger={true}
-      />
+      {showShareModal && quote && currentOrganization && (
+        <ShareModal
+          documentType="quote"
+          document={quote}
+          organizationId={currentOrganization.id}
+          initialTab={shareModalTab}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
-};
-
-export default QuoteDetail;
+}
