@@ -54,7 +54,9 @@ export const useOrganizationStore = create<OrganizationState>()(
         if (demoMode) {
           return getDemoOrganizationId();
         }
-        throw new Error('No organization available');
+
+        // Provide a more helpful error message
+        throw new Error('No organization available. Please ensure you are associated with an organization or try logging in again.');
       },
 
       fetchUserOrganizations: async (userId?: string) => {

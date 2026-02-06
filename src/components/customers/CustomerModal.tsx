@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, User, Mail, Phone, Building, Save, AlertCircle } from 'lucide-react';
+import { X, User, Mail, Building, Save, AlertCircle } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import toast from 'react-hot-toast';
@@ -105,8 +105,8 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {customer ? 'Edit Customer' : 'New Customer'}
           </h2>
@@ -134,7 +134,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Type
@@ -143,18 +143,16 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, customer_type: 'personal' })}
-                className={`p-4 border-2 rounded-lg text-left transition-all ${
-                  formData.customer_type === 'personal'
-                    ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'personal'
+                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    formData.customer_type === 'personal'
-                      ? 'bg-blue-600 dark:bg-blue-500'
-                      : 'bg-gray-100 dark:bg-gray-700'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'personal'
+                    ? 'bg-blue-600 dark:bg-blue-500'
+                    : 'bg-gray-100 dark:bg-gray-700'
+                    }`}>
                     <User size={20} className={
                       formData.customer_type === 'personal'
                         ? 'text-white'
@@ -175,18 +173,16 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, customer_type: 'business' })}
-                className={`p-4 border-2 rounded-lg text-left transition-all ${
-                  formData.customer_type === 'business'
-                    ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'business'
+                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    formData.customer_type === 'business'
-                      ? 'bg-blue-600 dark:bg-blue-500'
-                      : 'bg-gray-100 dark:bg-gray-700'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'business'
+                    ? 'bg-blue-600 dark:bg-blue-500'
+                    : 'bg-gray-100 dark:bg-gray-700'
+                    }`}>
                     <Building size={20} className={
                       formData.customer_type === 'business'
                         ? 'text-white'

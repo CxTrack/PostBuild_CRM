@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
 import { Eye, EyeOff, UserPlus, ArrowLeft, Loader } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 
 interface RegisterFormData {
   fullName: string;
@@ -22,23 +21,23 @@ const Register: React.FC = () => {
   const [emailSent, setEmailSent] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [isCheckingLocation, setIsCheckingLocation] = useState(true);
-  
+
   // Clear any previous errors when component mounts
   useEffect(() => {
     clearError();
   }, [clearError]);
-  
+
   // Check user's location
   useEffect(() => {
     fetch('https://ipapi.co/json/')
       .then(res => res.json())
       .then(data => {
         const euCountries = [
-          'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 
-          'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 
+          'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
+          'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
           'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
         ];
-        
+
         if (euCountries.includes(data.country_code)) {
           navigate('/gdpr');
         }
@@ -49,19 +48,19 @@ const Register: React.FC = () => {
         setIsCheckingLocation(false);
       });
   }, [navigate]);
-  
+
   const password = watch('password');
-  
+
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      await signUp(data.email, data.password, data.fullName);
+      await signUp(data.email, data.password);
       setEmailSent(true);
       toast.success('Please check your email to verify your account');
     } catch (err) {
       console.error('Register error in component:', err);
     }
   };
-  
+
   if (isCheckingLocation) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
@@ -72,7 +71,7 @@ const Register: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-dark-950 flex flex-col">
       {/* Header with back button */}
@@ -101,13 +100,13 @@ const Register: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           {error && (
             <div className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg mb-6">
               {error}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">
@@ -119,7 +118,7 @@ const Register: React.FC = () => {
                 className="input w-full bg-dark-800 border-dark-700"
                 placeholder="John Doe"
                 autoComplete="name"
-                {...register('fullName', { 
+                {...register('fullName', {
                   required: 'Full name is required',
                 })}
               />
@@ -127,7 +126,7 @@ const Register: React.FC = () => {
                 <p className="mt-1 text-sm text-red-400">{errors.fullName.message}</p>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                 Email Address
@@ -140,7 +139,7 @@ const Register: React.FC = () => {
                 placeholder="you@example.com"
                 autoComplete="email"
                 autoCapitalize="none"
-                {...register('email', { 
+                {...register('email', {
                   required: 'Email is required',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -152,7 +151,7 @@ const Register: React.FC = () => {
                 <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
                 Password
@@ -164,7 +163,7 @@ const Register: React.FC = () => {
                   className="input w-full pr-10 bg-dark-800 border-dark-700"
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  {...register('password', { 
+                  {...register('password', {
                     required: 'Password is required',
                     minLength: {
                       value: 6,
@@ -172,7 +171,7 @@ const Register: React.FC = () => {
                     }
                   })}
                 />
-                <button 
+                <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
                   onClick={() => setShowPassword(!showPassword)}
@@ -185,7 +184,7 @@ const Register: React.FC = () => {
                 <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
                 Confirm Password
@@ -197,12 +196,12 @@ const Register: React.FC = () => {
                   className="input w-full pr-10 bg-dark-800 border-dark-700"
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  {...register('confirmPassword', { 
+                  {...register('confirmPassword', {
                     required: 'Please confirm your password',
                     validate: value => value === password || 'Passwords do not match'
                   })}
                 />
-                <button 
+                <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -215,7 +214,7 @@ const Register: React.FC = () => {
                 <p className="mt-1 text-sm text-red-400">{errors.confirmPassword.message}</p>
               )}
             </div>
-            
+
             <div className="flex items-center">
               <input
                 id="terms"
@@ -234,7 +233,7 @@ const Register: React.FC = () => {
                 </a>
               </label>
             </div>
-            
+
             <button
               type="submit"
               disabled={loading}
@@ -271,18 +270,7 @@ const Register: React.FC = () => {
                 onClick={async () => {
                   try {
                     setGoogleLoading(true);
-                    const { data, error } = await supabase.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: {
-                        redirectTo: `${window.location.origin}/auth/callback`,
-                        queryParams: {
-                          access_type: 'offline',
-                          prompt: 'consent'
-                        }
-                      }
-                    });
-                    
-                    if (error) throw error;
+                    await signInWithGoogle();
                   } catch (err) {
                     console.error('Google sign in error:', err);
                     toast.error('Failed to sign in with Google');
@@ -299,16 +287,16 @@ const Register: React.FC = () => {
                   </div>
                 )}
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335"/>
-                  <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z" fill="#4285F4"/>
-                  <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.70492L1.27498 6.60992C0.46498 8.22992 0 10.0599 0 11.9999C0 13.9399 0.46498 15.7699 1.28498 17.3899L5.26498 14.2949Z" fill="#FBBC05"/>
-                  <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.855 13.6204 19.325 12.0004 19.325C8.8704 19.325 6.21537 17.215 5.2654 14.295L1.2754 17.385C3.25537 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853"/>
+                  <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335" />
+                  <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z" fill="#4285F4" />
+                  <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.70492L1.27498 6.60992C0.46498 8.22992 0 10.0599 0 11.9999C0 13.9399 0.46498 15.7699 1.28498 17.3899L5.26498 14.2949Z" fill="#FBBC05" />
+                  <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.855 13.6204 19.325 12.0004 19.325C8.8704 19.325 6.21537 17.215 5.2654 14.295L1.2754 17.385C3.25537 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853" />
                 </svg>
                 <span>Google</span>
               </button>
             </div>
           </form>
-          
+
           <p className="mt-8 text-center text-sm text-gray-400">
             Already have an account?{' '}
             <Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium">
