@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import {
+
   Routes,
   Route,
   Navigate,
@@ -38,6 +38,8 @@ import { ChatPage } from './pages/ChatPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { UpgradePage } from './pages/UpgradePage';
+
 
 import PublicQuoteView from './pages/share/PublicQuoteView';
 import PublicInvoiceView from './pages/share/PublicInvoiceView';
@@ -81,37 +83,56 @@ function App() {
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<DashboardPage />} />
 
-              <Route path="customers" element={<Customers />} />
-              <Route path="customers/new" element={<CustomerForm />} />
-              <Route path="customers/:id" element={<CustomerProfile />} />
-              <Route path="customers/:id/edit" element={<CustomerForm />} />
+              <Route element={<ProtectedRoute moduleId="crm" />}>
+                <Route path="customers" element={<Customers />} />
+                <Route path="customers/new" element={<CustomerForm />} />
+                <Route path="customers/:id" element={<CustomerProfile />} />
+                <Route path="customers/:id/edit" element={<CustomerForm />} />
+              </Route>
 
-              <Route path="calendar" element={<Calendar />} />
-              <Route path="tasks" element={<Tasks />} />
+              <Route element={<ProtectedRoute moduleId="calendar" />}>
+                <Route path="calendar" element={<Calendar />} />
+              </Route>
 
-              <Route path="calls" element={<Calls />} />
-              <Route path="calls/:callId" element={<CallDetail />} />
+              <Route element={<ProtectedRoute moduleId="tasks" />}>
+                <Route path="tasks" element={<Tasks />} />
+              </Route>
 
-              <Route path="crm" element={<CRM />} />
-              <Route path="pipeline" element={<CRM />} />
+              <Route element={<ProtectedRoute moduleId="calls" />}>
+                <Route path="calls" element={<Calls />} />
+                <Route path="calls/:callId" element={<CallDetail />} />
+              </Route>
 
-              <Route path="products" element={<Products />} />
-              <Route path="products/new" element={<ProductForm />} />
-              <Route path="products/:id/edit" element={<ProductForm />} />
+              <Route element={<ProtectedRoute moduleId="pipeline" />}>
+                <Route path="crm" element={<CRM />} />
+                <Route path="pipeline" element={<CRM />} />
+              </Route>
 
-              <Route path="quotes" element={<Quotes />} />
-              <Route path="quotes/builder" element={<QuoteBuilder />} />
-              <Route path="quotes/builder/:id" element={<QuoteBuilder />} />
-              <Route path="quotes/:id" element={<QuoteDetail />} />
+              <Route element={<ProtectedRoute moduleId="products" />}>
+                <Route path="products" element={<Products />} />
+                <Route path="products/new" element={<ProductForm />} />
+                <Route path="products/:id/edit" element={<ProductForm />} />
+              </Route>
 
-              <Route path="invoices" element={<Invoices />} />
-              <Route path="invoices/builder" element={<InvoiceBuilder />} />
-              <Route path="invoices/builder/:id" element={<InvoiceBuilder />} />
-              <Route path="invoices/:id" element={<InvoiceDetail />} />
+              <Route element={<ProtectedRoute moduleId="quotes" />}>
+                <Route path="quotes" element={<Quotes />} />
+                <Route path="quotes/builder" element={<QuoteBuilder />} />
+                <Route path="quotes/builder/:id" element={<QuoteBuilder />} />
+                <Route path="quotes/:id" element={<QuoteDetail />} />
+              </Route>
 
+              <Route element={<ProtectedRoute moduleId="invoices" />}>
+                <Route path="invoices" element={<Invoices />} />
+                <Route path="invoices/builder" element={<InvoiceBuilder />} />
+                <Route path="invoices/builder/:id" element={<InvoiceBuilder />} />
+                <Route path="invoices/:id" element={<InvoiceDetail />} />
+              </Route>
+
+              <Route path="upgrade" element={<UpgradePage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="chat" element={<ChatPage />} />
+
             </Route>
           </Route>
 

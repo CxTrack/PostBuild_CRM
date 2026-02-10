@@ -11,7 +11,9 @@
  * Run initializeDemoData() to seed all data
  */
 
-import { DEMO_STORAGE_KEYS, DEMO_MODE_CONFIG, generateDemoId, saveDemoData } from '@/config/demo.config';
+import { supabase } from '@/lib/supabase';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { DEMO_MODE, DEMO_STORAGE_KEYS, generateDemoId } from '@/config/demo.config';
 
 // ============================================
 // DEMO CUSTOMERS
@@ -1222,73 +1224,219 @@ export const DEMO_APPOINTMENTS = [
 // ============================================
 // INITIALIZATION FUNCTION
 // ============================================
-export const initializeDemoData = () => {
-    console.log('🚀 Initializing comprehensive demo data...');
+export const initializeDemoData = async () => {
+    console.log('🚀 Initializing comprehensive demo data in Supabase...');
 
-    // Save customers
-    saveDemoData(DEMO_STORAGE_KEYS.customers, DEMO_CUSTOMERS);
-    console.log('✅ Created', DEMO_CUSTOMERS.length, 'customers');
+    const orgStore = useOrganizationStore.getState();
+    const organizationId = orgStore.currentOrganization?.id;
 
-    // Save contacts
-    saveDemoData(DEMO_STORAGE_KEYS.contacts, DEMO_CONTACTS);
-    console.log('✅ Created', DEMO_CONTACTS.length, 'contacts');
+    if (!organizationId) {
+        console.error('❌ No organization selected. Cannot seed data.');
+        throw new Error('No organization selected');
+    }
 
-    // Save tasks
-    saveDemoData(DEMO_STORAGE_KEYS.tasks, DEMO_TASKS);
-    console.log('✅ Created', DEMO_TASKS.length, 'tasks');
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
 
-    // Save calls
-    saveDemoData(DEMO_STORAGE_KEYS.calls, DEMO_CALLS);
-    console.log('✅ Created', DEMO_CALLS.length, 'calls');
+    if (!userId) {
+        console.error('❌ No authenticated user. Cannot seed data.');
+        throw new Error('No authenticated user');
+    }
 
-    // Save invoices
-    saveDemoData(DEMO_STORAGE_KEYS.invoices, DEMO_INVOICES);
-    console.log('✅ Created', DEMO_INVOICES.length, 'invoices');
+    try {
+        // 1. Seed Customers
+        const customersToInsert = DEMO_CUSTOMERS.map(c => {
+            const { customer_type, type, ...rest } = c as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                created_by: userId,
+                type: type || 'Business'
+            };
+        });
 
-    // Save quotes
-    saveDemoData(DEMO_STORAGE_KEYS.quotes, DEMO_QUOTES);
-    console.log('✅ Created', DEMO_QUOTES.length, 'quotes');
+        const { error: custError } = await supabase.from('customers').upsert(customersToInsert);
+        if (custError) throw custError;
+        console.log('✅ Created', DEMO_CUSTOMERS.length, 'customers');
 
-    // Save products
-    saveDemoData(DEMO_STORAGE_KEYS.products, DEMO_PRODUCTS);
-    console.log('✅ Created', DEMO_PRODUCTS.length, 'products/services/bundles');
+        // 2. Seed Products
+        const productsToInsert = DEMO_PRODUCTS.map(p => {
+            const { product_type, ...rest } = p as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                created_by: userId
+            };
+        });
+        const { error: prodError } = await supabase.from('products').upsert(productsToInsert);
+        if (prodError) throw prodError;
+        console.log('✅ Created', DEMO_PRODUCTS.length, 'products');
 
-    // Save calendar appointments
-    saveDemoData(DEMO_STORAGE_KEYS.calendar, DEMO_APPOINTMENTS);
-    console.log('✅ Created', DEMO_APPOINTMENTS.length, 'calendar appointments');
+        // 3. Seed Quotes
+        const quotesToInsert = DEMO_QUOTES.map(q => {
+            const { quote_date, valid_until, total_amount, ...rest } = q as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                created_by: userId,
+                date: quote_date,
+                expiry_date: valid_until,
+                total: total_amount
+            };
+        });
+        const { error: quoteError } = await supabase.from('quotes').upsert(quotesToInsert);
+        if (quoteError) throw quoteError;
+        console.log('✅ Created', DEMO_QUOTES.length, 'quotes');
 
-    // Save leads (custom key)
-    localStorage.setItem('cxtrack_demo_leads', JSON.stringify(DEMO_LEADS));
-    console.log('✅ Created', DEMO_LEADS.length, 'leads');
+        // 4. Seed Invoices
+        const invoicesToInsert = DEMO_INVOICES.map(i => {
+            const { invoice_date, total_amount, amount_paid, amount_due, tax_amount, ...rest } = i as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                created_by: userId,
+                date: invoice_date,
+                total: total_amount,
+                paid_amount: amount_paid,
+                tax: tax_amount
+            };
+        });
+        const { error: invError } = await supabase.from('invoices').upsert(invoicesToInsert);
+        if (invError) throw invError;
+        console.log('✅ Created', DEMO_INVOICES.length, 'invoices');
 
-    // Save opportunities (custom key)
-    localStorage.setItem('cxtrack_demo_opportunities', JSON.stringify(DEMO_OPPORTUNITIES));
-    console.log('✅ Created', DEMO_OPPORTUNITIES.length, 'opportunities');
+        // 5. Seed Tasks
+        const tasksToInsert = DEMO_TASKS.map(t => {
+            const { type, customer_name, status, priority, ...rest } = t as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                user_id: userId,
+                created_by: userId,
+                status: status === 'pending' ? 'todo' : (status || 'todo'),
+                priority: (priority || 'medium').toLowerCase()
+            };
+        });
+        const { error: taskError } = await supabase.from('tasks').upsert(tasksToInsert);
+        if (taskError) throw taskError;
+        console.log('✅ Created', DEMO_TASKS.length, 'tasks');
 
-    console.log('🎉 Demo data initialization complete!');
-    console.log('');
-    console.log('📊 Pipeline Value:', DEMO_OPPORTUNITIES.reduce((sum, o) => sum + o.value, 0).toLocaleString());
-    console.log('💰 Total Invoiced:', DEMO_INVOICES.reduce((sum, i) => sum + i.total_amount, 0).toLocaleString());
-    console.log('💵 Revenue Collected:', DEMO_INVOICES.reduce((sum, i) => sum + i.amount_paid, 0).toLocaleString());
-    console.log('📞 Total Calls:', DEMO_CALLS.length, `(AI: ${DEMO_CALLS.filter(c => c.call_type === 'ai_agent').length}, Manual: ${DEMO_CALLS.filter(c => c.call_type === 'human').length})`);
-    console.log('📦 Products:', DEMO_PRODUCTS.filter(p => p.product_type === 'product').length,
-        '| Services:', DEMO_PRODUCTS.filter(p => p.product_type === 'service').length,
-        '| Bundles:', DEMO_PRODUCTS.filter(p => p.product_type === 'bundle').length);
-    console.log('📅 Appointments:', DEMO_APPOINTMENTS.length);
-    console.log('👥 Contacts:', DEMO_CONTACTS.length);
+        // 6. Seed Calls
+        const callsToInsert = DEMO_CALLS.map(c => {
+            const { customer_name, user_name, transcript_summary, phone_number, ...rest } = c as any;
+            return {
+                ...rest,
+                organization_id: organizationId,
+                user_id: userId,
+                summary: transcript_summary,
+                phone_number: phone_number || rest.customer_phone,
+                customer_phone: rest.customer_phone || phone_number
+            };
+        });
+        const { error: callError } = await supabase.from('calls').upsert(callsToInsert);
+        if (callError) throw callError;
+        console.log('✅ Created', DEMO_CALLS.length, 'calls');
 
-    return {
-        customers: DEMO_CUSTOMERS.length,
-        contacts: DEMO_CONTACTS.length,
-        leads: DEMO_LEADS.length,
-        opportunities: DEMO_OPPORTUNITIES.length,
-        tasks: DEMO_TASKS.length,
-        calls: DEMO_CALLS.length,
-        invoices: DEMO_INVOICES.length,
-        quotes: DEMO_QUOTES.length,
-        products: DEMO_PRODUCTS.length,
-        appointments: DEMO_APPOINTMENTS.length,
-    };
+        // 7. Seed Calendar
+        const calendarToInsert = DEMO_APPOINTMENTS.map(a => {
+            return {
+                ...a,
+                organization_id: organizationId,
+                user_id: userId,
+                created_by: userId
+            };
+        });
+        const { error: calError } = await supabase.from('calendar_events').upsert(calendarToInsert);
+        if (calError) throw calError;
+        console.log('✅ Created', DEMO_APPOINTMENTS.length, 'calendar appointments');
+
+        // 8. Seed Pipeline (Leads & Opportunities mapped to pipeline_items)
+        const pipelineToInsert = [
+            ...DEMO_LEADS.map(l => ({
+                ...l,
+                organization_id: organizationId,
+                created_by: userId,
+                stage: 'lead'
+            })),
+            ...DEMO_OPPORTUNITIES.map(o => ({
+                ...o,
+                organization_id: organizationId,
+                created_by: userId,
+                stage: o.stage || 'proposal'
+            }))
+        ];
+        const { error: pipeError } = await supabase.from('pipeline_items').upsert(pipelineToInsert);
+        if (pipeError) throw pipeError;
+        console.log('✅ Created', pipelineToInsert.length, 'pipeline items');
+
+        console.log('🎉 Demo data initialization complete!');
+
+        return {
+            customers: DEMO_CUSTOMERS.length,
+            leads: DEMO_LEADS.length,
+            opportunities: DEMO_OPPORTUNITIES.length,
+            tasks: DEMO_TASKS.length,
+            calls: DEMO_CALLS.length,
+            invoices: DEMO_INVOICES.length,
+            quotes: DEMO_QUOTES.length,
+            products: DEMO_PRODUCTS.length,
+            appointments: DEMO_APPOINTMENTS.length,
+        };
+    } catch (error) {
+        console.error('❌ Error seeding demo data:', error);
+        throw error;
+    }
+};
+
+export const clearAllDemoData = async () => {
+    console.log('🧹 Clearing all demo data from Supabase...');
+
+    const orgStore = useOrganizationStore.getState();
+    const organizationId = orgStore.currentOrganization?.id;
+
+    if (!organizationId) {
+        console.error('❌ No organization selected. Cannot clear data.');
+        throw new Error('No organization selected');
+    }
+
+    try {
+        // Tables to clear in order (to handle FK constraints)
+        const tables = [
+            'pipeline_items',
+            'tasks',
+            'calls',
+            'invoices',
+            'quotes',
+            'calendar_events',
+            'products',
+            'customers'
+        ];
+
+        for (const table of tables) {
+            const { error } = await supabase
+                .from(table)
+                .delete()
+                .eq('organization_id', organizationId);
+
+            if (error) {
+                console.error(`❌ Error clearing table ${table}:`, error);
+            } else {
+                console.log(`✅ Cleared ${table}`);
+            }
+        }
+
+        // Also clear localStorage just in case some old data is lingering
+        localStorage.removeItem('cxtrack_demo_leads');
+        localStorage.removeItem('cxtrack_demo_opportunities');
+        Object.values(DEMO_STORAGE_KEYS).forEach(key => {
+            localStorage.removeItem(key);
+        });
+
+        console.log('✨ All demo data cleared successfully!');
+    } catch (error) {
+        console.error('❌ Error during data cleanup:', error);
+        throw error;
+    }
 };
 
 export default initializeDemoData;

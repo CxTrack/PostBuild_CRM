@@ -54,13 +54,7 @@ export const saveDemoData = <T = any>(key: string, data: T[]): boolean => {
   }
 };
 
-export const generateDemoId = (prefix: string = 'demo'): string => {
-  return `${prefix}_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
+export const generateDemoId = (): string => {
+  return crypto.randomUUID();
 };
 
-export const clearAllDemoData = (): void => {
-  Object.values(DEMO_STORAGE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
-  });
-  console.log('✅ All demo data cleared');
-};

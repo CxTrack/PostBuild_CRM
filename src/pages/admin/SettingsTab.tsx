@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Shield, Bell, Database, RefreshCw, Check, Loader2, Trash2 } from 'lucide-react';
-import { initializeDemoData } from '@/data/demoDataSeeder';
-import { clearAllDemoData } from '@/config/demo.config';
+import { initializeDemoData, clearAllDemoData } from '@/data/demoDataSeeder';
 import toast from 'react-hot-toast';
 
 export const SettingsTab = () => {
@@ -12,7 +11,7 @@ export const SettingsTab = () => {
         setIsSeeding(true);
         try {
             await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UX
-            const result = initializeDemoData();
+            const result = await initializeDemoData();
             setSeedResult(result);
             toast.success('Demo data created successfully!');
         } catch (error) {
@@ -22,12 +21,21 @@ export const SettingsTab = () => {
         setIsSeeding(false);
     };
 
-    const handleClearData = () => {
+    const handleClearData = async () => {
         if (!confirm('Are you sure you want to clear all demo data? This cannot be undone.')) return;
-        clearAllDemoData();
-        setSeedResult(null);
-        toast.success('All demo data cleared');
-        window.location.reload();
+        try {
+            await clearAllDemoData();
+            setSeedResult(null);
+            toast.success('All demo data cleared');
+
+            // Wait a moment for the toast to be seen before reloading
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            toast.error('Failed to clear demo data');
+        }
     };
 
     return (

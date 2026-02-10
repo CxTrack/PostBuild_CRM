@@ -12,8 +12,8 @@ export interface Organization {
     end: string;
   };
   enabled_modules: string[];
-  industry_template: 'accounting' | 'distribution' | 'consulting' | 'service_provider' | 'custom' | null;
-  subscription_tier: 'free' | 'starter' | 'professional' | 'enterprise';
+  industry_template: 'tax_accounting' | 'distribution_logistics' | 'gyms_fitness' | 'contractors_home_services' | 'healthcare' | 'real_estate' | 'legal_services' | 'general_business' | 'custom' | null;
+  subscription_tier: 'free' | 'business' | 'elite_premium' | 'enterprise';
   max_users: number;
   metadata: Record<string, any>;
   created_at: string;

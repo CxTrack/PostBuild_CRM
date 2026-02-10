@@ -116,20 +116,56 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
 };
 
 export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
-  accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks'],
-  distribution: [
-    'dashboard',
-    'crm',
-    'products',
-    'inventory',
-    'suppliers',
-    'quotes',
-    'invoices',
-    'financials',
-  ],
-  consulting: ['dashboard', 'crm', 'calendar', 'pipeline', 'quotes', 'invoices', 'tasks', 'calls'],
-  service_provider: ['dashboard', 'crm', 'calendar', 'calls', 'tasks', 'invoices'],
-  custom: [],
+  tax_accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks', 'quotes'],
+  distribution_logistics: ['dashboard', 'crm', 'products', 'inventory', 'suppliers', 'quotes', 'invoices', 'financials', 'pipeline'],
+  gyms_fitness: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls', 'pipeline', 'products', 'inventory'],
+  contractors_home_services: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+  healthcare: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls'],
+  real_estate: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'quotes'],
+  legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes'],
+  general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+};
+
+export const INDUSTRY_LABELS: Record<string, any> = {
+  tax_accounting: {
+    crm: { name: 'Clients' },
+    quotes: { name: 'Engagement Letters' }
+  },
+  distribution_logistics: {
+    crm: { name: 'Accounts' },
+    pipeline: { name: 'Order Pipeline' }
+  },
+  gyms_fitness: {
+    crm: { name: 'Members' },
+    calendar: { name: 'Class Schedule' },
+    pipeline: { name: 'Membership Pipeline' }
+  },
+  contractors_home_services: {
+    crm: { name: 'Clients' },
+    quotes: { name: 'Estimates' },
+    pipeline: { name: 'Job Pipeline' }
+  },
+  healthcare: {
+    crm: { name: 'Patients' },
+    calendar: { name: 'Appointments' }
+  },
+  real_estate: {
+    crm: { name: 'Contacts' },
+    pipeline: { name: 'Deal Pipeline' },
+    quotes: { name: 'Listing Proposals' }
+  },
+  legal_services: {
+    crm: { name: 'Clients' },
+    pipeline: { name: 'Case Pipeline' },
+    quotes: { name: 'Fee Proposals' }
+  },
+};
+
+export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
+  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices'],
+  business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products'],
+  elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
+  enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
 };
 
 export const DEFAULT_PERMISSIONS: Record<string, string[]> = {

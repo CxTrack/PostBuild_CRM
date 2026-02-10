@@ -1,0 +1,49 @@
+import { useOrganizationStore } from '../stores/organizationStore';
+import {
+    AVAILABLE_MODULES,
+    INDUSTRY_TEMPLATES,
+    INDUSTRY_LABELS,
+    PLAN_MODULE_ACCESS
+} from '../config/modules.config';
+import type { Module } from '../types/app.types';
+
+export interface VisibleModule extends Module {
+    isLocked: boolean;
+}
+
+export const useVisibleModules = () => {
+    const { currentOrganization } = useOrganizationStore();
+
+    const planTier = currentOrganization?.subscription_tier || 'free';
+    const industryTemplate = currentOrganization?.industry_template || 'general_business';
+
+    // 1. Get modules defined by industry template
+    const templateModuleIds = INDUSTRY_TEMPLATES[industryTemplate] || INDUSTRY_TEMPLATES['general_business'];
+
+    // 2. Get modules allowed by plan tier
+    const planAllowedModuleIds = PLAN_MODULE_ACCESS[planTier] || PLAN_MODULE_ACCESS['free'];
+
+    // 3. Determine visibility (Template defines WHAT exists, Plan defines IF it's locked/accessible)
+    const visibleModules = templateModuleIds.map(id => {
+        const baseModule = AVAILABLE_MODULES[id];
+        if (!baseModule) return null;
+
+        const isLocked = !planAllowedModuleIds.includes(id);
+
+        // Apply industry labels
+        const labels = INDUSTRY_LABELS[industryTemplate]?.[id];
+
+        return {
+            ...baseModule,
+            name: labels?.name || baseModule.name,
+            description: labels?.description || baseModule.description,
+            isLocked
+        };
+    }).filter(Boolean) as VisibleModule[];
+
+    return {
+        visibleModules,
+        planTier,
+        industryTemplate
+    };
+};

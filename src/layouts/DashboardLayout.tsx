@@ -23,11 +23,15 @@ import {
   Shield,
   MessageCircle,
   BarChart3,
+  Lock,
 } from 'lucide-react';
+
 
 import { supabase } from '../lib/supabase';
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { usePreferencesStore } from '../stores/preferencesStore';
+import { useVisibleModules } from '../hooks/useVisibleModules';
+
 import {
   DndContext,
   closestCenter,
@@ -55,7 +59,9 @@ type NavItem = {
   icon: any;
   label: string;
   tourId?: string;
+  isLocked?: boolean;
 };
+
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { path: '/dashboard/customers', icon: Users, label: 'Customers', tourId: 'customers' },
@@ -105,11 +111,12 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isActive, theme
         to={item.path}
         className={
           theme === 'soft-modern'
-            ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''}`
+            ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
             : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(item.path)
               ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`
+            } ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
+
         }
       >
         <div {...attributes} {...listeners} className="mr-2 cursor-grab active:cursor-grabbing">
@@ -119,8 +126,10 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isActive, theme
           />
         </div>
         <item.icon size={20} className="mr-3" />
-        <span className="font-medium">{item.label}</span>
+        <span className="font-medium flex-1">{item.label}</span>
+        {item.isLocked && <Lock size={14} className="ml-2 text-amber-500" />}
       </Link>
+
     </div>
   );
 };
@@ -129,6 +138,8 @@ export const DashboardLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { visibleModules } = useVisibleModules();
+
 
 
   const { theme, toggleTheme } = useThemeStore();
@@ -183,18 +194,34 @@ export const DashboardLayout: React.FC = () => {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   useEffect(() => {
+    // 1. Map visibleModules to NavItems
+    const moduleNavItems: NavItem[] = visibleModules.map((m: any) => {
+
+      const existing = DEFAULT_NAV_ITEMS.find(item => item.path === `/dashboard${m.route}`);
+      return {
+        path: m.isLocked ? '/dashboard/upgrade' : `/dashboard${m.route}`,
+        icon: existing?.icon || Package,
+        label: m.name,
+        isLocked: m.isLocked,
+        tourId: existing?.tourId
+      };
+    });
+
     if (preferences.sidebarOrder && preferences.sidebarOrder.length > 0) {
       const orderedItems = preferences.sidebarOrder
-        .map((path) => DEFAULT_NAV_ITEMS.find(item => item.path === path))
+        .map((path) => moduleNavItems.find(item => item.path === path))
         .filter((item): item is NavItem => !!item);
 
-      // Add any missing default items
+      // Add any missing items from moduleNavItems
       const existingPaths = new Set(preferences.sidebarOrder);
-      const missingItems = DEFAULT_NAV_ITEMS.filter(item => !existingPaths.has(item.path));
+      const missingItems = moduleNavItems.filter(item => !existingPaths.has(item.path));
 
       setNavItems([...orderedItems, ...missingItems]);
+    } else {
+      setNavItems(moduleNavItems);
     }
-  }, [preferences.sidebarOrder]);
+  }, [preferences.sidebarOrder, visibleModules]);
+
 
   useEffect(() => {
     if (user?.id) {
