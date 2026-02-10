@@ -31,6 +31,7 @@ import { useQuoteStore } from '@/stores/quoteStore';
 import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useDealStore } from '@/stores/dealStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { format } from 'date-fns';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 
@@ -155,6 +156,7 @@ const SortableQuickAction = ({ action }: { action: any }) => {
 
 export const DashboardPage = () => {
     const navigate = useNavigate();
+    const { currentOrganization } = useOrganizationStore();
     const { customers, fetchCustomers } = useCustomerStore();
     const { calls, fetchCalls } = useCallStore();
     const { events, fetchEvents } = useCalendarStore();
@@ -249,17 +251,19 @@ export const DashboardPage = () => {
     }, [preferences.quickActionsOrder]);
 
     useEffect(() => {
-        fetchCustomers();
-        fetchCalls();
-        fetchEvents();
-        fetchQuotes();
-        fetchInvoices();
-        fetchTasks();
-        fetchPipelineStats();
+        if (currentOrganization?.id) {
+            fetchCustomers();
+            fetchCalls();
+            fetchEvents();
+            fetchQuotes();
+            fetchInvoices();
+            fetchTasks();
+            fetchPipelineStats();
+        }
 
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
-    }, []);
+    }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchPipelineStats]);
 
     const activeCustomers = customers.filter(c => c.status === 'Active').length;
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());

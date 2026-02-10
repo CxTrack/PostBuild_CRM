@@ -15,6 +15,11 @@ export const DEMO_MODE_CONFIG = {
   demoUserId: DEMO_USER_ID,
 } as const;
 
+export const isAllowedDevUser = (email?: string) => {
+  if (!email) return false;
+  return ['cto@cxtrack.com', 'info@cxtrack.com'].includes(email.toLowerCase());
+};
+
 export const DEMO_STORAGE_KEYS = {
   customers: 'cxtrack_demo_customers',
   contacts: 'cxtrack_demo_contacts',

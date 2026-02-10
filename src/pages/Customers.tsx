@@ -25,13 +25,15 @@ export const Customers: React.FC = () => {
   const [showImporter, setShowImporter] = useState(false);
   const [showCustomFields, setShowCustomFields] = useState(false);
 
+  const { currentOrganization, currentMembership } = useOrganizationStore();
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { theme } = useThemeStore();
-  const { currentMembership } = useOrganizationStore();
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    if (currentOrganization?.id) {
+      fetchCustomers();
+    }
+  }, [currentOrganization?.id]);
 
   const filteredCustomers = customers.filter(customer => {
     const fullName = getCustomerFullName(customer);

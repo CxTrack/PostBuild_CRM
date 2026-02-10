@@ -29,6 +29,7 @@ import {
 
 import { supabase } from '../lib/supabase';
 import { useCoPilot } from '../contexts/CoPilotContext';
+import { isAllowedDevUser } from '../config/demo.config';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
 
@@ -84,7 +85,7 @@ interface SortableNavItemProps {
   theme: string;
 }
 
-const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isActive, theme }) => {
+const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
   const {
     attributes,
     listeners,
@@ -134,7 +135,7 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isActive, theme
   );
 };
 
-export const DashboardLayout: React.FC = () => {
+export const DashboardLayout = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -175,13 +176,13 @@ export const DashboardLayout: React.FC = () => {
 
       try {
         const { data, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+          .from('admin_settings')
+          .select('is_admin')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
         if (error) throw error;
-        setIsSuperAdmin(data?.role === 'super_admin');
+        setIsSuperAdmin(!!data?.is_admin);
       } catch (error) {
         console.error('Failed to check admin status:', error);
         setIsSuperAdmin(false);
@@ -209,7 +210,7 @@ export const DashboardLayout: React.FC = () => {
 
     if (preferences.sidebarOrder && preferences.sidebarOrder.length > 0) {
       const orderedItems = preferences.sidebarOrder
-        .map((path) => moduleNavItems.find(item => item.path === path))
+        .map((path: string) => moduleNavItems.find((item: NavItem) => item.path === path))
         .filter((item): item is NavItem => !!item);
 
       // Add any missing items from moduleNavItems
@@ -244,8 +245,8 @@ export const DashboardLayout: React.FC = () => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = navItems.findIndex(item => item.path === active.id);
-    const newIndex = navItems.findIndex(item => item.path === over.id);
+    const oldIndex = navItems.findIndex((item: NavItem) => item.path === active.id);
+    const newIndex = navItems.findIndex((item: NavItem) => item.path === over.id);
 
     const newItems = arrayMove(navItems, oldIndex, newIndex);
     setNavItems(newItems);
@@ -280,7 +281,7 @@ export const DashboardLayout: React.FC = () => {
   const mobileBottomNavItems = [
     HOME_ITEM,
     ...mobileCustomPaths
-      .map(path => DEFAULT_NAV_ITEMS.find(item => item.path === path))
+      .map((path: string) => DEFAULT_NAV_ITEMS.find((item: NavItem) => item.path === path))
       .filter((item): item is NavItem => !!item)
   ].slice(0, 4);
 
@@ -306,6 +307,11 @@ export const DashboardLayout: React.FC = () => {
         {/* Logo */}
         <div className={theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} data-tour="sidebar">
           <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
+          {currentOrganization?.industry_template && (
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
+              {currentOrganization.industry_template.replace(/_/g, ' ')}
+            </p>
+          )}
         </div>
 
         {/* Navigation */}
@@ -417,12 +423,14 @@ export const DashboardLayout: React.FC = () => {
                 A
               </div>
               <div className="ml-3 text-left">
-                <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>Admin User</p>
+                <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
+                  {user?.user_metadata?.first_name || 'Admin User'}
+                </p>
                 {isSuperAdmin ? (
                   <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
-                ) : (
+                ) : isAllowedDevUser(user?.email) ? (
                   <p className={theme === 'soft-modern' ? "text-[10px] text-tertiary font-bold uppercase" : "text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase"}>Dev Mode</p>
-                )}
+                ) : null}
               </div>
             </div>
             {isSuperAdmin && (
