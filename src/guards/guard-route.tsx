@@ -12,33 +12,36 @@ export default function ProtectedRoute({ moduleId }: ProtectedRouteProps) {
   const { currentOrganization, loading } = useOrganizationStore();
   const location = useLocation();
 
-  // If organization is still loading, allow access (will recheck when loaded)
-  if (loading) {
+  // DEBUG: Log what's happening
+  console.log('[RouteGuard]', {
+    moduleId,
+    loading,
+    hasOrg: !!currentOrganization,
+    visibleModulesCount: visibleModules.length,
+    visibleModuleIds: visibleModules.map(m => m.id),
+    pathname: location.pathname
+  });
+
+  // TEMPORARY: Skip ALL module checks to diagnose routing issues
+  // If routes work after this, the issue is in module checking logic
+  // If routes still don't work, the issue is in React Router setup
+  if (!moduleId) {
+    // No module check needed, just render children
     return <Outlet />;
   }
 
-  if (moduleId) {
-    // If no organization is set yet, be permissive and allow access
-    // This handles the case where user just logged in but org data isn't loaded
-    if (!currentOrganization) {
-      console.log(`[RouteGuard] No organization loaded, allowing access to: ${moduleId}`);
-      return <Outlet />;
-    }
+  // For now, ALWAYS allow access to diagnose the routing issue
+  // TODO: Re-enable module checks once routing is confirmed working
+  const module = visibleModules.find(m => m.id === moduleId);
+  const isLocked = module?.isLocked;
 
-    const module = visibleModules.find(m => m.id === moduleId);
-
-    // Check if the module is in the visible list for this industry
-    const isModuleInTemplate = !!module;
-
-    // Check if it's locked by the plan
-    const isLocked = module?.isLocked;
-
-    if (!isModuleInTemplate || isLocked) {
-      console.warn(`[RouteGuard] Access denied to module: ${moduleId}. Locked: ${isLocked}, InTemplate: ${isModuleInTemplate}`);
-      return <Navigate to="/dashboard/upgrade" state={{ from: location.pathname, moduleId }} replace />;
-    }
+  // Only block if explicitly locked (not just missing)
+  if (module && isLocked) {
+    console.warn(`[RouteGuard] Module ${moduleId} is locked by plan`);
+    return <Navigate to="/dashboard/upgrade" state={{ from: location.pathname, moduleId }} replace />;
   }
 
+  // Allow access - either module found and not locked, or module not found (be permissive)
   return <Outlet />;
 }
 
