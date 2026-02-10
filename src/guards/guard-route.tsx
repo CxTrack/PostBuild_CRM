@@ -1,17 +1,7 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 
+// Auth guard disabled for local CRM development
+// All routes are accessible without login
 export default function ProtectedRoute({ user }: { user: any }) {
-  const location = useLocation();
-
-  if (!user) {
-    return (
-      <Navigate
-        to="/access"
-        replace
-        state={{ from: location.pathname }}
-      />
-    );
-  }
-
   return <Outlet />;
 }

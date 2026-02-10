@@ -171,7 +171,7 @@ export const DashboardPage = () => {
             id: 'add-customer',
             label: 'Add Customer',
             icon: UserPlus,
-            onClick: () => navigate('/customers'), // Direct nav for now as modal handling is not brought over fully yet
+            onClick: () => navigate('/dashboard/customers'), // Direct nav for now as modal handling is not brought over fully yet
             bgColor: 'bg-blue-50 text-blue-600',
             iconColor: 'text-blue-600',
         },
@@ -179,7 +179,7 @@ export const DashboardPage = () => {
             id: 'schedule',
             label: 'Schedule',
             icon: CalendarPlus,
-            onClick: () => navigate('/calendar'),
+            onClick: () => navigate('/dashboard/calendar'),
             bgColor: 'bg-green-50 text-green-600',
             iconColor: 'text-green-600',
         },
@@ -187,7 +187,7 @@ export const DashboardPage = () => {
             id: 'create-quote',
             label: 'Create Quote',
             icon: FilePlus,
-            onClick: () => navigate('/quotes/builder'),
+            onClick: () => navigate('/dashboard/quotes/builder'),
             bgColor: 'bg-purple-50 text-purple-600',
             iconColor: 'text-purple-600',
         },
@@ -195,7 +195,7 @@ export const DashboardPage = () => {
             id: 'new-invoice',
             label: 'New Invoice',
             icon: FileText,
-            onClick: () => navigate('/invoices/builder'),
+            onClick: () => navigate('/dashboard/invoices/builder'),
             bgColor: 'bg-orange-50 text-orange-600',
             iconColor: 'text-orange-600',
         },
@@ -203,7 +203,7 @@ export const DashboardPage = () => {
             id: 'create-task',
             label: 'Create Task',
             icon: CheckCircle,
-            onClick: () => navigate('/tasks'),
+            onClick: () => navigate('/dashboard/tasks'),
             bgColor: 'bg-pink-50 text-pink-600',
             iconColor: 'text-pink-600',
         },
@@ -305,7 +305,7 @@ export const DashboardPage = () => {
                     subValue={`+${activeCustomers} Active`}
                     icon={Users}
                     color="blue"
-                    onClick={() => navigate('/customers')}
+                    onClick={() => navigate('/dashboard/customers')}
                 />
                 <CompactStatCard
                     label="Schedules"
@@ -313,7 +313,7 @@ export const DashboardPage = () => {
                     subValue="Today"
                     icon={Calendar}
                     color="green"
-                    onClick={() => navigate('/calendar')}
+                    onClick={() => navigate('/dashboard/calendar')}
                 />
                 <CompactStatCard
                     label="Pipeline"
@@ -321,7 +321,7 @@ export const DashboardPage = () => {
                     subValue={`${quotes.length} Deals`}
                     icon={TrendingUp}
                     color="purple"
-                    onClick={() => navigate('/pipeline')}
+                    onClick={() => navigate('/dashboard/pipeline')}
                 />
                 <CompactStatCard
                     label="Revenue"
@@ -329,7 +329,7 @@ export const DashboardPage = () => {
                     subValue="Paid"
                     icon={DollarSign}
                     color="orange"
-                    onClick={() => navigate('/invoices')}
+                    onClick={() => navigate('/dashboard/invoices')}
                 />
                 <CompactStatCard
                     label="Tasks"
@@ -337,7 +337,7 @@ export const DashboardPage = () => {
                     subValue="Pending"
                     icon={CheckCircle}
                     color="pink"
-                    onClick={() => navigate('/tasks')}
+                    onClick={() => navigate('/dashboard/tasks')}
                 />
                 <CompactStatCard
                     label="Calls"
@@ -345,7 +345,7 @@ export const DashboardPage = () => {
                     subValue="Today"
                     icon={Phone}
                     color="gray"
-                    onClick={() => navigate('/calls')}
+                    onClick={() => navigate('/dashboard/calls')}
                 />
             </div>
 
@@ -379,7 +379,7 @@ export const DashboardPage = () => {
                     <CompactWidget
                         title="Recent Activity"
                         className="h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm"
-                        onClick={() => navigate('/reports')}
+                        onClick={() => navigate('/dashboard/reports')}
                     >
                         <div className="h-full overflow-y-auto scrollbar-thin">
                             {[...calls, ...quotes, ...invoices]
@@ -425,9 +425,9 @@ export const DashboardPage = () => {
                     <CompactWidget
                         title="Today's Schedule"
                         className="h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm"
-                        onClick={() => navigate('/calendar')}
+                        onClick={() => navigate('/dashboard/calendar')}
                         action={
-                            <button onClick={(e) => { e.stopPropagation(); navigate('/calendar'); }} className="text-primary-600 hover:text-primary-700">
+                            <button onClick={(e) => { e.stopPropagation(); navigate('/dashboard/calendar'); }} className="text-primary-600 hover:text-primary-700">
                                 <Plus size={16} />
                             </button>
                         }
@@ -477,7 +477,7 @@ export const DashboardPage = () => {
                     title="Tasks"
                     className="h-[300px] border border-gray-200 dark:border-gray-800 shadow-sm"
                     action={
-                        <button onClick={() => navigate('/tasks')} className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-medium px-2 py-1 bg-primary-50 dark:bg-primary-900/10 rounded-lg transition-colors">
+                        <button onClick={() => navigate('/dashboard/tasks')} className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-medium px-2 py-1 bg-primary-50 dark:bg-primary-900/10 rounded-lg transition-colors">
                             <Plus size={14} /> Add Task
                         </button>
                     }
@@ -531,7 +531,7 @@ export const DashboardPage = () => {
                     title="Recent Calls"
                     className="h-[300px] border border-gray-200 dark:border-gray-800 shadow-sm"
                     action={
-                        <button onClick={() => navigate('/calls')} className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-medium px-2 py-1 bg-primary-50 dark:bg-primary-900/10 rounded-lg transition-colors">
+                        <button onClick={() => navigate('/dashboard/calls')} className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-medium px-2 py-1 bg-primary-50 dark:bg-primary-900/10 rounded-lg transition-colors">
                             <Plus size={14} /> Log Call
                         </button>
                     }
@@ -560,7 +560,7 @@ export const DashboardPage = () => {
                                         return (
                                             <div
                                                 key={call.id}
-                                                onClick={() => navigate(`/calls/${call.id}`)}
+                                                onClick={() => navigate(`/dashboard/calls/${call.id}`)}
                                                 className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 {/* Call Type Icon */}

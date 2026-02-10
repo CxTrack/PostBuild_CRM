@@ -58,19 +58,19 @@ type NavItem = {
 };
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { path: '/customers', icon: Users, label: 'Customers', tourId: 'customers' },
-  { path: '/calendar', icon: Calendar, label: 'Calendar', tourId: 'calendar' },
-  { path: '/products', icon: Package, label: 'Products' },
-  { path: '/quotes', icon: FileText, label: 'Quotes' },
-  { path: '/invoices', icon: DollarSign, label: 'Invoices' },
-  { path: '/calls', icon: Phone, label: 'Calls' },
-  { path: '/pipeline', icon: TrendingUp, label: 'Pipeline', tourId: 'pipeline' },
-  { path: '/tasks', icon: CheckSquare, label: 'Tasks' },
+  { path: '/dashboard/customers', icon: Users, label: 'Customers', tourId: 'customers' },
+  { path: '/dashboard/calendar', icon: Calendar, label: 'Calendar', tourId: 'calendar' },
+  { path: '/dashboard/products', icon: Package, label: 'Products' },
+  { path: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
+  { path: '/dashboard/invoices', icon: DollarSign, label: 'Invoices' },
+  { path: '/dashboard/calls', icon: Phone, label: 'Calls' },
+  { path: '/dashboard/pipeline', icon: TrendingUp, label: 'Pipeline', tourId: 'pipeline' },
+  { path: '/dashboard/tasks', icon: CheckSquare, label: 'Tasks' },
 ];
 
 const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home' };
-const SETTINGS_ITEM: NavItem = { path: '/settings', icon: Settings, label: 'Settings' };
-const CHAT_ITEM: NavItem = { path: '/chat', icon: MessageCircle, label: 'Chat' };
+const SETTINGS_ITEM: NavItem = { path: '/dashboard/settings', icon: Settings, label: 'Settings' };
+const CHAT_ITEM: NavItem = { path: '/dashboard/chat', icon: MessageCircle, label: 'Chat' };
 
 interface SortableNavItemProps {
   item: NavItem;
@@ -133,7 +133,7 @@ export const DashboardLayout: React.FC = () => {
 
   const { theme, toggleTheme } = useThemeStore();
   const { preferences, saveSidebarOrder } = usePreferencesStore();
-  const { fetchUserOrganizations, currentOrganization, demoMode } = useOrganizationStore();
+  const { fetchUserOrganizations, currentOrganization } = useOrganizationStore();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -146,6 +146,9 @@ export const DashboardLayout: React.FC = () => {
     }
   }, [user, loadPreferences]);
 
+  const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com'];
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
@@ -153,8 +156,8 @@ export const DashboardLayout: React.FC = () => {
         return;
       }
 
-      if (demoMode) {
-        // In demo mode, we'll allow access but show "Dev Mode"
+      // Allow admin in local dev OR for authorized emails
+      if (isLocalDev || (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
         setIsSuperAdmin(true);
         return;
       }
@@ -175,9 +178,9 @@ export const DashboardLayout: React.FC = () => {
     };
 
     checkAdminStatus();
-  }, [user, demoMode]);
+  }, [user, isLocalDev]);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   useEffect(() => {
     if (preferences.sidebarOrder && preferences.sidebarOrder.length > 0) {
@@ -228,10 +231,10 @@ export const DashboardLayout: React.FC = () => {
     if (!currentOrganization?.metadata?.sharing) return true;
 
     const pathMap: Record<string, string> = {
-      '/customers': 'customers',
-      '/calendar': 'calendar',
-      '/pipeline': 'pipeline',
-      '/tasks': 'tasks',
+      '/dashboard/customers': 'customers',
+      '/dashboard/calendar': 'calendar',
+      '/dashboard/pipeline': 'pipeline',
+      '/dashboard/tasks': 'tasks',
       // Default to shared if not explicitly in the map or metadata
     };
 
@@ -244,7 +247,7 @@ export const DashboardLayout: React.FC = () => {
   const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
 
   // Mobile navigation logic: show Home, 3 custom items + "More"
-  const mobileCustomPaths = preferences.mobileNavItems || ['/customers', '/calendar', '/products'];
+  const mobileCustomPaths = preferences.mobileNavItems || ['/dashboard/customers', '/dashboard/calendar', '/dashboard/products'];
 
   // Find the actual nav items for the preferred paths
   const mobileBottomNavItems = [
@@ -269,8 +272,8 @@ export const DashboardLayout: React.FC = () => {
       {/* Desktop Sidebar - Hidden on Mobile */}
       <aside
         className={`hidden md:flex md:flex-col md:w-64 transition-all duration-300 ${theme === 'soft-modern'
-            ? 'bg-white border-r border-gray-200/60'
-            : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
+          ? 'bg-white border-r border-gray-200/60'
+          : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
           } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
       >
         {/* Logo */}
@@ -356,11 +359,11 @@ export const DashboardLayout: React.FC = () => {
 
           {/* Reports Link */}
           <Link
-            to="/reports"
+            to="/dashboard/reports"
             className={
               theme === 'soft-modern'
-                ? `nav-item flex items-center px-4 py-3 mt-1 ${isActive('/reports') ? 'active' : ''}`
-                : `flex items-center px-3 py-2 mt-1 rounded-lg transition-colors ${isActive('/reports')
+                ? `nav-item flex items-center px-4 py-3 mt-1 ${isActive('/dashboard/reports') ? 'active' : ''}`
+                : `flex items-center px-3 py-2 mt-1 rounded-lg transition-colors ${isActive('/dashboard/reports')
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
@@ -417,7 +420,7 @@ export const DashboardLayout: React.FC = () => {
         <div className="flex items-center justify-between h-14 px-4">
           <h1 className="text-base font-black text-indigo-600 tracking-tight">CxTrack</h1>
           <div className="flex items-center">
-            <Link to="/calendar" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
+            <Link to="/dashboard/calendar" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
               <Calendar size={18} />
             </Link>
             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative text-gray-500 dark:text-gray-400">
