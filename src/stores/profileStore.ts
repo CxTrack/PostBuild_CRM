@@ -15,6 +15,12 @@ interface ProfileData {
   industry_id: number;
   created_at?: string;
   updated_at?: string;
+  // New fields
+  onboarding_completed?: boolean;
+  onboarding_step?: string;
+  organization_id?: string;
+  industry_template?: string;
+  subscription_tier?: string;
 }
 
 interface ProfileState {
@@ -25,7 +31,6 @@ interface ProfileState {
   // Actions
   fetchProfile: () => Promise<void>;
   updateProfile: (data: Partial<ProfileData>) => Promise<void>;
-  //updateProfileIndustry: (newIndustryId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -41,7 +46,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       // Get the current user's ID
       const { data: userData } = await supabase.auth.getUser();
-      //const industry = await industryService.fetchIndustries();
 
       if (!userData?.user) {
         console.log('No authenticated user found when fetching profile');
@@ -54,91 +58,84 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             zipcode: '',
             country: '',
             phone: '',
-            industry_id: 0//industry?.id
+            industry_id: 0
           },
           loading: false
         });
         return;
       }
-      
-      // First check if profile exists
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        industry_id:industries (id)
-      `)
-      .eq('user_id', userData.user.id)
-      .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        throw error;
+      // Fetch user_profiles WITH organization data
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select(`
+          *,
+          organizations (
+            id,
+            name,
+            industry_template,
+            subscription_tier
+          )
+        `)
+        .eq('id', userData.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching user_profile:', profileError);
+        throw profileError;
       }
 
-      // If profile exists, use it
-      if (data) {
-        set({ profile: data, loading: false });
+      // Also fetch legacy profile
+      const { data: legacyProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      if (userProfile) {
+        const orgData = (userProfile as any).organizations;
+        const mappedProfile: ProfileData = {
+          id: userProfile.id,
+          user_id: userProfile.id,
+          company: userProfile.business_name || legacyProfile?.company || 'CxTrack',
+          address: legacyProfile?.address || '',
+          city: legacyProfile?.city || '',
+          state: legacyProfile?.state || '',
+          zipcode: legacyProfile?.zipcode || '',
+          country: legacyProfile?.country || '',
+          phone: legacyProfile?.phone || '',
+          industry_id: legacyProfile?.industry_id || 0,
+          onboarding_completed: userProfile.onboarding_completed,
+          onboarding_step: userProfile.onboarding_step,
+          organization_id: userProfile.organization_id,
+          industry_template: orgData?.industry_template || 'general_business',
+          subscription_tier: orgData?.subscription_tier || 'free'
+        };
+
+        set({ profile: mappedProfile, loading: false });
         return;
       }
 
-      // If no profile exists yet, create a default one
-      const defaultProfile = {
+      // Fallback
+      const defaultProfile: ProfileData = {
         user_id: userData.user.id,
-          company: 'CxTrack',
-          address: '',
-          city: '',
-          state: '',
-          zipcode: '',
-          country: '',
-          phone: '',
-          industry_id: industry.id
+        company: legacyProfile?.company || 'CxTrack',
+        address: legacyProfile?.address || '',
+        city: legacyProfile?.city || '',
+        state: legacyProfile?.state || '',
+        zipcode: legacyProfile?.zipcode || '',
+        country: legacyProfile?.country || '',
+        phone: legacyProfile?.phone || '',
+        industry_id: legacyProfile?.industry_id || 0,
+        industry_template: 'general_business',
+        subscription_tier: 'free'
       };
 
-      try {
-        // Create a new profile
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert([defaultProfile])
-          .select()
-          .single();
+      set({ profile: defaultProfile, loading: false });
 
-        if (insertError) {
-          console.error('Error creating default profile:', insertError);
-          // Still set a default profile in the store even if DB insert fails
-          set({
-            profile: defaultProfile,
-            loading: false,
-            error: insertError.message
-          });
-        } else {
-          set({ profile: newProfile, loading: false });
-        }
-      } catch (insertErr) {
-        console.error('Exception creating profile:', insertErr);
-        set({
-          profile: defaultProfile,
-          loading: false,
-          error: 'Failed to create profile'
-        });
-      }
     } catch (error: any) {
       console.error('Error in fetchProfile:', error);
-      // Set a default profile even if there's an error
-      set({
-        profile: {
-          company: 'CxTrack',
-          address: '',
-          city: '',
-          state: '',
-          zipcode: '',
-          country: '',
-          phone: '',
-          industry_id: 0
-        },
-        error: error.message || 'Failed to fetch profile',
-        loading: false
-      });
+      set({ error: error.message || 'Failed to fetch profile', loading: false });
     }
   },
 
@@ -251,7 +248,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   //     const userId = userData.user.id;
 
-      
+
   //     // Update only the industry_id column in DB
   //     const { data, error } = await supabase
   //       .from('profiles')
