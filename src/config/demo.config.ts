@@ -5,10 +5,14 @@ export const DEMO_MODE = false;
 //   console.log('💾 DEMO MODE: ENABLED - Using localStorage');
 // }
 
+
+export const DEMO_ORGANIZATION_ID = '00000000-0000-0000-0000-000000000000';
+export const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+
 export const DEMO_MODE_CONFIG = {
   enabled: DEMO_MODE,
-  demoOrganizationId: '00000000-0000-0000-0000-000000000000',
-  demoUserId: '00000000-0000-0000-0000-000000000001',
+  demoOrganizationId: DEMO_ORGANIZATION_ID,
+  demoUserId: DEMO_USER_ID,
 } as const;
 
 export const DEMO_STORAGE_KEYS = {

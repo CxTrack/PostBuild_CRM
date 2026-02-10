@@ -6,6 +6,15 @@ interface User extends SupabaseUser {
   role?: string;
   organization_id?: string;
 }
+// Mock user for demo/fallback purposes
+export const MOCK_ADMIN_USER = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'demo@cxtrack.com',
+  organization_id: '00000000-0000-0000-0000-000000000000',
+  user_metadata: {
+    full_name: 'Demo Admin',
+  }
+};
 
 interface AuthContextType {
   user: User | null;
