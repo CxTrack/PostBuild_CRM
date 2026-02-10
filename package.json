@@ -42,7 +42,7 @@
     "@sanity/image-url": "^1.1.0",
     "@sanity/vision": "^3.74.1",
     "sanity": "^3.74.1",
-        "@calcom/embed-react": "^1.5.2",
+    "@calcom/embed-react": "^1.5.2",
     "@hookform/resolvers": "^3.3.4",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-dialog": "^1.0.5",
