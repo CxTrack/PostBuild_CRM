@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin';
-  organization_id: string;
+interface User extends SupabaseUser {
+  role?: string;
+  organization_id?: string;
 }
 
 interface AuthContextType {
@@ -18,31 +17,67 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_ADMIN_USER: User = {
-  id: '00000000-0000-0000-0000-000000000001',
-  email: 'admin@cxtrack.com',
-  name: 'Admin User',
-  role: 'admin',
-  organization_id: '00000000-0000-0000-0000-000000000000',
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(MOCK_ADMIN_USER);
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🔐 Auto-logged in as admin:', MOCK_ADMIN_USER.name);
-    console.log('📋 Organization ID:', MOCK_ADMIN_USER.organization_id);
-    setUser(MOCK_ADMIN_USER);
-    setLoading(false);
+    // Check active sessions and sets the user
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        // Fetch additional profile/org info if needed
+        const { data: memberData } = await supabase
+          .from('organization_members')
+          .select('organization_id, role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        setUser({
+          ...session.user,
+          role: memberData?.role,
+          organization_id: memberData?.organization_id
+        });
+      }
+      setLoading(false);
+    };
+
+    getSession();
+
+    // Listen for changes on auth state (logged in, signed out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: memberData } = await supabase
+          .from('organization_members')
+          .select('organization_id, role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        setUser({
+          ...session.user,
+          role: memberData?.role,
+          organization_id: memberData?.organization_id
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async () => {
-    setUser(MOCK_ADMIN_USER);
+    // This will redirect to the marketing site's login which redirects back with tokens
+    window.location.href = `${import.meta.env.VITE_MARKETING_URL || 'https://easyaicrm.com/access'}`;
   };
 
   const logout = async () => {
-    console.log('⚠️ Logout disabled in auto-login mode');
+    setLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    setLoading(false);
   };
 
   return (
@@ -50,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         loading,
-        isAuthenticated: true,
+        isAuthenticated: !!user,
         login,
         logout,
       }}
@@ -67,5 +102,3 @@ export function useAuthContext() {
   }
   return context;
 }
-
-export { MOCK_ADMIN_USER };
