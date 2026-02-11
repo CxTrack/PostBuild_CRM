@@ -129,7 +129,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
 
             // PRODUCTION MODE
             const { data, error } = await supabase
-                .from('voice_agent_config')
+                .from('voice_agent_configs')
                 .select('*')
                 .single();
 
@@ -171,7 +171,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
             if (currentConfig) {
                 // Update existing
                 const { data: configData, error } = await supabase
-                    .from('voice_agent_config')
+                    .from('voice_agent_configs')
                     .update({ ...data, updated_at: new Date().toISOString() })
                     .eq('id', currentConfig.id)
                     .select()
@@ -183,7 +183,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
             } else {
                 // Create new
                 const { data: configData, error } = await supabase
-                    .from('voice_agent_config')
+                    .from('voice_agent_configs')
                     .insert({ ...DEFAULT_CONFIG, ...data })
                     .select()
                     .single();
