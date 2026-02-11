@@ -488,6 +488,10 @@ export const DashboardLayout = () => {
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 transition-all duration-300 ${isCoPilotOpen ? (panelSide === 'left' ? 'md:ml-[400px]' : 'md:mr-[400px]') : ''
         }`}>
+        {/* DEBUG BANNER - Remove after testing */}
+        <div style={{background: '#ff0', color: '#000', padding: '8px 16px', fontSize: '12px', fontFamily: 'monospace'}}>
+          DEBUG: Current path = {location.pathname}
+        </div>
         <Outlet key={location.pathname} />
       </main>
 

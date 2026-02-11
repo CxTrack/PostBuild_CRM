@@ -81,6 +81,9 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardPage />} />
 
+            {/* DEBUG: Test route - go to /dashboard/test to verify routing */}
+            <Route path="test" element={<div style={{padding: '40px', background: 'lime', color: 'black', fontSize: '24px', fontWeight: 'bold'}}>✅ TEST ROUTE WORKS! Routing is functional. Path: /dashboard/test</div>} />
+
             {/* CRM / Customers */}
             <Route path="customers" element={<Customers />} />
             <Route path="customers/new" element={<CustomerForm />} />
