@@ -111,8 +111,8 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
       return;
     }
     e.preventDefault();
-    // Force full page navigation - React Router's navigate() isn't triggering re-renders
-    window.location.href = item.path;
+    // Use React Router navigation for proper SPA behavior
+    navigate(item.path);
   };
 
   return (

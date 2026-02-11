@@ -124,6 +124,10 @@ export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
   real_estate: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'quotes'],
   legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes'],
   general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+  // New templates
+  software_development: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes'],
+  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'invoices'],
+  construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
 };
 
 export const INDUSTRY_LABELS: Record<string, any> = {
@@ -158,6 +162,29 @@ export const INDUSTRY_LABELS: Record<string, any> = {
     crm: { name: 'Clients' },
     pipeline: { name: 'Case Pipeline' },
     quotes: { name: 'Fee Proposals' }
+  },
+  // New template labels
+  software_development: {
+    crm: { name: 'Clients' },
+    pipeline: { name: 'Projects' },
+    tasks: { name: 'Sprints & Tasks' },
+    quotes: { name: 'Proposals' },
+    invoices: { name: 'Billing' },
+    calendar: { name: 'Milestones' }
+  },
+  mortgage_broker: {
+    crm: { name: 'Borrowers' },
+    pipeline: { name: 'Applications' },
+    tasks: { name: 'Follow-ups' },
+    invoices: { name: 'Commissions' },
+    calendar: { name: 'Appointments' }
+  },
+  construction: {
+    crm: { name: 'Clients' },
+    pipeline: { name: 'Projects' },
+    tasks: { name: 'Punch List' },
+    quotes: { name: 'Bids' },
+    calendar: { name: 'Schedule' }
   },
 };
 
