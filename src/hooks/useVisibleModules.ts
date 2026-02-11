@@ -11,10 +11,27 @@ export interface VisibleModule extends Module {
     isLocked: boolean;
 }
 
+/**
+ * Normalize database subscription tier values to match PLAN_MODULE_ACCESS keys
+ * Database may have: 'free', 'starter', 'professional', 'enterprise'
+ * Code expects: 'free', 'business', 'elite_premium', 'enterprise'
+ */
+const normalizePlanTier = (dbTier?: string): string => {
+    const tierMap: Record<string, string> = {
+        'free': 'free',
+        'starter': 'business',
+        'professional': 'elite_premium',
+        'business': 'business',
+        'elite_premium': 'elite_premium',
+        'enterprise': 'enterprise',
+    };
+    return tierMap[dbTier || 'free'] || 'free';
+};
+
 export const useVisibleModules = () => {
     const { currentOrganization } = useOrganizationStore();
 
-    const planTier = currentOrganization?.subscription_tier || 'free';
+    const planTier = normalizePlanTier(currentOrganization?.subscription_tier);
     const industryTemplate = currentOrganization?.industry_template || 'general_business';
 
     // 1. Get modules defined by industry template
