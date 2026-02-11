@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
+import { usePipelineConfigStore } from './pipelineConfigStore';
 
 export interface Deal {
   id: string;
@@ -9,7 +10,7 @@ export interface Deal {
   customer_id: string;
   quote_id?: string;
   assigned_to?: string;
-  stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost';
+  stage: string; // Dynamic based on industry template
   title: string;
   description?: string;
   value: number;
@@ -58,7 +59,7 @@ interface DealStore {
   createDeal: (deal: Partial<Deal>) => Promise<Deal>;
   updateDeal: (id: string, updates: Partial<Deal>) => Promise<void>;
   deleteDeal: (id: string) => Promise<void>;
-  moveDealToStage: (id: string, stage: Deal['stage']) => Promise<void>;
+  moveDealToStage: (id: string, stage: string) => Promise<void>;
   convertQuoteToDeal: (quoteId: string, dealData: Partial<Deal>) => Promise<Deal>;
   closeDealAsWon: (id: string) => Promise<void>;
   closeDealAsLost: (id: string, reason?: string) => Promise<void>;
@@ -455,20 +456,17 @@ export const useDealStore = create<DealStore>((set, get) => ({
   },
 }));
 
-function getDefaultProbability(stage: Deal['stage']): number {
-  const probabilities: Record<Deal['stage'], number> = {
-    lead: 10,
-    qualified: 25,
-    proposal: 50,
-    negotiation: 75,
-    closed_won: 100,
-    closed_lost: 0,
-  };
-  return probabilities[stage];
+function getDefaultProbability(stage: string): number {
+  const { getStageProbability } = usePipelineConfigStore.getState();
+  return getStageProbability(stage);
 }
 
-function formatStageName(stage: Deal['stage']): string {
-  const names: Record<Deal['stage'], string> = {
+function formatStageName(stage: string): string {
+  const { getStageByKey } = usePipelineConfigStore.getState();
+  const stageData = getStageByKey(stage);
+  if (stageData) return stageData.stage_label;
+
+  const names: Record<string, string> = {
     lead: 'Lead',
     qualified: 'Qualified',
     proposal: 'Proposal',
@@ -476,5 +474,5 @@ function formatStageName(stage: Deal['stage']): string {
     closed_won: 'Closed Won',
     closed_lost: 'Closed Lost',
   };
-  return names[stage];
+  return names[stage] || stage.charAt(0).toUpperCase() + stage.slice(1).replace(/_/g, ' ');
 }

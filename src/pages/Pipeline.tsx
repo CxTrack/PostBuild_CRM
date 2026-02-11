@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
+import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
+import { useMemo } from 'react';
 
 interface PipelineItem {
   id: string;
@@ -28,26 +30,7 @@ type ViewMode = 'kanban' | 'table' | 'split';
 type SortField = 'customer' | 'amount' | 'stage' | 'probability' | 'date';
 type SortDirection = 'asc' | 'desc';
 
-const STAGES = [
-  { id: 'lead', name: 'Lead', probability: 0.1, color: 'bg-slate-100 text-slate-700' },
-  { id: 'qualified', name: 'Qualified', probability: 0.25, color: 'bg-blue-100 text-blue-700' },
-  { id: 'proposal', name: 'Proposal', probability: 0.5, color: 'bg-purple-100 text-purple-700' },
-  { id: 'negotiation', name: 'Negotiation', probability: 0.75, color: 'bg-orange-100 text-orange-700' },
-  { id: 'won', name: 'Won', probability: 1, color: 'bg-green-100 text-green-700' },
-  { id: 'lost', name: 'Lost', probability: 0, color: 'bg-red-100 text-red-700' },
-];
 
-const getStageColor = (stage: string) => {
-  const colors: Record<string, string> = {
-    'negotiation': 'bg-orange-100 text-orange-700 border-orange-200',
-    'proposal': 'bg-purple-100 text-purple-700 border-purple-200',
-    'qualified': 'bg-blue-100 text-blue-700 border-blue-200',
-    'lead': 'bg-slate-100 text-slate-700 border-slate-200',
-    'won': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    'lost': 'bg-red-100 text-red-700 border-red-200',
-  };
-  return colors[stage] || 'bg-slate-100 text-slate-700 border-slate-200';
-};
 
 const Pipeline: React.FC = () => {
   const navigate = useNavigate();
@@ -55,6 +38,32 @@ const Pipeline: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { customers, fetchCustomers } = useCustomerStore();
+  const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore } = usePipelineConfigStore();
+
+  const STAGES = useMemo(() => {
+    if (configStages.length === 0) {
+      return [
+        { id: 'lead', name: 'Lead', probability: 0.1, color: 'bg-slate-100 text-slate-700', isTerminal: false },
+        { id: 'qualified', name: 'Qualified', probability: 0.25, color: 'bg-blue-100 text-blue-700', isTerminal: false },
+        { id: 'proposal', name: 'Proposal', probability: 0.5, color: 'bg-purple-100 text-purple-700', isTerminal: false },
+        { id: 'negotiation', name: 'Negotiation', probability: 0.75, color: 'bg-amber-100 text-amber-700', isTerminal: false },
+        { id: 'closed_won', name: 'Won', probability: 1, color: 'bg-green-100 text-green-700', isTerminal: true },
+        { id: 'closed_lost', name: 'Lost', probability: 0, color: 'bg-red-100 text-red-700', isTerminal: true },
+      ];
+    }
+    return configStages.map(s => ({
+      id: s.stage_key,
+      name: s.stage_label,
+      probability: s.default_probability / 100,
+      color: `${s.color_bg} ${s.color_text}`,
+      isTerminal: s.is_terminal
+    }));
+  }, [configStages]);
+
+  const getStageColor = (stage: string) => {
+    const colors = getStageColorFromStore(stage);
+    return `${colors.bg} ${colors.text}`;
+  };
 
   const [items, setItems] = useState<PipelineItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +152,8 @@ const Pipeline: React.FC = () => {
       setLoading(false);
     };
     loadData();
-  }, []);
+    fetchPipelineStages();
+  }, [fetchPipelineStages]);
 
   useEffect(() => {
     if (quotes.length > 0 || invoices.length > 0) {

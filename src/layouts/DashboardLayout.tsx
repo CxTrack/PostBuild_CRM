@@ -32,6 +32,7 @@ import { useCoPilot } from '../contexts/CoPilotContext';
 import { isAllowedDevUser } from '../config/demo.config';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
+import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
 
 import {
   DndContext,
@@ -158,6 +159,7 @@ export const DashboardLayout = () => {
   const { theme, toggleTheme } = useThemeStore();
   const { preferences, saveSidebarOrder } = usePreferencesStore();
   const { fetchUserOrganizations, currentOrganization } = useOrganizationStore();
+  const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -169,6 +171,12 @@ export const DashboardLayout = () => {
       loadPreferences();
     }
   }, [user, loadPreferences]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchPipelineStages();
+    }
+  }, [currentOrganization, fetchPipelineStages]);
 
   const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com'];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
