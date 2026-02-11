@@ -246,7 +246,25 @@ export default function Settings() {
     );
   }
 
-  if (!settings) return null;
+  // No organization loaded - show logout option
+  if (!currentOrganization || !settings) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-6">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            No Organization Found
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Your account is not linked to an organization yet.
+          </p>
+        </div>
+        <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
