@@ -207,8 +207,9 @@ export const DashboardLayout = () => {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   useEffect(() => {
-    // 1. Map visibleModules to NavItems
-    const moduleNavItems: NavItem[] = visibleModules.map((m: any) => {
+    // 1. Map visibleModules to NavItems (filter out dashboard - Home already handles it)
+    const filteredModules = visibleModules.filter((m: any) => m.id !== 'dashboard');
+    const moduleNavItems: NavItem[] = filteredModules.map((m: any) => {
 
       const existing = DEFAULT_NAV_ITEMS.find(item => item.path === `/dashboard${m.route}`);
       return {
@@ -487,7 +488,7 @@ export const DashboardLayout = () => {
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 transition-all duration-300 ${isCoPilotOpen ? (panelSide === 'left' ? 'md:ml-[400px]' : 'md:mr-[400px]') : ''
         }`}>
-        <Outlet />
+        <Outlet key={location.pathname} />
       </main>
 
       {/* Mobile Bottom Navigation - Shown on Mobile Only */}
