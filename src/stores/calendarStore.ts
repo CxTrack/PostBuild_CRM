@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
-import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId, getDemoOrganizationId, getDemoUserId } from '@/config/demo.config';
 
 interface CalendarPreferences {
   default_view: 'month' | 'week' | 'day' | 'agenda';
@@ -43,7 +42,7 @@ interface CalendarState {
 }
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
-  events: DEMO_MODE ? loadDemoData(DEMO_STORAGE_KEYS.calendar) : [],
+  events: [],
   preferences: null,
   loading: false,
   error: null,
@@ -52,13 +51,6 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     console.log('📅 Fetching calendar events...');
     set({ loading: true, error: null });
     try {
-      if (DEMO_MODE) {
-        const events = loadDemoData(DEMO_STORAGE_KEYS.calendar);
-        console.log('✅ Loaded events from localStorage:', events.length);
-        set({ events, loading: false });
-        return;
-      }
-
       let query = supabase
         .from('calendar_events')
         .select('*');
@@ -105,24 +97,6 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     console.log('📅 Creating calendar event:', event);
     set({ loading: true, error: null });
     try {
-      if (DEMO_MODE) {
-        const newEvent: CalendarEvent = {
-          ...event,
-          id: generateDemoId('event'),
-          organization_id: event.organization_id || getDemoOrganizationId(),
-          user_id: event.user_id || getDemoUserId(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as CalendarEvent;
-
-        const events = [newEvent, ...get().events];
-        saveDemoData(DEMO_STORAGE_KEYS.calendar, events);
-
-        set({ events, loading: false });
-        console.log('✅ Event created (demo mode):', newEvent);
-        return newEvent;
-      }
-
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([event])
@@ -149,33 +123,6 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     console.log('📅 Updating event:', id, updates);
     set({ loading: true, error: null });
     try {
-      if (DEMO_MODE) {
-        const existingEvent = get().events.find(e => e.id === id);
-
-        if (!existingEvent) {
-          throw new Error(`Event ${id} not found`);
-        }
-
-        console.log('📝 Existing event:', existingEvent);
-
-        const updatedEvents = get().events.map((e) =>
-          e.id === id ? { ...e, ...updates, updated_at: new Date().toISOString() } : e
-        );
-
-        console.log('💾 Saving updated events to localStorage...');
-        saveDemoData(DEMO_STORAGE_KEYS.calendar, updatedEvents);
-
-        const savedEvents = loadDemoData(DEMO_STORAGE_KEYS.calendar);
-        const savedEvent = savedEvents.find((e: CalendarEvent) => e.id === id);
-        console.log('✅ Event after save:', savedEvent);
-
-        set({ events: updatedEvents, loading: false });
-
-        const updatedEvent = updatedEvents.find(e => e.id === id);
-        console.log('✅ Event updated successfully:', updatedEvent);
-        return;
-      }
-
       const { error } = await supabase
         .from('calendar_events')
         .update(updates)
@@ -201,14 +148,6 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     console.log('📅 Deleting event:', id);
     set({ loading: true, error: null });
     try {
-      if (DEMO_MODE) {
-        const events = get().events.filter((e) => e.id !== id);
-        saveDemoData(DEMO_STORAGE_KEYS.calendar, events);
-        set({ events, loading: false });
-        console.log('✅ Event deleted (demo mode)');
-        return;
-      }
-
       const { error } = await supabase
         .from('calendar_events')
         .delete()

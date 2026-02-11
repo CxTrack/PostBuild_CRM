@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { DEMO_MODE, DEMO_STORAGE_KEYS } from '@/config/demo.config';
 import toast from 'react-hot-toast';
 
 interface UserPreferences {
@@ -32,25 +31,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     loadPreferences: async () => {
         try {
             set({ isLoading: true });
-
-            if (DEMO_MODE) {
-                const stored = localStorage.getItem(DEMO_STORAGE_KEYS.preferences);
-                if (stored) {
-                    try {
-                        const savedPrefs = JSON.parse(stored);
-                        set(state => ({
-                            preferences: { ...state.preferences, ...savedPrefs },
-                            isLoading: false
-                        }));
-                    } catch (e) {
-                        console.error('Failed to parse demo preferences', e);
-                        set({ isLoading: false });
-                    }
-                } else {
-                    set({ isLoading: false });
-                }
-                return;
-            }
 
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -92,14 +72,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
     saveSidebarOrder: async (order: string[]) => {
         try {
-            if (DEMO_MODE) {
-                const newPrefs = { ...get().preferences, sidebarOrder: order };
-                set({ preferences: newPrefs });
-                localStorage.setItem(DEMO_STORAGE_KEYS.preferences, JSON.stringify(newPrefs));
-                toast.success('Navigation order saved (Demo)');
-                return;
-            }
-
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
@@ -130,14 +102,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
     saveDashboardLayout: async (layout: any[]) => {
         try {
-            if (DEMO_MODE) {
-                const newPrefs = { ...get().preferences, dashboardLayout: layout };
-                set({ preferences: newPrefs });
-                localStorage.setItem(DEMO_STORAGE_KEYS.preferences, JSON.stringify(newPrefs));
-                toast.success('Dashboard layout saved (Demo)');
-                return;
-            }
-
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
@@ -168,14 +132,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
     saveQuickActionsOrder: async (order: string[]) => {
         try {
-            if (DEMO_MODE) {
-                const newPrefs = { ...get().preferences, quickActionsOrder: order };
-                set({ preferences: newPrefs });
-                localStorage.setItem(DEMO_STORAGE_KEYS.preferences, JSON.stringify(newPrefs));
-                toast.success('Quick actions updated (Demo)');
-                return;
-            }
-
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
@@ -206,14 +162,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
     saveMobileNavItems: async (items: string[]) => {
         try {
-            if (DEMO_MODE) {
-                const newPrefs = { ...get().preferences, mobileNavItems: items };
-                set({ preferences: newPrefs });
-                localStorage.setItem(DEMO_STORAGE_KEYS.preferences, JSON.stringify(newPrefs));
-                toast.success('Mobile navigation updated (Demo)');
-                return;
-            }
-
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 

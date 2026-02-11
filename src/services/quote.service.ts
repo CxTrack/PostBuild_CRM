@@ -1,7 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { isDemoMode, getDemoOrganizationId, DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId } from '../config/demo.config';
 import { useOrganizationStore } from '../stores/organizationStore';
-import { useQuoteStore } from '../stores/quoteStore';
 
 export interface QuoteLineItem {
   id?: string;
@@ -75,39 +73,6 @@ export const quoteService = {
   },
 
   async createQuote(quoteData: QuoteFormData): Promise<Quote> {
-    if (DEMO_MODE) {
-      const quoteStore = useQuoteStore.getState();
-      const quote = await quoteStore.createQuote({
-        organization_id: getDemoOrganizationId(),
-        quote_number: '',
-        customer_id: quoteData.customer_id,
-        customer_name: quoteData.customer_name,
-        customer_email: quoteData.customer_email,
-        customer_address: quoteData.customer_address,
-        quote_date: quoteData.quote_date,
-        expiry_date: quoteData.expiry_date,
-        subtotal: quoteData.subtotal,
-        discount_amount: quoteData.discount_amount || 0,
-        discount_percentage: quoteData.discount_percentage || 0,
-        tax_amount: quoteData.tax_amount,
-        total_amount: quoteData.total_amount,
-        payment_terms: quoteData.payment_terms,
-        notes: quoteData.notes,
-        terms: quoteData.terms,
-        status: quoteData.status || 'draft',
-        items: quoteData.items,
-      } as any);
-
-      if (!quote) {
-        throw new Error('Failed to create quote');
-      }
-
-      return quote;
-    }
-
-    let organizationId: string;
-    let userId: string;
-
     const orgStore = useOrganizationStore.getState();
     const currentOrg = orgStore.currentOrganization;
 
@@ -115,18 +80,13 @@ export const quoteService = {
       throw new Error('No organization available');
     }
 
-    organizationId = currentOrg.id;
+    const organizationId = currentOrg.id;
 
-    const isDemoOrg = organizationId === '00000000-0000-0000-0000-000000000000';
-    if (isDemoOrg) {
-      userId = '00000000-0000-0000-0000-000000000001';
-    } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Not authenticated');
-      }
-      userId = user.id;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('Not authenticated');
     }
+    const userId = user.id;
 
     const quoteNumber = await this.generateQuoteNumber(organizationId);
 
@@ -150,9 +110,7 @@ export const quoteService = {
       status: quoteData.status || 'draft',
     };
 
-    if (userId && userId !== '00000000-0000-0000-0000-000000000001') {
-      quoteInsertData.created_by = userId;
-    }
+    quoteInsertData.created_by = userId;
 
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
@@ -187,11 +145,6 @@ export const quoteService = {
   },
 
   async getQuote(quoteId: string): Promise<Quote | null> {
-    if (DEMO_MODE) {
-      const quoteStore = useQuoteStore.getState();
-      return quoteStore.getQuoteById(quoteId) || null;
-    }
-
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .select('*')
@@ -231,12 +184,6 @@ export const quoteService = {
     quoteId: string,
     updates: Partial<QuoteFormData>
   ): Promise<void> {
-    if (DEMO_MODE) {
-      const quoteStore = useQuoteStore.getState();
-      await quoteStore.updateQuote(quoteId, updates as any);
-      return;
-    }
-
     const { error: quoteError } = await supabase
       .from('quotes')
       .update({

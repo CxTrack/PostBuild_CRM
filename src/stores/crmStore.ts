@@ -2,38 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import { Lead, Opportunity } from '@/types/database.types';
-import { DEMO_MODE } from '@/config/demo.config';
 import toast from 'react-hot-toast';
-
-// Demo storage keys
-const DEMO_LEADS_KEY = 'cxtrack_demo_leads';
-const DEMO_OPPORTUNITIES_KEY = 'cxtrack_demo_opportunities';
-
-const loadDemoLeads = (): Lead[] => {
-    try {
-        const stored = localStorage.getItem(DEMO_LEADS_KEY);
-        return stored ? JSON.parse(stored) : [];
-    } catch {
-        return [];
-    }
-};
-
-const loadDemoOpportunities = (): Opportunity[] => {
-    try {
-        const stored = localStorage.getItem(DEMO_OPPORTUNITIES_KEY);
-        return stored ? JSON.parse(stored) : [];
-    } catch {
-        return [];
-    }
-};
-
-const saveDemoLeads = (leads: Lead[]) => {
-    localStorage.setItem(DEMO_LEADS_KEY, JSON.stringify(leads));
-};
-
-const saveDemoOpportunities = (opportunities: Opportunity[]) => {
-    localStorage.setItem(DEMO_OPPORTUNITIES_KEY, JSON.stringify(opportunities));
-};
 
 interface CRMStore {
     leads: Lead[];
@@ -57,17 +26,11 @@ interface CRMStore {
 }
 
 export const useCRMStore = create<CRMStore>((set, get) => ({
-    leads: DEMO_MODE ? loadDemoLeads() : [],
-    opportunities: DEMO_MODE ? loadDemoOpportunities() : [],
+    leads: [],
+    opportunities: [],
     loading: false,
 
     fetchLeads: async () => {
-        if (DEMO_MODE) {
-            const leads = loadDemoLeads();
-            set({ leads, loading: false });
-            return;
-        }
-
         const currentOrg = useOrganizationStore.getState().currentOrganization;
         if (!currentOrg) return;
 
@@ -89,12 +52,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
     },
 
     fetchOpportunities: async () => {
-        if (DEMO_MODE) {
-            const opportunities = loadDemoOpportunities();
-            set({ opportunities, loading: false });
-            return;
-        }
-
         const currentOrg = useOrganizationStore.getState().currentOrganization;
         if (!currentOrg) return;
 
@@ -103,10 +60,10 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             const { data, error } = await supabase
                 .from('opportunities')
                 .select(`
-          *,
-          leads (name, company),
-          customers (name, company)
-        `)
+                  *,
+                  leads (name, company),
+                  customers (name, company)
+                `)
                 .eq('organization_id', currentOrg.id)
                 .order('created_at', { ascending: false });
 
@@ -320,28 +277,22 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (!opp) return;
 
             // 1. Create Invoice (Draft)
-            // Logic handled via database triggers or separate call? 
-            // Plan said: "Create invoice". Let's do it manually here for full control.
-
             const { data: invoice, error: invError } = await supabase
                 .from('invoices')
                 .insert({
                     organization_id: opp.organization_id,
-                    customer_id: opp.customer_id, // needs to exist!
+                    customer_id: opp.customer_id,
                     opportunity_id: oppId,
-                    // quote_id: opp.quote_id, // if linked
                     total_amount: opp.value,
                     status: 'Draft',
                     date: new Date().toISOString(),
                     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    // items? empty for now or copy from quote if exists
                 })
                 .select()
                 .single();
 
             if (invError) {
                 console.warn('Could not create invoice automatically (maybe no customer_id?)', invError);
-                // Don't fail the whole won process, just warn
             }
 
             // 2. Update Opportunity

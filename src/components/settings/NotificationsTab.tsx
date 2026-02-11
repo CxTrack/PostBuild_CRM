@@ -8,7 +8,6 @@ import {
     Bell, Mail, Smartphone, Volume2, MessageSquare,
     Users, Calendar, CheckCircle, AlertTriangle, Zap
 } from 'lucide-react';
-import { DEMO_MODE } from '@/config/demo.config';
 import toast from 'react-hot-toast';
 
 interface NotificationSettings {
@@ -30,14 +29,12 @@ interface NotificationSettings {
     inapp_updates: boolean;
 }
 
-const DEMO_NOTIFICATIONS_KEY = 'cxtrack_demo_notifications';
+const NOTIFICATIONS_KEY = 'cxtrack_notifications';
 
 export const NotificationsTab: React.FC = () => {
     const [settings, setSettings] = useState<NotificationSettings>(() => {
-        if (DEMO_MODE) {
-            const saved = localStorage.getItem(DEMO_NOTIFICATIONS_KEY);
-            if (saved) return JSON.parse(saved);
-        }
+        const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+        if (saved) return JSON.parse(saved);
         return {
             email_new_leads: true,
             email_deal_changes: true,
@@ -56,9 +53,7 @@ export const NotificationsTab: React.FC = () => {
     const handleToggle = (key: keyof NotificationSettings) => {
         const updated = { ...settings, [key]: !settings[key] };
         setSettings(updated);
-        if (DEMO_MODE) {
-            localStorage.setItem(DEMO_NOTIFICATIONS_KEY, JSON.stringify(updated));
-        }
+        localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
         toast.success('Preference updated');
     };
 

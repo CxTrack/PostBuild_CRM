@@ -12,7 +12,6 @@ import {
     Brain, Lightbulb, Sparkles, Save
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
-import { DEMO_MODE } from '@/config/demo.config';
 import toast from 'react-hot-toast';
 
 interface ProfileData {
@@ -38,7 +37,7 @@ interface ProfileData {
     learning_topics: string[];
 }
 
-const DEMO_PROFILE_KEY = 'cxtrack_demo_user_profile';
+const PROFILE_KEY = 'cxtrack_user_profile';
 
 const defaultProfile: ProfileData = {
     full_name: 'Admin User',
@@ -71,16 +70,14 @@ export const ProfileTab: React.FC = () => {
     const editorRef = useRef<AvatarEditor | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Load profile from demo storage
+    // Load profile from localStorage
     useEffect(() => {
-        if (DEMO_MODE) {
-            const saved = localStorage.getItem(DEMO_PROFILE_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                setProfile(parsed);
-                if (parsed.avatar_url) {
-                    setAvatarPreview(parsed.avatar_url);
-                }
+        const saved = localStorage.getItem(PROFILE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            setProfile(parsed);
+            if (parsed.avatar_url) {
+                setAvatarPreview(parsed.avatar_url);
             }
         }
     }, []);
@@ -92,28 +89,19 @@ export const ProfileTab: React.FC = () => {
         const canvas = editorRef.current.getImageScaledToCanvas();
         const dataUrl = canvas.toDataURL('image/png');
 
-        // In demo mode, store as data URL
-        if (DEMO_MODE) {
-            setAvatarPreview(dataUrl);
-            setProfile(prev => ({ ...prev, avatar_url: dataUrl }));
-            setShowCropper(false);
-            toast.success('Photo updated!');
-            return;
-        }
-
-        // Production: Upload to Supabase Storage
-        // const blob = await new Promise<Blob>((resolve) => canvas.toBlob(resolve as any, 'image/png'));
-        // ... Supabase upload logic
+        // Store as data URL
+        setAvatarPreview(dataUrl);
+        setProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+        setShowCropper(false);
+        toast.success('Photo updated!');
     };
 
     const handleSaveProfile = async () => {
         setSaving(true);
 
-        if (DEMO_MODE) {
-            localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify(profile));
-            await new Promise(r => setTimeout(r, 500)); // Simulate save
-            toast.success('Profile saved successfully!');
-        }
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+        await new Promise(r => setTimeout(r, 500)); // Simulate save
+        toast.success('Profile saved successfully!');
 
         setSaving(false);
     };

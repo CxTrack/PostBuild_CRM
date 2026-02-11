@@ -5,7 +5,6 @@
  */
 
 import Cookies from 'js-cookie';
-import { DEMO_MODE } from '@/config/demo.config';
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -169,16 +168,12 @@ export class TourManager {
         const cookie = Cookies.get(`tour_${tourId}`);
         if (cookie === 'completed') return true;
 
-        if (DEMO_MODE) {
-            const stored = localStorage.getItem(DEMO_TOUR_KEY);
-            if (stored) {
-                const progress = JSON.parse(stored);
-                return progress[tourId]?.completed || false;
-            }
-            return false;
+        // Check localStorage as fallback
+        const stored = localStorage.getItem(DEMO_TOUR_KEY);
+        if (stored) {
+            const progress = JSON.parse(stored);
+            return progress[tourId]?.completed || false;
         }
-
-        // Production: Check Supabase (placeholder)
         return false;
     }
 
@@ -189,17 +184,14 @@ export class TourManager {
         // Set cookie (expires in 1 year)
         Cookies.set(`tour_${tourId}`, 'completed', { expires: 365 });
 
-        if (DEMO_MODE) {
-            const stored = localStorage.getItem(DEMO_TOUR_KEY);
-            const progress = stored ? JSON.parse(stored) : {};
-            progress[tourId] = {
-                completed: true,
-                completed_at: new Date().toISOString(),
-            };
-            localStorage.setItem(DEMO_TOUR_KEY, JSON.stringify(progress));
-        }
-
-        // Production: Save to Supabase (placeholder)
+        // Also save to localStorage
+        const stored = localStorage.getItem(DEMO_TOUR_KEY);
+        const progress = stored ? JSON.parse(stored) : {};
+        progress[tourId] = {
+            completed: true,
+            completed_at: new Date().toISOString(),
+        };
+        localStorage.setItem(DEMO_TOUR_KEY, JSON.stringify(progress));
     }
 
     /**
@@ -208,13 +200,11 @@ export class TourManager {
     static async clearTourProgress(tourId: string): Promise<void> {
         Cookies.remove(`tour_${tourId}`);
 
-        if (DEMO_MODE) {
-            const stored = localStorage.getItem(DEMO_TOUR_KEY);
-            if (stored) {
-                const progress = JSON.parse(stored);
-                delete progress[tourId];
-                localStorage.setItem(DEMO_TOUR_KEY, JSON.stringify(progress));
-            }
+        const stored = localStorage.getItem(DEMO_TOUR_KEY);
+        if (stored) {
+            const progress = JSON.parse(stored);
+            delete progress[tourId];
+            localStorage.setItem(DEMO_TOUR_KEY, JSON.stringify(progress));
         }
     }
 
@@ -226,16 +216,12 @@ export class TourManager {
         const cookie = Cookies.get(`tooltip_${tooltipId}`);
         if (cookie === 'dismissed') return false;
 
-        if (DEMO_MODE) {
-            const stored = localStorage.getItem(DEMO_TOOLTIP_KEY);
-            if (stored) {
-                const dismissals = JSON.parse(stored);
-                return !dismissals[tooltipId];
-            }
-            return true; // Show by default
+        const stored = localStorage.getItem(DEMO_TOOLTIP_KEY);
+        if (stored) {
+            const dismissals = JSON.parse(stored);
+            return !dismissals[tooltipId];
         }
-
-        return true;
+        return true; // Show by default
     }
 
     /**
@@ -245,23 +231,19 @@ export class TourManager {
         // Set cookie
         Cookies.set(`tooltip_${tooltipId}`, 'dismissed', { expires: 365 });
 
-        if (DEMO_MODE) {
-            const stored = localStorage.getItem(DEMO_TOOLTIP_KEY);
-            const dismissals = stored ? JSON.parse(stored) : {};
-            dismissals[tooltipId] = {
-                dismissed_at: new Date().toISOString(),
-            };
-            localStorage.setItem(DEMO_TOOLTIP_KEY, JSON.stringify(dismissals));
-        }
+        const stored = localStorage.getItem(DEMO_TOOLTIP_KEY);
+        const dismissals = stored ? JSON.parse(stored) : {};
+        dismissals[tooltipId] = {
+            dismissed_at: new Date().toISOString(),
+        };
+        localStorage.setItem(DEMO_TOOLTIP_KEY, JSON.stringify(dismissals));
     }
 
     /**
      * Reset all tooltips (for testing)
      */
     static async resetAllTooltips(): Promise<void> {
-        if (DEMO_MODE) {
-            localStorage.removeItem(DEMO_TOOLTIP_KEY);
-        }
+        localStorage.removeItem(DEMO_TOOLTIP_KEY);
         // Clear cookies with tooltip_ prefix
         const cookies = Cookies.get();
         Object.keys(cookies).forEach(key => {
@@ -275,9 +257,7 @@ export class TourManager {
      * Reset all tours (for testing)
      */
     static async resetAllTours(): Promise<void> {
-        if (DEMO_MODE) {
-            localStorage.removeItem(DEMO_TOUR_KEY);
-        }
+        localStorage.removeItem(DEMO_TOUR_KEY);
         // Clear cookies with tour_ prefix
         const cookies = Cookies.get();
         Object.keys(cookies).forEach(key => {

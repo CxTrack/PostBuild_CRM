@@ -27,7 +27,6 @@ import {
 
 import { supabase } from '../lib/supabase';
 import { useCoPilot } from '../contexts/CoPilotContext';
-import { isAllowedDevUser } from '../config/demo.config';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
@@ -368,11 +367,9 @@ export const DashboardLayout = () => {
                 <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
                   {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                 </p>
-                {isSuperAdmin ? (
+                {isSuperAdmin && (
                   <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
-                ) : isAllowedDevUser(user?.email) ? (
-                  <p className={theme === 'soft-modern' ? "text-[10px] text-tertiary font-bold uppercase" : "text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase"}>Dev Mode</p>
-                ) : null}
+                )}
               </div>
             </div>
             {isSuperAdmin && (

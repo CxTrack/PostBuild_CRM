@@ -25,64 +25,42 @@ interface QuoteState {
 }
 
 export const useQuoteStore = create<QuoteState>((set, get) => ({
-  quotes: DEMO_MODE ? loadDemoData<Quote>(DEMO_STORAGE_KEYS.quotes) : [],
+  quotes: [],
   quoteItems: {},
   loading: false,
   error: null,
 
   fetchQuotes: async (organizationId?: string) => {
-    console.log('📄 Fetching quotes...');
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      const quotes = loadDemoData<Quote>(DEMO_STORAGE_KEYS.quotes);
-      console.log('✅ Loaded demo quotes:', quotes.length);
-      set({ quotes, loading: false });
-      return;
-    }
-
     try {
       if (!organizationId) {
         set({ quotes: [], loading: false });
         return;
       }
-
       const { data, error } = await supabase
         .from('quotes')
         .select('*')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       set({ quotes: data || [], loading: false });
     } catch (error: any) {
-      console.error('❌ Error fetching quotes:', error);
+      console.error('Error fetching quotes:', error);
       set({ error: error.message, loading: false });
     }
   },
 
   fetchQuoteItems: async (quoteId: string) => {
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      set({ loading: false });
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('quote_items')
         .select('*')
         .eq('quote_id', quoteId)
         .order('sort_order', { ascending: true });
-
       if (error) throw error;
-
       set((state) => ({
-        quoteItems: {
-          ...state.quoteItems,
-          [quoteId]: data || [],
-        },
+        quoteItems: { ...state.quoteItems, [quoteId]: data || [] },
         loading: false,
       }));
     } catch (error: any) {
@@ -91,153 +69,55 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
   },
 
   createQuote: async (quote) => {
-    console.log('📝 Creating quote...', quote);
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      try {
-        const newQuote: Quote = {
-          id: generateDemoId('quote'),
-          quote_number: generateQuoteNumber(),
-          organization_id: '00000000-0000-0000-0000-000000000000',
-          ...quote,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as Quote;
-
-        console.log('💾 Saving quote to localStorage:', newQuote);
-
-        const quotes = [newQuote, ...get().quotes];
-        saveDemoData(DEMO_STORAGE_KEYS.quotes, quotes);
-
-        set({ quotes, loading: false });
-        console.log('✅ Quote created successfully:', newQuote.quote_number);
-
-        return newQuote;
-      } catch (error: any) {
-        console.error('❌ Error creating quote:', error);
-        set({ error: error.message, loading: false });
-        return null;
-      }
-    }
-
     try {
       const { data, error } = await supabase
         .from('quotes')
         .insert([quote])
         .select()
         .single();
-
       if (error) throw error;
-
-      set((state) => ({
-        quotes: [data, ...state.quotes],
-        loading: false,
-      }));
-
+      set((state) => ({ quotes: [data, ...state.quotes], loading: false }));
       return data;
     } catch (error: any) {
-      console.error('❌ Error creating quote:', error);
+      console.error('Error creating quote:', error);
       set({ error: error.message, loading: false });
       return null;
     }
   },
 
   updateQuote: async (id, updates) => {
-    console.log('📝 Updating quote:', id);
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      try {
-        const quotes = loadDemoData<Quote>(DEMO_STORAGE_KEYS.quotes);
-        const updatedQuotes = quotes.map((q) =>
-          q.id === id ? { ...q, ...updates, updated_at: new Date().toISOString() } : q
-        );
-
-        saveDemoData(DEMO_STORAGE_KEYS.quotes, updatedQuotes);
-        set({ quotes: updatedQuotes, loading: false });
-        console.log('✅ Quote updated successfully');
-        return;
-      } catch (error: any) {
-        console.error('❌ Error updating quote:', error);
-        set({ error: error.message, loading: false });
-      }
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('quotes')
-        .update(updates)
-        .eq('id', id);
-
+      const { error } = await supabase.from('quotes').update(updates).eq('id', id);
       if (error) throw error;
-
       set((state) => ({
-        quotes: state.quotes.map((q) =>
-          q.id === id ? { ...q, ...updates } : q
-        ),
+        quotes: state.quotes.map((q) => (q.id === id ? { ...q, ...updates } : q)),
         loading: false,
       }));
     } catch (error: any) {
-      console.error('❌ Error updating quote:', error);
+      console.error('Error updating quote:', error);
       set({ error: error.message, loading: false });
     }
   },
 
   deleteQuote: async (id) => {
-    console.log('🗑️ Deleting quote:', id);
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      try {
-        const quotes = loadDemoData<Quote>(DEMO_STORAGE_KEYS.quotes).filter((q) => q.id !== id);
-        saveDemoData(DEMO_STORAGE_KEYS.quotes, quotes);
-        set({ quotes, loading: false });
-        console.log('✅ Quote deleted successfully');
-        return;
-      } catch (error: any) {
-        console.error('❌ Error deleting quote:', error);
-        set({ error: error.message, loading: false });
-      }
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('quotes')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('quotes').delete().eq('id', id);
       if (error) throw error;
-
-      set((state) => ({
-        quotes: state.quotes.filter((q) => q.id !== id),
-        loading: false,
-      }));
+      set((state) => ({ quotes: state.quotes.filter((q) => q.id !== id), loading: false }));
     } catch (error: any) {
-      console.error('❌ Error deleting quote:', error);
+      console.error('Error deleting quote:', error);
       set({ error: error.message, loading: false });
     }
   },
 
   addQuoteItem: async (item) => {
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      set({ loading: false });
-      return null;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('quote_items')
-        .insert([item])
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('quote_items').insert([item]).select().single();
       if (error) throw error;
-
       set((state) => ({
         quoteItems: {
           ...state.quoteItems,
@@ -245,7 +125,6 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         },
         loading: false,
       }));
-
       return data;
     } catch (error: any) {
       set({ error: error.message, loading: false });
@@ -255,20 +134,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
 
   updateQuoteItem: async (id, updates) => {
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      set({ loading: false });
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('quote_items')
-        .update(updates)
-        .eq('id', id);
-
+      const { error } = await supabase.from('quote_items').update(updates).eq('id', id);
       if (error) throw error;
-
       set((state) => {
         const newQuoteItems = { ...state.quoteItems };
         Object.keys(newQuoteItems).forEach((quoteId) => {
@@ -285,20 +153,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
 
   deleteQuoteItem: async (id, quoteId) => {
     set({ loading: true, error: null });
-
-    if (DEMO_MODE) {
-      set({ loading: false });
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('quote_items')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('quote_items').delete().eq('id', id);
       if (error) throw error;
-
       set((state) => ({
         quoteItems: {
           ...state.quoteItems,
@@ -311,7 +168,5 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
     }
   },
 
-  getQuoteById: (id) => {
-    return get().quotes.find((q) => q.id === id);
-  },
+  getQuoteById: (id) => get().quotes.find((q) => q.id === id),
 }));

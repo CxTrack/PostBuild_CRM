@@ -191,13 +191,6 @@ export const invoiceService = {
   },
 
   async getInvoice(invoiceId: string): Promise<Invoice | null> {
-    // Handle demo mode
-    if (typeof window !== 'undefined' && localStorage.getItem('DEMO_MODE') === 'true') {
-      const demoInvoices = JSON.parse(localStorage.getItem('cxtrack_demo_invoices') || '[]');
-      const invoice = demoInvoices.find((inv: Invoice) => inv.id === invoiceId);
-      return invoice || null;
-    }
-
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
@@ -288,14 +281,6 @@ export const invoiceService = {
   },
 
   async deleteInvoice(invoiceId: string): Promise<void> {
-    // Handle demo mode
-    if (typeof window !== 'undefined' && localStorage.getItem('DEMO_MODE') === 'true') {
-      const demoInvoices = JSON.parse(localStorage.getItem('cxtrack_demo_invoices') || '[]');
-      const filteredInvoices = demoInvoices.filter((inv: Invoice) => inv.id !== invoiceId);
-      localStorage.setItem('cxtrack_demo_invoices', JSON.stringify(filteredInvoices));
-      return;
-    }
-
     const { error } = await supabase
       .from('invoices')
       .delete()
@@ -305,18 +290,6 @@ export const invoiceService = {
   },
 
   async sendInvoice(invoiceId: string): Promise<void> {
-    // Handle demo mode
-    if (typeof window !== 'undefined' && localStorage.getItem('DEMO_MODE') === 'true') {
-      const demoInvoices = JSON.parse(localStorage.getItem('cxtrack_demo_invoices') || '[]');
-      const updatedInvoices = demoInvoices.map((inv: Invoice) =>
-        inv.id === invoiceId
-          ? { ...inv, status: 'sent' as const, sent_at: new Date().toISOString() }
-          : inv
-      );
-      localStorage.setItem('cxtrack_demo_invoices', JSON.stringify(updatedInvoices));
-      return;
-    }
-
     const { error } = await supabase
       .from('invoices')
       .update({
@@ -338,24 +311,6 @@ export const invoiceService = {
     let status: Invoice['status'] = 'partial';
     if (newAmountDue <= 0) {
       status = 'paid';
-    }
-
-    // Handle demo mode
-    if (typeof window !== 'undefined' && localStorage.getItem('DEMO_MODE') === 'true') {
-      const demoInvoices = JSON.parse(localStorage.getItem('cxtrack_demo_invoices') || '[]');
-      const updatedInvoices = demoInvoices.map((inv: Invoice) =>
-        inv.id === invoiceId
-          ? {
-              ...inv,
-              amount_paid: newAmountPaid,
-              amount_due: newAmountDue,
-              status,
-              paid_at: status === 'paid' ? new Date().toISOString() : null,
-            }
-          : inv
-      );
-      localStorage.setItem('cxtrack_demo_invoices', JSON.stringify(updatedInvoices));
-      return;
     }
 
     const { error } = await supabase

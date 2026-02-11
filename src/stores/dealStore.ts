@@ -152,55 +152,6 @@ export const useDealStore = create<DealStore>((set, get) => ({
     const currentOrg = useOrganizationStore.getState().currentOrganization;
     if (!currentOrg) return;
 
-    // Handle demo mode
-    if (typeof window !== 'undefined' && localStorage.getItem('DEMO_MODE') === 'true') {
-      try {
-        const quotes = JSON.parse(localStorage.getItem('cxtrack_demo_quotes') || '[]');
-        const invoices = JSON.parse(localStorage.getItem('cxtrack_demo_invoices') || '[]');
-
-        // Calculate pipeline from open quotes (sent/viewed status)
-        const openQuotes = quotes.filter((q: any) =>
-          q.status === 'sent' || q.status === 'viewed' || q.status === 'draft'
-        );
-
-        const totalPipeline = openQuotes.reduce((sum: number, q: any) =>
-          sum + (q.total_amount || 0), 0
-        );
-
-        // Weighted pipeline (assuming 50% probability for open quotes)
-        const weightedPipeline = openQuotes.reduce((sum: number, q: any) =>
-          sum + (q.total_amount || 0) * 0.5, 0
-        );
-
-        // Calculate won deals from paid invoices
-        const paidInvoices = invoices.filter((i: any) => i.status === 'paid');
-        const totalWonValue = paidInvoices.reduce((sum: number, i: any) =>
-          sum + (i.total_amount || 0), 0
-        );
-
-        const stats: PipelineStats = {
-          total_pipeline: totalPipeline,
-          weighted_pipeline: weightedPipeline,
-          open_deals_count: openQuotes.length,
-          won_deals_count: paidInvoices.length,
-          lost_deals_count: 0,
-          total_won_value: totalWonValue,
-          by_stage: {
-            lead: { count: 0, value: 0, weighted: 0 },
-            qualified: { count: 0, value: 0, weighted: 0 },
-            proposal: { count: openQuotes.length, value: totalPipeline, weighted: weightedPipeline },
-            negotiation: { count: 0, value: 0, weighted: 0 },
-          },
-        };
-
-        set({ pipelineStats: stats });
-        return;
-      } catch (error: any) {
-        console.error('Error calculating demo pipeline stats:', error);
-      }
-      return;
-    }
-
     try {
       const { data, error } = await supabase.rpc('calculate_pipeline_value', {
         p_organization_id: currentOrg.id,
