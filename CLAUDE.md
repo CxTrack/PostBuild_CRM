@@ -55,5 +55,39 @@
 
 ---
 
+## 🤖 GEMINI PROMPT PREFIX (COPY-PASTE THIS)
+
+When working with Gemini on CRM tasks, **always start your prompt with:**
+
+```
+⚠️ CRITICAL BRANCH RULES - READ FIRST ⚠️
+
+You are working on the CxTrack CRM App (PostBuild_CRM repository).
+
+MANDATORY REQUIREMENTS:
+1. ONLY use the folder: c:\AntiGravity\Database implementation\Website-CRM-integration\PostBuild_CRM
+2. NEVER use any folder named "PostBuild_CRM-main" or any other copy
+3. BEFORE any git operation, run: git checkout CRM-Template-Configuration
+4. ONLY commit to branch: CRM-Template-Configuration
+5. NEVER commit to or push to main branch
+6. NEVER create Python scripts or files in the CRM folder
+
+If you need to run git commands:
+- git checkout CRM-Template-Configuration
+- git pull origin CRM-Template-Configuration
+- git add <specific files>
+- git commit -m "message"
+- git push origin CRM-Template-Configuration
+
+FORBIDDEN COMMANDS (will break production):
+- git checkout main
+- git push origin main
+- git push (without specifying CRM-Template-Configuration)
+
+Now here is your task:
+```
+
+---
+
 ## Last Updated: 2026-02-10
 ## This file MUST be read before EVERY commit
