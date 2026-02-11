@@ -8,39 +8,32 @@ import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 
 import { useAuthContext } from './contexts/AuthContext';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { CoPilotProvider } from './contexts/CoPilotContext';
 
-// Pages
+// Pages - Named exports
 import { DashboardPage } from './pages/DashboardPage';
 import { Customers } from './pages/Customers';
-import { Calendar } from './pages/calendar/Calendar';
-import { Quotes } from './pages/Quotes';
-import { Invoices } from './pages/Invoices';
-import { Products } from './pages/Products';
-import { Pipeline } from './pages/Pipeline';
-import { Calls } from './pages/calls/Calls';
-import { Tasks } from './pages/Tasks';
-import { Inventory } from './pages/Inventory';
-import { Suppliers } from './pages/Suppliers';
-import { Financials } from './pages/Financials';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { Upgrade } from './pages/Upgrade';
-import { Settings } from './pages/Settings';
-import { AdminPortal } from './pages/AdminPortal';
-import { Profile } from './pages/Profile';
-import { Organizations } from './pages/Organizations';
-import { EmailService } from './pages/EmailService';
-import { AIChat } from './pages/AIChat';
-import { Help } from './pages/Help';
-import { NotFound } from './pages/NotFound';
-import { Access } from './website/Access';
+import { UpgradePage } from './pages/UpgradePage';
+import { AdminPage } from './pages/admin/AdminPage';
 
-// Builder Pages
-import { QuoteBuilder } from './pages/quotes/QuoteBuilder';
-import { InvoiceBuilder } from './pages/invoices/InvoiceBuilder';
+// Pages - Default exports
+import Calendar from './pages/calendar/Calendar';
+import Quotes from './pages/Quotes';
+import Invoices from './pages/Invoices';
+import Products from './pages/Products';
+import Pipeline from './pages/Pipeline';
+import Calls from './pages/calls/Calls';
+import Tasks from './pages/Tasks';
+import Settings from './pages/settings/Settings';
+import Access from './website/Access';
+
+// Builder Pages - Default exports
+import QuoteBuilder from './pages/quotes/QuoteBuilder';
+import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 
 // Diagnostic component to track route changes
 const RouteChangeTracker = () => {
@@ -87,16 +80,8 @@ export default function App() {
             <Route path="pipeline" element={<Pipeline />} />
             <Route path="calls" element={<Calls />} />
             <Route path="tasks" element={<Tasks />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="suppliers" element={<Suppliers />} />
-            <Route path="financials" element={<Financials />} />
-            <Route path="upgrade" element={<Upgrade />} />
+            <Route path="upgrade" element={<UpgradePage />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="organizations" element={<Organizations />} />
-            <Route path="email" element={<EmailService />} />
-            <Route path="chat" element={<AIChat />} />
-            <Route path="help" element={<Help />} />
           </Route>
 
           {/* Builder Routes */}
@@ -104,7 +89,7 @@ export default function App() {
           <Route path="/invoices/builder/:id" element={<InvoiceBuilder />} />
 
           {/* Admin Routes */}
-          <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/admin" element={<AdminPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
