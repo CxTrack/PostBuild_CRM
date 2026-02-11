@@ -83,92 +83,9 @@ export default function Settings() {
       if (currentOrganization) {
         loadSettings();
       } else {
-        // In dev mode or fallback, try to load from localStorage first
-        try {
-          setLoading(true);
-          let org: any = null;
-
-          // 1. Try localStorage
-          const storedOrg = localStorage.getItem('cxtrack_organization');
-          if (storedOrg) {
-            try {
-              org = JSON.parse(storedOrg);
-            } catch (e) {
-              console.warn('Failed to parse stored organization', e);
-            }
-          }
-
-          // 2. If no local, try Supabase
-          if (!org) {
-            const { data: orgs, error } = await supabase
-              .from('organizations')
-              .select('*')
-              .limit(1);
-
-            if (!error && orgs && orgs.length > 0) {
-              org = orgs[0];
-            }
-          }
-
-          // 3. If still no org, create default demo org
-          if (!org) {
-            org = {
-              id: 'demo-org-001',
-              name: 'CxTrack Demo',
-              slug: 'cxtrack-demo',
-              created_at: new Date().toISOString(),
-              business_email: 'demo@cxtrack.com',
-              business_country: 'United States',
-              primary_color: '#6366f1',
-              quote_prefix: 'QT',
-              invoice_prefix: 'INV',
-              default_payment_terms: 'Net 30'
-            };
-            localStorage.setItem('cxtrack_organization', JSON.stringify(org));
-          }
-
-          // Apply organization to local state
-          setDevOrgId(org.id);
-          setDevOrgName(org.name);
-          setSettings({
-            business_email: org.business_email,
-            business_phone: org.business_phone,
-            business_address: org.business_address,
-            business_city: org.business_city,
-            business_state: org.business_state,
-            business_postal_code: org.business_postal_code,
-            business_country: org.business_country,
-            business_website: org.business_website,
-            logo_url: org.logo_url,
-            primary_color: org.primary_color,
-            quote_prefix: org.quote_prefix,
-            invoice_prefix: org.invoice_prefix,
-            default_payment_terms: org.default_payment_terms,
-            stripe_publishable_key: org.stripe_publishable_key,
-            stripe_secret_key: org.stripe_secret_key,
-            default_quote_template_id: org.default_quote_template_id,
-            default_invoice_template_id: org.default_invoice_template_id,
-          });
-
-          // Load templates for dev org (with error handling)
-          try {
-            const [quoteTemps, invoiceTemps] = await Promise.all([
-              settingsService.getTemplates(org.id, 'quote').catch(() => []),
-              settingsService.getTemplates(org.id, 'invoice').catch(() => []),
-            ]);
-
-            setQuoteTemplates(quoteTemps);
-            setInvoiceTemplates(invoiceTemps);
-          } catch (e) {
-            console.warn('Failed to load templates', e);
-          }
-
-          setLoading(false);
-        } catch (error) {
-          console.error('Failed to load organization:', error);
-          toast.error('Failed to load settings');
-          setLoading(false);
-        }
+        // No currentOrganization - wait for it to load or show empty state
+        console.log('[CxTrack] Waiting for organization to load...');
+        setLoading(false);
       }
     };
     initSettings();

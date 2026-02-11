@@ -48,8 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
-        // Clear cached organization to force refresh for new user
+        // Clear ALL cached data to force refresh for new user
         localStorage.removeItem('organization-storage');
+        localStorage.removeItem('cxtrack_organization');
+        localStorage.removeItem('cxtrack_user_profile');
+        localStorage.removeItem('current_organization_id');
+        console.log('[CxTrack] Cleared all cached data on sign-in');
       }
 
       if (session?.user) {
@@ -81,11 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setLoading(true);
     await supabase.auth.signOut();
-    // Clear all cached data
+    // Clear all cached data - be explicit about CRM keys
     localStorage.removeItem('organization-storage');
+    localStorage.removeItem('cxtrack_organization');
+    localStorage.removeItem('cxtrack_user_profile');
+    localStorage.removeItem('current_organization_id');
+    // Clear everything else
     localStorage.clear();
     setUser(null);
     setLoading(false);
+    console.log('[CxTrack] Logged out, all data cleared');
   };
 
   return (

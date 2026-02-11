@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
 import toast from 'react-hot-toast';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ProfileData {
     full_name: string;
@@ -39,29 +40,31 @@ interface ProfileData {
 
 const PROFILE_KEY = 'cxtrack_user_profile';
 
-const defaultProfile: ProfileData = {
-    full_name: 'Admin User',
-    email: 'admin@cxtrack.com',
-    phone: '+1 (555) 123-4567',
-    title: 'Sales Manager',
-    department: 'Sales',
-    location: 'New York, NY',
+// Default profile factory - uses auth user data when available
+const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_name?: string } } | null): ProfileData => ({
+    full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+    email: user?.email || '',
+    phone: '',
+    title: '',
+    department: '',
+    location: '',
     timezone: 'Eastern Time (ET)',
-    bio: 'Experienced sales professional passionate about building relationships and driving growth.',
-    linkedin: 'linkedin.com/in/adminuser',
+    bio: '',
+    linkedin: '',
     website: '',
     birthday: '',
     avatar_url: null,
-    work_style: ['Early Bird', 'Hybrid'],
-    communication_preference: ['Direct', 'Data-Driven'],
-    goals: ['Increase sales by 20%', 'Improve customer satisfaction'],
-    interests: ['Technology', 'Travel', 'Photography'],
-    expertise: ['Sales', 'Marketing'],
+    work_style: [],
+    communication_preference: [],
+    goals: [],
+    interests: [],
+    expertise: [],
     learning_topics: []
-};
+});
 
 export const ProfileTab: React.FC = () => {
-    const [profile, setProfile] = useState<ProfileData>(defaultProfile);
+    const { user } = useAuthContext();
+    const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(user));
     const [avatar, setAvatar] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showCropper, setShowCropper] = useState(false);
@@ -70,17 +73,29 @@ export const ProfileTab: React.FC = () => {
     const editorRef = useRef<AvatarEditor | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Load profile from localStorage
+    // Load profile - prioritize localStorage but sync with auth user
     useEffect(() => {
         const saved = localStorage.getItem(PROFILE_KEY);
         if (saved) {
-            const parsed = JSON.parse(saved);
-            setProfile(parsed);
-            if (parsed.avatar_url) {
-                setAvatarPreview(parsed.avatar_url);
+            try {
+                const parsed = JSON.parse(saved);
+                // If saved email matches current user, use saved data
+                if (user?.email && parsed.email === user.email) {
+                    setProfile(parsed);
+                    if (parsed.avatar_url) {
+                        setAvatarPreview(parsed.avatar_url);
+                    }
+                    return;
+                }
+            } catch (e) {
+                console.warn('Failed to parse saved profile', e);
             }
         }
-    }, []);
+        // No saved profile or different user - use auth user data
+        if (user) {
+            setProfile(createDefaultProfile(user));
+        }
+    }, [user]);
 
     const handleAvatarUpload = async () => {
         if (!editorRef.current) return;
@@ -582,7 +597,7 @@ export const ProfileTab: React.FC = () => {
             {/* Save Button */}
             <div className="flex justify-end gap-3 pb-8">
                 <button
-                    onClick={() => setProfile(defaultProfile)}
+                    onClick={() => setProfile(createDefaultProfile(user))}
                     className="px-6 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors"
                 >
                     Reset
