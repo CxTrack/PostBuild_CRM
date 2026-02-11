@@ -39,6 +39,9 @@ import { ReportsPage } from './pages/ReportsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { UpgradePage } from './pages/UpgradePage';
+import LenderDirectory from './components/mortgage/LenderDirectory';
+import SprintBoard from './components/software/SprintBoard';
+
 
 
 import PublicQuoteView from './pages/share/PublicQuoteView';
@@ -123,6 +126,9 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="lenders" element={<LenderDirectory />} />
+            <Route path="sprints" element={<SprintBoard />} />
+
           </Route>
 
           {/* Popup / special (intentionally public) */}
