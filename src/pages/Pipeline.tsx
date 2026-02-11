@@ -11,11 +11,13 @@ import {
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
+import { useDealStore } from '../stores/dealStore';
+import { useOrganizationStore } from '../stores/organizationStore';
 import { useMemo } from 'react';
 
 interface PipelineItem {
   id: string;
-  type: 'quote' | 'invoice';
+  type: 'quote' | 'invoice' | 'deal';
   number: string;
   customer_name: string;
   customer_email: string;
@@ -38,6 +40,8 @@ const Pipeline: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { customers, fetchCustomers } = useCustomerStore();
+  const { deals, fetchDeals } = useDealStore();
+  const { currentOrganization } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore } = usePipelineConfigStore();
 
   const STAGES = useMemo(() => {
@@ -148,16 +152,38 @@ const Pipeline: React.FC = () => {
         console.error('Error loading pipeline data from localStorage:', error);
       }
 
-      await Promise.all([fetchQuotes(), fetchInvoices(), fetchCustomers()]);
+      await Promise.all([
+        fetchQuotes(),
+        fetchInvoices(),
+        fetchCustomers(),
+        fetchDeals()
+      ]);
       setLoading(false);
     };
     loadData();
     fetchPipelineStages();
-  }, [fetchPipelineStages]);
+  }, [fetchPipelineStages, currentOrganization?.id]);
 
   useEffect(() => {
-    if (quotes.length > 0 || invoices.length > 0) {
+    if (quotes.length > 0 || invoices.length > 0 || deals.length > 0) {
       const pipelineItems: PipelineItem[] = [];
+
+      // Add Deals
+      deals.forEach((deal: any) => {
+        const customer = customers.find(c => c.id === deal.customer_id);
+        pipelineItems.push({
+          id: deal.id,
+          type: 'deal',
+          number: deal.title || 'Untitled Deal',
+          customer_name: customer?.name || deal.customers?.name || 'Unknown',
+          customer_email: customer?.email || deal.customers?.email || '',
+          total_amount: Number(deal.value || 0),
+          status: deal.final_status || 'open',
+          created_at: deal.created_at,
+          stage: deal.stage || 'lead',
+          probability: deal.probability || 0,
+        });
+      });
 
       quotes?.forEach(quote => {
         if (['sent', 'viewed', 'draft'].includes(quote.status)) {
@@ -213,11 +239,9 @@ const Pipeline: React.FC = () => {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      if (pipelineItems.length > 0) {
-        setItems(pipelineItems);
-      }
+      setItems(pipelineItems);
     }
-  }, [quotes, invoices, customers]);
+  }, [quotes, invoices, deals, customers]);
 
   const filteredItems = items.filter(item => {
     const matchesSearch =
@@ -781,7 +805,7 @@ const Pipeline: React.FC = () => {
                     stage.items.map(item => (
                       <div
                         key={`${item.type}-${item.id}`}
-                        onClick={() => navigate(`/${item.type === 'quote' ? 'quotes' : 'invoices'}/${item.id}`)}
+                        onClick={() => navigate(`/${item.type === 'quote' ? 'quotes' : item.type === 'invoice' ? 'invoices' : 'dashboard/pipeline'}/${item.id}`)}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${theme === 'soft-modern'
                           ? ''
                           : theme === 'dark'
@@ -795,14 +819,18 @@ const Pipeline: React.FC = () => {
                         } : undefined}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.type === 'quote'
-                            ? theme === 'soft-modern' ? '' : 'bg-blue-100 text-blue-700'
-                            : theme === 'soft-modern' ? '' : 'bg-purple-100 text-purple-700'
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.type === 'quote' ? (theme === 'soft-modern' ? '' : 'bg-blue-100 text-blue-700') :
+                            item.type === 'invoice' ? (theme === 'soft-modern' ? '' : 'bg-purple-100 text-purple-700') :
+                              (theme === 'soft-modern' ? '' : 'bg-indigo-100 text-indigo-700')
                             }`} style={theme === 'soft-modern' ? {
-                              background: item.type === 'quote' ? 'rgba(168, 197, 232, 0.3)' : 'rgba(201, 184, 212, 0.3)',
-                              color: item.type === 'quote' ? '#4A5F80' : '#7A6050'
+                              background: item.type === 'quote' ? 'rgba(168, 197, 232, 0.3)' :
+                                item.type === 'invoice' ? 'rgba(201, 184, 212, 0.3)' :
+                                  'rgba(99, 102, 241, 0.2)',
+                              color: item.type === 'quote' ? '#4A5F80' :
+                                item.type === 'invoice' ? '#7A6050' :
+                                  '#6366F1'
                             } : undefined}>
-                            {item.type === 'quote' ? 'Quote' : 'Invoice'}
+                            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
                           </span>
                           <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>
                             {item.number}

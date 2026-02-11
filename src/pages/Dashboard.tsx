@@ -116,7 +116,7 @@ export const Dashboard: React.FC = () => {
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { products, fetchProducts } = useProductStore();
   const { tasks, fetchTasks, getPendingTasks, getOverdueTasks } = useTaskStore();
-  const { fetchPipelineStats } = useDealStore();
+  const { fetchPipelineStats, pipelineStats } = useDealStore();
   const { currentOrganization } = useOrganizationStore();
   const { preferences, saveQuickActionsOrder } = usePreferencesStore();
 
@@ -583,11 +583,11 @@ export const Dashboard: React.FC = () => {
                   <TrendingUp size={18} className={theme === 'soft-modern' ? 'icon-primary' : 'text-pink-600 dark:text-white'} />
                 </div>
                 <span className={theme === 'soft-modern' ? 'text-xs text-tertiary font-medium' : 'text-xs text-gray-600 dark:text-gray-400 font-medium'}>
-                  {localStorageStats.openDealsCount} deals
+                  {pipelineStats?.open_deals_count || localStorageStats.openDealsCount} deals
                 </span>
               </div>
               <p className={theme === 'soft-modern' ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-gray-900 dark:text-white'}>
-                ${((localStorageStats.pipelineValue / 1000).toFixed(1))}k
+                ${pipelineStats ? ((pipelineStats.total_pipeline / 1000).toFixed(1)) : ((localStorageStats.pipelineValue / 1000).toFixed(1))}k
               </p>
               <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>Pipeline</p>
             </div>

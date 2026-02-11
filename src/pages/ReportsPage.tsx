@@ -15,6 +15,8 @@ import { useThemeStore } from '@/stores/themeStore';
 import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useCallStore } from '@/stores/callStore';
+import { useDealStore } from '@/stores/dealStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -48,9 +50,11 @@ type ReportSection = 'overview' | 'revenue' | 'subscriptions' | 'customers' | 'p
 export const ReportsPage = () => {
     const { theme } = useThemeStore();
     const navigate = useNavigate();
-    const { invoices } = useInvoiceStore();
-    const { customers } = useCustomerStore();
-    const { calls } = useCallStore();
+    const { invoices, fetchInvoices } = useInvoiceStore();
+    const { customers, fetchCustomers } = useCustomerStore();
+    const { calls, fetchCalls } = useCallStore();
+    const { fetchPipelineStats, pipelineStats } = useDealStore();
+    const { currentOrganization } = useOrganizationStore();
 
     const [activeSection, setActiveSection] = useState<ReportSection>('overview');
     const [datePreset, setDatePreset] = useState('Last 30 Days');
@@ -88,7 +92,16 @@ export const ReportsPage = () => {
             setSubsLoading(false);
         };
         loadSubscriptions();
-    }, []);
+
+        if (currentOrganization?.id) {
+            Promise.all([
+                fetchInvoices(),
+                fetchCustomers(),
+                fetchCalls(),
+                fetchPipelineStats()
+            ]);
+        }
+    }, [currentOrganization?.id]);
 
     // Subscription metrics calculations
     const subscriptionMetrics = useMemo(() => {
@@ -237,13 +250,21 @@ export const ReportsPage = () => {
 
     // Pipeline data
     const pipelineData = useMemo(() => {
-        const stages = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-        return stages.map((stage, i) => ({
-            name: stage,
-            value: Math.floor(Math.random() * 20) + 5,
+        if (!pipelineStats?.by_stage) {
+            const stages = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+            return stages.map((stage, i) => ({
+                name: stage,
+                value: Math.floor(Math.random() * 20) + 5,
+                color: COLORS[i % COLORS.length],
+            }));
+        }
+
+        return Object.entries(pipelineStats.by_stage).map(([stage, stats], i) => ({
+            name: stage.charAt(0).toUpperCase() + stage.slice(1),
+            value: (stats as any).count,
             color: COLORS[i % COLORS.length],
         }));
-    }, []);
+    }, [pipelineStats]);
 
     // Call analytics data
     const callData = useMemo(() => {
