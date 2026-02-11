@@ -87,7 +87,6 @@ interface SortableNavItemProps {
 }
 
 const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
-  const navigate = useNavigate();
   const {
     attributes,
     listeners,
@@ -104,16 +103,10 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
     zIndex: isDragging ? 50 : 0,
   };
 
-  // Handle click explicitly to ensure navigation works with DndKit
-  const handleClick = (e: React.MouseEvent) => {
-    // Don't navigate if dragging or if item is locked
-    if (isDragging || item.isLocked) {
-      e.preventDefault();
-      return;
-    }
+  // Prevent drag handle clicks from triggering navigation
+  const handleDragHandleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Use React Router navigation for proper SPA behavior
-    navigate(item.path);
+    e.stopPropagation();
   };
 
   return (
@@ -122,28 +115,42 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
       style={style}
       className={`group relative ${isDragging ? 'z-50' : ''}`}
     >
-      <a
-        href={item.path}
-        onClick={handleClick}
-        className={
-          theme === 'soft-modern'
-            ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
-            : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(item.path)
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            } ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
-        }
-      >
-        <div {...attributes} {...listeners} className="mr-2 cursor-grab active:cursor-grabbing">
+      <div className="flex items-center">
+        {/* Drag handle - completely separate from the link */}
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={handleDragHandleClick}
+          className="mr-2 cursor-grab active:cursor-grabbing flex-shrink-0"
+        >
           <GripVertical
             size={16}
             className={theme === 'soft-modern' ? "opacity-0 group-hover:opacity-30 transition-opacity text-tertiary" : "opacity-0 group-hover:opacity-50 transition-opacity"}
           />
         </div>
-        <item.icon size={20} className="mr-3" />
-        <span className="font-medium flex-1">{item.label}</span>
-        {item.isLocked && <Lock size={14} className="ml-2 text-amber-500" />}
-      </a>
+        {/* Navigation link - using React Router Link for reliable SPA navigation */}
+        <Link
+          to={item.isLocked ? '/dashboard/upgrade' : item.path}
+          className={
+            theme === 'soft-modern'
+              ? `nav-item flex items-center flex-1 px-2 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
+              : `flex items-center flex-1 px-2 py-2 rounded-lg transition-colors ${isActive(item.path)
+                ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
+          }
+          onClick={(e) => {
+            // Prevent navigation if currently dragging
+            if (isDragging) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <item.icon size={20} className="mr-3" />
+          <span className="font-medium flex-1">{item.label}</span>
+          {item.isLocked && <Lock size={14} className="ml-2 text-amber-500" />}
+        </Link>
+      </div>
     </div>
   );
 };
