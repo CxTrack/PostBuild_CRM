@@ -6,7 +6,7 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
     name: 'Dashboard',
     description: 'Overview and analytics',
     icon: 'LayoutGrid',
-    route: '/dashboard',
+    route: '',
     requiredPermissions: [],
     category: 'system',
   },
