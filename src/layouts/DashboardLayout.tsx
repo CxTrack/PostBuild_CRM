@@ -110,9 +110,9 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
       e.preventDefault();
       return;
     }
-    // Explicitly navigate to ensure it works
     e.preventDefault();
-    navigate(item.path);
+    // Force full page navigation - React Router's navigate() isn't triggering re-renders
+    window.location.href = item.path;
   };
 
   return (
