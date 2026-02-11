@@ -55,7 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getSession();
 
     // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
+        // Clear cached organization to force refresh for new user
+        localStorage.removeItem('organization-storage');
+      }
+
       if (session?.user) {
         const { data: memberData } = await supabase
           .from('organization_members')

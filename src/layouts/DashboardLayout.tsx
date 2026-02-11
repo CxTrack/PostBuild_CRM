@@ -169,6 +169,26 @@ export const DashboardLayout = () => {
     }
   }, [user, fetchUserOrganizations]);
 
+  // Force refresh organization data on mount to ensure fresh data
+  useEffect(() => {
+    const refreshOrganizations = async () => {
+      if (user?.id) {
+        // Clear any cached org that might belong to different user
+        const cachedOrg = useOrganizationStore.getState().currentOrganization;
+        const orgs = useOrganizationStore.getState().organizations;
+
+        // If no orgs fetched yet, or cached user doesn't match current user, refresh
+        if (orgs.length === 0 || !orgs.some(o => o.membership.user_id === user.id)) {
+          console.log('[CxTrack] Refreshing organization data for user:', user.id);
+          localStorage.removeItem('organization-storage');
+          await fetchUserOrganizations(user.id);
+        }
+      }
+    };
+
+    refreshOrganizations();
+  }, [user?.id]);
+
   const isModuleShared = (path: string) => {
     if (!currentOrganization?.metadata?.sharing) return true;
 
