@@ -75,9 +75,10 @@ export const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Navigation debugging - log every location change
+  // Navigation debugging - log every location change in body and effect
+  console.log('[NAV DEBUG] DashboardLayout Render path:', location.pathname);
   useEffect(() => {
-    console.log('[NAV DEBUG] Location changed:', location.pathname);
+    console.log('[NAV DEBUG] Effect: Location changed:', location.pathname);
   }, [location.pathname]);
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
@@ -129,7 +130,10 @@ export const DashboardLayout = () => {
     checkAdminStatus();
   }, [user, isLocalDev]);
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return location.pathname === '/dashboard';
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   useEffect(() => {
     // 1. Map visibleModules to NavItems (filter out dashboard - Home already handles it)
@@ -231,6 +235,10 @@ export const DashboardLayout = () => {
         <nav className={theme === 'soft-modern' ? "flex-1 overflow-y-auto p-4 space-y-2" : "flex-1 overflow-y-auto p-4 space-y-1"}>
           <Link
             to={HOME_ITEM.path}
+            onClick={(e) => {
+              // Ensure router transition even if Link default fails
+              console.log('[NAV DEBUG] Clicking Home link');
+            }}
             className={
               theme === 'soft-modern'
                 ? `nav-item flex items-center px-4 py-3 ${isActive(HOME_ITEM.path) ? 'active' : ''}`
@@ -248,6 +256,15 @@ export const DashboardLayout = () => {
             <Link
               key={item.path}
               to={item.isLocked ? '/dashboard/upgrade' : item.path}
+              onClick={(e) => {
+                const target = item.isLocked ? '/dashboard/upgrade' : item.path;
+                console.log('[NAV DEBUG] Clicking dynamic link:', target);
+                // Explicitly navigate as a fallback
+                if (!e.defaultPrevented) {
+                  navigate(target);
+                  e.preventDefault();
+                }
+              }}
               className={
                 theme === 'soft-modern'
                   ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
@@ -393,7 +410,7 @@ export const DashboardLayout = () => {
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 transition-all duration-300 ${isCoPilotOpen ? (panelSide === 'left' ? 'md:ml-[400px]' : 'md:mr-[400px]') : ''
         }`}>
-        <Outlet key={location.pathname} />
+        <Outlet />
       </main>
 
       {/* Mobile Bottom Navigation - Shown on Mobile Only */}
