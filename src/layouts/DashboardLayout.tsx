@@ -86,6 +86,7 @@ interface SortableNavItemProps {
 }
 
 const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
+  const navigate = useNavigate();
   const {
     attributes,
     listeners,
@@ -102,14 +103,27 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
     zIndex: isDragging ? 50 : 0,
   };
 
+  // Handle click explicitly to ensure navigation works with DndKit
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't navigate if dragging or if item is locked
+    if (isDragging || item.isLocked) {
+      e.preventDefault();
+      return;
+    }
+    // Explicitly navigate to ensure it works
+    e.preventDefault();
+    navigate(item.path);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`group relative ${isDragging ? 'z-50' : ''}`}
     >
-      <Link
-        to={item.path}
+      <a
+        href={item.path}
+        onClick={handleClick}
         className={
           theme === 'soft-modern'
             ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
@@ -117,7 +131,6 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
               ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             } ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
-
         }
       >
         <div {...attributes} {...listeners} className="mr-2 cursor-grab active:cursor-grabbing">
@@ -129,8 +142,7 @@ const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
         <item.icon size={20} className="mr-3" />
         <span className="font-medium flex-1">{item.label}</span>
         {item.isLocked && <Lock size={14} className="ml-2 text-amber-500" />}
-      </Link>
-
+      </a>
     </div>
   );
 };
