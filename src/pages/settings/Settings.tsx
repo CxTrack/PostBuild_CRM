@@ -3,7 +3,8 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { supabase } from '@/lib/supabase';
-import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Plus, Edit, Trash2, Eye, Download, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Plus, Edit, Trash2, Eye, Download, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -33,6 +34,13 @@ export default function Settings() {
   const [devOrgId, setDevOrgId] = useState<string | null>(null);
   const [devOrgName, setDevOrgName] = useState<string>('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    navigate('/login');
+  };
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
@@ -1766,6 +1774,17 @@ export default function Settings() {
         {activeTab === 'security' && <SecurityTab />}
         {activeTab === 'voiceagent' && <VoiceAgentSetup />}
         {activeTab === 'help' && <HelpCenterTab />}
+
+        {/* Logout Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium transition-colors"
+          >
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </div>
       </div>
       <InviteMemberModal
         isOpen={showInviteModal}

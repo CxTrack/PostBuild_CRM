@@ -77,11 +77,6 @@ export const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Navigation debugging - log every location change in body and effect
-  console.log('[NAV DEBUG] DashboardLayout Render path:', location.pathname);
-  useEffect(() => {
-    console.log('[NAV DEBUG] Effect: Location changed:', location.pathname);
-  }, [location.pathname]);
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences } = usePreferencesStore();
@@ -239,7 +234,6 @@ export const DashboardLayout = () => {
             to={HOME_ITEM.path}
             onClick={(e) => {
               // Ensure router transition even if Link default fails
-              console.log('[NAV DEBUG] Clicking Home link');
             }}
             className={
               theme === 'soft-modern'

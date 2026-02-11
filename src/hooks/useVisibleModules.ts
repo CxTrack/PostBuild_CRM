@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useOrganizationStore } from '../stores/organizationStore';
 import {
     AVAILABLE_MODULES,
@@ -31,36 +32,41 @@ const normalizePlanTier = (dbTier?: string): string => {
 export const useVisibleModules = () => {
     const { currentOrganization } = useOrganizationStore();
 
-    const planTier = normalizePlanTier(currentOrganization?.subscription_tier);
-    const industryTemplate = currentOrganization?.industry_template || 'general_business';
+    // MEMOIZE to prevent new object reference on every render
+    const result = useMemo(() => {
+        const planTier = normalizePlanTier(currentOrganization?.subscription_tier);
+        const industryTemplate = currentOrganization?.industry_template || 'general_business';
 
-    // 1. Get modules defined by industry template
-    const templateModuleIds = INDUSTRY_TEMPLATES[industryTemplate] || INDUSTRY_TEMPLATES['general_business'];
+        // 1. Get modules defined by industry template
+        const templateModuleIds = INDUSTRY_TEMPLATES[industryTemplate] || INDUSTRY_TEMPLATES['general_business'];
 
-    // 2. Get modules allowed by plan tier
-    const planAllowedModuleIds = PLAN_MODULE_ACCESS[planTier] || PLAN_MODULE_ACCESS['free'];
+        // 2. Get modules allowed by plan tier
+        const planAllowedModuleIds = PLAN_MODULE_ACCESS[planTier] || PLAN_MODULE_ACCESS['free'];
 
-    // 3. Determine visibility (Template defines WHAT exists, Plan defines IF it's locked/accessible)
-    const visibleModules = templateModuleIds.map(id => {
-        const baseModule = AVAILABLE_MODULES[id];
-        if (!baseModule) return null;
+        // 3. Determine visibility (Template defines WHAT exists, Plan defines IF it's locked/accessible)
+        const visibleModules = templateModuleIds.map(id => {
+            const baseModule = AVAILABLE_MODULES[id];
+            if (!baseModule) return null;
 
-        const isLocked = !planAllowedModuleIds.includes(id);
+            const isLocked = !planAllowedModuleIds.includes(id);
 
-        // Apply industry labels
-        const labels = INDUSTRY_LABELS[industryTemplate]?.[id];
+            // Apply industry labels
+            const labels = INDUSTRY_LABELS[industryTemplate]?.[id];
+
+            return {
+                ...baseModule,
+                name: labels?.name || baseModule.name,
+                description: labels?.description || baseModule.description,
+                isLocked
+            };
+        }).filter(Boolean) as VisibleModule[];
 
         return {
-            ...baseModule,
-            name: labels?.name || baseModule.name,
-            description: labels?.description || baseModule.description,
-            isLocked
+            visibleModules,
+            planTier,
+            industryTemplate
         };
-    }).filter(Boolean) as VisibleModule[];
+    }, [currentOrganization?.subscription_tier, currentOrganization?.industry_template]);
 
-    return {
-        visibleModules,
-        planTier,
-        industryTemplate
-    };
+    return result;
 };

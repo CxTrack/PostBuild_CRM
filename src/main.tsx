@@ -6,9 +6,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 // Build version for deployment verification
-const BUILD_VERSION = 'FULL_FIX_V6_2026-02-11';
+const BUILD_VERSION = 'INFINITE_LOOP_FIX_V7_2026-02-11';
 console.log(`%c[CxTrack] Build: ${BUILD_VERSION}`, 'color: #6366f1; font-weight: bold; font-size: 14px;');
-console.log('%c[CxTrack] Full fix: CoPilot, Chat, Reports, Navigation', 'color: #22c55e;');
+console.log('%c[CxTrack] CRITICAL: Infinite loop fix + logout button', 'color: #22c55e;');
 
 // Defensive fallback for DEMO_MODE_CONFIG
 if (typeof window !== 'undefined') {
