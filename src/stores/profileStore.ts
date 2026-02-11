@@ -21,6 +21,7 @@ interface ProfileData {
   organization_id?: string;
   industry_template?: string;
   subscription_tier?: string;
+  full_name?: string;
 }
 
 interface ProfileState {
@@ -109,7 +110,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           onboarding_step: userProfile.onboarding_step,
           organization_id: userProfile.organization_id,
           industry_template: orgData?.industry_template || 'general_business',
-          subscription_tier: orgData?.subscription_tier || 'free'
+          subscription_tier: orgData?.subscription_tier || 'free',
+          full_name: userProfile.full_name || userData.user.user_metadata?.full_name || ''
         };
 
         set({ profile: mappedProfile, loading: false });

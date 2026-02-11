@@ -439,11 +439,11 @@ export const DashboardLayout = () => {
               <div
                 className={theme === 'soft-modern' ? "w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-gradient-to-br from-purple-600 to-blue-600 shadow-sm" : "w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm"}
               >
-                A
+                {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
               </div>
               <div className="ml-3 text-left">
                 <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
-                  {user?.user_metadata?.first_name || 'Admin User'}
+                  {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                 </p>
                 {isSuperAdmin ? (
                   <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
