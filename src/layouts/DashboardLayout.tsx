@@ -256,15 +256,6 @@ export const DashboardLayout = () => {
             <Link
               key={item.path}
               to={item.isLocked ? '/dashboard/upgrade' : item.path}
-              onClick={(e) => {
-                const target = item.isLocked ? '/dashboard/upgrade' : item.path;
-                console.log('[NAV DEBUG] Clicking dynamic link:', target);
-                // Explicitly navigate as a fallback
-                if (!e.defaultPrevented) {
-                  navigate(target);
-                  e.preventDefault();
-                }
-              }}
               className={
                 theme === 'soft-modern'
                   ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
