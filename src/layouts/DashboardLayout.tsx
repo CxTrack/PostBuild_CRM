@@ -74,6 +74,11 @@ export const DashboardLayout = () => {
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Navigation debugging - log every location change
+  useEffect(() => {
+    console.log('[NAV DEBUG] Location changed:', location.pathname);
+  }, [location.pathname]);
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences } = usePreferencesStore();
