@@ -303,7 +303,7 @@ export const DashboardLayout = () => {
   const moreNavItems = visibleNavItems.filter((item: NavItem) => !selectedPaths.has(item.path));
 
   // Ensure Settings is in More if not selected
-  if (!selectedPaths.has('/settings') && !moreNavItems.some((i: NavItem) => i.path === '/settings')) {
+  if (!selectedPaths.has('/dashboard/settings') && !moreNavItems.some((i: NavItem) => i.path === '/dashboard/settings')) {
     moreNavItems.push(SETTINGS_ITEM);
   }
 
@@ -423,7 +423,13 @@ export const DashboardLayout = () => {
         {/* User Profile */}
         <div className={theme === 'soft-modern' ? "p-4 border-t border-default" : "p-4 border-t border-gray-200 dark:border-gray-700"}>
           <button
-            onClick={() => isSuperAdmin && navigate('/admin')}
+            onClick={() => {
+              if (isSuperAdmin) {
+                navigate('/admin');
+              } else {
+                navigate('/dashboard/settings');
+              }
+            }}
             className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${theme === 'soft-modern'
               ? 'hover:bg-slate-100 dark:hover:bg-slate-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-700'
