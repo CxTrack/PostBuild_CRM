@@ -46,10 +46,28 @@ const RouteChangeTracker = () => {
   return null;
 };
 
-export default function App() {
-  // AuthContext provides user info (not used for route guards currently)
-  useAuthContext();
+// Auth guard component - redirects to login if not authenticated
+const RequireAuth = ({ children }: { children: JSX.Element }) => {
+  const { user, loading } = useAuthContext();
+  const location = useLocation();
 
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    // Redirect to login, save the attempted URL
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+export default function App() {
   return (
     <ErrorBoundary>
       <RouteChangeTracker />
@@ -71,8 +89,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Dashboard Layout & Protected Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
+          {/* Dashboard Layout & Protected Routes - Require Authentication */}
+          <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
             <Route index element={<DashboardPage />} />
             <Route path="customers" element={<Customers />} />
             <Route path="calendar" element={<Calendar />} />
@@ -88,12 +106,12 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
           </Route>
 
-          {/* Builder Routes */}
-          <Route path="/quotes/builder/:id" element={<QuoteBuilder />} />
-          <Route path="/invoices/builder/:id" element={<InvoiceBuilder />} />
+          {/* Builder Routes - Require Authentication */}
+          <Route path="/quotes/builder/:id" element={<RequireAuth><QuoteBuilder /></RequireAuth>} />
+          <Route path="/invoices/builder/:id" element={<RequireAuth><InvoiceBuilder /></RequireAuth>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminPage />} />
+          {/* Admin Routes - Require Authentication */}
+          <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
