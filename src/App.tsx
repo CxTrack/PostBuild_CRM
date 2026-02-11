@@ -45,11 +45,10 @@ import PublicQuoteView from './pages/share/PublicQuoteView';
 import PublicInvoiceView from './pages/share/PublicInvoiceView';
 import Home from './website/Home';
 import AccessPage from './website/Access';
-import ProtectedRoute from './guards/guard-route';
 
 function App() {
-  // Use mock admin user from AuthContext — no Supabase auth needed
-  const { user } = useAuthContext();
+  // AuthContext provides user info (not used for route guards currently)
+  useAuthContext();
 
   return (
     <ErrorBoundary>
@@ -77,63 +76,53 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
           {/* ----------------------------------------
-            * CRM ROUTES (no auth guard in dev)
+            * CRM ROUTES - Flat structure for reliable routing
             * ---------------------------------------- */}
-          <Route element={<ProtectedRoute user={user} />}>
-            <Route path="/dashboard" element={<DashboardLayout />}>
-              <Route index element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<DashboardPage />} />
 
-              <Route element={<ProtectedRoute moduleId="crm" />}>
-                <Route path="customers" element={<Customers />} />
-                <Route path="customers/new" element={<CustomerForm />} />
-                <Route path="customers/:id" element={<CustomerProfile />} />
-                <Route path="customers/:id/edit" element={<CustomerForm />} />
-              </Route>
+            {/* CRM / Customers */}
+            <Route path="customers" element={<Customers />} />
+            <Route path="customers/new" element={<CustomerForm />} />
+            <Route path="customers/:id" element={<CustomerProfile />} />
+            <Route path="customers/:id/edit" element={<CustomerForm />} />
 
-              <Route element={<ProtectedRoute moduleId="calendar" />}>
-                <Route path="calendar" element={<Calendar />} />
-              </Route>
+            {/* Calendar */}
+            <Route path="calendar" element={<Calendar />} />
 
-              <Route element={<ProtectedRoute moduleId="tasks" />}>
-                <Route path="tasks" element={<Tasks />} />
-              </Route>
+            {/* Tasks */}
+            <Route path="tasks" element={<Tasks />} />
 
-              <Route element={<ProtectedRoute moduleId="calls" />}>
-                <Route path="calls" element={<Calls />} />
-                <Route path="calls/:callId" element={<CallDetail />} />
-              </Route>
+            {/* Calls */}
+            <Route path="calls" element={<Calls />} />
+            <Route path="calls/:callId" element={<CallDetail />} />
 
-              <Route element={<ProtectedRoute moduleId="pipeline" />}>
-                <Route path="crm" element={<CRM />} />
-                <Route path="pipeline" element={<CRM />} />
-              </Route>
+            {/* Pipeline */}
+            <Route path="crm" element={<CRM />} />
+            <Route path="pipeline" element={<CRM />} />
 
-              <Route element={<ProtectedRoute moduleId="products" />}>
-                <Route path="products" element={<Products />} />
-                <Route path="products/new" element={<ProductForm />} />
-                <Route path="products/:id/edit" element={<ProductForm />} />
-              </Route>
+            {/* Products */}
+            <Route path="products" element={<Products />} />
+            <Route path="products/new" element={<ProductForm />} />
+            <Route path="products/:id/edit" element={<ProductForm />} />
 
-              <Route element={<ProtectedRoute moduleId="quotes" />}>
-                <Route path="quotes" element={<Quotes />} />
-                <Route path="quotes/builder" element={<QuoteBuilder />} />
-                <Route path="quotes/builder/:id" element={<QuoteBuilder />} />
-                <Route path="quotes/:id" element={<QuoteDetail />} />
-              </Route>
+            {/* Quotes */}
+            <Route path="quotes" element={<Quotes />} />
+            <Route path="quotes/builder" element={<QuoteBuilder />} />
+            <Route path="quotes/builder/:id" element={<QuoteBuilder />} />
+            <Route path="quotes/:id" element={<QuoteDetail />} />
 
-              <Route element={<ProtectedRoute moduleId="invoices" />}>
-                <Route path="invoices" element={<Invoices />} />
-                <Route path="invoices/builder" element={<InvoiceBuilder />} />
-                <Route path="invoices/builder/:id" element={<InvoiceBuilder />} />
-                <Route path="invoices/:id" element={<InvoiceDetail />} />
-              </Route>
+            {/* Invoices */}
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="invoices/builder" element={<InvoiceBuilder />} />
+            <Route path="invoices/builder/:id" element={<InvoiceBuilder />} />
+            <Route path="invoices/:id" element={<InvoiceDetail />} />
 
-              <Route path="upgrade" element={<UpgradePage />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="chat" element={<ChatPage />} />
-
-            </Route>
+            {/* Other */}
+            <Route path="upgrade" element={<UpgradePage />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="chat" element={<ChatPage />} />
           </Route>
 
           {/* Popup / special (intentionally public) */}
