@@ -18,7 +18,6 @@ import {
   Sun,
   Bell,
   Package,
-  GripVertical,
   TrendingUp,
   Shield,
   MessageCircle,
@@ -26,31 +25,12 @@ import {
   Lock,
 } from 'lucide-react';
 
-
 import { supabase } from '../lib/supabase';
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { isAllowedDevUser } from '../config/demo.config';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
-
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { BroadcastBanner } from '../components/BroadcastBanner';
 import { CoPilotIntro } from '../components/tour/SubtleHints';
 
@@ -80,81 +60,6 @@ const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home'
 const SETTINGS_ITEM: NavItem = { path: '/dashboard/settings', icon: Settings, label: 'Settings' };
 const CHAT_ITEM: NavItem = { path: '/dashboard/chat', icon: MessageCircle, label: 'Chat' };
 
-interface SortableNavItemProps {
-  item: NavItem;
-  isActive: (path: string) => boolean;
-  theme: string;
-}
-
-const SortableNavItem = ({ item, isActive, theme }: SortableNavItemProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.path });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : 0,
-  };
-
-  // Prevent drag handle clicks from triggering navigation
-  const handleDragHandleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group relative ${isDragging ? 'z-50' : ''}`}
-    >
-      <div className="flex items-center">
-        {/* Drag handle - completely separate from the link */}
-        <div
-          {...attributes}
-          {...listeners}
-          onClick={handleDragHandleClick}
-          className="mr-2 cursor-grab active:cursor-grabbing flex-shrink-0"
-        >
-          <GripVertical
-            size={16}
-            className={theme === 'soft-modern' ? "opacity-0 group-hover:opacity-30 transition-opacity text-tertiary" : "opacity-0 group-hover:opacity-50 transition-opacity"}
-          />
-        </div>
-        {/* Navigation link - using React Router Link for reliable SPA navigation */}
-        <Link
-          to={item.isLocked ? '/dashboard/upgrade' : item.path}
-          className={
-            theme === 'soft-modern'
-              ? `nav-item flex items-center flex-1 px-2 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
-              : `flex items-center flex-1 px-2 py-2 rounded-lg transition-colors ${isActive(item.path)
-                ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              } ${item.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`
-          }
-          onClick={(e) => {
-            // Prevent navigation if currently dragging
-            if (isDragging) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <item.icon size={20} className="mr-3" />
-          <span className="font-medium flex-1">{item.label}</span>
-          {item.isLocked && <Lock size={14} className="ml-2 text-amber-500" />}
-        </Link>
-      </div>
-    </div>
-  );
-};
-
 export const DashboardLayout = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
@@ -164,7 +69,7 @@ export const DashboardLayout = () => {
 
 
   const { theme, toggleTheme } = useThemeStore();
-  const { preferences, saveSidebarOrder } = usePreferencesStore();
+  const { preferences } = usePreferencesStore();
   const { fetchUserOrganizations, currentOrganization } = useOrganizationStore();
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
@@ -258,31 +163,6 @@ export const DashboardLayout = () => {
     }
   }, [user, fetchUserOrganizations]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = navItems.findIndex((item: NavItem) => item.path === active.id);
-    const newIndex = navItems.findIndex((item: NavItem) => item.path === over.id);
-
-    const newItems = arrayMove(navItems, oldIndex, newIndex);
-    setNavItems(newItems);
-
-    // Save to Supabase via store
-    await saveSidebarOrder(newItems.map(item => item.path));
-  };
-
   const isModuleShared = (path: string) => {
     if (!currentOrganization?.metadata?.sharing) return true;
 
@@ -359,25 +239,24 @@ export const DashboardLayout = () => {
             <span className="font-medium">{HOME_ITEM.label}</span>
           </Link>
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={visibleNavItems.map(item => item.path)}
-              strategy={verticalListSortingStrategy}
+          {visibleNavItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.isLocked ? '/dashboard/upgrade' : item.path}
+              className={
+                theme === 'soft-modern'
+                  ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
+                  : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(item.path)
+                    ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  } ${item.isLocked ? 'opacity-60' : ''}`
+              }
             >
-              {visibleNavItems.map((item) => (
-                <SortableNavItem
-                  key={item.path}
-                  item={item}
-                  isActive={isActive}
-                  theme={theme}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+              <item.icon size={20} className="mr-3" />
+              <span className="font-medium">{item.label}</span>
+              {item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
+            </Link>
+          ))}
 
           <Link
             to={SETTINGS_ITEM.path}
