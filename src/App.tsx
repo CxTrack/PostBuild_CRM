@@ -29,6 +29,8 @@ import Pipeline from './pages/Pipeline';
 import Calls from './pages/calls/Calls';
 import Tasks from './pages/Tasks';
 import Settings from './pages/settings/Settings';
+import { ChatPage } from './pages/ChatPage';
+import ReportsPage from './pages/ReportsPage';
 import Access from './website/Access';
 
 // Builder Pages - Default exports
@@ -82,6 +84,8 @@ export default function App() {
             <Route path="tasks" element={<Tasks />} />
             <Route path="upgrade" element={<UpgradePage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route path="reports" element={<ReportsPage />} />
           </Route>
 
           {/* Builder Routes */}

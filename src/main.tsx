@@ -6,9 +6,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 // Build version for deployment verification
-const BUILD_VERSION = 'NAV_FIX_V3_2026-02-10';
+const BUILD_VERSION = 'FULL_FIX_V6_2026-02-11';
 console.log(`%c[CxTrack] Build: ${BUILD_VERSION}`, 'color: #6366f1; font-weight: bold; font-size: 14px;');
-console.log('%c[CxTrack] Navigation fix deployed - DndKit removed from sidebar', 'color: #22c55e;');
+console.log('%c[CxTrack] Full fix: CoPilot, Chat, Reports, Navigation', 'color: #22c55e;');
 
 // Defensive fallback for DEMO_MODE_CONFIG
 if (typeof window !== 'undefined') {

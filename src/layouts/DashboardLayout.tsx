@@ -33,6 +33,8 @@ import { useVisibleModules } from '../hooks/useVisibleModules';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
 import { BroadcastBanner } from '../components/BroadcastBanner';
 import { CoPilotIntro } from '../components/tour/SubtleHints';
+import CoPilotPanel from '../components/copilot/CoPilotPanel';
+import CoPilotButton from '../components/copilot/CoPilotButton';
 
 
 
@@ -478,6 +480,12 @@ export const DashboardLayout = () => {
           </div>
         </div>
       )}
+
+      {/* CoPilot Panel - slides in from side */}
+      <CoPilotPanel />
+
+      {/* CoPilot Button - fixed on right side when panel is closed */}
+      <CoPilotButton />
 
       {/* Subtle CoPilot Introduction */}
       <CoPilotIntro />
