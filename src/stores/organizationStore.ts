@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import { isDemoMode, getDemoOrganizationId } from '../config/demo.config';
-import { MOCK_ADMIN_USER } from '../contexts/AuthContext';
 import type { Organization, OrganizationMember, UserProfile } from '../types/database.types';
 
 interface OrganizationState {
@@ -11,14 +9,14 @@ interface OrganizationState {
   organizations: Array<{ organization: Organization; membership: OrganizationMember }>;
   teamMembers: Array<UserProfile & { role: string; color: string }>;
   loading: boolean;
-  demoMode: boolean;
-  fetchUserOrganizations: (userId?: string) => Promise<void>;
+  fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
   fetchTeamMembers: () => Promise<void>;
   updateOrganization: (data: Partial<Organization>) => Promise<void>;
   updateMember: (memberId: string, data: Partial<OrganizationMember>) => Promise<void>;
   inviteMember: (email: string, role: string) => Promise<void>;
   getOrganizationId: () => string;
+  clearCache: () => void;
 }
 
 // Generate a color for each team member
@@ -44,36 +42,44 @@ export const useOrganizationStore = create<OrganizationState>()(
       organizations: [],
       teamMembers: [],
       loading: false,
-      demoMode: isDemoMode(),
 
       getOrganizationId: () => {
-        const { currentOrganization, demoMode } = get();
+        const { currentOrganization } = get();
         if (currentOrganization?.id) {
           return currentOrganization.id;
-        }
-        if (demoMode) {
-          return getDemoOrganizationId();
         }
         throw new Error('No organization available');
       },
 
-      fetchUserOrganizations: async (userId?: string) => {
+      clearCache: () => {
+        localStorage.removeItem('organization-storage');
+        set({
+          currentOrganization: null,
+          currentMembership: null,
+          organizations: [],
+          teamMembers: [],
+        });
+      },
+
+      fetchUserOrganizations: async (userId: string) => {
+        if (!userId) {
+          console.error('fetchUserOrganizations called without userId');
+          return;
+        }
+
         set({ loading: true });
         try {
-          const userIdToFetch = userId || MOCK_ADMIN_USER.id;
-          const isDemoUser = userIdToFetch === '00000000-0000-0000-0000-000000000001';
-
           const { data, error } = await supabase
             .from('organization_members')
             .select(`
               *,
               organization:organizations(*)
             `)
-            .eq('user_id', userIdToFetch);
+            .eq('user_id', userId);
 
           if (error) throw error;
 
-          let orgs = data.map((item: any) => ({
+          const orgs = data.map((item: any) => ({
             organization: item.organization,
             membership: {
               id: item.id,
@@ -87,34 +93,13 @@ export const useOrganizationStore = create<OrganizationState>()(
             },
           }));
 
-          if (isDemoUser && orgs.length === 0) {
-            const { data: demoOrg, error: demoError } = await supabase
-              .from('organizations')
-              .select('*')
-              .eq('id', getDemoOrganizationId())
-              .single();
-
-            if (!demoError && demoOrg) {
-              orgs = [{
-                organization: demoOrg,
-                membership: {
-                  id: 'demo-membership',
-                  organization_id: demoOrg.id,
-                  user_id: userIdToFetch,
-                  role: 'admin',
-                  permissions: ['*'],
-                  calendar_delegation: null,
-                  can_view_team_calendars: true,
-                  joined_at: new Date().toISOString(),
-                },
-              }];
-            }
-          }
-
           set({ organizations: orgs, loading: false });
 
-          // If no current org selected, select the first one
-          if (!get().currentOrganization && orgs.length > 0) {
+          // If no current org selected or cached org doesn't belong to this user, select the first one
+          const currentOrg = get().currentOrganization;
+          const orgBelongsToUser = orgs.some(o => o.organization.id === currentOrg?.id);
+
+          if ((!currentOrg || !orgBelongsToUser) && orgs.length > 0) {
             await get().setCurrentOrganization(orgs[0].organization.id);
           }
         } catch (error) {
@@ -208,31 +193,11 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       inviteMember: async (email: string, role: string) => {
-        const { currentOrganization, demoMode } = get();
+        const { currentOrganization } = get();
         if (!currentOrganization) throw new Error('No organization selected');
 
-        if (demoMode) {
-          // Simulate network delay
-          await new Promise(resolve => setTimeout(resolve, 800));
-
-          // Mock adding to local state if we want to show it immediately
-          const newMember = {
-            id: `demo-${Date.now()}`,
-            email,
-            full_name: email.split('@')[0],
-            role,
-            color: generateUserColor(get().teamMembers.length),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-
-          set({ teamMembers: [...get().teamMembers, newMember as any] });
-          return;
-        }
-
-        // Production: Call Supabase Edge Function or add placeholder member
-        // For now, let's assume we use organization_members table with a dummy user_id or a system that handles invitations
-        // Actually, let's just mock the invite success for now as we don't have the backend invitation logic yet
+        // TODO: Implement real invitation logic via Supabase Edge Function
+        // For now, just simulate the invite
         await new Promise(resolve => setTimeout(resolve, 800));
       },
     }),

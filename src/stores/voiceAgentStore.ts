@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId } from '@/config/demo.config';
-import { MOCK_ADMIN_USER } from '@/contexts/AuthContext';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
@@ -10,34 +8,23 @@ export type FallbackBehavior = 'transfer_to_voicemail' | 'take_message' | 'sched
 export interface VoiceAgentConfig {
     id: string;
     organization_id: string;
-
-    // Basic Info
     agent_name: string;
     agent_tone: AgentTone;
-
-    // Business Context
     business_name: string;
     industry: string;
     business_description: string;
-
-    // Call Handling
     common_call_reasons: string[];
     handling_preference: HandlingPreference;
     greeting_script: string;
     fallback_behavior: FallbackBehavior;
-
-    // Advanced
     languages: string[];
     working_hours?: {
         timezone: string;
         schedule: Record<string, { start: string; end: string; enabled: boolean }>;
     };
-
-    // Status
     is_active: boolean;
     setup_completed: boolean;
-    setup_step: number; // 0-3 for wizard progress
-
+    setup_step: number;
     created_at: string;
     updated_at: string;
 }
@@ -58,15 +45,12 @@ interface VoiceAgentStore {
     usage: VoiceUsage | null;
     loading: boolean;
     error: string | null;
-
     fetchConfig: () => Promise<void>;
     saveConfig: (data: Partial<VoiceAgentConfig>) => Promise<VoiceAgentConfig>;
     updateSetupStep: (step: number) => Promise<void>;
     activateAgent: () => Promise<void>;
     deactivateAgent: () => Promise<void>;
-
     fetchUsage: () => Promise<void>;
-
     getSetupProgress: () => number;
     isSetupComplete: () => boolean;
 }
@@ -115,61 +99,27 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     error: null,
 
     fetchConfig: async () => {
-        console.log('🎙️ Fetching voice agent config...');
         set({ loading: true, error: null });
-
         try {
-            if (DEMO_MODE) {
-                const configs = loadDemoData<VoiceAgentConfig>(DEMO_STORAGE_KEYS.voice_agent);
-                const config = configs?.[0] || null;
-                console.log('✅ Loaded demo voice agent config:', config ? 'found' : 'not found');
-                set({ config, loading: false });
-                return;
-            }
-
-            // PRODUCTION MODE
             const { data, error } = await supabase
                 .from('voice_agent_configs')
                 .select('*')
                 .single();
 
-            if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-
+            if (error && error.code !== 'PGRST116') throw error;
             set({ config: data || null, loading: false });
         } catch (error: any) {
-            console.error('❌ Error fetching voice agent config:', error);
+            console.error('Error fetching voice agent config:', error);
             set({ error: error.message, loading: false });
         }
     },
 
     saveConfig: async (data) => {
-        console.log('🎙️ Saving voice agent config:', data);
         set({ loading: true, error: null });
-
         try {
             const currentConfig = get().config;
 
-            if (DEMO_MODE) {
-                const updatedConfig: VoiceAgentConfig = {
-                    id: currentConfig?.id || generateDemoId('agent'),
-                    organization_id: MOCK_ADMIN_USER.organization_id,
-                    ...DEFAULT_CONFIG,
-                    ...currentConfig,
-                    ...data,
-                    updated_at: new Date().toISOString(),
-                    created_at: currentConfig?.created_at || new Date().toISOString(),
-                };
-
-                saveDemoData(DEMO_STORAGE_KEYS.voice_agent, [updatedConfig]);
-                set({ config: updatedConfig, loading: false });
-
-                console.log('✅ Voice agent config saved (demo):', updatedConfig);
-                return updatedConfig;
-            }
-
-            // PRODUCTION MODE
             if (currentConfig) {
-                // Update existing
                 const { data: configData, error } = await supabase
                     .from('voice_agent_configs')
                     .update({ ...data, updated_at: new Date().toISOString() })
@@ -181,7 +131,6 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 set({ config: configData, loading: false });
                 return configData;
             } else {
-                // Create new
                 const { data: configData, error } = await supabase
                     .from('voice_agent_configs')
                     .insert({ ...DEFAULT_CONFIG, ...data })
@@ -193,14 +142,13 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 return configData;
             }
         } catch (error: any) {
-            console.error('❌ Error saving voice agent config:', error);
+            console.error('Error saving voice agent config:', error);
             set({ error: error.message, loading: false });
             throw error;
         }
     },
 
     updateSetupStep: async (step) => {
-        const currentConfig = get().config;
         await get().saveConfig({
             setup_step: step,
             setup_completed: step >= 3,
@@ -216,31 +164,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     },
 
     fetchUsage: async () => {
-        console.log('📊 Fetching voice usage...');
-
         try {
-            if (DEMO_MODE) {
-                // Generate demo usage data
-                const now = new Date();
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-                const demoUsage: VoiceUsage = {
-                    id: 'usage_demo',
-                    organization_id: MOCK_ADMIN_USER.organization_id,
-                    billing_period_start: startOfMonth.toISOString(),
-                    billing_period_end: endOfMonth.toISOString(),
-                    minutes_used: 23.5,
-                    minutes_included: 50,
-                    overage_minutes: 0,
-                    overage_cost_cents: 0,
-                };
-
-                set({ usage: demoUsage });
-                return;
-            }
-
-            // PRODUCTION MODE
             const { data, error } = await supabase
                 .from('voice_usage')
                 .select('*')
@@ -249,10 +173,9 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 .single();
 
             if (error && error.code !== 'PGRST116') throw error;
-
             set({ usage: data || null });
         } catch (error: any) {
-            console.error('❌ Error fetching usage:', error);
+            console.error('Error fetching usage:', error);
         }
     },
 

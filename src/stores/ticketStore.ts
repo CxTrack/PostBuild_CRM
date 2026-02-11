@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId } from '@/config/demo.config';
-import { MOCK_ADMIN_USER } from '@/contexts/AuthContext';
 import { useOrganizationStore } from './organizationStore';
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';

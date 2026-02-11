@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { DEMO_MODE, DEMO_STORAGE_KEYS, loadDemoData, saveDemoData, generateDemoId } from '../config/demo.config';
-import { MOCK_ADMIN_USER } from '../contexts/AuthContext';
 import type { Quote, QuoteItem } from '../types/app.types';
+import { useOrganizationStore } from './organizationStore';
 
 const generateQuoteNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
