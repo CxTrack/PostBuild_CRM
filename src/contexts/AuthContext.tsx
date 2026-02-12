@@ -20,13 +20,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  // Track the previous user ID to detect actual user changes (not session restorations)
   const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Check active sessions and sets the user
     const getSession = async () => {
       // 1️⃣ First check for tokens in URL (from marketing site redirect)
       const urlParams = new URLSearchParams(window.location.search);
@@ -45,20 +43,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           refresh_token: refreshToken,
         });
 
-        if (!isMounted) return; // Component unmounted, bail out
+        if (!isMounted) return;
 
         if (!error && data.session?.user) {
           console.log('[CxTrack] Session set from URL tokens successfully');
           previousUserIdRef.current = data.session.user.id;
 
-          // Fetch organization membership
           const { data: memberData } = await supabase
             .from('organization_members')
             .select('organization_id, role')
             .eq('user_id', data.session.user.id)
             .maybeSingle();
 
-          if (!isMounted) return; // Component unmounted, bail out
+          if (!isMounted) return;
 
           setUser({
             ...data.session.user,
@@ -99,88 +96,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getSession();
 
-    // Cleanup function
+    // 3️⃣ Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        const currentUserId = session.user.id;
+        const previousUserId = previousUserIdRef.current;
+
+        if (previousUserId && previousUserId !== currentUserId) {
+          localStorage.removeItem('organization-storage');
+          localStorage.removeItem('cxtrack_organization');
+          localStorage.removeItem('cxtrack_user_profile');
+          localStorage.removeItem('current_organization_id');
+          console.log('[CxTrack] Cleared cached data for new user sign-in');
+        }
+
+        previousUserIdRef.current = currentUserId;
+      }
+
+      if (session?.user) {
+        const { data: memberData } = await supabase
+          .from('organization_members')
+          .select('organization_id, role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        setUser({
+          ...session.user,
+          role: memberData?.role,
+          organization_id: memberData?.organization_id
+        });
+      } else {
+        setUser(null);
+        previousUserIdRef.current = null;
+      }
+      setLoading(false);
+    });
+
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Listen for changes on auth state (logged in, signed out, etc.)
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    // Only clear cache on ACTUAL new sign-in (different user), not session restoration
-    if (event === 'SIGNED_IN' && session?.user) {
-      const currentUserId = session.user.id;
-      const previousUserId = previousUserIdRef.current;
+  const login = async () => {
+    window.location.href = `${import.meta.env.VITE_MARKETING_URL || 'https://easyaicrm.com/access'}`;
+  };
 
-      // Only clear if this is a different user than before (actual sign-in, not page reload)
-      if (previousUserId && previousUserId !== currentUserId) {
-        localStorage.removeItem('organization-storage');
-        localStorage.removeItem('cxtrack_organization');
-        localStorage.removeItem('cxtrack_user_profile');
-        localStorage.removeItem('current_organization_id');
-        console.log('[CxTrack] Cleared cached data for new user sign-in');
-      }
-
-      // Update the tracked user ID
-      previousUserIdRef.current = currentUserId;
-    }
-
-    if (session?.user) {
-      const { data: memberData } = await supabase
-        .from('organization_members')
-        .select('organization_id, role')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      setUser({
-        ...session.user,
-        role: memberData?.role,
-        organization_id: memberData?.organization_id
-      });
-    } else {
-      setUser(null);
-      // Clear the tracked user when signed out
-      previousUserIdRef.current = null;
-    }
+  const logout = async () => {
+    setLoading(true);
+    await supabase.auth.signOut();
+    localStorage.removeItem('organization-storage');
+    localStorage.removeItem('cxtrack_organization');
+    localStorage.removeItem('cxtrack_user_profile');
+    localStorage.removeItem('current_organization_id');
+    localStorage.clear();
+    setUser(null);
     setLoading(false);
-  });
+    console.log('[CxTrack] Logged out, all data cleared');
+  };
 
-  return () => subscription.unsubscribe();
-}, []);
-
-const login = async () => {
-  // This will redirect to the marketing site's login which redirects back with tokens
-  window.location.href = `${import.meta.env.VITE_MARKETING_URL || 'https://easyaicrm.com/access'}`;
-};
-
-const logout = async () => {
-  setLoading(true);
-  await supabase.auth.signOut();
-  // Clear all cached data - be explicit about CRM keys
-  localStorage.removeItem('organization-storage');
-  localStorage.removeItem('cxtrack_organization');
-  localStorage.removeItem('cxtrack_user_profile');
-  localStorage.removeItem('current_organization_id');
-  // Clear everything else
-  localStorage.clear();
-  setUser(null);
-  setLoading(false);
-  console.log('[CxTrack] Logged out, all data cleared');
-};
-
-return (
-  <AuthContext.Provider
-    value={{
-      user,
-      loading,
-      isAuthenticated: !!user,
-      login,
-      logout,
-    }}
-  >
-    {children}
-  </AuthContext.Provider>
-);
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuthContext() {
