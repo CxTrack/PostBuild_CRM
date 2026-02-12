@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -20,6 +20,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // Track the previous user ID to detect actual user changes (not session restorations)
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -27,6 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
+        // Track the initial user ID to detect actual user changes later
+        previousUserIdRef.current = session.user.id;
+
         // Fetch additional profile/org info if needed
         const { data: memberData } = await supabase
           .from('organization_members')
@@ -47,13 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
-        // Clear ALL cached data to force refresh for new user
-        localStorage.removeItem('organization-storage');
-        localStorage.removeItem('cxtrack_organization');
-        localStorage.removeItem('cxtrack_user_profile');
-        localStorage.removeItem('current_organization_id');
-        console.log('[CxTrack] Cleared all cached data on sign-in');
+      // Only clear cache on ACTUAL new sign-in (different user), not session restoration
+      if (event === 'SIGNED_IN' && session?.user) {
+        const currentUserId = session.user.id;
+        const previousUserId = previousUserIdRef.current;
+
+        // Only clear if this is a different user than before (actual sign-in, not page reload)
+        if (previousUserId && previousUserId !== currentUserId) {
+          localStorage.removeItem('organization-storage');
+          localStorage.removeItem('cxtrack_organization');
+          localStorage.removeItem('cxtrack_user_profile');
+          localStorage.removeItem('current_organization_id');
+          console.log('[CxTrack] Cleared cached data for new user sign-in');
+        }
+
+        // Update the tracked user ID
+        previousUserIdRef.current = currentUserId;
       }
 
       if (session?.user) {
@@ -70,6 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         setUser(null);
+        // Clear the tracked user when signed out
+        previousUserIdRef.current = null;
       }
       setLoading(false);
     });
