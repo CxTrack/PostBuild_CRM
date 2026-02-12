@@ -145,18 +145,29 @@ export const DashboardLayout = () => {
     // ONLY use visibleModules from template system - no legacy static items
     const filteredModules = visibleModules.filter((m: any) => m.id !== 'dashboard');
 
-    const moduleNavItems: NavItem[] = filteredModules.map((m: any) => ({
-      path: m.isLocked ? '/dashboard/upgrade' : `/dashboard${m.route}`,
-      icon: MODULE_ICONS[m.id] || Package,
-      label: m.name, // This comes from industry template labels
-      isLocked: m.isLocked,
-      tourId: MODULE_TOUR_IDS[m.id]
-    }));
+    // Use a Map to deduplicate by module ID (belt and suspenders)
+    const moduleMap = new Map<string, NavItem>();
+
+    filteredModules.forEach((m: any) => {
+      // Only add if not already in map (first occurrence wins)
+      if (!moduleMap.has(m.id)) {
+        moduleMap.set(m.id, {
+          path: `/dashboard${m.route}`, // Always use actual route, handle locked in UI
+          icon: MODULE_ICONS[m.id] || Package,
+          label: m.name, // This comes from industry template labels
+          isLocked: m.isLocked,
+          tourId: MODULE_TOUR_IDS[m.id]
+        });
+      }
+    });
+
+    const moduleNavItems = Array.from(moduleMap.values());
 
     // Set nav items directly from templates - no preference reordering for now
     setNavItems(moduleNavItems);
 
-    console.log('[CxTrack] Sidebar modules loaded:', moduleNavItems.map(m => m.label));
+    console.log('[CxTrack] Sidebar modules loaded:', moduleNavItems.map(m => `${m.label}${m.isLocked ? ' (locked)' : ''}`));
+    console.log('[CxTrack] Module IDs:', filteredModules.map((m: any) => m.id));
   }, [visibleModules]);
 
 
@@ -263,7 +274,7 @@ export const DashboardLayout = () => {
 
           {visibleNavItems.map((item) => (
             <Link
-              key={item.path}
+              key={`nav-${item.label}`}
               to={item.isLocked ? '/dashboard/upgrade' : item.path}
               className={
                 theme === 'soft-modern'
