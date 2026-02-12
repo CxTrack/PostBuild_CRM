@@ -113,28 +113,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Check for session (works for both token flow and regular login)
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[CxTrack] Calling getSession()...');
 
-      if (!isMounted) return;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        console.log('[CxTrack] Session found:', session.user.email);
-        previousUserIdRef.current = session.user.id;
-
-        const { data: memberData } = await supabase
-          .from('organization_members')
-          .select('organization_id, role')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
+        console.log('[CxTrack] getSession() completed');
+        console.log('[CxTrack] Session exists:', !!session);
+        console.log('[CxTrack] Session error:', sessionError?.message || 'none');
 
         if (!isMounted) return;
 
-        setUser({
-          ...session.user,
-          role: memberData?.role,
-          organization_id: memberData?.organization_id
-        });
+        if (session?.user) {
+          console.log('[CxTrack] Session found:', session.user.email);
+          previousUserIdRef.current = session.user.id;
+
+          console.log('[CxTrack] Fetching organization_members...');
+          const { data: memberData, error: memberError } = await supabase
+            .from('organization_members')
+            .select('organization_id, role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          console.log('[CxTrack] organization_members result:', memberData ? 'found' : 'not found');
+          if (memberError) console.error('[CxTrack] organization_members error:', memberError.message);
+
+          if (!isMounted) return;
+
+          setUser({
+            ...session.user,
+            role: memberData?.role,
+            organization_id: memberData?.organization_id
+          });
+          console.log('[CxTrack] User set successfully');
+        } else {
+          console.log('[CxTrack] No session found - user will be redirected to login');
+        }
+      } catch (err) {
+        console.error('[CxTrack] Error in getSession flow:', err);
       }
+
+      console.log('[CxTrack] Setting loading to false');
       setLoading(false);
     };
 
