@@ -23,6 +23,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 
+// Helper to format duration in seconds to mm:ss
+const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 // Chart colors
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 const CHART_COLORS = {
@@ -243,7 +250,7 @@ export const ReportsPage = () => {
             return {
                 month: format(month, 'MMM'),
                 new: newCustomers,
-                total: cumulative + Math.floor(Math.random() * 5) + 3, // Base + random for demo
+                total: cumulative,
             };
         });
     }, [customers]);
@@ -251,10 +258,11 @@ export const ReportsPage = () => {
     // Pipeline data
     const pipelineData = useMemo(() => {
         if (!pipelineStats?.by_stage) {
+            // Return empty stages with zero values when no data
             const stages = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
             return stages.map((stage, i) => ({
                 name: stage,
-                value: Math.floor(Math.random() * 20) + 5,
+                value: 0,
                 color: COLORS[i % COLORS.length],
             }));
         }
@@ -269,40 +277,41 @@ export const ReportsPage = () => {
     // Call analytics data
     const callData = useMemo(() => {
         const aiCalls = calls.filter(c => c.call_type === 'ai_agent').length;
-        const humanCalls = calls.filter(c => c.call_type === 'human').length || Math.floor(Math.random() * 10) + 5;
+        const humanCalls = calls.filter(c => c.call_type === 'human').length;
         const inbound = calls.filter(c => c.direction === 'inbound').length;
         const outbound = calls.filter(c => c.direction === 'outbound').length;
 
+        // Calculate sentiment from actual call data
+        const positiveCalls = calls.filter(c => (c as any).sentiment === 'positive').length;
+        const neutralCalls = calls.filter(c => (c as any).sentiment === 'neutral').length;
+        const negativeCalls = calls.filter(c => (c as any).sentiment === 'negative').length;
+
         return {
             byType: [
-                { name: 'AI Agent', value: aiCalls || 12, color: CHART_COLORS.purple },
+                { name: 'AI Agent', value: aiCalls, color: CHART_COLORS.purple },
                 { name: 'Human', value: humanCalls, color: CHART_COLORS.primary },
             ],
             byDirection: [
-                { name: 'Inbound', value: inbound || 18, color: CHART_COLORS.success },
-                { name: 'Outbound', value: outbound || 9, color: CHART_COLORS.warning },
+                { name: 'Inbound', value: inbound, color: CHART_COLORS.success },
+                { name: 'Outbound', value: outbound, color: CHART_COLORS.warning },
             ],
             bySentiment: [
-                { name: 'Positive', value: 65, color: CHART_COLORS.success },
-                { name: 'Neutral', value: 25, color: CHART_COLORS.warning },
-                { name: 'Negative', value: 10, color: CHART_COLORS.danger },
+                { name: 'Positive', value: positiveCalls, color: CHART_COLORS.success },
+                { name: 'Neutral', value: neutralCalls, color: CHART_COLORS.warning },
+                { name: 'Negative', value: negativeCalls, color: CHART_COLORS.danger },
             ],
         };
     }, [calls]);
 
-    // Team performance data
-    const teamData = useMemo(() => [
-        { name: 'Admin User', tasks: 24, calls: 18, revenue: 45200, efficiency: 92 },
-        { name: 'Sales Rep 1', tasks: 18, calls: 32, revenue: 38500, efficiency: 87 },
-        { name: 'Sales Rep 2', tasks: 21, calls: 25, revenue: 42100, efficiency: 89 },
-    ], []);
+    // Team performance data - will be populated from actual data
+    const teamData = useMemo(() => [] as { name: string; tasks: number; calls: number; revenue: number; efficiency: number }[], []);
 
     // Summary stats
     const summaryStats = useMemo(() => {
         const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
         const paidRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
         const totalCustomers = customers.length;
-        const totalCalls = calls.length || 27;
+        const totalCalls = calls.length;
 
         return [
             {
@@ -997,10 +1006,10 @@ export const ReportsPage = () => {
                 {activeSection === 'calls' && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard stat={{ label: 'Total Calls', value: (calls.length || 27).toString(), change: '+24.1%', isPositive: true, icon: Phone, color: 'blue' }} />
-                            <StatCard stat={{ label: 'AI Calls', value: calls.filter(c => c.call_type === 'ai_agent').length.toString() || '12', change: '+45%', isPositive: true, icon: Activity, color: 'purple' }} />
-                            <StatCard stat={{ label: 'Avg Duration', value: '4:32', change: '-12%', isPositive: true, icon: Clock, color: 'green' }} />
-                            <StatCard stat={{ label: 'Positive Sentiment', value: '65%', change: '+8%', isPositive: true, icon: TrendingUp, color: 'amber' }} />
+                            <StatCard stat={{ label: 'Total Calls', value: calls.length.toString(), change: '+0%', isPositive: true, icon: Phone, color: 'blue' }} />
+                            <StatCard stat={{ label: 'AI Calls', value: calls.filter(c => c.call_type === 'ai_agent').length.toString(), change: '+0%', isPositive: true, icon: Activity, color: 'purple' }} />
+                            <StatCard stat={{ label: 'Avg Duration', value: calls.length > 0 ? formatDuration(calls.reduce((sum, c) => sum + ((c as any).duration || 0), 0) / calls.length) : '0:00', change: '+0%', isPositive: true, icon: Clock, color: 'green' }} />
+                            <StatCard stat={{ label: 'Positive Sentiment', value: calls.length > 0 ? `${Math.round((calls.filter(c => (c as any).sentiment === 'positive').length / calls.length) * 100)}%` : '0%', change: '+0%', isPositive: true, icon: TrendingUp, color: 'amber' }} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

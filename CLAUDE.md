@@ -218,7 +218,96 @@ As Claude in VSCode, your responsibilities are:
 *Add notes here when compacting conversation to preserve context:*
 
 - 2026-02-11: Fixed infinite loading loop in CRM dashboard (AuthContext cache clear issue)
--
+- 2026-02-12: Cross-domain auth issue - MAJOR POST-MORTEM BELOW
+
+---
+
+## POST-MORTEM: Cross-Domain Auth Failure (2026-02-12)
+
+### The Problem
+User wanted login on marketing site (easyaicrm.com) to automatically authenticate users on CRM (crm.easyaicrm.com).
+
+### What Went Wrong
+
+#### Error 1: Failed to Research Before Implementing
+- **Mistake:** Immediately started coding workarounds without researching Supabase's cross-domain auth capabilities
+- **Should Have Done:** Search Supabase documentation for "cross-domain authentication", "subdomain auth", "shared sessions"
+- **Cost:** Multiple failed attempts, wasted tokens, user frustration
+
+#### Error 2: Tried Multiple Hacky Workarounds That Were Doomed to Fail
+Attempted solutions that violate browser security fundamentals:
+
+| Attempt | Why It Failed |
+|---------|---------------|
+| URL query params with tokens | Netlify SPA rewrite stripped them |
+| Hash fragments (#access_token) | Also stripped/not persisted |
+| Cookies with `domain=.easyaicrm.com` | Modern browsers block cross-subdomain cookies for security |
+| iframe + postMessage | Still can't set cookies/localStorage on different origin |
+| sessionStorage transfer | sessionStorage is per-origin, cannot be shared |
+
+#### Error 3: Incorrectly Reported Project Status
+- **Mistake:** Stated "Is directory a git repo: No" without verifying
+- **Reality:** Both projects ARE git repos with proper remotes
+- **Should Have Done:** Run `git status` before making claims about repo state
+
+#### Error 4: Continued Trying Workarounds Instead of Stating the Truth
+- **Mistake:** Kept proposing new hacky solutions instead of clearly stating: "This is fundamentally impossible with Supabase client-side auth"
+- **Should Have Done:** After 2nd failed attempt, stop and research properly
+
+### The Correct Solution (What Should Have Been Done First)
+**Centralize all authentication on ONE domain.** This is the only correct approach:
+
+1. Marketing site `/access` → Redirects to `crm.easyaicrm.com/login`
+2. All auth (login, signup, password reset) happens on CRM domain
+3. Supabase handles everything on single origin - no cross-domain issues
+
+### Root Cause Analysis
+Supabase stores auth tokens in `localStorage` which is **origin-specific**:
+- `easyaicrm.com` has its own localStorage
+- `crm.easyaicrm.com` has its own localStorage
+- These CANNOT be shared via client-side code
+
+**This is a browser security feature, not a bug.**
+
+### Prevention Checklist (MANDATORY for Future Auth Work)
+
+Before implementing ANY authentication changes:
+
+- [ ] **Research first:** Search official documentation for the exact use case
+- [ ] **Understand browser security model:** localStorage, cookies, CORS are origin-specific
+- [ ] **State impossibilities clearly:** If something violates browser security, say so immediately
+- [ ] **Verify git status:** Always run `git status` before making claims about repo state
+- [ ] **Propose correct solution first:** Don't waste tokens on doomed workarounds
+- [ ] **Ask clarifying questions:** "Do you want single-domain auth or are you okay with server-side complexity?"
+
+### Files Modified (Final Correct State)
+
+**Marketing Site:**
+- `app/access/page.tsx` - Now just redirects to CRM login
+
+**CRM:**
+- `src/pages/auth/Login.tsx` - Updated with marketing site aesthetic
+- `src/pages/auth/Register.tsx` - Updated with marketing site aesthetic
+- `src/pages/auth/ForgotPassword.tsx` - Updated with marketing site aesthetic
+- `src/pages/auth/ResetPassword.tsx` - Updated with marketing site aesthetic
+
+### Deployment Required
+```bash
+# CRM (branch: CRM-Template-Configuration)
+cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
+git add src/pages/auth/
+git commit -m "Update auth pages with marketing site aesthetic"
+git push origin CRM-Template-Configuration
+
+# Marketing Site (branch: main)
+cd "c:\AntiGravity\CxTrack_Manik_Website_Production_02"
+git add app/access/page.tsx
+git commit -m "Redirect /access to CRM login"
+git push origin main
+```
+
+### Key Lesson
+**When encountering cross-origin auth requirements, the answer is almost always: "Put auth on one domain" or "Use server-side session management (complex)." There is no client-side magic that bypasses browser security.**
 
 ---
 
