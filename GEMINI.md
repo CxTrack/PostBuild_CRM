@@ -4,6 +4,29 @@
 
 ---
 
+## ⚠️ CRITICAL WARNING: TWO CRM DIRECTORIES EXIST ⚠️
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  STOP! VERIFY YOUR DIRECTORY BEFORE MAKING ANY CHANGES!                        ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  PRODUCTION CRM (deploys to crm.easyaicrm.com):                               ║
+║  ✅ c:\AntiGravity\Database implementation\Website-CRM-integration\PostBuild_CRM║
+║                                                                                ║
+║  NON-PRODUCTION CRM (local development copy - DOES NOT DEPLOY):               ║
+║  ❌ c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM                       ║
+║                                                                                ║
+║  ALWAYS WORK IN THE PRODUCTION DIRECTORY!                                      ║
+║  Changes to the non-production directory will NOT appear on the live site!     ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Why This Matters
+On 2026-02-12, hours were wasted making changes to the wrong directory. Auth pages were updated in the non-production folder, but the live site kept showing the old styling because the production directory wasn't touched.
+
+---
+
 ## STOP - Read Before Every Task
 
 ### Which Repository Are You Working In?
