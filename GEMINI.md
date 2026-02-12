@@ -334,3 +334,150 @@ Before pushing ANY change:
 - Supabase `SIGNED_IN` event fires on page load when session exists, not just on actual sign-in
 - Zustand persist middleware reads from localStorage on mount - clearing localStorage resets store state
 - Both repos must have matching Supabase credentials to share authentication
+
+---
+
+## Execution Rules - MUST FOLLOW
+
+### Rule 1: ALWAYS RUN BUILD BEFORE COMMIT
+
+```bash
+npm run build
+```
+
+- If build fails, DO NOT commit
+- Fix the error first, then rebuild
+- Only commit after successful build
+
+### Rule 2: VERIFY FILE CHANGES ACTUALLY EXIST
+
+After editing a file, run:
+```bash
+git diff <filename>
+```
+
+- If no diff output, the edit did NOT happen
+- Re-apply the edit before proceeding
+
+### Rule 3: ALWAYS PUSH AFTER COMMIT
+
+Commits without push do nothing. Always run:
+```bash
+git push origin <branch-name>
+```
+
+Branches:
+- Marketing Website: `main`
+- CRM Application: `CRM-Template-Configuration`
+
+### Rule 4: WHEN REPLACING ENTIRE FILE - USE COMPLETE CODE
+
+When given complete file contents to replace:
+1. Read the ENTIRE new code provided
+2. Replace the ENTIRE file - don't try to merge
+3. Verify line count matches expected
+
+### Rule 5: NEVER LEAVE DANGLING SYNTAX
+
+Common mistakes to avoid:
+- `}, []);` without a matching opening
+- `return () =>` outside of useEffect
+- Functions defined outside component body
+- Missing closing braces `}`
+
+After editing, verify:
+```bash
+npx tsc --noEmit  # For TypeScript projects
+```
+
+### Rule 6: UNDERSTAND REACT HOOKS STRUCTURE
+
+**useEffect structure:**
+```tsx
+useEffect(() => {
+  // All code inside here
+
+  return () => {
+    // Cleanup here
+  };
+}, [dependencies]);
+```
+
+- `onAuthStateChange` subscriptions go INSIDE useEffect
+- Cleanup/unsubscribe goes in the return function
+- Dependencies array comes AFTER the closing brace
+
+### Rule 7: READ FILE BEFORE EDITING
+
+Before making changes:
+```bash
+cat <filename>
+```
+
+Understand the current structure before modifying.
+
+### Rule 8: ONE LOGICAL CHANGE PER COMMIT
+
+Don't combine unrelated changes. Each commit should:
+- Fix one issue, OR
+- Add one feature
+
+### Rule 9: VERIFY CORRECT REPOSITORY
+
+Before any work:
+```bash
+pwd
+git remote -v
+git branch
+```
+
+Confirm you're in the right repo and branch.
+
+### Rule 10: REPORT ACTUAL RESULTS, NOT ASSUMPTIONS
+
+- Don't say "changes committed" unless you ran `git commit` and saw success
+- Don't say "pushed to remote" unless you ran `git push` and saw success
+- Don't say "build passed" unless you ran `npm run build` and saw success
+
+---
+
+## Error History (Learn from these)
+
+### Error 1: Uncommitted changes claimed as done
+- **What happened:** Said changes were committed but `git status` showed nothing
+- **Prevention:** Always run `git status` after commit to verify
+
+### Error 2: Syntax error from broken useEffect
+- **What happened:** `onAuthStateChange` was placed outside useEffect, leaving dangling `}, []);`
+- **Prevention:** When editing hooks, always include the COMPLETE hook structure
+
+### Error 3: Redirect URL missing path
+- **What happened:** Redirected to root `/` instead of `/dashboard`, losing URL params
+- **Prevention:** Trace the FULL user flow before implementing
+
+---
+
+## CHECKLIST BEFORE SAYING "DONE"
+
+- [ ] `npm run build` passed
+- [ ] `git diff` shows expected changes
+- [ ] `git add <files>` completed
+- [ ] `git commit -m "message"` succeeded
+- [ ] `git push origin <branch>` succeeded
+- [ ] Netlify shows new deployment (check if applicable)
+
+---
+
+## COPY THIS INTO EVERY GEMINI PROMPT:
+
+```
+IMPORTANT: Before responding, read and follow all rules in GEMINI.md
+
+After completing the task:
+1. Run `npm run build` - paste the result
+2. Run `git diff` - paste the result
+3. Run `git status` after commit - paste the result
+4. Run `git push` - paste the result
+
+Do NOT say the task is complete until all 4 commands show success.
+```
