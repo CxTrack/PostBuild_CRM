@@ -267,6 +267,117 @@ export interface DocumentTemplate {
   updated_at: string;
 }
 
+// Suppliers
+export type SupplierStatus = 'active' | 'inactive' | 'pending' | 'blocked';
+
+export interface Supplier {
+  id: string;
+  organization_id: string;
+  name: string;
+  code?: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address_line1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_id?: string;
+  payment_terms?: string;
+  currency?: string;
+  status: SupplierStatus;
+  rating?: number;
+  lead_time_days?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface ProductSupplier {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  supplier_id: string;
+  supplier_sku?: string;
+  unit_cost: number;
+  minimum_order_quantity: number;
+  is_preferred: boolean;
+  created_at: string;
+}
+
+// Inventory
+export type MovementType = 'in' | 'out' | 'adjustment' | 'return';
+
+export interface StockMovement {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  movement_type: MovementType;
+  quantity: number;
+  previous_quantity: number;
+  new_quantity: number;
+  reference_type?: string;
+  reference_id?: string;
+  unit_cost?: number;
+  reason?: string;
+  notes?: string;
+  performed_by: string;
+  created_at: string;
+}
+
+export type AlertType = 'low_stock' | 'out_of_stock';
+export type AlertStatus = 'active' | 'acknowledged' | 'resolved';
+
+export interface LowStockAlert {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  alert_type: AlertType;
+  threshold_value: number;
+  current_value: number;
+  status: AlertStatus;
+  created_at: string;
+}
+
+// Financials
+export interface ExpenseCategory {
+  id: string;
+  organization_id: string | null;
+  name: string;
+  description?: string;
+  color: string;
+  icon: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type ExpensePaymentStatus = 'pending' | 'paid' | 'reimbursed';
+
+export interface Expense {
+  id: string;
+  organization_id: string;
+  expense_number: string;
+  category_id?: string;
+  description: string;
+  amount: number;
+  tax_amount: number;
+  total_amount: number;
+  expense_date: string;
+  supplier_id?: string;
+  vendor_name?: string;
+  payment_method?: PaymentMethod;
+  payment_status: ExpensePaymentStatus;
+  reference_number?: string;
+  receipt_url?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Import types from database
 import type {
   UserProfile,

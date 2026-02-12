@@ -31,6 +31,9 @@ import Tasks from './pages/Tasks';
 import Settings from './pages/settings/Settings';
 import { ChatPage } from './pages/ChatPage';
 import ReportsPage from './pages/ReportsPage';
+import { Suppliers } from './pages/Suppliers';
+import { Inventory } from './pages/Inventory';
+import { Financials } from './pages/Financials';
 import Access from './website/Access';
 
 // Builder Pages - Default exports
@@ -104,10 +107,16 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="suppliers" element={<Suppliers />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="financials" element={<Financials />} />
           </Route>
 
           {/* Builder Routes - Require Authentication */}
+          {/* Routes without ID for creating NEW quotes/invoices */}
+          <Route path="/quotes/builder" element={<RequireAuth><QuoteBuilder /></RequireAuth>} />
           <Route path="/quotes/builder/:id" element={<RequireAuth><QuoteBuilder /></RequireAuth>} />
+          <Route path="/invoices/builder" element={<RequireAuth><InvoiceBuilder /></RequireAuth>} />
           <Route path="/invoices/builder/:id" element={<RequireAuth><InvoiceBuilder /></RequireAuth>} />
 
           {/* Admin Routes - Require Authentication */}

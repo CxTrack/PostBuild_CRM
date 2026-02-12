@@ -94,11 +94,18 @@ export const Button: React.FC<{
   children: React.ReactNode;
   onClick?: () => void;
   variant?: 'primary' | 'secondary' | 'action' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
-}> = ({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false }) => {
+}> = ({ children, onClick, variant = 'primary', size = 'md', className = '', type = 'button', disabled = false }) => {
   const { theme } = useThemeStore();
+
+  const sizeClasses = {
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2.5 text-sm',
+    lg: 'px-6 py-3 text-base',
+  };
 
   if (theme === 'soft-modern') {
     const variants = {
@@ -134,8 +141,9 @@ export const Button: React.FC<{
         onClick={onClick}
         disabled={disabled}
         className={`
-          px-4 py-2.5 rounded-xl font-medium
+          rounded-xl font-medium
           transition-all duration-200
+          ${sizeClasses[size]}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           ${variants[variant]}
           ${className}
@@ -159,8 +167,9 @@ export const Button: React.FC<{
       onClick={onClick}
       disabled={disabled}
       className={`
-        px-4 py-2.5 rounded-xl font-medium
+        rounded-xl font-medium
         transition-colors
+        ${sizeClasses[size]}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${variants[variant]}
         ${className}
