@@ -45,15 +45,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let accessToken: string | null = null;
       let refreshToken: string | null = null;
 
-      const transferCookie = getCookie('cxtrack_auth_transfer');
+      // Log all cookies for debugging
+      console.log('[CxTrack] All cookies:', document.cookie);
+
+      // Try main transfer cookie first, then backup
+      let transferCookie = getCookie('cxtrack_auth_transfer') || getCookie('cxtrack_auth_transfer_backup');
       if (transferCookie) {
         try {
           const tokenData = JSON.parse(transferCookie);
           accessToken = tokenData.access_token;
           refreshToken = tokenData.refresh_token;
           console.log('[CxTrack] Found tokens in transfer cookie!');
-          // Delete the transfer cookie after reading
+          // Delete both cookies after reading
           deleteCookie('cxtrack_auth_transfer');
+          deleteCookie('cxtrack_auth_transfer_backup');
         } catch (e) {
           console.error('[CxTrack] Failed to parse transfer cookie:', e);
         }

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Receiver</title>
+</head>
+<body>
+  <script>
+    // This page receives auth tokens from the marketing site via postMessage
+    // and stores them in localStorage for the CRM to use
+
+    window.addEventListener('message', function(event) {
+      // Only accept messages from our marketing site
+      const allowedOrigins = [
+        'https://easyaicrm.com',
+        'https://www.easyaicrm.com',
+        'http://localhost:3000'
+      ];
+
+      if (!allowedOrigins.includes(event.origin)) {
+        console.log('[Auth Receiver] Blocked message from:', event.origin);
+        return;
+      }
+
+      if (event.data && event.data.type === 'AUTH_TOKENS') {
+        console.log('[Auth Receiver] Received tokens from marketing site');
+
+        // Store tokens in the format Supabase expects
+        const storageKey = 'sb-zkpfzrbbupgiqkzqydji-auth-token';
+
+        // Decode JWT to get user info
+        function parseJwt(token) {
+          try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(atob(base64));
+          } catch {
+            return null;
+          }
+        }
+
+        const decoded = parseJwt(event.data.access_token);
+        const expiresAt = decoded?.exp || Math.floor(Date.now() / 1000) + 3600;
+
+        // Build user object from JWT
+        const user = {
+          id: decoded?.sub,
+          aud: decoded?.aud || 'authenticated',
+          role: decoded?.role || 'authenticated',
+          email: decoded?.email,
+          email_confirmed_at: decoded?.email_confirmed_at,
+          phone: decoded?.phone || '',
+          app_metadata: decoded?.app_metadata || {},
+          user_metadata: decoded?.user_metadata || {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const sessionData = {
+          access_token: event.data.access_token,
+          refresh_token: event.data.refresh_token,
+          expires_at: expiresAt,
+          expires_in: expiresAt - Math.floor(Date.now() / 1000),
+          token_type: 'bearer',
+          user: user,
+        };
+
+        localStorage.setItem(storageKey, JSON.stringify(sessionData));
+        console.log('[Auth Receiver] Tokens stored in localStorage');
+
+        // Send confirmation back to parent
+        event.source.postMessage({ type: 'AUTH_STORED', success: true }, event.origin);
+      }
+    });
+
+    console.log('[Auth Receiver] Listening for auth tokens...');
+  </script>
+</body>
+</html>
