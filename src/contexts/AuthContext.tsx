@@ -26,27 +26,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const getSession = async () => {
-      // 1️⃣ First check for tokens in URL (from marketing site redirect)
+      // 1️⃣ Check for tokens in URL OR in sessionStorage (persisted across re-renders)
       const urlParams = new URLSearchParams(window.location.search);
-      const accessToken = urlParams.get('access_token');
-      const refreshToken = urlParams.get('refresh_token');
+      let accessToken = urlParams.get('access_token');
+      let refreshToken = urlParams.get('refresh_token');
 
+      // If tokens in URL, store them and clean URL immediately
       if (accessToken && refreshToken) {
-        console.log('[CxTrack] Found tokens in URL, setting session...');
-
-        // Clean URL immediately to prevent re-processing on re-render
+        sessionStorage.setItem('pending_access_token', accessToken);
+        sessionStorage.setItem('pending_refresh_token', refreshToken);
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
+      } else {
+        // Check if we have pending tokens from a previous render
+        accessToken = sessionStorage.getItem('pending_access_token');
+        refreshToken = sessionStorage.getItem('pending_refresh_token');
+      }
+
+      if (accessToken && refreshToken) {
+        console.log('[CxTrack] Processing tokens...');
 
         const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
 
+        // Clear pending tokens after processing
+        sessionStorage.removeItem('pending_access_token');
+        sessionStorage.removeItem('pending_refresh_token');
+
         if (!isMounted) return;
 
         if (!error && data.session?.user) {
-          console.log('[CxTrack] Session set from URL tokens successfully');
+          console.log('[CxTrack] Session set successfully');
           previousUserIdRef.current = data.session.user.id;
 
           const { data: memberData } = await supabase
@@ -65,16 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
           return;
         } else {
-          console.error('[CxTrack] Failed to set session from tokens:', error);
+          console.error('[CxTrack] Failed to set session:', error);
+          // Clear tokens on failure and fall through to regular session check
         }
       }
 
-      // 2️⃣ No URL tokens, check for existing session
+      // 2️⃣ No pending tokens, check for existing session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!isMounted) return;
 
       if (session?.user) {
+        console.log('[CxTrack] Found existing session');
         previousUserIdRef.current = session.user.id;
 
         const { data: memberData } = await supabase
@@ -96,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getSession();
 
-    // 3️⃣ Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
@@ -109,9 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem('cxtrack_organization');
           localStorage.removeItem('cxtrack_user_profile');
           localStorage.removeItem('current_organization_id');
-          console.log('[CxTrack] Cleared cached data for new user sign-in');
+          console.log('[CxTrack] Cleared cached data for new user');
         }
-
         previousUserIdRef.current = currentUserId;
       }
 
