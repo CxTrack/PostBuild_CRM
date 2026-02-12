@@ -26,7 +26,7 @@ export default function QuickAddCustomerModal({
     last_name: '',
     email: '',
     phone: '',
-    company_name: '',
+    company: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +53,7 @@ export default function QuickAddCustomerModal({
         last_name: formData.last_name.trim(),
         email: formData.email.trim() || '',
         phone: formData.phone.trim() || null,
-        company_name: customerType === 'business' ? formData.company_name.trim() : null,
+        company: customerType === 'business' ? formData.company.trim() : null,
         status: 'Active',
       };
 
@@ -71,7 +71,7 @@ export default function QuickAddCustomerModal({
           last_name: '',
           email: '',
           phone: '',
-          company_name: '',
+          company: '',
         });
       }
     } catch (error: any) {
@@ -209,8 +209,8 @@ export default function QuickAddCustomerModal({
               </label>
               <input
                 type="text"
-                value={formData.company_name}
-                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                 placeholder="Acme Corporation"
                 className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
