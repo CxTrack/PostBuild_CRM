@@ -92,14 +92,17 @@ export default function Settings() {
   }, [currentOrganization]);
 
   const loadSettings = async () => {
-    if (!currentOrganization) return;
+    if (!currentOrganization) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       const [settingsData, quoteTemps, invoiceTemps] = await Promise.all([
-        settingsService.getBusinessSettings(currentOrganization.id),
-        settingsService.getTemplates(currentOrganization.id, 'quote'),
-        settingsService.getTemplates(currentOrganization.id, 'invoice'),
+        settingsService.getBusinessSettings(currentOrganization.id).catch(() => null),
+        settingsService.getTemplates(currentOrganization.id, 'quote').catch(() => []),
+        settingsService.getTemplates(currentOrganization.id, 'invoice').catch(() => []),
       ]);
 
       if (settingsData) {
@@ -107,13 +110,19 @@ export default function Settings() {
       }
 
       if (quoteTemps.length === 0 && invoiceTemps.length === 0) {
-        await settingsService.initializeDefaultTemplates(currentOrganization.id);
-        const [newQuoteTemps, newInvoiceTemps] = await Promise.all([
-          settingsService.getTemplates(currentOrganization.id, 'quote'),
-          settingsService.getTemplates(currentOrganization.id, 'invoice'),
-        ]);
-        setQuoteTemplates(newQuoteTemps);
-        setInvoiceTemplates(newInvoiceTemps);
+        try {
+          await settingsService.initializeDefaultTemplates(currentOrganization.id);
+          const [newQuoteTemps, newInvoiceTemps] = await Promise.all([
+            settingsService.getTemplates(currentOrganization.id, 'quote'),
+            settingsService.getTemplates(currentOrganization.id, 'invoice'),
+          ]);
+          setQuoteTemplates(newQuoteTemps);
+          setInvoiceTemplates(newInvoiceTemps);
+        } catch (initError) {
+          console.error('Failed to initialize default templates:', initError);
+          setQuoteTemplates([]);
+          setInvoiceTemplates([]);
+        }
       } else {
         setQuoteTemplates(quoteTemps);
         setInvoiceTemplates(invoiceTemps);
@@ -121,6 +130,7 @@ export default function Settings() {
     } catch (error) {
       console.error('Failed to load settings:', error);
       toast.error('Failed to load settings');
+      // Still show page with default/empty state if possible
     } finally {
       setLoading(false);
     }

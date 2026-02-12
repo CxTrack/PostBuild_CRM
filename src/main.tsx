@@ -6,9 +6,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 // Build version for deployment verification
-const BUILD_VERSION = 'SIDEBAR_DEDUP_FIX_V13_2026-02-11';
+const BUILD_VERSION = 'DEMO_REMOVAL_V14_2026-02-11';
 console.log(`%c[CxTrack] Build: ${BUILD_VERSION}`, 'color: #6366f1; font-weight: bold;');
-console.log('%c[CxTrack] Fixed: Sidebar deduplication + detailed module logging', 'color: #22c55e;');
+console.log('%c[CxTrack] Removed: All hardcoded demo/mock data', 'color: #ef4444;');
 
 if (typeof window !== 'undefined') {
   (window as any).CXTRACK_BUILD = BUILD_VERSION;

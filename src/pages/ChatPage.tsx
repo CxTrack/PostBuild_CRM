@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Paperclip } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
-import { MOCK_USERS, MOCK_CONVERSATIONS, MOCK_MESSAGES } from '@/data/mockChatData';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { EmojiPicker } from '@/components/chat/EmojiPicker';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
@@ -79,6 +79,7 @@ ConversationItem.displayName = 'ConversationItem';
 export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const { user } = useAuthContext();
     const [conversations, setConversations] = useState<Conversation[]>([]);
+    const { teamMembers } = useOrganizationStore();
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -112,10 +113,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     }, []);
 
     const fetchConversations = async () => {
-        if (!user) {
-            setConversations(MOCK_CONVERSATIONS);
-            return;
-        }
+        if (!user) return;
 
         const { data, error } = await supabase
             .from('conversations')
@@ -127,18 +125,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
       `)
             .order('updated_at', { ascending: false });
 
-        if ((!data || data.length === 0) && !error) {
-            setConversations(MOCK_CONVERSATIONS);
-        } else if (data) {
+        if (data) {
             setConversations(data);
         }
     };
 
     const loadMessages = async (conversationId: string) => {
-        if (MOCK_MESSAGES[conversationId]) {
-            setMessages(MOCK_MESSAGES[conversationId]);
-            return;
-        }
+
 
         const { data, error } = await supabase
             .from('messages')
@@ -228,11 +221,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         inputRef.current?.focus();
     };
 
-    const handleStartNewConversation = (mockUser: typeof MOCK_USERS[0]) => {
+    const handleStartNewConversation = (member: any) => {
         const newConv: Conversation = {
-            id: `new-mock-${Date.now()}`,
+            id: `new-temp-${Date.now()}`,
             updated_at: new Date().toISOString(),
-            participants: [{ user: { full_name: mockUser.full_name } }],
+            participants: [{ user: { full_name: member.full_name } }],
         };
 
         setConversations(prev => [newConv, ...prev]);
@@ -475,7 +468,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <div className="p-4">
                                 <p className="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Suggested Contacts</p>
                                 <div className="space-y-2">
-                                    {MOCK_USERS.map(u => (
+                                    {teamMembers.map(u => (
                                         <button
                                             key={u.id}
                                             onClick={() => handleStartNewConversation(u)}

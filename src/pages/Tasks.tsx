@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { supabase } from '@/lib/supabase';
 import {
   Plus,
   Search,
@@ -53,87 +55,7 @@ const statusStyles: Record<Status, string> = {
   'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Call customer about quote',
-    type: 'call',
-    priority: 'medium',
-    status: 'To Do',
-    dueDate: new Date('2025-12-25'),
-    customer: 'John Doe',
-    description: 'Follow up on Q4 quote',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-25',
-  },
-  {
-    id: '2',
-    title: 'Send proposal email',
-    type: 'email',
-    priority: 'urgent',
-    status: 'To Do',
-    dueDate: new Date('2025-12-20'),
-    customer: 'Acme Corp',
-    description: 'Send updated pricing proposal',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-20',
-  },
-  {
-    id: '3',
-    title: 'Review contract',
-    type: 'other',
-    priority: 'high',
-    status: 'In Progress',
-    dueDate: new Date('2025-12-23'),
-    showOnCalendar: true,
-    startTime: '2:00 PM',
-    description: 'Review and approve new vendor contract',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-23',
-    start_time: '14:00',
-    show_on_calendar: true,
-    duration: 60,
-  },
-  {
-    id: '4',
-    title: 'Team meeting prep',
-    type: 'meeting',
-    priority: 'low',
-    status: 'Completed',
-    dueDate: new Date('2025-12-22'),
-    description: 'Prepare agenda and slides',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-22',
-  },
-  {
-    id: '5',
-    title: 'Update project documentation',
-    type: 'other',
-    priority: 'medium',
-    status: 'In Progress',
-    dueDate: new Date('2025-12-26'),
-    customer: 'Tech Solutions Inc',
-    description: 'Update API documentation for v2.0',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-26',
-  },
-  {
-    id: '6',
-    title: 'Schedule product demo',
-    type: 'meeting',
-    priority: 'high',
-    status: 'To Do',
-    dueDate: new Date('2025-12-24'),
-    customer: 'Global Enterprises',
-    showOnCalendar: true,
-    startTime: '10:00 AM',
-    created_at: new Date().toISOString(),
-    due_date: '2025-12-24',
-    start_time: '10:00',
-    show_on_calendar: true,
-    duration: 30,
-  },
-];
+
 
 interface TasksProps {
   embedded?: boolean;
@@ -141,7 +63,49 @@ interface TasksProps {
 
 export default function Tasks({ embedded = false }: TasksProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const { currentOrganization } = useOrganizationStore();
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!currentOrganization?.id) return;
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('organization_id', currentOrganization.id)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        console.error('Failed to fetch tasks:', error);
+        return;
+      }
+
+      // Map database fields to component's expected format
+      const mappedTasks = (data || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        type: t.type || 'other',
+        priority: t.priority || 'medium',
+        status: t.status || 'To Do',
+        dueDate: new Date(t.due_date),
+        customer: t.customer_name,
+        showOnCalendar: t.show_on_calendar,
+        startTime: t.start_time,
+        created_at: t.created_at,
+        due_date: t.due_date,
+        start_time: t.start_time,
+        duration: t.duration,
+        show_on_calendar: t.show_on_calendar,
+      }));
+
+      setTasks(mappedTasks);
+    };
+
+    fetchTasks();
+  }, [currentOrganization?.id]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

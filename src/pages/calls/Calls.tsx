@@ -48,8 +48,19 @@ export default function Calls() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchCalls();
-    fetchCallStats();
+    const loadCallsData = async () => {
+      try {
+        await Promise.all([
+          fetchCalls(),
+          fetchCallStats()
+        ]);
+      } catch (error) {
+        console.error('Failed to fetch calls data:', error);
+        toast.error('Failed to load calls history');
+      }
+    };
+
+    loadCallsData();
     const unsubscribe = subscribeToLiveCalls();
     return () => unsubscribe();
   }, []);
