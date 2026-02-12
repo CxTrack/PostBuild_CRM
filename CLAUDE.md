@@ -340,6 +340,54 @@ git push origin main
 
 ---
 
+## POST-MORTEM: Wrong File Updated (2026-02-12)
+
+### The Problem
+Updated auth pages in `src/pages/auth/Login.tsx` but the live site kept showing the old UI.
+
+### What Went Wrong
+
+#### Error: Updated Wrong File Without Checking Router
+- **Mistake:** Modified `src/pages/auth/Login.tsx` without checking which file App.tsx actually imports
+- **Reality:** TWO Login.tsx files exist:
+  - `src/pages/Login.tsx` - OLD file (actually used by router)
+  - `src/pages/auth/Login.tsx` - NEW file (NOT used, just sitting there)
+- **Should Have Done:**
+  1. Check App.tsx imports FIRST
+  2. Search for all files with same name: `find . -name "Login.tsx"`
+  3. Trace the actual route to see which component is rendered
+
+### Root Cause
+The router in App.tsx imports from `src/pages/Login.tsx`, NOT `src/pages/auth/Login.tsx`:
+```tsx
+import Login from './pages/Login';  // OLD file
+// NOT: import Login from './pages/auth/Login';  // NEW file we updated
+```
+
+### Files That Actually Need Updating
+```
+src/pages/Login.tsx      ← ACTUALLY USED
+src/pages/Register.tsx   ← ACTUALLY USED (if exists at root)
+```
+
+NOT:
+```
+src/pages/auth/Login.tsx      ← NOT USED BY ROUTER
+src/pages/auth/Register.tsx   ← NOT USED BY ROUTER
+```
+
+### Prevention Checklist (MANDATORY Before Updating ANY Component)
+
+- [ ] **Check the router FIRST:** Look at App.tsx imports before editing anything
+- [ ] **Search for duplicate files:** `find . -name "ComponentName.tsx"`
+- [ ] **Verify import path:** Ensure the file you're editing matches the import path exactly
+- [ ] **Test locally:** Run `npm run dev` and verify your changes appear
+
+### Key Lesson
+**ALWAYS trace the import chain from the router to the component before making changes. Never assume a file is used just because it exists.**
+
+---
+
 ## Quick Reference Commands
 
 ### Marketing Website
