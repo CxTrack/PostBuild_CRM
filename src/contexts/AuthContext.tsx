@@ -50,24 +50,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[CxTrack] Processing tokens...');
 
           try {
-            // Add timeout to prevent hanging
-            const setSessionPromise = supabase.auth.setSession({
+            // Try setSession first (quick, no network)
+            const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('setSession timeout after 10s')), 10000)
-            );
 
-            await Promise.race([setSessionPromise, timeoutPromise]);
-            console.log('[CxTrack] setSession completed successfully');
+            if (error) {
+              console.log('[CxTrack] setSession error, trying refreshSession:', error.message);
+              // If setSession fails, try refreshing with just the refresh token
+              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+                refresh_token: refreshToken,
+              });
+
+              if (refreshError) {
+                console.error('[CxTrack] refreshSession also failed:', refreshError.message);
+              } else if (refreshData.session) {
+                console.log('[CxTrack] refreshSession succeeded:', refreshData.session.user?.email);
+              }
+            } else if (data.session) {
+              console.log('[CxTrack] setSession completed:', data.session.user?.email);
+            }
           } catch (err) {
-            console.error('[CxTrack] setSession failed:', err);
-            // Clear tokens on failure so we don't keep retrying bad tokens
-            sessionStorage.removeItem('pending_access_token');
-            sessionStorage.removeItem('pending_refresh_token');
+            console.error('[CxTrack] Token processing failed:', err);
           }
 
+          // Always clear tokens after attempting
           sessionStorage.removeItem('pending_access_token');
           sessionStorage.removeItem('pending_refresh_token');
           sessionStorage.removeItem('auth_processing');
