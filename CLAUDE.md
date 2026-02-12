@@ -32,6 +32,34 @@ On 2026-02-12, hours were wasted making changes to the wrong directory. Auth pag
 
 ---
 
+## ⚠️ CRITICAL: NO UNAUTHORIZED CHANGES ⚠️
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  DO NOT MAKE ANY CHANGES WITHOUT EXPLICIT USER PERMISSION!                     ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  ❌ DO NOT change code that wasn't explicitly requested                        ║
+║  ❌ DO NOT delete code unless specifically asked                               ║
+║  ❌ DO NOT "improve" or refactor unrelated code                                ║
+║  ❌ DO NOT add features that weren't requested                                 ║
+║  ❌ DO NOT make changes from previous session context without asking first     ║
+║                                                                                ║
+║  ✅ ONLY make changes that directly address the user's current request         ║
+║  ✅ ASK for permission before touching anything outside the request scope      ║
+║  ✅ If unsure whether something is in scope, ASK FIRST                         ║
+║                                                                                ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Why This Matters
+On 2026-02-12, Login/Register pages were changed based on previous session context without explicit permission. This broke login functionality and caused significant user frustration. The user only asked to fix a customer creation bug (`company_name` → `company`), but unrelated auth page changes were also pushed.
+
+### The Rule
+**If the user asks to fix X, ONLY fix X. Do not touch Y or Z even if they seem related or were mentioned in previous context.**
+
+---
+
 ## Project Identity
 
 **Project Name:** CxTrack - AI-Powered CRM Platform
