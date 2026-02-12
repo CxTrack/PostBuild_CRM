@@ -26,6 +26,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check active sessions and sets the user
     const getSession = async () => {
+      // 1️⃣ First check for tokens in URL (from marketing site redirect)
+      const urlParams = new URLSearchParams(window.location.search);
+      const accessToken = urlParams.get('access_token');
+      const refreshToken = urlParams.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        console.log('[CxTrack] Found tokens in URL, setting session...');
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        // Clean URL by removing tokens (regardless of success)
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+
+        if (!error && data.session?.user) {
+          console.log('[CxTrack] Session set from URL tokens successfully');
+          previousUserIdRef.current = data.session.user.id;
+
+          // Fetch organization membership
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('organization_id, role')
+            .eq('user_id', data.session.user.id)
+            .maybeSingle();
+
+          setUser({
+            ...data.session.user,
+            role: memberData?.role,
+            organization_id: memberData?.organization_id
+          });
+          setLoading(false);
+          return; // Exit early - session is established
+        } else {
+          console.error('[CxTrack] Failed to set session from tokens:', error);
+        }
+      }
+
+      // 2️⃣ No URL tokens, check for existing session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
