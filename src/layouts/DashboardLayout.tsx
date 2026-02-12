@@ -46,16 +46,26 @@ type NavItem = {
 };
 
 
-const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { path: '/dashboard/customers', icon: Users, label: 'Customers', tourId: 'customers' },
-  { path: '/dashboard/calendar', icon: Calendar, label: 'Calendar', tourId: 'calendar' },
-  { path: '/dashboard/products', icon: Package, label: 'Products' },
-  { path: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
-  { path: '/dashboard/invoices', icon: DollarSign, label: 'Invoices' },
-  { path: '/dashboard/calls', icon: Phone, label: 'Calls' },
-  { path: '/dashboard/pipeline', icon: TrendingUp, label: 'Pipeline', tourId: 'pipeline' },
-  { path: '/dashboard/tasks', icon: CheckSquare, label: 'Tasks' },
-];
+// Icon mapping for modules - labels come ONLY from industry templates
+const MODULE_ICONS: Record<string, any> = {
+  crm: Users,
+  calendar: Calendar,
+  products: Package,
+  quotes: FileText,
+  invoices: DollarSign,
+  calls: Phone,
+  pipeline: TrendingUp,
+  tasks: CheckSquare,
+  inventory: Package,
+  suppliers: Users,
+  financials: DollarSign,
+};
+
+const MODULE_TOUR_IDS: Record<string, string> = {
+  crm: 'customers',
+  calendar: 'calendar',
+  pipeline: 'pipeline',
+};
 
 const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home' };
 const SETTINGS_ITEM: NavItem = { path: '/dashboard/settings', icon: Settings, label: 'Settings' };
@@ -63,7 +73,7 @@ const CHAT_ITEM: NavItem = { path: '/dashboard/chat', icon: MessageCircle, label
 
 export const DashboardLayout = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { visibleModules } = useVisibleModules();
 
@@ -132,34 +142,22 @@ export const DashboardLayout = () => {
   };
 
   useEffect(() => {
-    // 1. Map visibleModules to NavItems (filter out dashboard - Home already handles it)
+    // ONLY use visibleModules from template system - no legacy static items
     const filteredModules = visibleModules.filter((m: any) => m.id !== 'dashboard');
-    const moduleNavItems: NavItem[] = filteredModules.map((m: any) => {
 
-      const existing = DEFAULT_NAV_ITEMS.find(item => item.path === `/dashboard${m.route}`);
-      return {
-        path: m.isLocked ? '/dashboard/upgrade' : `/dashboard${m.route}`,
-        icon: existing?.icon || Package,
-        label: m.name,
-        isLocked: m.isLocked,
-        tourId: existing?.tourId
-      };
-    });
+    const moduleNavItems: NavItem[] = filteredModules.map((m: any) => ({
+      path: m.isLocked ? '/dashboard/upgrade' : `/dashboard${m.route}`,
+      icon: MODULE_ICONS[m.id] || Package,
+      label: m.name, // This comes from industry template labels
+      isLocked: m.isLocked,
+      tourId: MODULE_TOUR_IDS[m.id]
+    }));
 
-    if (preferences.sidebarOrder && preferences.sidebarOrder.length > 0) {
-      const orderedItems = preferences.sidebarOrder
-        .map((path: string) => moduleNavItems.find((item: NavItem) => item.path === path))
-        .filter((item): item is NavItem => !!item);
+    // Set nav items directly from templates - no preference reordering for now
+    setNavItems(moduleNavItems);
 
-      // Add any missing items from moduleNavItems
-      const existingPaths = new Set(preferences.sidebarOrder);
-      const missingItems = moduleNavItems.filter(item => !existingPaths.has(item.path));
-
-      setNavItems([...orderedItems, ...missingItems]);
-    } else {
-      setNavItems(moduleNavItems);
-    }
-  }, [preferences.sidebarOrder, visibleModules]);
+    console.log('[CxTrack] Sidebar modules loaded:', moduleNavItems.map(m => m.label));
+  }, [visibleModules]);
 
 
   useEffect(() => {
@@ -208,15 +206,11 @@ export const DashboardLayout = () => {
   const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
 
   // Mobile navigation logic: show Home, 3 custom items + "More"
-  const mobileCustomPaths = preferences.mobileNavItems || ['/dashboard/customers', '/dashboard/calendar', '/dashboard/products'];
-
-  // Find the actual nav items for the preferred paths
+  // Mobile navigation - use first 3 items from template
   const mobileBottomNavItems = [
     HOME_ITEM,
-    ...mobileCustomPaths
-      .map((path: string) => DEFAULT_NAV_ITEMS.find((item: NavItem) => item.path === path))
-      .filter((item): item is NavItem => !!item)
-  ].slice(0, 4);
+    ...navItems.slice(0, 3)
+  ];
 
   // All other visible items go to "More"
   const selectedPaths = new Set(mobileBottomNavItems.map(i => i.path));
