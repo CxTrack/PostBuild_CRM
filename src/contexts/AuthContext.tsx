@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (accessToken && refreshToken) {
         console.log('[CxTrack] Processing tokens directly...');
 
-        // Decode the JWT to get expiry (without verification)
+        // Decode the JWT to get user data and expiry
         const parseJwt = (token: string) => {
           try {
             const base64Url = token.split('.')[1];
@@ -62,9 +62,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         const decoded = parseJwt(accessToken);
-        const expiresAt = decoded?.exp || Math.floor(Date.now() / 1000) + 3600;
+        if (!decoded) {
+          console.error('[CxTrack] Failed to decode JWT');
+          sessionStorage.removeItem('pending_access_token');
+          sessionStorage.removeItem('pending_refresh_token');
+          setLoading(false);
+          return;
+        }
 
-        // Store directly in localStorage in Supabase's expected format
+        const expiresAt = decoded.exp || Math.floor(Date.now() / 1000) + 3600;
+
+        // Build the user object from the JWT payload (Supabase JWT structure)
+        const user = {
+          id: decoded.sub,
+          aud: decoded.aud || 'authenticated',
+          role: decoded.role || 'authenticated',
+          email: decoded.email,
+          email_confirmed_at: decoded.email_confirmed_at,
+          phone: decoded.phone || '',
+          confirmed_at: decoded.confirmed_at || decoded.email_confirmed_at,
+          last_sign_in_at: decoded.last_sign_in_at || new Date().toISOString(),
+          app_metadata: decoded.app_metadata || { provider: 'email', providers: ['email'] },
+          user_metadata: decoded.user_metadata || {},
+          identities: decoded.identities || [],
+          created_at: decoded.created_at || new Date().toISOString(),
+          updated_at: decoded.updated_at || new Date().toISOString(),
+        };
+
+        // Store in localStorage in Supabase's COMPLETE expected format
         const storageKey = `sb-zkpfzrbbupgiqkzqydji-auth-token`;
         const sessionData = {
           access_token: accessToken,
@@ -72,10 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           expires_at: expiresAt,
           expires_in: expiresAt - Math.floor(Date.now() / 1000),
           token_type: 'bearer',
+          user: user,
         };
 
         localStorage.setItem(storageKey, JSON.stringify(sessionData));
-        console.log('[CxTrack] Tokens stored in localStorage, reloading...');
+        console.log('[CxTrack] Complete session stored in localStorage, reloading...');
 
         // Clear the pending tokens
         sessionStorage.removeItem('pending_access_token');
