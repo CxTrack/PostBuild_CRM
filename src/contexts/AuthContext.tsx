@@ -116,11 +116,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[CxTrack] Calling getSession()...');
 
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        let session = null;
+        const { data: { session: supabaseSession }, error: sessionError } = await supabase.auth.getSession();
 
         console.log('[CxTrack] getSession() completed');
-        console.log('[CxTrack] Session exists:', !!session);
-        console.log('[CxTrack] Session error:', sessionError?.message || 'none');
+        console.log('[CxTrack] Session exists:', !!supabaseSession);
+        if (sessionError) console.error('[CxTrack] Session error:', sessionError.message);
+
+        session = supabaseSession;
+
+        // If no session from getSession(), try to restore from localStorage
+        if (!session) {
+          console.log('[CxTrack] No session from getSession, checking localStorage...');
+          const storageKey = 'sb-zkpfzrbbupgiqkzqydji-auth-token';
+          const storedSession = localStorage.getItem(storageKey);
+
+          if (storedSession) {
+            try {
+              const parsed = JSON.parse(storedSession);
+              if (parsed.access_token && parsed.refresh_token) {
+                console.log('[CxTrack] Found stored tokens, trying setSession...');
+                const { data: restoredData, error: setError } = await supabase.auth.setSession({
+                  access_token: parsed.access_token,
+                  refresh_token: parsed.refresh_token,
+                });
+
+                if (setError) {
+                  console.error('[CxTrack] setSession failed:', setError.message);
+                  // Token might be expired, clear it
+                  localStorage.removeItem(storageKey);
+                } else if (restoredData.session) {
+                  console.log('[CxTrack] Session restored via setSession:', restoredData.session.user?.email);
+                  session = restoredData.session;
+                }
+              }
+            } catch (parseErr) {
+              console.error('[CxTrack] Failed to parse stored session:', parseErr);
+            }
+          }
+        }
 
         if (!isMounted) return;
 
