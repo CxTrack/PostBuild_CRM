@@ -41,47 +41,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (accessToken && refreshToken) {
-        const isProcessing = sessionStorage.getItem('auth_processing');
-        if (isProcessing === 'true') {
-          console.log('[CxTrack] Already processing, waiting...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-          sessionStorage.setItem('auth_processing', 'true');
-          console.log('[CxTrack] Processing tokens...');
+        console.log('[CxTrack] Processing tokens directly...');
 
+        // Decode the JWT to get expiry (without verification)
+        const parseJwt = (token: string) => {
           try {
-            // Try setSession first (quick, no network)
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-
-            if (error) {
-              console.log('[CxTrack] setSession error, trying refreshSession:', error.message);
-              // If setSession fails, try refreshing with just the refresh token
-              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
-                refresh_token: refreshToken,
-              });
-
-              if (refreshError) {
-                console.error('[CxTrack] refreshSession also failed:', refreshError.message);
-              } else if (refreshData.session) {
-                console.log('[CxTrack] refreshSession succeeded:', refreshData.session.user?.email);
-              }
-            } else if (data.session) {
-              console.log('[CxTrack] setSession completed:', data.session.user?.email);
-            }
-          } catch (err) {
-            console.error('[CxTrack] Token processing failed:', err);
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(atob(base64));
+          } catch {
+            return null;
           }
+        };
 
-          // Always clear tokens after attempting
-          sessionStorage.removeItem('pending_access_token');
-          sessionStorage.removeItem('pending_refresh_token');
-          sessionStorage.removeItem('auth_processing');
-        }
+        const decoded = parseJwt(accessToken);
+        const expiresAt = decoded?.exp || Math.floor(Date.now() / 1000) + 3600;
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Store directly in localStorage in Supabase's expected format
+        const storageKey = `sb-zkpfzrbbupgiqkzqydji-auth-token`;
+        const sessionData = {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+          expires_in: expiresAt - Math.floor(Date.now() / 1000),
+          token_type: 'bearer',
+        };
+
+        localStorage.setItem(storageKey, JSON.stringify(sessionData));
+        console.log('[CxTrack] Tokens stored in localStorage');
+
+        // Clear the pending tokens
+        sessionStorage.removeItem('pending_access_token');
+        sessionStorage.removeItem('pending_refresh_token');
       }
 
       // Check for session (works for both token flow and regular login)
