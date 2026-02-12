@@ -26,9 +26,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const getSession = async () => {
+      // Debug: Log full URL to see what we're receiving
+      console.log('[CxTrack] Full URL:', window.location.href);
+      console.log('[CxTrack] Search params:', window.location.search);
+
       const urlParams = new URLSearchParams(window.location.search);
       let accessToken = urlParams.get('access_token');
       let refreshToken = urlParams.get('refresh_token');
+
+      console.log('[CxTrack] Token in URL:', accessToken ? 'YES' : 'NO');
+      console.log('[CxTrack] localStorage token:', localStorage.getItem('sb-zkpfzrbbupgiqkzqydji-auth-token') ? 'EXISTS' : 'NONE');
 
       if (accessToken && refreshToken) {
         sessionStorage.setItem('pending_access_token', accessToken);
