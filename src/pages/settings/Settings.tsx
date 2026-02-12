@@ -105,9 +105,26 @@ export default function Settings() {
         settingsService.getTemplates(currentOrganization.id, 'invoice').catch(() => []),
       ]);
 
-      if (settingsData) {
-        setSettings(settingsData);
-      }
+      // Always set settings - use empty defaults if no data
+      setSettings(settingsData || {
+        business_email: null,
+        business_phone: null,
+        business_address: null,
+        business_city: null,
+        business_state: null,
+        business_postal_code: null,
+        business_country: null,
+        business_website: null,
+        logo_url: null,
+        primary_color: '#3b82f6',
+        quote_prefix: 'Q-',
+        invoice_prefix: 'INV-',
+        default_payment_terms: 'Net 30',
+        stripe_publishable_key: null,
+        stripe_secret_key: null,
+        default_quote_template_id: null,
+        default_invoice_template_id: null,
+      });
 
       if (quoteTemps.length === 0 && invoiceTemps.length === 0) {
         try {

@@ -325,9 +325,6 @@ export const DashboardLayout = () => {
               <MessageCircle size={20} className="mr-3" />
               <span className="font-medium">Team Chat</span>
             </div>
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-              3
-            </span>
           </Link>
 
           {/* Reports Link */}
