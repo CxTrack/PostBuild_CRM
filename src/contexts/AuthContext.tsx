@@ -26,82 +26,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const getSession = async () => {
-      // 1️⃣ Check for tokens in URL OR in sessionStorage (persisted across re-renders)
       const urlParams = new URLSearchParams(window.location.search);
       let accessToken = urlParams.get('access_token');
       let refreshToken = urlParams.get('refresh_token');
 
-      // If tokens in URL, store them and clean URL immediately
       if (accessToken && refreshToken) {
         sessionStorage.setItem('pending_access_token', accessToken);
         sessionStorage.setItem('pending_refresh_token', refreshToken);
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
       } else {
-        // Check if we have pending tokens from a previous render
         accessToken = sessionStorage.getItem('pending_access_token');
         refreshToken = sessionStorage.getItem('pending_refresh_token');
       }
 
       if (accessToken && refreshToken) {
-        // Prevent double-processing from StrictMode
         const isProcessing = sessionStorage.getItem('auth_processing');
         if (isProcessing === 'true') {
-          console.log('[CxTrack] Already processing tokens, skipping...');
-          return; // Another mount is handling it
-        }
+          console.log('[CxTrack] Already processing, waiting...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+          sessionStorage.setItem('auth_processing', 'true');
+          console.log('[CxTrack] Processing tokens...');
 
-        sessionStorage.setItem('auth_processing', 'true');
-        console.log('[CxTrack] Processing tokens...');
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            console.log('[CxTrack] setSession completed');
+          } catch (err) {
+            console.log('[CxTrack] setSession error (checking getSession):', err);
+          }
 
-        try {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          // Clear tokens and processing flag
           sessionStorage.removeItem('pending_access_token');
           sessionStorage.removeItem('pending_refresh_token');
           sessionStorage.removeItem('auth_processing');
-
-          if (!isMounted) return;
-
-          if (!error && data.session?.user) {
-            console.log('[CxTrack] Session set successfully');
-            previousUserIdRef.current = data.session.user.id;
-
-            const { data: memberData } = await supabase
-              .from('organization_members')
-              .select('organization_id, role')
-              .eq('user_id', data.session.user.id)
-              .maybeSingle();
-
-            if (!isMounted) return;
-
-            setUser({
-              ...data.session.user,
-              role: memberData?.role,
-              organization_id: memberData?.organization_id
-            });
-            setLoading(false);
-            return;
-          } else {
-            console.error('[CxTrack] Failed to set session:', error);
-          }
-        } catch (err) {
-          console.error('[CxTrack] setSession threw:', err);
-          sessionStorage.removeItem('auth_processing');
         }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // 2️⃣ No pending tokens, check for existing session
+      // Check for session (works for both token flow and regular login)
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!isMounted) return;
 
       if (session?.user) {
-        console.log('[CxTrack] Found existing session');
+        console.log('[CxTrack] Session found:', session.user.email);
         previousUserIdRef.current = session.user.id;
 
         const { data: memberData } = await supabase
