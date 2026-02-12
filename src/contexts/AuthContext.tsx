@@ -28,23 +28,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getSession = async () => {
       // Debug: Log full URL to see what we're receiving
       console.log('[CxTrack] Full URL:', window.location.href);
-      console.log('[CxTrack] Search params:', window.location.search);
-      console.log('[CxTrack] Hash:', window.location.hash);
 
-      // Try to get tokens from query params first, then hash fragment
-      const urlParams = new URLSearchParams(window.location.search);
-      let accessToken = urlParams.get('access_token');
-      let refreshToken = urlParams.get('refresh_token');
+      // Helper to get cookie value
+      const getCookie = (name: string): string | null => {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+      };
 
-      // If not in query params, check hash fragment (used to bypass server-side stripping)
-      if (!accessToken && window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        accessToken = hashParams.get('access_token');
-        refreshToken = hashParams.get('refresh_token');
-        console.log('[CxTrack] Found tokens in hash fragment');
+      // Helper to delete cookie
+      const deleteCookie = (name: string) => {
+        document.cookie = `${name}=; domain=.easyaicrm.com; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      };
+
+      // Try to get tokens from transfer cookie first (set by marketing site)
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+
+      const transferCookie = getCookie('cxtrack_auth_transfer');
+      if (transferCookie) {
+        try {
+          const tokenData = JSON.parse(transferCookie);
+          accessToken = tokenData.access_token;
+          refreshToken = tokenData.refresh_token;
+          console.log('[CxTrack] Found tokens in transfer cookie!');
+          // Delete the transfer cookie after reading
+          deleteCookie('cxtrack_auth_transfer');
+        } catch (e) {
+          console.error('[CxTrack] Failed to parse transfer cookie:', e);
+        }
       }
 
-      console.log('[CxTrack] Token in URL/Hash:', accessToken ? 'YES' : 'NO');
+      // Fallback: check URL params and hash
+      if (!accessToken) {
+        const urlParams = new URLSearchParams(window.location.search);
+        accessToken = urlParams.get('access_token');
+        refreshToken = urlParams.get('refresh_token');
+
+        if (!accessToken && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+        }
+      }
+
+      // Fallback: check sessionStorage
+      if (!accessToken) {
+        accessToken = sessionStorage.getItem('pending_access_token');
+        refreshToken = sessionStorage.getItem('pending_refresh_token');
+      }
+
+      console.log('[CxTrack] Token found:', accessToken ? 'YES' : 'NO');
       console.log('[CxTrack] localStorage token:', localStorage.getItem('sb-zkpfzrbbupgiqkzqydji-auth-token') ? 'EXISTS' : 'NONE');
 
       if (accessToken && refreshToken) {
@@ -52,9 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.setItem('pending_refresh_token', refreshToken);
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
-      } else {
-        accessToken = sessionStorage.getItem('pending_access_token');
-        refreshToken = sessionStorage.getItem('pending_refresh_token');
       }
 
       if (accessToken && refreshToken) {
