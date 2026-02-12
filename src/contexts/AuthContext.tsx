@@ -120,21 +120,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2️⃣ Check for session (works for both token flow and regular login)
-      console.log('[CxTrack] Calling getSession()...');
+      console.log('[CxTrack] Calling getSession() with 3s timeout...');
 
       try {
+        // Race against a timeout to prevent hanging on corrupted storage
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), 3000)
+        );
+
         let session = null;
-        const { data: { session: supabaseSession }, error: sessionError } = await supabase.auth.getSession();
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
+          console.log('[CxTrack] getSession() responded');
+          if (result.error) console.error('[CxTrack] Session error:', result.error.message);
+          session = result.data?.session;
+        } catch (raceErr: any) {
+          if (raceErr.message === 'TIMEOUT') {
+            console.warn('[CxTrack] getSession() HUNG - clearing corrupted auth storage');
+            localStorage.removeItem('sb-zkpfzrbbupgiqkzqydji-auth-token');
+          } else {
+            console.error('[CxTrack] getSession() race error:', raceErr);
+          }
+        }
 
-        console.log('[CxTrack] getSession() completed');
-        console.log('[CxTrack] Session exists:', !!supabaseSession);
-        if (sessionError) console.error('[CxTrack] Session error:', sessionError.message);
-
-        session = supabaseSession;
-
-        // If no session from getSession(), try to restore from localStorage
+        // If no session from getSession(), try to restore from localStorage (backup)
         if (!session) {
-          console.log('[CxTrack] No session from getSession, checking localStorage...');
+          console.log('[CxTrack] No active session found, checking localStorage backup...');
           const storageKey = 'sb-zkpfzrbbupgiqkzqydji-auth-token';
           const storedSession = localStorage.getItem(storageKey);
 
@@ -142,23 +154,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const parsed = JSON.parse(storedSession);
               if (parsed.access_token && parsed.refresh_token) {
-                console.log('[CxTrack] Found stored tokens, trying setSession...');
+                console.log('[CxTrack] Attempting recovery with stored tokens...');
                 const { data: restoredData, error: setError } = await supabase.auth.setSession({
                   access_token: parsed.access_token,
                   refresh_token: parsed.refresh_token,
                 });
 
                 if (setError) {
-                  console.error('[CxTrack] setSession failed:', setError.message);
-                  // Token might be expired, clear it
+                  console.error('[CxTrack] Recovery failed:', setError.message);
                   localStorage.removeItem(storageKey);
                 } else if (restoredData.session) {
-                  console.log('[CxTrack] Session restored via setSession:', restoredData.session.user?.email);
+                  console.log('[CxTrack] Session recovered:', restoredData.session.user?.email);
                   session = restoredData.session;
                 }
               }
             } catch (parseErr) {
-              console.error('[CxTrack] Failed to parse stored session:', parseErr);
+              console.error('[CxTrack] Parse error on recovery:', parseErr);
+              localStorage.removeItem(storageKey);
             }
           }
         }
@@ -166,18 +178,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
 
         if (session?.user) {
-          console.log('[CxTrack] Session found:', session.user.email);
+          console.log('[CxTrack] Verified User:', session.user.email);
           previousUserIdRef.current = session.user.id;
 
-          console.log('[CxTrack] Fetching organization_members...');
-          const { data: memberData, error: memberError } = await supabase
+          const { data: memberData } = await supabase
             .from('organization_members')
             .select('organization_id, role')
             .eq('user_id', session.user.id)
             .maybeSingle();
-
-          console.log('[CxTrack] organization_members result:', memberData ? 'found' : 'not found');
-          if (memberError) console.error('[CxTrack] organization_members error:', memberError.message);
 
           if (!isMounted) return;
 
@@ -186,15 +194,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: memberData?.role,
             organization_id: memberData?.organization_id
           });
-          console.log('[CxTrack] User set successfully');
+          console.log('[CxTrack] Auth state established');
         } else {
-          console.log('[CxTrack] No session found - user will be redirected to login');
+          console.log('[CxTrack] No user found');
         }
       } catch (err) {
-        console.error('[CxTrack] Error in getSession flow:', err);
+        console.error('[CxTrack] Critical error in auth flow:', err);
       }
 
-      console.log('[CxTrack] Setting loading to false');
+      console.log('[CxTrack] Auth initialization complete');
       setLoading(false);
     };
 
