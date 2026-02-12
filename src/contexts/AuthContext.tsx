@@ -50,13 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[CxTrack] Processing tokens...');
 
           try {
-            await supabase.auth.setSession({
+            // Add timeout to prevent hanging
+            const setSessionPromise = supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            console.log('[CxTrack] setSession completed');
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('setSession timeout after 10s')), 10000)
+            );
+
+            await Promise.race([setSessionPromise, timeoutPromise]);
+            console.log('[CxTrack] setSession completed successfully');
           } catch (err) {
-            console.log('[CxTrack] setSession error (checking getSession):', err);
+            console.error('[CxTrack] setSession failed:', err);
+            // Clear tokens on failure so we don't keep retrying bad tokens
+            sessionStorage.removeItem('pending_access_token');
+            sessionStorage.removeItem('pending_refresh_token');
           }
 
           sessionStorage.removeItem('pending_access_token');
