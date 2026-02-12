@@ -68,11 +68,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         localStorage.setItem(storageKey, JSON.stringify(sessionData));
-        console.log('[CxTrack] Tokens stored in localStorage');
+        console.log('[CxTrack] Tokens stored in localStorage, reloading...');
 
         // Clear the pending tokens
         sessionStorage.removeItem('pending_access_token');
         sessionStorage.removeItem('pending_refresh_token');
+
+        // Reload so Supabase picks up the tokens from localStorage
+        window.location.reload();
+        return;
       }
 
       // Check for session (works for both token flow and regular login)
