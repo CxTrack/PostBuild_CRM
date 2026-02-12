@@ -44,41 +44,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (accessToken && refreshToken) {
+        // Prevent double-processing from StrictMode
+        const isProcessing = sessionStorage.getItem('auth_processing');
+        if (isProcessing === 'true') {
+          console.log('[CxTrack] Already processing tokens, skipping...');
+          return; // Another mount is handling it
+        }
+
+        sessionStorage.setItem('auth_processing', 'true');
         console.log('[CxTrack] Processing tokens...');
 
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
 
-        // Clear pending tokens after processing
-        sessionStorage.removeItem('pending_access_token');
-        sessionStorage.removeItem('pending_refresh_token');
-
-        if (!isMounted) return;
-
-        if (!error && data.session?.user) {
-          console.log('[CxTrack] Session set successfully');
-          previousUserIdRef.current = data.session.user.id;
-
-          const { data: memberData } = await supabase
-            .from('organization_members')
-            .select('organization_id, role')
-            .eq('user_id', data.session.user.id)
-            .maybeSingle();
+          // Clear tokens and processing flag
+          sessionStorage.removeItem('pending_access_token');
+          sessionStorage.removeItem('pending_refresh_token');
+          sessionStorage.removeItem('auth_processing');
 
           if (!isMounted) return;
 
-          setUser({
-            ...data.session.user,
-            role: memberData?.role,
-            organization_id: memberData?.organization_id
-          });
-          setLoading(false);
-          return;
-        } else {
-          console.error('[CxTrack] Failed to set session:', error);
-          // Clear tokens on failure and fall through to regular session check
+          if (!error && data.session?.user) {
+            console.log('[CxTrack] Session set successfully');
+            previousUserIdRef.current = data.session.user.id;
+
+            const { data: memberData } = await supabase
+              .from('organization_members')
+              .select('organization_id, role')
+              .eq('user_id', data.session.user.id)
+              .maybeSingle();
+
+            if (!isMounted) return;
+
+            setUser({
+              ...data.session.user,
+              role: memberData?.role,
+              organization_id: memberData?.organization_id
+            });
+            setLoading(false);
+            return;
+          } else {
+            console.error('[CxTrack] Failed to set session:', error);
+          }
+        } catch (err) {
+          console.error('[CxTrack] setSession threw:', err);
+          sessionStorage.removeItem('auth_processing');
         }
       }
 
