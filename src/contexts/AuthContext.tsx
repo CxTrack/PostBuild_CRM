@@ -87,78 +87,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[CxTrack] localStorage token:', localStorage.getItem('sb-zkpfzrbbupgiqkzqydji-auth-token') ? 'EXISTS' : 'NONE');
 
       if (accessToken && refreshToken) {
-        sessionStorage.setItem('pending_access_token', accessToken);
-        sessionStorage.setItem('pending_refresh_token', refreshToken);
-        const cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, '', cleanUrl);
-      }
-
-      if (accessToken && refreshToken) {
-        console.log('[CxTrack] Processing tokens directly...');
-
-        // Decode the JWT to get user data and expiry
-        const parseJwt = (token: string) => {
-          try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            return JSON.parse(atob(base64));
-          } catch {
-            return null;
-          }
-        };
-
-        const decoded = parseJwt(accessToken);
-        if (!decoded) {
-          console.error('[CxTrack] Failed to decode JWT');
-          sessionStorage.removeItem('pending_access_token');
-          sessionStorage.removeItem('pending_refresh_token');
-          setLoading(false);
-          return;
+        // If tokens were in URL, clean the URL immediately
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('access_token')) {
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
         }
 
-        const expiresAt = decoded.exp || Math.floor(Date.now() / 1000) + 3600;
+        // Prevent double-processing (StrictMode)
+        const isProcessing = sessionStorage.getItem('auth_processing');
+        if (isProcessing === 'true') {
+          console.log('[CxTrack] Already processing tokens, waiting...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+          sessionStorage.setItem('auth_processing', 'true');
+          console.log('[CxTrack] Setting session with tokens...');
 
-        // Build the user object from the JWT payload (Supabase JWT structure)
-        const user = {
-          id: decoded.sub,
-          aud: decoded.aud || 'authenticated',
-          role: decoded.role || 'authenticated',
-          email: decoded.email,
-          email_confirmed_at: decoded.email_confirmed_at,
-          phone: decoded.phone || '',
-          confirmed_at: decoded.confirmed_at || decoded.email_confirmed_at,
-          last_sign_in_at: decoded.last_sign_in_at || new Date().toISOString(),
-          app_metadata: decoded.app_metadata || { provider: 'email', providers: ['email'] },
-          user_metadata: decoded.user_metadata || {},
-          identities: decoded.identities || [],
-          created_at: decoded.created_at || new Date().toISOString(),
-          updated_at: decoded.updated_at || new Date().toISOString(),
-        };
-
-        // Store in localStorage in Supabase's COMPLETE expected format
-        const storageKey = `sb-zkpfzrbbupgiqkzqydji-auth-token`;
-        const sessionData = {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_at: expiresAt,
-          expires_in: expiresAt - Math.floor(Date.now() / 1000),
-          token_type: 'bearer',
-          user: user,
-        };
-
-        localStorage.setItem(storageKey, JSON.stringify(sessionData));
-        console.log('[CxTrack] Complete session stored in localStorage, reloading...');
-
-        // Clear the pending tokens
-        sessionStorage.removeItem('pending_access_token');
-        sessionStorage.removeItem('pending_refresh_token');
-
-        // Reload so Supabase picks up the tokens from localStorage
-        window.location.reload();
-        return;
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            console.log('[CxTrack] setSession successful');
+          } catch (err) {
+            console.error('[CxTrack] setSession error:', err);
+          } finally {
+            sessionStorage.removeItem('pending_access_token');
+            sessionStorage.removeItem('pending_refresh_token');
+            sessionStorage.removeItem('auth_processing');
+          }
+        }
       }
 
-      // Check for session (works for both token flow and regular login)
+      // 2️⃣ Check for session (works for both token flow and regular login)
       console.log('[CxTrack] Calling getSession()...');
 
       try {
