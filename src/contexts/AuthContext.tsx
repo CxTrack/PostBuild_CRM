@@ -29,12 +29,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Debug: Log full URL to see what we're receiving
       console.log('[CxTrack] Full URL:', window.location.href);
       console.log('[CxTrack] Search params:', window.location.search);
+      console.log('[CxTrack] Hash:', window.location.hash);
 
+      // Try to get tokens from query params first, then hash fragment
       const urlParams = new URLSearchParams(window.location.search);
       let accessToken = urlParams.get('access_token');
       let refreshToken = urlParams.get('refresh_token');
 
-      console.log('[CxTrack] Token in URL:', accessToken ? 'YES' : 'NO');
+      // If not in query params, check hash fragment (used to bypass server-side stripping)
+      if (!accessToken && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        accessToken = hashParams.get('access_token');
+        refreshToken = hashParams.get('refresh_token');
+        console.log('[CxTrack] Found tokens in hash fragment');
+      }
+
+      console.log('[CxTrack] Token in URL/Hash:', accessToken ? 'YES' : 'NO');
       console.log('[CxTrack] localStorage token:', localStorage.getItem('sb-zkpfzrbbupgiqkzqydji-auth-token') ? 'EXISTS' : 'NONE');
 
       if (accessToken && refreshToken) {
