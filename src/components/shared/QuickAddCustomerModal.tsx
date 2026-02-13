@@ -53,11 +53,7 @@ export default function QuickAddCustomerModal({
         last_name: formData.last_name.trim(),
         email: formData.email.trim() || '',
         phone: formData.phone.trim() || null,
-<<<<<<< Updated upstream
         company: customerType === 'business' ? formData.company.trim() : null,
-=======
-        company: customerType === 'business' ? formData.company_name.trim() : null,
->>>>>>> Stashed changes
         status: 'Active',
       };
 
@@ -125,8 +121,8 @@ export default function QuickAddCustomerModal({
                 type="button"
                 onClick={() => setCustomerType('personal')}
                 className={`p-4 rounded-lg border-2 transition-all ${customerType === 'personal'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
                   }`}
               >
                 <User size={24} className={`mx-auto mb-2 ${customerType === 'personal' ? 'text-blue-600' : 'text-gray-400'
@@ -143,8 +139,8 @@ export default function QuickAddCustomerModal({
                 type="button"
                 onClick={() => setCustomerType('business')}
                 className={`p-4 rounded-lg border-2 transition-all ${customerType === 'business'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
                   }`}
               >
                 <Building2 size={24} className={`mx-auto mb-2 ${customerType === 'business' ? 'text-blue-600' : 'text-gray-400'
