@@ -85,7 +85,7 @@ export const DashboardLayout = () => {
 
   const { theme, toggleTheme } = useThemeStore();
   const { preferences } = usePreferencesStore();
-  const { fetchUserOrganizations, currentOrganization } = useOrganizationStore();
+  const { currentOrganization } = useOrganizationStore();
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -174,35 +174,25 @@ export const DashboardLayout = () => {
   }, [visibleModules]);
 
 
+  // Fetch organizations once when user changes - use getState() to avoid infinite loops
   useEffect(() => {
-    if (user?.id) {
-      fetchUserOrganizations(user.id);
+    if (!user?.id) return;
+
+    const state = useOrganizationStore.getState();
+    const orgs = state.organizations;
+    const cachedMembership = state.currentMembership;
+
+    // Clear cache if cached membership belongs to a different user (stale data)
+    if (cachedMembership && cachedMembership.user_id !== user.id) {
+      console.log('[DashboardLayout] Clearing stale organization cache - user mismatch');
+      state.clearCache();
     }
-  }, [user, fetchUserOrganizations]);
 
-  // Force refresh organization data on mount to ensure fresh data
-  useEffect(() => {
-    const refreshOrganizations = async () => {
-      if (user?.id) {
-        const state = useOrganizationStore.getState();
-        const orgs = state.organizations;
-        const cachedMembership = state.currentMembership;
-
-        // Clear cache if cached membership belongs to a different user (stale data)
-        if (cachedMembership && cachedMembership.user_id !== user.id) {
-          console.log('[DashboardLayout] Clearing stale organization cache - user mismatch');
-          state.clearCache();
-        }
-
-        // If no orgs fetched yet, or cached user doesn't match current user, refresh
-        if (orgs.length === 0 || !orgs.some(o => o.membership.user_id === user.id)) {
-          console.log('[DashboardLayout] Fetching organizations for user:', user.id);
-          await fetchUserOrganizations(user.id);
-        }
-      }
-    };
-
-    refreshOrganizations();
+    // Only fetch if no orgs yet or cached user doesn't match current user
+    if (orgs.length === 0 || !orgs.some(o => o.membership.user_id === user.id)) {
+      console.log('[DashboardLayout] Fetching organizations for user:', user.id);
+      state.fetchUserOrganizations(user.id);
+    }
   }, [user?.id]);
 
   const isModuleShared = (path: string) => {
