@@ -172,6 +172,15 @@ export default function PlanPage() {
                         // Don't block navigation for org errors - user can still proceed
                         console.warn('[Onboarding] Org creation warning:', orgError.message || orgError);
                     } else if (orgData) {
+                        // IMPORTANT: Create/update user_profiles FIRST (organization_members has FK constraint)
+                        await supabase.from('user_profiles').upsert({
+                            id: lead.userId,
+                            email: lead.email,
+                            full_name: `${lead.firstName} ${lead.lastName}`,
+                            business_name: lead.company || null,
+                            organization_id: orgData.id,
+                        }, { onConflict: 'id' });
+
                         // Create organization_members record
                         await supabase.from('organization_members').insert({
                             organization_id: orgData.id,
@@ -181,13 +190,6 @@ export default function PlanPage() {
                             calendar_delegation: [],
                             can_view_team_calendars: true,
                         });
-
-                        // Update user_profiles
-                        await supabase.from('user_profiles').update({
-                            full_name: `${lead.firstName} ${lead.lastName}`,
-                            phone: lead.phone || null,
-                            default_org_id: orgData.id,
-                        }).eq('id', lead.userId);
 
                         // Store org ID in session
                         updatedLead.organizationId = orgData.id;
