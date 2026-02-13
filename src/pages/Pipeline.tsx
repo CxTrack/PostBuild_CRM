@@ -43,7 +43,7 @@ const Pipeline: React.FC = () => {
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { customers, fetchCustomers } = useCustomerStore();
   const { deals, fetchDeals } = useDealStore();
-  const { currentOrganization, demoMode } = useOrganizationStore();
+  const { currentOrganization, loading: orgLoading, demoMode } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
   const labels = usePageLabels('pipeline');
   const quotesLabels = usePageLabels('quotes');
@@ -569,7 +569,7 @@ const Pipeline: React.FC = () => {
       </div>
 
       {/* Views */}
-      {loading ? (
+      {(loading || orgLoading || (!currentOrganization && !demoMode)) ? (
         <div className="space-y-6">
           <DashboardStatsSkeleton />
           <TableSkeleton rows={8} />
