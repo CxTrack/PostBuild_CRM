@@ -95,7 +95,7 @@ export const CustomerProfile: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/customers')}
+              onClick={() => navigate(-1)}
               className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ArrowLeft size={20} className="mr-2" />

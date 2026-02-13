@@ -70,7 +70,7 @@ export default function InvoiceDetail() {
     try {
       await invoiceService.deleteInvoice(id);
       toast.success('Invoice deleted successfully');
-      navigate('/invoices');
+      navigate(-1);
     } catch (error) {
       console.error('Failed to delete invoice:', error);
       toast.error('Failed to delete invoice');
@@ -186,7 +186,7 @@ export default function InvoiceDetail() {
       <div className="max-w-4xl mx-auto p-6">
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400">Invoice not found</p>
-          <Button onClick={() => navigate('/invoices')} className="mt-4">
+          <Button onClick={() => navigate(-1)} className="mt-4">
             Back to Invoices
           </Button>
         </div>
@@ -199,7 +199,7 @@ export default function InvoiceDetail() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/invoices')}
+            onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />

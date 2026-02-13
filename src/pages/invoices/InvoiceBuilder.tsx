@@ -1007,7 +1007,7 @@ export default function InvoiceBuilder() {
             },
             {
               label: 'View Customer Profile',
-              path: `/customers/${formData.customer_id}`,
+              path: `/dashboard/customers/${formData.customer_id}`,
               icon: <User className="w-4 h-4" />,
               variant: 'secondary'
             }

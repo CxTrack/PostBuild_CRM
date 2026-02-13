@@ -122,7 +122,7 @@ export default function ProductForm() {
       if (isEdit && id) {
         await updateProduct(id, productData);
         toast.success('Product updated successfully');
-        navigate('/products');
+        navigate(-1);
       } else {
         const newProduct = await createProduct(productData);
         if (newProduct) {
@@ -131,7 +131,7 @@ export default function ProductForm() {
           setShowSuccessModal(true);
         } else {
           // Fallback if no product returned (e.g. optimistic update didn't return id)
-          navigate('/products');
+          navigate(-1);
         }
       }
     } catch (error) {
@@ -162,7 +162,7 @@ export default function ProductForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/products')}
+              onClick={() => navigate(-1)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
@@ -180,7 +180,7 @@ export default function ProductForm() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={() => navigate('/products')}
+              onClick={() => navigate(-1)}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel

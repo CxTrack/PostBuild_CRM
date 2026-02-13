@@ -180,7 +180,7 @@ ${call.transcript_object.map(m => `[${formatTime(m.timestamp)}] ${m.role.toUpper
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => navigate('/calls')}
+                            onClick={() => navigate(-1)}
                             className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}
                         >
                             <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />

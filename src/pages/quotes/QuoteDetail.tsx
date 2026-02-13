@@ -65,7 +65,7 @@ export default function QuoteDetail() {
     try {
       await quoteService.deleteQuote(id);
       toast.success('Quote deleted successfully');
-      navigate('/quotes');
+      navigate(-1);
     } catch (error) {
       console.error('Failed to delete quote:', error);
       toast.error('Failed to delete quote');
@@ -153,7 +153,7 @@ export default function QuoteDetail() {
       <div className="max-w-4xl mx-auto p-6">
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400">Quote not found</p>
-          <Button onClick={() => navigate('/quotes')} className="mt-4">
+          <Button onClick={() => navigate(-1)} className="mt-4">
             Back to Quotes
           </Button>
         </div>
@@ -166,7 +166,7 @@ export default function QuoteDetail() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/quotes')}
+            onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
