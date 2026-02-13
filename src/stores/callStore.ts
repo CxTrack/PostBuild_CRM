@@ -35,7 +35,7 @@ interface CallStore {
   error: string | null;
   filters: CallFilters;
   stats: CallStats | null;
-
+  reset: () => void;
   fetchCalls: () => Promise<void>;
   fetchCallsByCustomer: (customerId: string) => Promise<void>;
   fetchCallById: (id: string) => Promise<void>;
@@ -47,13 +47,19 @@ interface CallStore {
   subscribeToLiveCalls: () => () => void;
 }
 
-export const useCallStore = create<CallStore>((set, get) => ({
-  calls: [],
-  currentCall: null,
+const initialCallState = {
+  calls: [] as Call[],
+  currentCall: null as Call | null,
   loading: false,
-  error: null,
-  filters: {},
-  stats: null,
+  error: null as string | null,
+  filters: {} as CallFilters,
+  stats: null as CallStats | null,
+};
+
+export const useCallStore = create<CallStore>((set, get) => ({
+  ...initialCallState,
+
+  reset: () => set(initialCallState),
 
   fetchCalls: async () => {
     const organizationId = useOrganizationStore.getState().currentOrganization?.id;

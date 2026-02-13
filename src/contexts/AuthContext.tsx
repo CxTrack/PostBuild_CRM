@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { clearAllDataStores } from '@/stores/storeCleanup';
 
 interface User extends SupabaseUser {
   role?: string;
@@ -123,6 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Org data fetch failed, keep user without org data
         }
       } else {
+        // CRITICAL: When auth becomes null (logout, token expiry, session invalidation)
+        // Clear all data stores to prevent stale data on next login
+        console.log('[Auth] Session ended, clearing all data stores');
+        clearAllDataStores();
+        useOrganizationStore.getState().clearCache();
         setUser(null);
       }
 
@@ -138,9 +144,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
-    // Clear organization cache before signing out to prevent stale data
+
+    // 1. Clear all in-memory data stores
+    clearAllDataStores();
+
+    // 2. Clear persisted organization data
     useOrganizationStore.getState().clearCache();
+
+    // 3. Sign out from Supabase (triggers onAuthStateChange with SIGNED_OUT)
     await supabase.auth.signOut();
+
     setUser(null);
     setLoading(false);
   };

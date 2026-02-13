@@ -32,6 +32,7 @@ interface TaskStore {
   tasks: Task[];
   loading: boolean;
   error: string | null;
+  reset: () => void;
   fetchTasks: () => Promise<void>;
   createTask: (data: Partial<Task>) => Promise<Task>;
   updateTask: (id: string, data: Partial<Task>) => Promise<Task>;
@@ -43,10 +44,16 @@ interface TaskStore {
   getOverdueTasks: () => Task[];
 }
 
-export const useTaskStore = create<TaskStore>((set, get) => ({
-  tasks: [],
+const initialTaskState = {
+  tasks: [] as Task[],
   loading: false,
-  error: null,
+  error: null as string | null,
+};
+
+export const useTaskStore = create<TaskStore>((set, get) => ({
+  ...initialTaskState,
+
+  reset: () => set(initialTaskState),
 
   fetchTasks: async () => {
     set({ loading: true, error: null });

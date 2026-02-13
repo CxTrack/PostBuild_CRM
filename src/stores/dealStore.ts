@@ -71,7 +71,7 @@ interface DealStore {
   pipelineStats: PipelineStats | null;
   loading: boolean;
   error: string | null;
-
+  reset: () => void;
   fetchDeals: () => Promise<void>;
   fetchDealById: (id: string) => Promise<Deal | null>;
   fetchPipelineStats: () => Promise<void>;
@@ -84,11 +84,17 @@ interface DealStore {
   closeDealAsLost: (id: string, reason?: string) => Promise<void>;
 }
 
-export const useDealStore = create<DealStore>((set, get) => ({
-  deals: [],
-  pipelineStats: null,
+const initialDealState = {
+  deals: [] as Deal[],
+  pipelineStats: null as PipelineStats | null,
   loading: false,
-  error: null,
+  error: null as string | null,
+};
+
+export const useDealStore = create<DealStore>((set, get) => ({
+  ...initialDealState,
+
+  reset: () => set(initialDealState),
 
   fetchDeals: async () => {
     const currentOrg = useOrganizationStore.getState().currentOrganization;

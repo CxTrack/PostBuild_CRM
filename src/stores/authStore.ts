@@ -5,6 +5,9 @@ import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase, getUserProfile } from '../lib/supabase';
 import type { UserProfile } from '../types/database.types';
 
+// Module-level variable to track auth subscription (prevents memory leak)
+let authSubscription: { unsubscribe: () => void } | null = null;
+
 interface AuthState {
   user: User | null;
   profile: UserProfile | null;
@@ -80,19 +83,29 @@ export const useAuthStore = create<AuthState>()(
         set({ initialized: true, loading: false });
 
         // 2️⃣ Subscribe to auth changes (CRITICAL)
-        supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        // Clean up any existing subscription first to prevent memory leak
+        if (authSubscription) {
+          authSubscription.unsubscribe();
+          authSubscription = null;
+        }
 
-          if (!session || event === 'SIGNED_OUT') {
-            set({ user: null, profile: null });
-            return;
-          }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event: AuthChangeEvent, session: Session | null) => {
+            if (!session || event === 'SIGNED_OUT') {
+              set({ user: null, profile: null });
+              return;
+            }
 
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            const user = session.user;
-            const profile = await getUserProfile(user.id);
-            set({ user, profile });
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              const user = session.user;
+              const profile = await getUserProfile(user.id);
+              set({ user, profile });
+            }
           }
-        });
+        );
+
+        // Store subscription for cleanup
+        authSubscription = subscription;
       },
 
       /* ----------------------------------------
@@ -162,6 +175,11 @@ export const useAuthStore = create<AuthState>()(
        * SIGN OUT (invalidates refresh token)
        * ---------------------------------------- */
       signOut: async () => {
+        // Cleanup auth subscription to prevent memory leak
+        if (authSubscription) {
+          authSubscription.unsubscribe();
+          authSubscription = null;
+        }
         await supabase.auth.signOut();
         set({ user: null, profile: null });
       },

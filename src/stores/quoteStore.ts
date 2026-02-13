@@ -13,6 +13,7 @@ interface QuoteState {
   quoteItems: Record<string, QuoteItem[]>;
   loading: boolean;
   error: string | null;
+  reset: () => void;
   fetchQuotes: (organizationId?: string) => Promise<void>;
   fetchQuoteItems: (quoteId: string) => Promise<void>;
   createQuote: (quote: Omit<Quote, 'id' | 'created_at' | 'updated_at'>) => Promise<Quote | null>;
@@ -24,11 +25,17 @@ interface QuoteState {
   getQuoteById: (id: string) => Quote | undefined;
 }
 
-export const useQuoteStore = create<QuoteState>((set, get) => ({
-  quotes: [],
-  quoteItems: {},
+const initialQuoteState = {
+  quotes: [] as Quote[],
+  quoteItems: {} as Record<string, QuoteItem[]>,
   loading: false,
-  error: null,
+  error: null as string | null,
+};
+
+export const useQuoteStore = create<QuoteState>((set, get) => ({
+  ...initialQuoteState,
+
+  reset: () => set(initialQuoteState),
 
   fetchQuotes: async (organizationId?: string) => {
     set({ loading: true, error: null });

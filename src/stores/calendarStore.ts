@@ -31,6 +31,7 @@ interface CalendarState {
   preferences: CalendarPreferences | null;
   loading: boolean;
   error: string | null;
+  reset: () => void;
   fetchEvents: (organizationId?: string, from?: Date, to?: Date) => Promise<void>;
   getEventById: (id: string) => CalendarEvent | undefined;
   getEventsByCustomer: (customerId: string) => CalendarEvent[];
@@ -42,11 +43,17 @@ interface CalendarState {
   updatePreferences: (userId: string, preferences: Partial<CalendarPreferences>) => Promise<void>;
 }
 
-export const useCalendarStore = create<CalendarState>((set, get) => ({
-  events: [],
-  preferences: null,
+const initialCalendarState = {
+  events: [] as CalendarEvent[],
+  preferences: null as CalendarPreferences | null,
   loading: false,
-  error: null,
+  error: null as string | null,
+};
+
+export const useCalendarStore = create<CalendarState>((set, get) => ({
+  ...initialCalendarState,
+
+  reset: () => set(initialCalendarState),
 
   fetchEvents: async (organizationId?: string, from?: Date, to?: Date) => {
     // Get org from store if not provided

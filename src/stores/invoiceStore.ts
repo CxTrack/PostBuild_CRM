@@ -8,6 +8,7 @@ interface InvoiceState {
   payments: Record<string, Payment[]>;
   loading: boolean;
   error: string | null;
+  reset: () => void;
   fetchInvoices: (organizationId?: string) => Promise<void>;
   fetchInvoiceItems: (invoiceId: string) => Promise<void>;
   fetchPayments: (invoiceId: string) => Promise<void>;
@@ -21,12 +22,18 @@ interface InvoiceState {
   getInvoiceById: (id: string) => Invoice | undefined;
 }
 
-export const useInvoiceStore = create<InvoiceState>((set, get) => ({
-  invoices: [],
-  invoiceItems: {},
-  payments: {},
+const initialInvoiceState = {
+  invoices: [] as Invoice[],
+  invoiceItems: {} as Record<string, InvoiceItem[]>,
+  payments: {} as Record<string, Payment[]>,
   loading: false,
-  error: null,
+  error: null as string | null,
+};
+
+export const useInvoiceStore = create<InvoiceState>((set, get) => ({
+  ...initialInvoiceState,
+
+  reset: () => set(initialInvoiceState),
 
   fetchInvoices: async (organizationId?: string) => {
     set({ loading: true, error: null });

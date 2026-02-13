@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import type { Organization, OrganizationMember, UserProfile } from '../types/database.types';
+import { clearOrganizationDataStores } from './storeCleanup';
 
 interface OrganizationState {
   currentOrganization: Organization | null;
@@ -134,11 +135,17 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       setCurrentOrganization: async (orgId: string) => {
-        const { organizations } = get();
+        const { organizations, currentOrganization } = get();
         const orgData = organizations.find((o) => o.organization.id === orgId);
 
         if (!orgData) {
           throw new Error('Organization not found');
+        }
+
+        // Clear data stores if switching to a different org
+        if (currentOrganization?.id && currentOrganization.id !== orgId) {
+          console.log('[OrgStore] Switching org, clearing data stores...');
+          clearOrganizationDataStores();
         }
 
         set({
@@ -149,8 +156,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         try {
           await get().fetchTeamMembers();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
-          // Error handled silently
+          console.error('[OrgStore] Error fetching team members:', error);
         }
       },
 

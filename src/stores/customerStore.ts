@@ -8,6 +8,12 @@ interface CustomerStore {
   currentCustomer: Customer | null;
   loading: boolean;
   error: string | null;
+  notes: CustomerNote[];
+  contacts: CustomerContact[];
+  files: CustomerFile[];
+
+  // Reset store to initial state (for logout/org switch)
+  reset: () => void;
 
   fetchCustomers: () => Promise<void>;
   fetchCustomerById: (id: string) => Promise<void>;
@@ -16,30 +22,35 @@ interface CustomerStore {
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
 
-  notes: CustomerNote[];
   fetchNotes: (customerId: string) => Promise<void>;
   addNote: (note: Partial<CustomerNote>) => Promise<void>;
   updateNote: (id: string, updates: Partial<CustomerNote>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
 
-  contacts: CustomerContact[];
   fetchContacts: (customerId: string) => Promise<void>;
   addContact: (contact: Partial<CustomerContact>) => Promise<void>;
   updateContact: (id: string, updates: Partial<CustomerContact>) => Promise<void>;
   deleteContact: (id: string, customerId: string) => Promise<void>;
 
-  files: CustomerFile[];
   fetchFiles: (customerId: string) => Promise<void>;
 }
 
-export const useCustomerStore = create<CustomerStore>((set, get) => ({
-  customers: [],
-  currentCustomer: null,
+// Initial state for reset
+const initialCustomerState = {
+  customers: [] as Customer[],
+  currentCustomer: null as Customer | null,
   loading: false,
-  error: null,
-  notes: [],
-  contacts: [],
-  files: [],
+  error: null as string | null,
+  notes: [] as CustomerNote[],
+  contacts: [] as CustomerContact[],
+  files: [] as CustomerFile[],
+};
+
+export const useCustomerStore = create<CustomerStore>((set, get) => ({
+  ...initialCustomerState,
+
+  // Reset store to initial state (for logout/org switch)
+  reset: () => set(initialCustomerState),
 
   fetchCustomers: async () => {
     set({ loading: true, error: null });

@@ -2,7 +2,7 @@
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
-import { supabase } from '@/lib/supabase';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Plus, Edit, Trash2, Eye, Download, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +26,7 @@ export default function Settings() {
   const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations } = useOrganizationStore();
   const { theme, setTheme } = useThemeStore();
   const { preferences, saveMobileNavItems } = usePreferencesStore();
+  const { logout } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -66,8 +67,7 @@ export default function Settings() {
   const MOBILE_NAV_OPTIONS = ALL_MOBILE_NAV_OPTIONS.filter(opt => enabledModuleIds.includes(opt.moduleId));
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.clear();
+    await logout();
     navigate('/login');
   };
 

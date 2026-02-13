@@ -23,6 +23,7 @@ interface UserPreferences {
 interface PreferencesStore {
     preferences: UserPreferences;
     isLoading: boolean;
+    reset: () => void;
     loadPreferences: () => Promise<void>;
     saveSidebarOrder: (order: string[]) => Promise<void>;
     saveDashboardLayout: (layout: DashboardWidget[]) => Promise<void>;
@@ -30,14 +31,20 @@ interface PreferencesStore {
     saveMobileNavItems: (items: string[]) => Promise<void>;
 }
 
-export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
+const initialPreferencesState = {
     preferences: {
         sidebarOrder: ['customers', 'calendar', 'products', 'quotes', 'invoices', 'calls', 'pipeline', 'tasks'],
-        dashboardLayout: [],
+        dashboardLayout: [] as DashboardWidget[],
         quickActionsOrder: ['add-customer', 'schedule', 'create-quote', 'new-invoice', 'create-task'],
-        mobileNavItems: ['/customers', '/calendar', '/products'], // Default custom mobile nav slots
+        mobileNavItems: ['/customers', '/calendar', '/products'],
     },
     isLoading: false,
+};
+
+export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
+    ...initialPreferencesState,
+
+    reset: () => set(initialPreferencesState),
 
     loadPreferences: async () => {
         try {
