@@ -60,26 +60,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
+      try {
+        if (session?.user) {
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('organization_id, role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
 
-      if (session?.user) {
-        const { data: memberData } = await supabase
-          .from('organization_members')
-          .select('organization_id, role')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (isMounted) {
-          setUser({
-            ...session.user,
-            role: memberData?.role,
-            organization_id: memberData?.organization_id
-          });
+          if (isMounted) {
+            setUser({
+              ...session.user,
+              role: memberData?.role,
+              organization_id: memberData?.organization_id
+            });
+          }
+        } else {
+          if (isMounted) setUser(null);
         }
-      } else {
-        if (isMounted) setUser(null);
+      } catch (err) {
+        // On error, still set the user (without org data) so app doesn't hang
+        if (isMounted && session?.user) {
+          setUser(session.user);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      if (isMounted) setLoading(false);
     });
 
     return () => {
