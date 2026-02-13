@@ -77,26 +77,26 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     if (lowerMessage.includes('customer') || lowerMessage.includes('clients')) {
-      return "I can help you analyze your customer data. Based on your CRM, I see you have multiple customers with various engagement levels. Would you like me to:\n\nâ€¢ Show top customers by revenue\nâ€¢ Identify customers needing follow-up\nâ€¢ Generate a customer health report\n\nWhat would be most helpful?";
+      return "I can help you analyze your customer data. Based on your CRM, I see you have multiple customers with various engagement levels. Would you like me to:\n\n€¢ Show top customers by revenue\n€¢ Identify customers needing follow-up\n€¢ Generate a customer health report\n\nWhat would be most helpful?";
     }
 
     if (lowerMessage.includes('revenue') || lowerMessage.includes('sales')) {
-      return "I can analyze your revenue trends. To provide the most relevant insights, I'd need to know:\n\nâ€¢ Time period (this month, quarter, year?)\nâ€¢ Comparison basis (vs last period, year-over-year?)\nâ€¢ Specific metrics (total revenue, average deal size, growth rate?)\n\nLet me know what you'd like to focus on!";
+      return "I can analyze your revenue trends. To provide the most relevant insights, I'd need to know:\n\n€¢ Time period (this month, quarter, year?)\n€¢ Comparison basis (vs last period, year-over-year?)\n€¢ Specific metrics (total revenue, average deal size, growth rate?)\n\nLet me know what you'd like to focus on!";
     }
 
     if (lowerMessage.includes('task') || lowerMessage.includes('overdue')) {
-      return "I'll help you manage your tasks. Here's what I can do:\n\nâ€¢ List overdue tasks by priority\nâ€¢ Show tasks due this week\nâ€¢ Suggest task prioritization\nâ€¢ Create task summaries by customer\n\nWhich would help you most right now?";
+      return "I'll help you manage your tasks. Here's what I can do:\n\n€¢ List overdue tasks by priority\n€¢ Show tasks due this week\n€¢ Suggest task prioritization\n€¢ Create task summaries by customer\n\nWhich would help you most right now?";
     }
 
     if (lowerMessage.includes('report') || lowerMessage.includes('summary')) {
-      return "I can generate various reports for you:\n\nâ€¢ Customer activity summary\nâ€¢ Revenue and pipeline analysis\nâ€¢ Task completion metrics\nâ€¢ Appointment and calendar overview\n\nWhich report would you like me to create?";
+      return "I can generate various reports for you:\n\n€¢ Customer activity summary\n€¢ Revenue and pipeline analysis\n€¢ Task completion metrics\n€¢ Appointment and calendar overview\n\nWhich report would you like me to create?";
     }
 
     if (lowerMessage.includes('help') || lowerMessage.includes('what can you')) {
-      return "I'm your CxTrack CoPilot! Here's what I can help with:\n\n**Data Analysis**\nâ€¢ Customer insights and segmentation\nâ€¢ Revenue trends and forecasting\nâ€¢ Pipeline health checks\n\n**Task Management**\nâ€¢ Overdue task identification\nâ€¢ Priority recommendations\nâ€¢ Task summaries by customer\n\n**Reporting**\nâ€¢ Custom report generation\nâ€¢ Data visualization suggestions\nâ€¢ Export data summaries\n\n**Navigation**\nâ€¢ Quick access to customer profiles\nâ€¢ Search across all data\nâ€¢ Contextual suggestions\n\nWhat would you like to explore?";
+      return "I'm your CxTrack CoPilot! Here's what I can help with:\n\n**Data Analysis**\n€¢ Customer insights and segmentation\n€¢ Revenue trends and forecasting\n€¢ Pipeline health checks\n\n**Task Management**\n€¢ Overdue task identification\n€¢ Priority recommendations\n€¢ Task summaries by customer\n\n**Reporting**\n€¢ Custom report generation\n€¢ Data visualization suggestions\n€¢ Export data summaries\n\n**Navigation**\n€¢ Quick access to customer profiles\n€¢ Search across all data\n€¢ Contextual suggestions\n\nWhat would you like to explore?";
     }
 
-    return "I understand you're asking about that. While I'm still learning the specifics of your request, I can help with:\n\nâ€¢ Customer data analysis\nâ€¢ Revenue and sales insights\nâ€¢ Task and appointment management\nâ€¢ Report generation\n\nCould you rephrase your question or choose one of these areas?";
+    return "I understand you're asking about that. While I'm still learning the specifics of your request, I can help with:\n\n€¢ Customer data analysis\n€¢ Revenue and sales insights\n€¢ Task and appointment management\n€¢ Report generation\n\nCould you rephrase your question or choose one of these areas?";
   };
 
   const sendMessage = useCallback(async (content: string) => {
@@ -151,7 +151,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const assistantMessage: Message = {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: `âœ… Done! I've added that note to **${customer.name}'s** profile.\n\n**Note:** "${noteContent}"`,
+              content: `œ… Done! I've added that note to **${customer.name}'s** profile.\n\n**Note:** "${noteContent}"`,
               timestamp: new Date(),
             };
             setMessages(prev => [...prev, assistantMessage]);

@@ -160,7 +160,7 @@ export const ResizableTable = <T extends any>({
                             {col.header}
                             {sortColumn === col.id && (
                                 <span className="text-gray-400">
-                                    {sortDirection === 'asc' ? 'â†‘' : 'â†“'}
+                                    {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                             )}
                         </span>

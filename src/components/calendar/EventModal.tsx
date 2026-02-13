@@ -371,7 +371,7 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
             <div className="flex items-center gap-2 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
               <Clock size={16} className="text-primary-600 dark:text-primary-400" />
               <span className="text-sm text-primary-700 dark:text-primary-300 font-medium">
-                {format(new Date(formData.date), 'MMM d, yyyy')} â€¢ {formData.start_time} - {getEndTime()}
+                {format(new Date(formData.date), 'MMM d, yyyy')} • {formData.start_time} - {getEndTime()}
               </span>
             </div>
           )}

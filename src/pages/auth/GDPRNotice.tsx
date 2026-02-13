@@ -12,11 +12,11 @@ const GDPRNotice: React.FC = () => {
       .then(res => res.json())
       .then(data => {
         const euCountries = [
-          'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 
-          'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 
+          'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
+          'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
           'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
         ];
-        
+
         if (euCountries.includes(data.country_code)) {
           setIsEUUser(true);
           // Redirect EU users back to home after 5 seconds
@@ -37,7 +37,7 @@ const GDPRNotice: React.FC = () => {
             <ArrowLeft size={20} className="mr-2" />
             Back to Home
           </Link>
-          
+
           <div className="max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Regional Availability Notice
@@ -59,8 +59,8 @@ const GDPRNotice: React.FC = () => {
                   Service Not Available in Your Region
                 </h2>
                 <p className="text-red-200">
-                  We've detected that you're accessing CxTrack from a European Union member state. 
-                  Unfortunately, our services are not available in your region. You will be redirected 
+                  We've detected that you're accessing CxTrack from a European Union member state.
+                  Unfortunately, our services are not available in your region. You will be redirected
                   to the homepage in a few seconds.
                 </p>
               </div>
@@ -71,15 +71,15 @@ const GDPRNotice: React.FC = () => {
             <h2 className="text-2xl font-bold text-white mb-6">
               North American Service Only
             </h2>
-            
+
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-2">
                   Regional Availability
                 </h3>
                 <p className="text-gray-300">
-                  CxTrack's services are exclusively available to users in North America (United States and Canada). 
-                  We do not operate in or provide services to users in the European Union or other regions 
+                  CxTrack's services are exclusively available to users in North America (United States and Canada).
+                  We do not operate in or provide services to users in the European Union or other regions
                   governed by GDPR regulations.
                 </p>
               </div>
@@ -89,8 +89,8 @@ const GDPRNotice: React.FC = () => {
                   Data Handling Notice
                 </h3>
                 <p className="text-gray-300">
-                  Our platform is designed for North American business operations and complies with 
-                  applicable North American data protection laws. We do not claim GDPR compliance and 
+                  Our platform is designed for North American business operations and complies with
+                  applicable North American data protection laws. We do not claim GDPR compliance and
                   do not offer GDPR-mandated data subject rights or protections.
                 </p>
               </div>
@@ -100,7 +100,7 @@ const GDPRNotice: React.FC = () => {
                   Access Restrictions
                 </h3>
                 <p className="text-gray-300">
-                  Users attempting to access our services from European Union member states will be 
+                  Users attempting to access our services from European Union member states will be
                   automatically blocked. This includes registration, login, and use of our platform's features.
                 </p>
               </div>
@@ -111,19 +111,19 @@ const GDPRNotice: React.FC = () => {
                 </h3>
                 <ul className="space-y-3 text-gray-300">
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">â€¢</span>
+                    <span className="text-primary-400 mr-2">•</span>
                     You are located in and accessing our services from North America
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">â€¢</span>
+                    <span className="text-primary-400 mr-2">•</span>
                     Your use of our services is not subject to GDPR regulations
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">â€¢</span>
+                    <span className="text-primary-400 mr-2">•</span>
                     Data handling and privacy practices follow North American standards
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">â€¢</span>
+                    <span className="text-primary-400 mr-2">•</span>
                     You will not attempt to circumvent regional access restrictions
                   </li>
                 </ul>

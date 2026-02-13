@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Users, Calendar, FileText, DollarSign, TrendingUp,
@@ -489,7 +489,7 @@ export const Dashboard: React.FC = () => {
         id: task.id,
         type: 'task',
         title: `Task: ${task.title}`,
-        subtitle: `${customerName} Ã¢â‚¬Â¢ ${task.type}`,
+        subtitle: `${customerName} €¢ ${task.type}`,
         timestamp: task.created_at,
         icon: CheckCircle,
         iconBg: 'bg-teal-100 dark:bg-teal-900/30',
@@ -688,7 +688,7 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {call.phone_number} Ã¢â‚¬Â¢ {Math.floor(call.duration_seconds / 60)}m
+                        {call.phone_number} €¢ {Math.floor(call.duration_seconds / 60)}m
                       </p>
                     </div>
                   </div>
@@ -946,7 +946,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/calendar" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Calendar
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' Ã¢â€ â€™'}
+                    {theme !== 'soft-modern' && ' †’'}
                   </Link>
                 </div>
               </div>
@@ -996,7 +996,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/pipeline" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Pipeline
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' Ã¢â€ â€™'}
+                    {theme !== 'soft-modern' && ' †’'}
                   </Link>
                 </div>
               </div>
@@ -1164,7 +1164,7 @@ export const Dashboard: React.FC = () => {
                               )}
                               <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400 flex-wrap">
                                 <Clock className="w-4 h-4 shrink-0" />
-                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy Ã¢â‚¬Â¢ h:mm a')}</span>
+                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy €¢ h:mm a')}</span>
                               </div>
                             </div>
                             <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

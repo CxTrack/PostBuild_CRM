@@ -729,7 +729,7 @@ export default function Settings() {
                     </span>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Unlimited users â€¢ Advanced features â€¢ Priority support
+                    Unlimited users • Advanced features • Priority support
                   </p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -779,14 +779,14 @@ export default function Settings() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-gray-900 dark:text-white">
-                          â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ 4242
+                          •••• •••• •••• 4242
                         </p>
                         <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
                           Default
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Visa â€¢ Expires 12/2027
+                        Visa • Expires 12/2027
                       </p>
                     </div>
                   </div>
@@ -808,10 +808,10 @@ export default function Settings() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ 5555
+                        •••• •••• •••• 5555
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Mastercard â€¢ Expires 03/2026
+                        Mastercard • Expires 03/2026
                       </p>
                     </div>
                   </div>
@@ -993,7 +993,7 @@ export default function Settings() {
 
               <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                 <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  View all invoices â†’
+                  View all invoices →
                 </button>
               </div>
             </div>

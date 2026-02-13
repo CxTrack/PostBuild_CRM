@@ -336,7 +336,7 @@ function ViewMode({ task, aiContext }: { task: Task; aiContext: AIContext }) {
                   <div className="flex-1">
                     <p className="text-gray-900 dark:text-white font-medium">{activity.summary || activity.subject}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {activity.date} {activity.duration && `â€¢ ${activity.duration}`}
+                      {activity.date} {activity.duration && `• ${activity.duration}`}
                     </p>
                   </div>
                 </div>

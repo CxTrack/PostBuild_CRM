@@ -232,7 +232,7 @@ export default function SharingSettings() {
               type="password"
               value={smsFormData.twilio_auth_token}
               onChange={(e) => setSmsFormData({ ...smsFormData, twilio_auth_token: e.target.value })}
-              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+              placeholder="••••••••••••••••••••••••••••••••"
             />
 
             <Input

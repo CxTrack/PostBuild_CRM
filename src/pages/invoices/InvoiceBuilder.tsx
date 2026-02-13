@@ -644,7 +644,7 @@ export default function InvoiceBuilder() {
                           />
                           {!item.product_type && item.product_name === '' && (
                             <p className="text-xs text-red-600 mt-1">
-                              â†‘ Select type first
+                              → Select type first
                             </p>
                           )}
                         </div>

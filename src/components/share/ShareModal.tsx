@@ -529,10 +529,10 @@ export default function ShareModal({
                   PDF Details
                 </h4>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  <li>â€¢ Professional formatting with company branding</li>
-                  <li>â€¢ Complete {documentType} details and line items</li>
-                  <li>â€¢ Ready to print or email</li>
-                  <li>â€¢ Saved as: {documentType === 'quote' ? 'Quote' : 'Invoice'}-{documentNumber}.pdf</li>
+                  <li>• Professional formatting with company branding</li>
+                  <li>• Complete {documentType} details and line items</li>
+                  <li>• Ready to print or email</li>
+                  <li>• Saved as: {documentType === 'quote' ? 'Quote' : 'Invoice'}-{documentNumber}.pdf</li>
                 </ul>
               </div>
             </div>

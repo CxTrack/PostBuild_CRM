@@ -1,4 +1,4 @@
-Ôªøimport { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import {
@@ -548,7 +548,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
                               <td className="px-3 py-3">
                                 <span className="text-sm text-slate-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
-                                  {task.customer || '√¢‚Ç¨‚Äù'}
+                                  {task.customer || 'Äî'}
                                 </span>
                               </td>
 
@@ -621,7 +621,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Customer</span>
-                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || '√¢‚Ç¨‚Äù'}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || 'Äî'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Due Date</span>

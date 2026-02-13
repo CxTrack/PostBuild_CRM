@@ -48,7 +48,7 @@ const Login: React.FC = () => {
 
   // Detect iOS for specific messaging
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -92,7 +92,7 @@ const Login: React.FC = () => {
               {error}
               {isIOS && retryCount >= 1 && (
                 <p className="mt-2 text-xs text-red-400/70">
-                  iOS users: If you're having trouble, try enabling "Cross-Website Tracking" in Safari Settings â†’ Privacy & Security.
+                  iOS users: If you're having trouble, try enabling "Cross-Website Tracking" in Safari Settings → Privacy & Security.
                 </p>
               )}
             </div>
@@ -132,7 +132,7 @@ const Login: React.FC = () => {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   autoComplete="current-password"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {
