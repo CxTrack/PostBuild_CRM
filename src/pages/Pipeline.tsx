@@ -43,7 +43,7 @@ const Pipeline: React.FC = () => {
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { customers, fetchCustomers } = useCustomerStore();
   const { deals, fetchDeals } = useDealStore();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, loading: orgLoading, demoMode } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
   const labels = usePageLabels('pipeline');
   const quotesLabels = usePageLabels('quotes');
@@ -162,17 +162,24 @@ const Pipeline: React.FC = () => {
         // Error handled silently
       }
 
-      await Promise.all([
-        fetchQuotes(),
-        fetchInvoices(),
-        fetchCustomers(),
-        fetchDeals()
-      ]);
+      // Only fetch from Supabase if organization is available
+      if (currentOrganization?.id) {
+        await Promise.all([
+          fetchQuotes(currentOrganization.id),
+          fetchInvoices(currentOrganization.id),
+          fetchCustomers(),
+          fetchDeals()
+        ]);
+      }
       setLoading(false);
     };
-    loadData();
-    fetchPipelineStages();
-  }, [fetchPipelineStages, currentOrganization?.id]);
+
+    // Only load data when organization is available
+    if (currentOrganization?.id || demoMode) {
+      loadData();
+      fetchPipelineStages();
+    }
+  }, [fetchPipelineStages, currentOrganization?.id, demoMode, fetchQuotes, fetchInvoices, fetchCustomers, fetchDeals]);
 
   useEffect(() => {
     if (quotes.length > 0 || invoices.length > 0 || deals.length > 0) {
@@ -562,7 +569,7 @@ const Pipeline: React.FC = () => {
       </div>
 
       {/* Views */}
-      {loading ? (
+      {(loading || orgLoading || (!currentOrganization && !demoMode)) ? (
         <div className="space-y-6">
           <DashboardStatsSkeleton />
           <TableSkeleton rows={8} />
