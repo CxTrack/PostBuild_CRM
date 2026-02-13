@@ -1,34 +1,54 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { useAuthStore } from '../../stores/authStore';
-import { Eye, EyeOff, Loader } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { ArrowRight, Zap, Globe, ShieldCheck, Check } from 'lucide-react';
 
-interface RegisterFormData {
-  fullName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
+const INDUSTRIES = [
+  { value: "contractors_home_services", label: "Contractors & Home Services" },
+  { value: "distribution_logistics", label: "Distribution & Logistics" },
+  { value: "gyms_fitness", label: "Gyms & Fitness" },
+  { value: "tax_accounting", label: "Tax & Accounting" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "real_estate", label: "Real Estate" },
+  { value: "legal_services", label: "Legal Services" },
+  { value: "software_development", label: "Software Development" },
+  { value: "mortgage_broker", label: "Mortgage Broker" },
+  { value: "general_business", label: "General Business" },
+];
+
+const formatPhoneNumber = (value: string) => {
+  const cleaned = value.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  if (match) {
+    let formatted = '';
+    if (match[1]) formatted = `(${match[1]}`;
+    if (match[1]?.length === 3) formatted += ') ';
+    if (match[2]) formatted += match[2];
+    if (match[2]?.length === 3) formatted += '-';
+    if (match[3]) formatted += match[3];
+    return formatted;
+  }
+  return value;
+};
 
 const Register: React.FC = () => {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>();
-  const { signUp, loading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isCheckingLocation, setIsCheckingLocation] = useState(true);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    company: '',
+    phone: '',
+    countryCode: '+1',
+    industry: 'general_business'
+  });
+  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  // Clear any previous errors when component mounts
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-
-  // Check user's location
+  // Check user's location for GDPR
   useEffect(() => {
     fetch('https://ipapi.co/json/')
       .then(res => res.json())
@@ -38,54 +58,87 @@ const Register: React.FC = () => {
           'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
           'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
         ];
-
         if (euCountries.includes(data.country_code)) {
           navigate('/gdpr');
         }
         setIsCheckingLocation(false);
       })
-      .catch(err => {
-        setIsCheckingLocation(false);
-      });
+      .catch(() => setIsCheckingLocation(false));
   }, [navigate]);
 
-  const password = watch('password');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setStatus(null);
 
-  const onSubmit = async (data: RegisterFormData) => {
     try {
-      await signUp(data.email, data.password, data.fullName);
-      setEmailSent(true);
-      toast.success('Please check your email to verify your account', {
-        style: {
-          background: '#1a1a1a',
-          color: '#FFD700',
-          border: '1px solid rgba(255,215,0,0.2)'
-        }
-      });
-    } catch (err) {
-      // Error handled silently
-    }
-  };
-
-  const handleGoogleSignUp = async () => {
-    try {
-      setGoogleLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      // 1. Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
+          data: {
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            company: formData.company,
+            industry: formData.industry,
+            phone: `${formData.countryCode}${formData.phone.replace(/\D/g, '')}`
           }
         }
       });
 
-      if (error) throw error;
-    } catch (err) {
-      toast.error('Failed to sign in with Google');
-    } finally {
-      setGoogleLoading(false);
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // 2. Create organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: formData.company,
+          industry_template: formData.industry,
+          owner_id: authData.user.id
+        })
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      // 3. Create organization_members record
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: orgData.id,
+          user_id: authData.user.id,
+          role: 'owner'
+        });
+
+      if (memberError) throw memberError;
+
+      // 4. Update user_profiles with organization_id
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({
+          organization_id: orgData.id,
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          phone: `${formData.countryCode}${formData.phone.replace(/\D/g, '')}`
+        })
+        .eq('user_id', authData.user.id);
+
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        // Non-fatal, continue
+      }
+
+      setStatus({ type: 'success', message: 'Account created! Redirecting to dashboard...' });
+
+      // Small delay then redirect
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      setStatus({ type: 'error', message });
+      setIsLoading(false);
     }
   };
 
@@ -101,228 +154,215 @@ const Register: React.FC = () => {
   }
 
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-black flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <Link to="/" className="group">
-              <img
-                src="/logo.svg"
-                alt="CxTrack"
-                className="h-12 mb-6 opacity-90 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-              />
-            </Link>
-            <h1 className="text-3xl font-bold text-white tracking-tight text-center">
-              Secure Your Workspace
-            </h1>
-            <p className="text-white/40 text-sm mt-2 text-center max-w-[280px]">
-              Create your account to get started with CxTrack
-            </p>
-          </div>
+      <div className="relative z-10 w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-          {emailSent && (
-            <div className="bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-xl p-4 mb-6 text-center">
-              <p className="text-[#FFD700] text-sm">
-                We've sent you a verification email. Please check your inbox and follow the instructions to verify your account.
-              </p>
-            </div>
-          )}
+        {/* Left Side: Value Proposition */}
+        <div className="hidden lg:block">
+          <span className="text-[#FFD700] text-xs font-bold tracking-[0.4em] uppercase mb-6 block">
+            Quick Setup • Step 1 of 3
+          </span>
+          <h1 className="text-5xl xl:text-6xl font-black text-white mb-8 tracking-tighter leading-tight uppercase">
+            Your AI-Powered
+            <span className="text-[#FFD700] block">Future Starts Now</span>
+          </h1>
 
-          {error && (
-            <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
-              <label htmlFor="fullName" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Full Name
-              </label>
-              <input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                autoComplete="name"
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                {...register('fullName', {
-                  required: 'Full name is required',
-                })}
-              />
-              {errors.fullName && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.fullName.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                inputMode="email"
-                placeholder="name@business.com"
-                autoComplete="email"
-                autoCapitalize="none"
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address'
-                  }
-                })}
-              />
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Create Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters'
-                    }
-                  })}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.password.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="confirmPassword" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                  {...register('confirmPassword', {
-                    required: 'Please confirm your password',
-                    validate: value => value === password || 'Passwords do not match'
-                  })}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  tabIndex={-1}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.confirmPassword.message}</p>
-              )}
-            </div>
-
-            <div className="flex items-start px-1 pt-2">
-              <input
-                id="terms"
-                type="checkbox"
-                className="h-4 w-4 mt-0.5 rounded border-white/20 bg-white/5 text-[#FFD700] focus:ring-[#FFD700]/30"
-                required
-              />
-              <label htmlFor="terms" className="ml-2 block text-xs text-white/40 leading-relaxed">
-                I agree to the{' '}
-                <a href="#" className="text-[#FFD700]/60 hover:text-[#FFD700] transition-colors">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-[#FFD700]/60 hover:text-[#FFD700] transition-colors">
-                  Privacy Policy
-                </a>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creating Account...
-                </span>
-              ) : (
-                'Complete Setup'
-              )}
-            </button>
-
-            <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-white/[0.05]"></div>
-              <span className="flex-shrink mx-4 text-white/20 text-[10px] uppercase tracking-widest font-medium">Or sign up with</span>
-              <div className="flex-grow border-t border-white/[0.05]"></div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
-              disabled={loading || googleLoading}
-              className="w-full bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.1] text-white font-medium py-4 rounded-xl transition-all flex items-center justify-center gap-3 relative"
-            >
-              {googleLoading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                  <Loader className="animate-spin h-5 w-5 text-[#FFD700]" />
+          <div className="space-y-8 mt-12">
+            {[
+              {
+                icon: <Zap className="text-[#FFD700]" size={24} />,
+                title: "Industry-Tailored CRM",
+                desc: "Your dashboard auto-configures with modules built for your specific industry."
+              },
+              {
+                icon: <Globe className="text-[#FFD700]" size={24} />,
+                title: "Full CRM Access",
+                desc: "Manage leads, quotes, and invoices in one beautiful dashboard."
+              },
+              {
+                icon: <ShieldCheck className="text-[#FFD700]" size={24} />,
+                title: "No Credit Card Required",
+                desc: "Start for free and stay for free. No hidden fees, no pressure."
+              }
+            ].map((item, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#FFD700]/10 border border-[#FFD700]/20 flex items-center justify-center shrink-0">
+                  {item.icon}
                 </div>
-              )}
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#4285F4" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#34A853" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Sign up with Google
-            </button>
-          </form>
-
-          <p className="mt-8 text-center text-sm text-white/30">
-            Already have an account?{' '}
-            <Link to="/login" className="text-[#FFD700]/70 hover:text-[#FFD700] font-medium transition-colors">
-              Sign in
-            </Link>
-          </p>
+                <div>
+                  <h3 className="text-white font-bold text-lg mb-1">{item.title}</h3>
+                  <p className="text-white/50 text-sm leading-relaxed max-w-sm">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <p className="text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
-          &copy; 2026 CxTrack Intelligent Systems. Proprietary Access Only.
-        </p>
+        {/* Right Side: Signup Form */}
+        <div className="w-full max-w-md mx-auto">
+          <div className="p-8 md:p-10 rounded-[40px] border border-white/10 bg-white/[0.02] backdrop-blur-xl shadow-2xl">
+            <div className="mb-8 text-center lg:text-left">
+              <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Create Account</h2>
+              <p className="text-white/40 text-sm">Tell us about your business to get started.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                    placeholder="John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Last Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Work Email</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                  placeholder="john@company.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Company Name</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                  placeholder="Acme Corp"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Industry</label>
+                <div className="relative">
+                  <select
+                    required
+                    value={formData.industry}
+                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors appearance-none cursor-pointer"
+                  >
+                    {INDUSTRIES.map((ind) => (
+                      <option key={ind.value} value={ind.value} className="bg-black text-white">
+                        {ind.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">
+                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                      <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Phone Number</label>
+                <div className="flex gap-3">
+                  <select
+                    value={formData.countryCode}
+                    onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                    className="w-[100px] bg-white/5 border border-white/10 rounded-xl px-3 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors appearance-none cursor-pointer text-sm"
+                  >
+                    <option value="+1" className="bg-black">+1</option>
+                    <option value="+44" className="bg-black">+44</option>
+                    <option value="+61" className="bg-black">+61</option>
+                  </select>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+                    className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#FFD700]/50 transition-colors"
+                    placeholder="(204) 555-1234"
+                    maxLength={14}
+                  />
+                </div>
+              </div>
+
+              {status && (
+                <div className={`p-4 rounded-xl text-xs font-bold text-center ${status.type === 'success'
+                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  }`}>
+                  {status.message}
+                </div>
+              )}
+
+              <button
+                disabled={isLoading}
+                type="submit"
+                className={`w-full py-4 px-6 rounded-xl font-black uppercase tracking-[0.2em] text-xs transition-all duration-300 flex items-center justify-center gap-2 ${isLoading
+                    ? "bg-white/10 text-white/40"
+                    : "bg-[#FFD700] text-black hover:shadow-[0_0_30px_rgba(255,215,0,0.3)]"
+                  }`}
+              >
+                {isLoading ? "Creating Account..." : "Continue"}
+                {!isLoading && <ArrowRight size={14} />}
+              </button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-white/10 text-center">
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">
+                Already have an account?{" "}
+                <Link to="/login" className="text-[#FFD700] hover:underline">Log In</Link>
+              </p>
+            </div>
+          </div>
+
+          {/* Mobile Trust Badges */}
+          <div className="mt-8 flex justify-center gap-6 lg:hidden">
+            <div className="flex items-center gap-1.5 text-white/40 text-[10px] font-bold uppercase">
+              <ShieldCheck size={14} /> No CC Required
+            </div>
+            <div className="flex items-center gap-1.5 text-white/40 text-[10px] font-bold uppercase">
+              <Check size={14} /> Cancel Anytime
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   );
