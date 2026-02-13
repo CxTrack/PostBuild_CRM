@@ -37,10 +37,11 @@ export default function SuccessPage() {
   const type = searchParams.get('type');
   const plan = searchParams.get('plan');
 
-  const isRequest = type === 'custom_crm' || type === 'audit';
+  const isRequest = type === 'custom_crm' || type === 'audit' || type === 'config';
 
   const getHeadline = () => {
     if (type === 'custom_crm') return "Custom CRM Request Received.";
+    if (type === 'config') return "Configuration Request Received.";
     if (type === 'audit') return "AI Audit Request Received.";
     return "You're all set. Welcome to CxTrack.";
   };
@@ -48,6 +49,9 @@ export default function SuccessPage() {
   const getSubheadline = () => {
     if (type === 'custom_crm') {
       return `Our architecture team is reviewing your requirements. We'll contact you at ${lead?.email} within 24 hours.`;
+    }
+    if (type === 'config') {
+      return `Our integration specialists are reviewing your requirements. We'll reach out to ${lead?.email} within 1-2 business days to schedule a discovery call.`;
     }
     if (type === 'audit') {
       return "We're analyzing your team's operational bottlenecks. Expect your preliminary roadmap in our first session.";

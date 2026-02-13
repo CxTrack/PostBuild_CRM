@@ -47,6 +47,7 @@ import PlanPage from './pages/onboarding/PlanPage';
 import VoiceSetupPage from './pages/onboarding/VoiceSetupPage';
 import CheckoutPage from './pages/onboarding/CheckoutPage';
 import SuccessPage from './pages/onboarding/SuccessPage';
+import CustomConfigPage from './pages/onboarding/CustomConfigPage';
 
 
 // Diagnostic component to track route changes
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="/onboarding/voice-setup" element={<VoiceSetupPage />} />
           <Route path="/onboarding/checkout" element={<CheckoutPage />} />
           <Route path="/onboarding/success" element={<SuccessPage />} />
+          <Route path="/onboarding/custom-config" element={<CustomConfigPage />} />
 
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}

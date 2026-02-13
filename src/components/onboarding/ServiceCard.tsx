@@ -7,7 +7,7 @@ interface ServiceCardProps {
   note: string;
   selected: boolean;
   onClick: () => void;
-  accent?: 'blue' | 'purple' | 'emerald';
+  accent?: 'blue' | 'purple' | 'emerald' | 'teal';
 }
 
 const themes = {
@@ -40,6 +40,16 @@ const themes = {
     checkColor: 'text-emerald-400',
     ringColor: 'border-emerald-400',
     glow: 'bg-emerald-500/10',
+  },
+  teal: {
+    border: 'border-t-teal-400/50',
+    bg: 'hover:bg-teal-500/[0.03]',
+    shadow: 'hover:shadow-[0_0_40px_rgba(45,212,191,0.1)]',
+    selectedBorder: 'border-teal-400 bg-teal-500/[0.06] shadow-[0_0_60px_rgba(45,212,191,0.15)] ring-1 ring-teal-400/30',
+    checkBg: 'bg-teal-500/10 border-teal-400/30',
+    checkColor: 'text-teal-400',
+    ringColor: 'border-teal-400',
+    glow: 'bg-teal-500/10',
   },
 };
 

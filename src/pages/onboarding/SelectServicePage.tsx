@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import ServiceCard from '@/components/onboarding/ServiceCard';
 
-type ServiceType = 'crm' | 'custom' | 'audit';
+type ServiceType = 'crm' | 'custom' | 'config' | 'audit';
 
 export default function SelectServicePage() {
   const navigate = useNavigate();
@@ -29,6 +29,9 @@ export default function SelectServicePage() {
       case 'custom':
         navigate('/onboarding/custom-crm');
         break;
+      case 'config':
+        navigate('/onboarding/custom-config');
+        break;
       case 'audit':
         navigate('/onboarding/audit');
         break;
@@ -39,7 +42,7 @@ export default function SelectServicePage() {
     <main className="min-h-screen bg-black pt-32 pb-20 px-6">
       <OnboardingHeader />
 
-      <div className="max-w-4xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-12">
         <div className="flex flex-col items-center text-center space-y-6">
           <button
             onClick={() => navigate('/register')}
@@ -56,7 +59,7 @@ export default function SelectServicePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#FFD700]/5 to-transparent blur-[120px] -z-10" />
 
           <ServiceCard
@@ -88,7 +91,21 @@ export default function SelectServicePage() {
           />
 
           <ServiceCard
-            title="AI Audit"
+            title="Custom Configuration"
+            accent="teal"
+            features={[
+              'API Integrations',
+              'Zapier/Make Flows',
+              'AI Agent Connections',
+              'Data Sync',
+            ]}
+            note="Enhance your existing stack with workflows and automations"
+            selected={selectedService === 'config'}
+            onClick={() => setSelectedService('config')}
+          />
+
+          <ServiceCard
+            title="AI & Ops Audit"
             accent="emerald"
             features={[
               'Find bottlenecks',
