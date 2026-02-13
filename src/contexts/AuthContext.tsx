@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -16,80 +16,109 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Maximum time to wait for auth initialization before showing the app
+const AUTH_TIMEOUT_MS = 5000;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const initCompleteRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    const initAuth = async () => {
-      try {
-        // Simply get the current session - Supabase handles tokens automatically
-        const { data: { session }, error } = await supabase.auth.getSession();
+    // CRITICAL: Guarantee loading becomes false after timeout
+    const timeoutId = setTimeout(() => {
+      if (isMounted && !initCompleteRef.current) {
+        console.warn('[Auth] Timeout reached, forcing loading to false');
+        initCompleteRef.current = true;
+        setLoading(false);
+      }
+    }, AUTH_TIMEOUT_MS);
 
-        if (error) {
-        }
-
-        if (session?.user && isMounted) {
-          // Get organization membership
-          const { data: memberData } = await supabase
-            .from('organization_members')
-            .select('organization_id, role')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          if (isMounted) {
-            setUser({
-              ...session.user,
-              role: memberData?.role,
-              organization_id: memberData?.organization_id
-            });
-          }
-        }
-      } catch (err) {
-        // Error handled silently
-      } finally {
-        if (isMounted) setLoading(false);
+    const completeInit = () => {
+      if (isMounted && !initCompleteRef.current) {
+        initCompleteRef.current = true;
+        setLoading(false);
       }
     };
 
+    const initAuth = async () => {
+      try {
+        // Get the current session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user && isMounted) {
+          // Set user immediately (org data can be fetched later by DashboardLayout)
+          setUser(session.user);
+
+          // Try to get org membership, but don't block on it
+          try {
+            const { data: memberData } = await supabase
+              .from('organization_members')
+              .select('organization_id, role')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+
+            if (isMounted && memberData) {
+              setUser({
+                ...session.user,
+                role: memberData.role,
+                organization_id: memberData.organization_id
+              });
+            }
+          } catch {
+            // Org data fetch failed, but user is still authenticated
+          }
+        }
+      } catch (err) {
+        console.error('[Auth] Init error:', err);
+      } finally {
+        completeInit();
+      }
+    };
+
+    // Start initialization
     initAuth();
 
     // Listen for auth state changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      try {
-        if (session?.user) {
+      // Skip INITIAL_SESSION as initAuth handles that
+      if (event === 'INITIAL_SESSION') return;
+
+      if (session?.user) {
+        setUser(session.user);
+
+        // Fetch org data in background
+        try {
           const { data: memberData } = await supabase
             .from('organization_members')
             .select('organization_id, role')
             .eq('user_id', session.user.id)
             .maybeSingle();
 
-          if (isMounted) {
+          if (isMounted && memberData) {
             setUser({
               ...session.user,
-              role: memberData?.role,
-              organization_id: memberData?.organization_id
+              role: memberData.role,
+              organization_id: memberData.organization_id
             });
           }
-        } else {
-          if (isMounted) setUser(null);
+        } catch {
+          // Org data fetch failed, keep user without org data
         }
-      } catch (err) {
-        // On error, still set the user (without org data) so app doesn't hang
-        if (isMounted && session?.user) {
-          setUser(session.user);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+      } else {
+        setUser(null);
       }
+
+      completeInit();
     });
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
