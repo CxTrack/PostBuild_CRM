@@ -15,7 +15,7 @@ export interface BusinessSettings {
   invoice_prefix: string;
   default_payment_terms: string;
   stripe_publishable_key: string | null;
-  stripe_secret_key: string | null;
+  // stripe_secret_key removed - never expose to frontend
   default_quote_template_id: string | null;
   default_invoice_template_id: string | null;
 }
@@ -74,7 +74,6 @@ export const settingsService = {
         invoice_prefix,
         default_payment_terms,
         stripe_publishable_key,
-        stripe_secret_key,
         default_quote_template_id,
         default_invoice_template_id
       `)
@@ -86,8 +85,6 @@ export const settingsService = {
   },
 
   async getOrganizationForPDF(organizationId: string): Promise<OrganizationPDFInfo> {
-    console.log('📄 Fetching fresh organization data for PDF generation...');
-    console.log('Organization ID:', organizationId);
 
     const { data, error } = await supabase
       .from('organizations')
@@ -106,16 +103,13 @@ export const settingsService = {
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error fetching organization for PDF:', error);
       throw error;
     }
 
     if (!data) {
-      console.error('❌ No organization found with ID:', organizationId);
       throw new Error('Organization not found');
     }
 
-    console.log('✅ Fresh organization data loaded from database:', data);
 
     return {
       name: data.name,
