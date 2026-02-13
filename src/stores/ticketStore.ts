@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -122,8 +122,9 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             if (error) throw error;
 
             set({ tickets: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -151,8 +152,9 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             }));
 
             return ticketData;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             throw error;
         } finally {
             set({ loading: false });
@@ -181,7 +183,8 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             }));
 
             return ticketData;
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -204,7 +207,8 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             set((state) => ({
                 tickets: state.tickets.filter(t => t.id !== id),
             }));
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -256,7 +260,8 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             }));
 
             return data || [];
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             return [];
         }
     },
@@ -300,7 +305,8 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             }));
 
             return data;
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },

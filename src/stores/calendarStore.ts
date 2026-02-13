@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
@@ -75,8 +75,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
       if (error) throw error;
       set({ events: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -113,8 +114,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       }));
 
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -136,8 +138,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
           e.id === id ? { ...e, ...updates } : e
         ),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });
@@ -157,8 +160,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       set((state) => ({
         events: state.events.filter((e) => e.id !== id),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -202,7 +206,8 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
           },
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
       // Error handled silently
     }
   },
@@ -223,7 +228,8 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
           ? { ...state.preferences, ...preferences }
           : null,
       }));
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
       // Error handled silently
     }
   },

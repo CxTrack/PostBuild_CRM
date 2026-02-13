@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
@@ -103,9 +103,10 @@ export const useDealStore = create<DealStore>((set, get) => ({
       if (error) throw error;
 
       set({ deals: data as Deal[] });
-    } catch (error: any) {
-      set({ error: error.message });
-      toast.error('Failed to load deals');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ loading: false });
     }
@@ -142,8 +143,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
 
       if (error) throw error;
       return data as Deal;
-    } catch (error: any) {
-      toast.error('Failed to load deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       return null;
     }
   },
@@ -160,8 +162,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       if (error) throw error;
 
       set({ pipelineStats: data as PipelineStats });
-    } catch (error: any) {
-      toast.error('Failed to load pipeline statistics');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   },
 
@@ -207,8 +210,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       toast.success('Deal created successfully');
 
       return data as Deal;
-    } catch (error: any) {
-      toast.error('Failed to create deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -231,8 +235,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       await get().fetchDeals();
       await get().fetchPipelineStats();
       toast.success('Deal updated successfully');
-    } catch (error: any) {
-      toast.error('Failed to update deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -249,8 +254,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       await get().fetchDeals();
       await get().fetchPipelineStats();
       toast.success('Deal deleted successfully');
-    } catch (error: any) {
-      toast.error('Failed to delete deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -278,8 +284,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       await get().fetchDeals();
       await get().fetchPipelineStats();
       toast.success(`Deal moved to ${formatStageName(stage)}`);
-    } catch (error: any) {
-      toast.error('Failed to move deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -345,8 +352,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       toast.success('Quote converted to deal successfully');
 
       return deal as Deal;
-    } catch (error: any) {
-      toast.error('Failed to convert quote to deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -368,8 +376,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       await get().fetchDeals();
       await get().fetchPipelineStats();
       toast.success('Deal closed as won!');
-    } catch (error: any) {
-      toast.error('Failed to close deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },
@@ -392,8 +401,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
       await get().fetchDeals();
       await get().fetchPipelineStats();
       toast.success('Deal closed as lost');
-    } catch (error: any) {
-      toast.error('Failed to close deal');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
       throw error;
     }
   },

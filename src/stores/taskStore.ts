@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -72,8 +72,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       }));
 
       set({ tasks: formattedTasks });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -130,8 +131,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       }));
 
       return newTask;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });
@@ -180,8 +182,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       }));
 
       return updatedTask;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });
@@ -202,8 +205,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set((state) => ({
         tasks: state.tasks.filter(task => task.id !== id),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Call } from '@/types/database.types';
 import { useOrganizationStore } from './organizationStore';
@@ -111,8 +111,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       if (error) throw error;
       set({ calls: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -136,8 +137,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       if (error) throw error;
       set({ calls: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -161,8 +163,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       if (error) throw error;
       set({ currentCall: data });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -193,8 +196,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
       }));
 
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -217,8 +221,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
         calls: state.calls.map((c) => (c.id === id ? data : c)),
         currentCall: state.currentCall?.id === id ? data : state.currentCall,
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -237,8 +242,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
       set((state) => ({
         calls: state.calls.filter((c) => c.id !== id),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -278,8 +284,9 @@ export const useCallStore = create<CallStore>((set, get) => ({
       };
 
       set({ stats });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     }
   },
 
@@ -335,6 +342,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
         subscription.unsubscribe();
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
       return () => { };
     }
   },

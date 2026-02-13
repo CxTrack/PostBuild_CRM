@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@supabase/supabase-js';
 
@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ loading: true });
 
-        // 0ï¸âƒ£ Check for tokens in URL (from marketing site OAuth redirect)
+        // 0️⃣ Check for tokens in URL (from marketing site OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
         const accessToken = urlParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token');
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
           }
         }
 
-        // 1ï¸âƒ£ Load existing session (Supabase handles refresh automatically)
+        // 1️⃣ Load existing session (Supabase handles refresh automatically)
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({ initialized: true, loading: false });
 
-        // 2ï¸âƒ£ Subscribe to auth changes (CRITICAL)
+        // 2️⃣ Subscribe to auth changes (CRITICAL)
         supabase.auth.onAuthStateChange(async (event: any, session: any) => {
 
           if (!session || event === 'SIGNED_OUT') {
@@ -198,7 +198,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
 
-      // âš ï¸ Persist ONLY profile (Supabase owns session + user)
+      // ⚠️ Persist ONLY profile (Supabase owns session + user)
       partialize: (state) => ({
         profile: state.profile,
       }),

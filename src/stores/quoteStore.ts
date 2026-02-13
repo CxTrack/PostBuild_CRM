@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Quote, QuoteItem } from '../types/app.types';
 import { useOrganizationStore } from './organizationStore';
@@ -44,8 +44,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         .order('created_at', { ascending: false });
       if (error) throw error;
       set({ quotes: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -63,8 +64,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       set((state) => ({
         quoteItems: { ...state.quoteItems, [quoteId]: data || [] },
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -81,8 +83,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       if (error) throw error;
       set((state) => ({ quotes: [data, ...state.quotes] }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -97,8 +100,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       set((state) => ({
         quotes: state.quotes.map((q) => (q.id === id ? { ...q, ...updates } : q)),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -110,8 +114,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       const { error } = await supabase.from('quotes').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ quotes: state.quotes.filter((q) => q.id !== id) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -129,8 +134,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         },
       }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -151,8 +157,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         });
         return { quoteItems: newQuoteItems };
       });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -169,8 +176,9 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
           [quoteId]: state.quoteItems[quoteId]?.filter((item) => item.id !== id) || [],
         },
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Expense, ExpenseCategory } from '../types/app.types';
 
@@ -35,8 +35,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
                 .order('expense_date', { ascending: false });
             if (error) throw error;
             set({ expenses: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -53,8 +54,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
                 .order('name', { ascending: true });
             if (error) throw error;
             set({ categories: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -67,8 +69,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set((state) => ({ expenses: [data, ...state.expenses] }));
             return data;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             return null;
         } finally {
             set({ loading: false });
@@ -83,8 +86,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             set((state) => ({
                 expenses: state.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
             }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -96,8 +100,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             const { error } = await supabase.from('expenses').delete().eq('id', id);
             if (error) throw error;
             set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -110,8 +115,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set((state) => ({ categories: [...state.categories, data].sort((a, b) => a.name.localeCompare(b.name)) }));
             return data;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             return null;
         } finally {
             set({ loading: false });

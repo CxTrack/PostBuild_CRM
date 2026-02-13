@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Invoice, InvoiceItem, Payment } from '../types/app.types';
 
@@ -42,8 +42,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         .order('created_at', { ascending: false });
       if (error) throw error;
       set({ invoices: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -61,8 +62,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       set((state) => ({
         invoiceItems: { ...state.invoiceItems, [invoiceId]: data || [] },
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -80,8 +82,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       set((state) => ({
         payments: { ...state.payments, [invoiceId]: data || [] },
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -94,8 +97,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set((state) => ({ invoices: [data, ...state.invoices] }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -110,8 +114,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       set((state) => ({
         invoices: state.invoices.map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -123,8 +128,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       const { error } = await supabase.from('invoices').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ invoices: state.invoices.filter((inv) => inv.id !== id) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -142,8 +148,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         },
       }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -164,8 +171,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         });
         return { invoiceItems: newInvoiceItems };
       });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -182,8 +190,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
           [invoiceId]: state.invoiceItems[invoiceId]?.filter((item) => item.id !== id) || [],
         },
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -201,8 +210,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         },
       }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });

@@ -59,8 +59,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set({ customers: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -85,8 +86,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set({ currentCustomer: data });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -129,8 +131,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       }));
 
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });
@@ -161,8 +164,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customers: state.customers.map((c) => (c.id === id ? data : c)),
         currentCustomer: state.currentCustomer?.id === id ? data : state.currentCustomer,
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -189,8 +193,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       set((state) => ({
         customers: state.customers.filter((c) => c.id !== id),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -208,8 +213,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set({ notes: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -234,8 +240,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ notes: [data, ...state.notes] }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -261,8 +268,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ notes: state.notes.map(n => n.id === id ? data : n) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -286,8 +294,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ notes: state.notes.filter(n => n.id !== id) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -305,8 +314,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set({ contacts: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -319,8 +329,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       const { data, error } = await supabase.from('customer_contacts').insert(contact).select().single();
       if (error) throw error;
       set((state) => ({ contacts: [data, ...state.contacts] }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -339,8 +350,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ contacts: state.contacts.map(c => c.id === id ? data : c) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -377,8 +389,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ contacts: state.contacts.filter(c => c.id !== id) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -395,8 +408,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
       set({ files: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
