@@ -151,7 +151,7 @@ function EmptyState({ labels, searchTerm, filterStatus, industryTemplate }: Empt
 
       {/* CTA Button */}
       <Link
-        to="/dashboard/quotes/builder"
+        to="/quotes/builder"
         className={`flex items-center px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all hover:scale-105 active:scale-95 ${
           isRealEstate
             ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'
