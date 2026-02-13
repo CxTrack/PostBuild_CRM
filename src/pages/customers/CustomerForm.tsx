@@ -118,11 +118,11 @@ export default function CustomerForm() {
         const newCustomer = await createCustomer(customerData);
         toast.success('Customer created successfully');
         if (newCustomer) {
-          navigate(`/customers/${newCustomer.id}`);
+          navigate(`/dashboard/customers/${newCustomer.id}`);
           return;
         }
       }
-      navigate(`/customers/${id}`);
+      navigate(`/dashboard/customers/${id}`);
     } catch (error) {
       console.error('Error saving customer:', error);
       toast.error('Failed to save customer');
@@ -145,7 +145,7 @@ export default function CustomerForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link
-              to={id ? `/customers/${id}` : '/customers'}
+              to={id ? `/dashboard/customers/${id}` : '/dashboard/customers'}
               className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ArrowLeft size={20} className="mr-2" />
@@ -163,7 +163,7 @@ export default function CustomerForm() {
 
           <div className="flex items-center space-x-3">
             <Link
-              to={id ? `/customers/${id}` : '/customers'}
+              to={id ? `/dashboard/customers/${id}` : '/dashboard/customers'}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
@@ -198,8 +198,8 @@ export default function CustomerForm() {
                     type="button"
                     onClick={() => setFormData({ ...formData, customer_type: 'personal' })}
                     className={`p-3 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'personal'
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <User size={20} className="mb-1 text-primary-600 dark:text-primary-400" />
@@ -210,8 +210,8 @@ export default function CustomerForm() {
                     type="button"
                     onClick={() => setFormData({ ...formData, customer_type: 'business' })}
                     className={`p-3 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'business'
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <Building size={20} className="mb-1 text-primary-600 dark:text-primary-400" />
@@ -669,7 +669,7 @@ export default function CustomerForm() {
 
           <div className="flex items-center justify-end space-x-3 pb-6">
             <Link
-              to={id ? `/customers/${id}` : '/customers'}
+              to={id ? `/dashboard/customers/${id}` : '/dashboard/customers'}
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
