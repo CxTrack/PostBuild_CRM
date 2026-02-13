@@ -185,29 +185,16 @@ export default function Quotes() {
   const [viewMode, setViewMode] = useState<'compact' | 'table'>('compact');
 
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
-  const { currentOrganization, demoMode, getOrganizationId, currentMembership, loading: orgLoading } = useOrganizationStore();
+  const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('quotes');
   const { confirm, DialogComponent } = useConfirmDialog();
-  const [hasFetched, setHasFetched] = useState(false);
 
   // Fetch quotes when organization is available
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const orgId = currentOrganization?.id || (demoMode ? getOrganizationId() : undefined);
-        if (orgId) {
-          await fetchQuotes(orgId);
-          setHasFetched(true);
-        }
-      } catch (error) {
-        // Error handled silently
-      }
-    };
-
-    // Always fetch on mount or when org changes
-    if (currentOrganization?.id || demoMode) {
-      fetchData();
+    const orgId = currentOrganization?.id || (demoMode ? getOrganizationId() : undefined);
+    if (orgId) {
+      fetchQuotes(orgId);
     }
   }, [currentOrganization?.id, demoMode, fetchQuotes, getOrganizationId]);
 
@@ -333,18 +320,8 @@ export default function Quotes() {
     }
   };
 
-  // Show loading state while organization is loading or quotes are being fetched
-  if ((orgLoading || (loading && !hasFetched)) && quotes.length === 0) {
-    return (
-      <PageContainer className="gap-6">
-        <DashboardStatsSkeleton />
-        <TableSkeleton rows={8} />
-      </PageContainer>
-    );
-  }
-
-  // If no organization available yet, show a brief loading state
-  if (!currentOrganization && !demoMode) {
+  // Show loading state only when actively loading quotes
+  if (loading && quotes.length === 0) {
     return (
       <PageContainer className="gap-6">
         <DashboardStatsSkeleton />
