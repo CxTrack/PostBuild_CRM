@@ -108,7 +108,7 @@ export const Register: React.FC = () => {
           <div className="flex flex-col items-center mb-8">
             <Link to="/">
               <img
-                src="/logo.svg"
+                src="/logo.png"
                 alt="CxTrack"
                 className="h-12 mb-6 opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
               />
