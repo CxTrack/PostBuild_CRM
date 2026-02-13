@@ -111,6 +111,12 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
     updateLead: async (id, updates) => {
         try {
+            const currentOrg = useOrganizationStore.getState().currentOrganization;
+            if (!currentOrg) {
+                toast.error('No organization selected');
+                return;
+            }
+
             // Recalculate probability if status changes
             if (updates.status) {
                 if (updates.status === 'new') updates.probability = 0.10;
@@ -123,7 +129,8 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             const { error } = await supabase
                 .from('leads')
                 .update(updates)
-                .eq('id', id);
+                .eq('id', id)
+                .eq('organization_id', currentOrg.id);
 
             if (error) throw error;
 
@@ -139,7 +146,18 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
     deleteLead: async (id) => {
         try {
-            const { error } = await supabase.from('leads').delete().eq('id', id);
+            const currentOrg = useOrganizationStore.getState().currentOrganization;
+            if (!currentOrg) {
+                toast.error('No organization selected');
+                return;
+            }
+
+            const { error } = await supabase
+                .from('leads')
+                .delete()
+                .eq('id', id)
+                .eq('organization_id', currentOrg.id);
+
             if (error) throw error;
 
             set(state => ({ leads: state.leads.filter(l => l.id !== id) }));
@@ -187,6 +205,12 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
     updateOpportunity: async (id, updates) => {
         try {
+            const currentOrg = useOrganizationStore.getState().currentOrganization;
+            if (!currentOrg) {
+                toast.error('No organization selected');
+                return;
+            }
+
             // Recalculate probability if stage changes
             if (updates.stage) {
                 if (updates.stage === 'discovery') updates.probability = 0.40;
@@ -200,7 +224,8 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             const { error } = await supabase
                 .from('opportunities')
                 .update(updates)
-                .eq('id', id);
+                .eq('id', id)
+                .eq('organization_id', currentOrg.id);
 
             if (error) throw error;
 
@@ -216,7 +241,18 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
     deleteOpportunity: async (id) => {
         try {
-            const { error } = await supabase.from('opportunities').delete().eq('id', id);
+            const currentOrg = useOrganizationStore.getState().currentOrganization;
+            if (!currentOrg) {
+                toast.error('No organization selected');
+                return;
+            }
+
+            const { error } = await supabase
+                .from('opportunities')
+                .delete()
+                .eq('id', id)
+                .eq('organization_id', currentOrg.id);
+
             if (error) throw error;
 
             set(state => ({ opportunities: state.opportunities.filter(o => o.id !== id) }));
