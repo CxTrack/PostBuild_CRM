@@ -5,15 +5,29 @@ import { quoteService, Quote } from '@/services/quote.service';
 import { invoiceService } from '@/services/invoice.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { ArrowLeft, Edit, Send, FileText, Trash2, Loader2, Check, X as XIcon, DollarSign, Share2 } from 'lucide-react';
+import { ArrowLeft, Edit, Send, FileText, Trash2, Loader2, Check, X as XIcon, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+
+interface OrganizationInfo {
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+}
 
 export default function QuoteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { currentOrganization } = useOrganizationStore();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +39,7 @@ export default function QuoteDetail() {
   );
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareModalTab, setShareModalTab] = useState<'email' | 'link' | 'pdf' | 'sms'>('link');
+  const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -33,11 +48,15 @@ export default function QuoteDetail() {
   }, [id]);
 
   const loadQuote = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     try {
       setLoading(true);
-      const data = await quoteService.getQuote(id);
-      setQuote(data);
+      const [quoteData, orgInfo] = await Promise.all([
+        quoteService.getQuote(id, currentOrganization.id),
+        settingsService.getOrganizationForPDF(currentOrganization.id)
+      ]);
+      setQuote(quoteData);
+      setOrganizationInfo(orgInfo);
     } catch (error) {
       console.error('Failed to load quote:', error);
       toast.error('Failed to load quote');
@@ -47,9 +66,9 @@ export default function QuoteDetail() {
   };
 
   const handleSend = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     try {
-      await quoteService.sendQuote(id);
+      await quoteService.sendQuote(id, currentOrganization.id);
       toast.success('Quote sent successfully');
       loadQuote();
     } catch (error) {
@@ -59,11 +78,11 @@ export default function QuoteDetail() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     if (!confirm('Are you sure you want to delete this quote?')) return;
 
     try {
-      await quoteService.deleteQuote(id);
+      await quoteService.deleteQuote(id, currentOrganization.id);
       toast.success('Quote deleted successfully');
       navigate(-1);
     } catch (error) {
@@ -79,7 +98,7 @@ export default function QuoteDetail() {
       setConverting(true);
       const invoice = await invoiceService.createInvoiceFromQuote(
         currentOrganization.id,
-        currentOrganization.id,
+        user?.id || '',
         quote,
         invoiceDate,
         dueDate
@@ -176,7 +195,7 @@ export default function QuoteDetail() {
               {quote.quote_number}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status)}`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status || 'draft')}`}>
                 {quote.status}
               </span>
               {quote.converted_to_invoice_id && (
@@ -206,7 +225,7 @@ export default function QuoteDetail() {
             </Button>
           )}
           <ShareDropdown onSelect={handleShareOption} buttonText="Share" variant="primary" />
-          {(quote.status === 'accepted' || quote.status === 'sent') && quote.status !== 'converted' && (
+          {(quote.status === 'accepted' || quote.status === 'sent') && (
             <Button onClick={() => setShowConvertDialog(true)}>
               <FileText className="w-4 h-4 mr-2" />
               Convert to Invoice
@@ -403,11 +422,14 @@ export default function QuoteDetail() {
         </div>
       )}
 
-      {showShareModal && quote && currentOrganization && (
+      {showShareModal && quote && currentOrganization && user && organizationInfo && (
         <ShareModal
+          isOpen={showShareModal}
           documentType="quote"
           document={quote}
           organizationId={currentOrganization.id}
+          userId={user.id}
+          organizationInfo={organizationInfo}
           initialTab={shareModalTab}
           onClose={() => setShowShareModal(false)}
         />

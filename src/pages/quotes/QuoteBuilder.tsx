@@ -15,6 +15,7 @@ import ShareModal from '@/components/share/ShareModal';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import { User, ArrowLeft } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { getCustomerFullName } from '@/utils/customer.utils';
 
@@ -34,6 +35,8 @@ export default function QuoteBuilder() {
   const [savedQuote, setSavedQuote] = useState<any>(null);
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const { user } = useAuthContext();
+  const [organizationInfo, setOrganizationInfo] = useState<any>(null);
 
   const [formData, setFormData] = useState<QuoteFormData>({
     customer_id: '',
@@ -85,7 +88,11 @@ export default function QuoteBuilder() {
   const loadSettings = async () => {
     if (!currentOrganization) return;
     try {
-      const settings = await settingsService.getBusinessSettings(currentOrganization.id);
+      const [settings, orgInfo] = await Promise.all([
+        settingsService.getBusinessSettings(currentOrganization.id),
+        settingsService.getOrganizationForPDF(currentOrganization.id)
+      ]);
+      setOrganizationInfo(orgInfo);
       if (settings?.default_payment_terms) {
         setFormData(prev => ({ ...prev, payment_terms: settings.default_payment_terms }));
       }
@@ -98,7 +105,8 @@ export default function QuoteBuilder() {
     if (!id) return;
     try {
       setLoading(true);
-      const quote = await quoteService.getQuote(id);
+      const organizationId = getOrganizationId();
+      const quote = await quoteService.getQuote(id, organizationId);
       if (quote) {
         setFormData({
           customer_id: quote.customer_id,
@@ -237,7 +245,10 @@ export default function QuoteBuilder() {
         price: item.unit_price
       });
 
+      const organizationId = getOrganizationId();
+
       const newProduct = await createProduct({
+        organization_id: organizationId,
         name: item.product_name.trim(),
         description: item.description?.trim() || '',
         product_type: item.product_type,
@@ -335,12 +346,20 @@ export default function QuoteBuilder() {
       setSaving(true);
 
       if (id) {
-        await quoteService.updateQuote(id, { ...formData, status: 'draft' });
-        const quote = await quoteService.getQuote(id);
+        const organizationId = getOrganizationId();
+        await quoteService.updateQuote(id, { ...formData, status: 'draft' }, organizationId);
+        const quote = await quoteService.getQuote(id, organizationId);
         setSavedQuote(quote);
         toast.success('Quote saved as draft');
       } else {
+        const organizationId = getOrganizationId();
+        if (!user) {
+          toast.error('You must be logged in to save a quote');
+          return;
+        }
         const quote = await quoteService.createQuote(
+          organizationId,
+          user.id,
           { ...formData, status: 'draft' }
         );
         setSavedQuote(quote);
@@ -374,12 +393,20 @@ export default function QuoteBuilder() {
       setSaving(true);
 
       if (id) {
-        await quoteService.updateQuote(id, { ...formData, status: 'sent' });
-        const quote = await quoteService.getQuote(id);
+        const organizationId = getOrganizationId();
+        await quoteService.updateQuote(id, { ...formData, status: 'sent' }, organizationId);
+        const quote = await quoteService.getQuote(id, organizationId);
         setSavedQuote(quote);
         toast.success('Quote finalized successfully');
       } else {
+        const organizationId = getOrganizationId();
+        if (!user) {
+          toast.error('You must be logged in to create a quote');
+          return;
+        }
         const quote = await quoteService.createQuote(
+          organizationId,
+          user.id,
           { ...formData, status: 'sent' }
         );
         setSavedQuote(quote);
@@ -882,20 +909,15 @@ export default function QuoteBuilder() {
           </div>
         </div>
 
-        {savedQuote && currentOrganization && (
+        {savedQuote && currentOrganization && user && organizationInfo && (
           <ShareModal
             isOpen={showShareModal}
             onClose={() => setShowShareModal(false)}
             documentType="quote"
             document={savedQuote}
             organizationId={currentOrganization.id}
-            userId={currentOrganization.id}
-            organizationInfo={{
-              name: currentOrganization.name,
-              address: currentOrganization.address || '',
-              phone: currentOrganization.phone || '',
-              email: currentOrganization.email || '',
-            }}
+            userId={user.id}
+            organizationInfo={organizationInfo}
             initialTab={shareModalTab}
           />
         )}

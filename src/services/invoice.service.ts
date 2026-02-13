@@ -4,7 +4,7 @@ import { Quote } from './quote.service';
 export interface InvoiceLineItem {
   id?: string;
   product_id?: string;
-  product_type?: 'product' | 'service';
+  product_type?: 'product' | 'service' | 'bundle';
   product_name: string;
   description?: string;
   quantity: number;
@@ -234,8 +234,13 @@ export const invoiceService = {
 
   async updateInvoice(
     invoiceId: string,
-    updates: Partial<InvoiceFormData>
+    updates: Partial<InvoiceFormData>,
+    organizationId: string
   ): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error: invoiceError } = await supabase
       .from('invoices')
       .update({
@@ -257,14 +262,20 @@ export const invoiceService = {
         terms: updates.terms,
         status: updates.status,
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId);
 
     if (invoiceError) throw invoiceError;
 
     if (updates.items) {
-      await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+      // Fetch existing items first for potential rollback
+      const { data: existingItems } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoiceId);
 
-      const items = updates.items.map(item => ({
+      // Prepare new items
+      const newItems = updates.items.map(item => ({
         invoice_id: invoiceId,
         product_id: item.product_id,
         product_name: item.product_name,
@@ -278,37 +289,62 @@ export const invoiceService = {
         sort_order: item.sort_order,
       }));
 
+      // Delete existing items
+      await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+
+      // Insert new items
       const { error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(items);
+        .insert(newItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Attempt to restore old items on failure
+        if (existingItems && existingItems.length > 0) {
+          const restoredItems = existingItems.map(({ id, ...rest }) => rest);
+          await supabase.from('invoice_items').insert(restoredItems);
+        }
+        throw new Error(`Failed to update invoice items: ${itemsError.message}`);
+      }
     }
   },
 
-  async deleteInvoice(invoiceId: string): Promise<void> {
+  async deleteInvoice(invoiceId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('invoices')
       .delete()
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async sendInvoice(invoiceId: string): Promise<void> {
+  async sendInvoice(invoiceId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('invoices')
       .update({
         status: 'sent',
         sent_at: new Date().toISOString(),
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async markAsPaid(invoiceId: string, paymentAmount: number): Promise<void> {
-    const invoice = await this.getInvoice(invoiceId);
+  async markAsPaid(invoiceId: string, paymentAmount: number, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
+    const invoice = await this.getInvoice(invoiceId, organizationId);
     if (!invoice) throw new Error('Invoice not found');
 
     const newAmountPaid = (invoice.amount_paid || 0) + paymentAmount;
@@ -327,13 +363,18 @@ export const invoiceService = {
         status,
         paid_at: status === 'paid' ? new Date().toISOString() : null,
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async sendReminder(invoiceId: string): Promise<void> {
-    const invoice = await this.getInvoice(invoiceId);
+  async sendReminder(invoiceId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
+    const invoice = await this.getInvoice(invoiceId, organizationId);
     if (!invoice) throw new Error('Invoice not found');
 
     const { error } = await supabase
@@ -342,7 +383,8 @@ export const invoiceService = {
         last_reminder_sent_at: new Date().toISOString(),
         reminder_count: invoice.reminder_count + 1,
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },

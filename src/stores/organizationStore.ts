@@ -9,6 +9,7 @@ interface OrganizationState {
   organizations: Array<{ organization: Organization; membership: OrganizationMember }>;
   teamMembers: Array<UserProfile & { role: string; color: string }>;
   loading: boolean;
+  demoMode: boolean;
   fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
   fetchTeamMembers: () => Promise<void>;
@@ -42,6 +43,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       organizations: [],
       teamMembers: [],
       loading: false,
+      demoMode: false,
 
       getOrganizationId: () => {
         const { currentOrganization } = get();

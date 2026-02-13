@@ -47,7 +47,7 @@ export default function PublicInvoiceView() {
         return;
       }
 
-      const invoiceData = await invoiceService.getInvoice(validation.link.document_id);
+      const invoiceData = await invoiceService.getInvoice(validation.link.document_id, validation.link.organization_id);
       if (!invoiceData) {
         setError('Invoice not found');
         setLoading(false);
@@ -180,7 +180,7 @@ export default function PublicInvoiceView() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className={`px-8 py-6 ${isOverdue ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-blue-600 to-blue-700'}`}>
+          <div className={`px - 8 py - 6 ${isOverdue ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-blue-600 to-blue-700'} `}>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-1">Invoice</h1>
@@ -211,14 +211,14 @@ export default function PublicInvoiceView() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Due Date:</span>
-                    <span className={`font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    <span className={`font - medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'} `}>
                       {new Date(invoice.due_date).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                      {invoice.status.toUpperCase()}
+                    <span className={`inline - flex items - center px - 2.5 py - 0.5 rounded - full text - xs font - medium ${getStatusColor(invoice.status || 'draft')} `}>
+                      {(invoice.status || 'draft').toUpperCase()}
                     </span>
                   </div>
                 </div>
@@ -324,7 +324,7 @@ export default function PublicInvoiceView() {
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
                       <span className="text-lg font-bold text-gray-900 dark:text-white">Amount Due:</span>
-                      <span className={`text-lg font-bold ${isOverdue ? 'text-red-600' : 'text-orange-600'}`}>
+                      <span className={`text - lg font - bold ${isOverdue ? 'text-red-600' : 'text-orange-600'} `}>
                         ${invoice.amount_due.toFixed(2)}
                       </span>
                     </div>

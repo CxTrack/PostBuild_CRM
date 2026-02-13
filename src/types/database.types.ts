@@ -16,6 +16,20 @@ export interface Organization {
   subscription_tier: 'free' | 'business' | 'elite_premium' | 'enterprise';
   max_users: number;
   metadata: Record<string, any>;
+  business_email?: string | null;
+  business_phone?: string | null;
+  business_address?: string | null;
+  business_city?: string | null;
+  business_state?: string | null;
+  business_postal_code?: string | null;
+  business_country?: string | null;
+  business_website?: string | null;
+  quote_prefix?: string;
+  invoice_prefix?: string;
+  default_payment_terms?: string;
+  stripe_publishable_key?: string | null;
+  default_quote_template_id?: string | null;
+  default_invoice_template_id?: string | null;
   created_at: string;
   updated_at: string;
 }

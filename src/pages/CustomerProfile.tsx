@@ -231,7 +231,7 @@ export const CustomerProfile: React.FC = () => {
             notes={notes}
             contacts={contacts}
             onAddContact={addContact}
-            onDeleteContact={deleteContact}
+            onDeleteContact={(contactId) => deleteContact(contactId, id || '')}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
@@ -316,7 +316,7 @@ function OverviewTab({
   notes: any[];
   contacts: any[];
   onAddContact: (contact: any) => Promise<void>;
-  onDeleteContact: (id: string) => Promise<void>;
+  onDeleteContact: (id: string, customerId: string) => Promise<void>;
 }) {
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
 
@@ -412,7 +412,7 @@ function OverviewTab({
                     <button
                       onClick={() => {
                         if (confirm('Remove this contact?')) {
-                          onDeleteContact(contact.id);
+                          onDeleteContact(contact.id, customer.id);
                         }
                       }}
                       className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"

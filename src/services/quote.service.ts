@@ -1,10 +1,9 @@
 import { supabase } from '../lib/supabase';
-import { useOrganizationStore } from '../stores/organizationStore';
 
 export interface QuoteLineItem {
   id?: string;
   product_id?: string;
-  product_type?: 'product' | 'service';
+  product_type?: 'product' | 'service' | 'bundle';
   product_name: string;
   description?: string;
   quantity: number;
@@ -72,22 +71,11 @@ export const quoteService = {
     return `${prefix}-${String(lastNumber + 1).padStart(4, '0')}`;
   },
 
-  async createQuote(quoteData: QuoteFormData): Promise<Quote> {
-    const orgStore = useOrganizationStore.getState();
-    const currentOrg = orgStore.currentOrganization;
-
-    if (!currentOrg) {
-      throw new Error('No organization available');
-    }
-
-    const organizationId = currentOrg.id;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('Not authenticated');
-    }
-    const userId = user.id;
-
+  async createQuote(
+    organizationId: string,
+    userId: string,
+    quoteData: QuoteFormData
+  ): Promise<Quote> {
     const quoteNumber = await this.generateQuoteNumber(organizationId);
 
     const quoteInsertData: any = {
@@ -110,7 +98,9 @@ export const quoteService = {
       status: quoteData.status || 'draft',
     };
 
-    quoteInsertData.created_by = userId;
+    if (userId && userId !== '00000000-0000-0000-0000-000000000001') {
+      quoteInsertData.created_by = userId;
+    }
 
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
@@ -188,8 +178,13 @@ export const quoteService = {
 
   async updateQuote(
     quoteId: string,
-    updates: Partial<QuoteFormData>
+    updates: Partial<QuoteFormData>,
+    organizationId: string
   ): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error: quoteError } = await supabase
       .from('quotes')
       .update({
@@ -209,14 +204,20 @@ export const quoteService = {
         terms: updates.terms,
         status: updates.status,
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (quoteError) throw quoteError;
 
     if (updates.items) {
-      await supabase.from('quote_items').delete().eq('quote_id', quoteId);
+      // Fetch existing items first for potential rollback
+      const { data: existingItems } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
 
-      const items = updates.items.map(item => ({
+      // Prepare new items
+      const newItems = updates.items.map(item => ({
         quote_id: quoteId,
         product_id: item.product_id,
         product_name: item.product_name,
@@ -231,60 +232,95 @@ export const quoteService = {
         sort_order: item.sort_order,
       }));
 
+      // Delete existing items
+      await supabase.from('quote_items').delete().eq('quote_id', quoteId);
+
+      // Insert new items
       const { error: itemsError } = await supabase
         .from('quote_items')
-        .insert(items);
+        .insert(newItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Attempt to restore old items on failure
+        if (existingItems && existingItems.length > 0) {
+          const restoredItems = existingItems.map(({ id, ...rest }) => rest);
+          await supabase.from('quote_items').insert(restoredItems);
+        }
+        throw new Error(`Failed to update quote items: ${itemsError.message}`);
+      }
     }
   },
 
-  async deleteQuote(quoteId: string): Promise<void> {
+  async deleteQuote(quoteId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('quotes')
       .delete()
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async sendQuote(quoteId: string): Promise<void> {
+  async sendQuote(quoteId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('quotes')
       .update({
         status: 'sent',
         sent_at: new Date().toISOString(),
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async markAsViewed(quoteId: string): Promise<void> {
+  async markAsViewed(quoteId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('quotes')
       .update({
         status: 'viewed',
         viewed_at: new Date().toISOString(),
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async acceptQuote(quoteId: string): Promise<void> {
+  async acceptQuote(quoteId: string, organizationId: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('quotes')
       .update({
         status: 'accepted',
         accepted_at: new Date().toISOString(),
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },
 
-  async declineQuote(quoteId: string, reason?: string): Promise<void> {
+  async declineQuote(quoteId: string, organizationId: string, reason?: string): Promise<void> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     const { error } = await supabase
       .from('quotes')
       .update({
@@ -292,7 +328,8 @@ export const quoteService = {
         declined_at: new Date().toISOString(),
         decline_reason: reason,
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
   },

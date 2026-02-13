@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
 
 interface UserPreferences {
@@ -38,7 +39,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                 return;
             }
 
-            const orgId = localStorage.getItem('current_organization_id');
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
             if (!orgId) {
                 set({ isLoading: false });
                 return;
@@ -75,7 +76,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const orgId = localStorage.getItem('current_organization_id');
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
             if (!orgId) return;
 
             await supabase
@@ -105,7 +106,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const orgId = localStorage.getItem('current_organization_id');
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
             if (!orgId) return;
 
             await supabase
@@ -135,7 +136,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const orgId = localStorage.getItem('current_organization_id');
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
             if (!orgId) return;
 
             await supabase
@@ -165,7 +166,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const orgId = localStorage.getItem('current_organization_id');
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
             if (!orgId) return;
 
             await supabase

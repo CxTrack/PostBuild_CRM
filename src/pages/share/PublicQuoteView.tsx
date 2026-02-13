@@ -47,7 +47,7 @@ export default function PublicQuoteView() {
         return;
       }
 
-      const quoteData = await quoteService.getQuote(validation.link.document_id);
+      const quoteData = await quoteService.getQuote(validation.link.document_id, validation.link.organization_id);
       if (!quoteData) {
         setError('Quote not found');
         setLoading(false);

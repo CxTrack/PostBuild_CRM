@@ -26,7 +26,7 @@ interface CustomerStore {
   fetchContacts: (customerId: string) => Promise<void>;
   addContact: (contact: Partial<CustomerContact>) => Promise<void>;
   updateContact: (id: string, updates: Partial<CustomerContact>) => Promise<void>;
-  deleteContact: (id: string) => Promise<void>;
+  deleteContact: (id: string, customerId: string) => Promise<void>;
 
   files: CustomerFile[];
   fetchFiles: (customerId: string) => Promise<void>;
@@ -135,11 +135,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   updateCustomer: async (id: string, updates: Partial<Customer>) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected', loading: false });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('customers')
         .update(updates)
         .eq('id', id)
+        .eq('organization_id', organizationId)
         .select()
         .single();
 
@@ -158,11 +165,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   deleteCustomer: async (id: string) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected', loading: false });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('customers')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
 
@@ -219,11 +233,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   updateNote: async (id: string, updates: Partial<CustomerNote>) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected', loading: false });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('customer_notes')
         .update(updates)
         .eq('id', id)
+        .eq('organization_id', organizationId)
         .select()
         .single();
 
@@ -237,8 +258,19 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   deleteNote: async (id: string) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected', loading: false });
+      return;
+    }
+
     try {
-      const { error } = await supabase.from('customer_notes').delete().eq('id', id);
+      const { error } = await supabase
+        .from('customer_notes')
+        .delete()
+        .eq('id', id)
+        .eq('organization_id', organizationId);
+
       if (error) throw error;
       set((state) => ({ notes: state.notes.filter(n => n.id !== id), loading: false }));
     } catch (error: any) {
@@ -293,11 +325,35 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     }
   },
 
-  deleteContact: async (id: string) => {
+  deleteContact: async (id: string, customerId: string) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected', loading: false });
+      return;
+    }
+
     try {
-      const { error } = await supabase.from('customer_contacts').delete().eq('id', id);
+      // Verify contact belongs to a customer in this organization
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', customerId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (!customer) {
+        set({ error: 'Access denied', loading: false });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('customer_contacts')
+        .delete()
+        .eq('id', id)
+        .eq('customer_id', customerId);
+
       if (error) throw error;
       set((state) => ({ contacts: state.contacts.filter(c => c.id !== id), loading: false }));
     } catch (error: any) {

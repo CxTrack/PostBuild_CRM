@@ -10,11 +10,25 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+
+interface OrganizationInfo {
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { currentOrganization } = useOrganizationStore();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +41,7 @@ export default function InvoiceDetail() {
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareModalTab, setShareModalTab] = useState<'email' | 'link' | 'pdf' | 'sms'>('link');
+  const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -35,13 +50,17 @@ export default function InvoiceDetail() {
   }, [id]);
 
   const loadInvoice = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     try {
       setLoading(true);
-      const data = await invoiceService.getInvoice(id);
-      setInvoice(data);
-      if (data) {
-        setPaymentAmount(data.amount_due.toString());
+      const [invoiceData, orgInfo] = await Promise.all([
+        invoiceService.getInvoice(id, currentOrganization.id),
+        settingsService.getOrganizationForPDF(currentOrganization.id)
+      ]);
+      setInvoice(invoiceData);
+      setOrganizationInfo(orgInfo);
+      if (invoiceData) {
+        setPaymentAmount(invoiceData.amount_due.toString());
       }
     } catch (error) {
       console.error('Failed to load invoice:', error);
@@ -52,9 +71,9 @@ export default function InvoiceDetail() {
   };
 
   const handleSend = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     try {
-      await invoiceService.sendInvoice(id);
+      await invoiceService.sendInvoice(id, currentOrganization.id);
       toast.success('Invoice sent successfully');
       loadInvoice();
     } catch (error) {
@@ -64,11 +83,11 @@ export default function InvoiceDetail() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     if (!confirm('Are you sure you want to delete this invoice?')) return;
 
     try {
-      await invoiceService.deleteInvoice(id);
+      await invoiceService.deleteInvoice(id, currentOrganization.id);
       toast.success('Invoice deleted successfully');
       navigate(-1);
     } catch (error) {
@@ -494,11 +513,14 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      {showShareModal && invoice && currentOrganization && (
+      {showShareModal && invoice && currentOrganization && user && organizationInfo && (
         <ShareModal
+          isOpen={showShareModal}
           documentType="invoice"
           document={invoice}
           organizationId={currentOrganization.id}
+          userId={user.id}
+          organizationInfo={organizationInfo}
           initialTab={shareModalTab}
           onClose={() => setShowShareModal(false)}
         />

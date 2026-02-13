@@ -140,6 +140,7 @@ export interface Quote {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  items?: QuoteItem[];
 }
 
 export interface QuoteItem {
@@ -201,6 +202,7 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  items?: InvoiceItem[];
 }
 
 export interface InvoiceItem {

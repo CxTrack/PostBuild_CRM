@@ -16,6 +16,7 @@ import ShareModal from '@/components/share/ShareModal';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import { User, ArrowLeft } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { getCustomerFullName } from '@/utils/customer.utils';
 
@@ -26,7 +27,7 @@ export default function InvoiceBuilder() {
   const { currentOrganization, demoMode, getOrganizationId } = useOrganizationStore();
   const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts, createProduct } = useProductStore();
-  const { createInvoice: createInvoiceStore, updateInvoice: updateInvoiceStore, getInvoiceById } = useInvoiceStore();
+  const { updateInvoice: updateInvoiceStore, getInvoiceById } = useInvoiceStore();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showProductCatalog, setShowProductCatalog] = useState(false);
@@ -36,6 +37,8 @@ export default function InvoiceBuilder() {
   const [savedInvoice, setSavedInvoice] = useState<any>(null);
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const { user } = useAuthContext();
+  const [organizationInfo, setOrganizationInfo] = useState<any>(null);
 
   const [formData, setFormData] = useState<InvoiceFormData>({
     customer_id: '',
@@ -88,7 +91,11 @@ export default function InvoiceBuilder() {
   const loadSettings = async () => {
     if (!currentOrganization) return;
     try {
-      const settings = await settingsService.getBusinessSettings(currentOrganization.id);
+      const [settings, orgInfo] = await Promise.all([
+        settingsService.getBusinessSettings(currentOrganization.id),
+        settingsService.getOrganizationForPDF(currentOrganization.id)
+      ]);
+      setOrganizationInfo(orgInfo);
       if (settings?.default_payment_terms) {
         setFormData(prev => ({ ...prev, payment_terms: settings.default_payment_terms }));
       }
@@ -106,7 +113,8 @@ export default function InvoiceBuilder() {
       if (demoMode) {
         invoice = getInvoiceById(id);
       } else {
-        invoice = await invoiceService.getInvoice(id);
+        const organizationId = getOrganizationId();
+        invoice = await invoiceService.getInvoice(id, organizationId) as any;
       }
 
       if (invoice) {
@@ -223,8 +231,8 @@ export default function InvoiceBuilder() {
   const handleItemBlur = async (index: number) => {
     const item = formData.items[index];
 
-    if (!item.product_type) {
-      console.log('⚠️ Cannot save: Type not selected');
+    if (!item.product_type || item.product_type === 'bundle') {
+      console.log('⚠️ Cannot save: Type not selected or is bundle');
       return;
     }
 
@@ -250,7 +258,10 @@ export default function InvoiceBuilder() {
         price: item.unit_price
       });
 
+      const organizationId = getOrganizationId();
+
       const newProduct = await createProduct({
+        organization_id: organizationId,
         name: item.product_name.trim(),
         description: item.description?.trim() || '',
         product_type: item.product_type,
@@ -346,48 +357,34 @@ export default function InvoiceBuilder() {
       return;
     }
 
-    let organizationId: string;
-    let userId: string;
-
-    try {
-      organizationId = getOrganizationId();
-      userId = currentOrganization?.id || organizationId;
-    } catch (error: any) {
-      console.error('Organization error:', error);
-      toast.error('No organization available. Please ensure you are logged in or demo mode is enabled.');
-      return;
-    }
-
     try {
       setSaving(true);
+      const organizationId = getOrganizationId();
 
       if (id) {
         if (demoMode) {
-          await updateInvoiceStore(id, { ...formData, status: 'draft' });
+          await updateInvoiceStore(id, { ...formData, status: 'draft' } as any);
           const invoice = getInvoiceById(id);
           setSavedInvoice(invoice);
         } else {
-          await invoiceService.updateInvoice(id, { ...formData, status: 'draft' });
-          const invoice = await invoiceService.getInvoice(id);
+          await invoiceService.updateInvoice(id, { ...formData, status: 'draft' }, organizationId);
+          const invoice = await invoiceService.getInvoice(id, organizationId);
           setSavedInvoice(invoice);
         }
         toast.success('Invoice saved as draft');
       } else {
-        const invoiceData: any = {
-          organization_id: organizationId,
-          created_by: userId,
-          ...formData,
-          status: 'draft'
-        };
-
-        const invoice = await createInvoiceStore(invoiceData);
-        if (invoice) {
-          setSavedInvoice(invoice);
-          toast.success('Invoice saved as draft');
-          window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
-        } else {
-          throw new Error('Failed to create invoice');
+        if (!user) {
+          toast.error('You must be logged in to save an invoice');
+          return;
         }
+        const invoice = await invoiceService.createInvoice(
+          organizationId,
+          user.id,
+          { ...formData, status: 'draft' }
+        );
+        setSavedInvoice(invoice);
+        toast.success('Invoice saved as draft');
+        window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
       }
     } catch (error: any) {
       console.error('Failed to save invoice:', error);
@@ -412,49 +409,35 @@ export default function InvoiceBuilder() {
       return;
     }
 
-    let organizationId: string;
-    let userId: string;
-
-    try {
-      organizationId = getOrganizationId();
-      userId = currentOrganization?.id || organizationId;
-    } catch (error: any) {
-      console.error('Organization error:', error);
-      toast.error('No organization available. Please ensure you are logged in or demo mode is enabled.');
-      return;
-    }
-
     try {
       setSaving(true);
+      const organizationId = getOrganizationId();
 
       if (id) {
         if (demoMode) {
-          await updateInvoiceStore(id, { ...formData, status: 'sent' });
+          await updateInvoiceStore(id, { ...formData, status: 'sent' } as any);
           const invoice = getInvoiceById(id);
           setSavedInvoice(invoice);
         } else {
-          await invoiceService.updateInvoice(id, { ...formData, status: 'sent' });
-          const invoice = await invoiceService.getInvoice(id);
+          await invoiceService.updateInvoice(id, { ...formData, status: 'sent' }, organizationId);
+          const invoice = await invoiceService.getInvoice(id, organizationId);
           setSavedInvoice(invoice);
         }
         toast.success('Invoice finalized successfully');
       } else {
-        const invoiceData: any = {
-          organization_id: organizationId,
-          created_by: userId,
-          ...formData,
-          status: 'sent'
-        };
-
-        const invoice = await createInvoiceStore(invoiceData);
-        if (invoice) {
-          setSavedInvoice(invoice);
-          toast.success('Invoice created successfully');
-          setShowSuccessModal(true);
-          window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
-        } else {
-          throw new Error('Failed to create invoice');
+        if (!user) {
+          toast.error('You must be logged in to create an invoice');
+          return;
         }
+        const invoice = await invoiceService.createInvoice(
+          organizationId,
+          user.id,
+          { ...formData, status: 'sent' }
+        );
+        setSavedInvoice(invoice);
+        toast.success('Invoice created successfully');
+        setShowSuccessModal(true);
+        window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
       }
     } catch (error: any) {
       console.error('Failed to create invoice:', error);
@@ -946,12 +929,12 @@ export default function InvoiceBuilder() {
                     </span>
                   </div>
                 </div>
-                {formData.amount_paid > 0 && (
+                {(formData.amount_paid ?? 0) > 0 && (
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Amount Paid</span>
                       <span className="font-medium text-green-600">
-                        ${formData.amount_paid.toFixed(2)}
+                        ${(formData.amount_paid ?? 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -967,20 +950,15 @@ export default function InvoiceBuilder() {
           </div>
         </div>
 
-        {savedInvoice && currentOrganization && (
+        {savedInvoice && currentOrganization && user && organizationInfo && (
           <ShareModal
             isOpen={showShareModal}
             onClose={() => setShowShareModal(false)}
             documentType="invoice"
             document={savedInvoice}
             organizationId={currentOrganization.id}
-            userId={currentOrganization.id}
-            organizationInfo={{
-              name: currentOrganization.name,
-              address: currentOrganization.address || '',
-              phone: currentOrganization.phone || '',
-              email: currentOrganization.email || '',
-            }}
+            userId={user.id}
+            organizationInfo={organizationInfo}
             initialTab={shareModalTab}
           />
         )}
