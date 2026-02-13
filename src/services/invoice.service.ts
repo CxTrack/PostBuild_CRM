@@ -190,12 +190,18 @@ export const invoiceService = {
     return invoice;
   },
 
-  async getInvoice(invoiceId: string): Promise<Invoice | null> {
-    const { data: invoice, error: invoiceError } = await supabase
+  async getInvoice(invoiceId: string, organizationId?: string): Promise<Invoice | null> {
+    let query = supabase
       .from('invoices')
       .select('*')
-      .eq('id', invoiceId)
-      .maybeSingle();
+      .eq('id', invoiceId);
+
+    // Add organization filter if provided (required for security)
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data: invoice, error: invoiceError } = await query.maybeSingle();
 
     if (invoiceError) throw invoiceError;
     if (!invoice) return null;

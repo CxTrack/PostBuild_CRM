@@ -144,12 +144,18 @@ export const quoteService = {
     return { ...quote, items: quoteData.items };
   },
 
-  async getQuote(quoteId: string): Promise<Quote | null> {
-    const { data: quote, error: quoteError } = await supabase
+  async getQuote(quoteId: string, organizationId?: string): Promise<Quote | null> {
+    let query = supabase
       .from('quotes')
       .select('*')
-      .eq('id', quoteId)
-      .maybeSingle();
+      .eq('id', quoteId);
+
+    // Add organization filter if provided (required for security)
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data: quote, error: quoteError } = await query.maybeSingle();
 
     if (quoteError) throw quoteError;
     if (!quote) return null;
