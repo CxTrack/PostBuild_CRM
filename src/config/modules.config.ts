@@ -189,11 +189,18 @@ export const INDUSTRY_LABELS: Record<string, any> = {
 };
 
 export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
-  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices'],
+  // Free tier gets all modules during 30-day trial, then restricted
+  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls'],
   business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products'],
   elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
   enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
 };
+
+// Modules that are only available during free trial (30 days) - will be locked after
+export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls'];
+
+// Trial duration in days
+export const FREE_TRIAL_DAYS = 30;
 
 // ============================================================================
 // PAGE LABELS - Industry-specific page content

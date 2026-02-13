@@ -23,6 +23,7 @@ import {
   MessageCircle,
   BarChart3,
   Lock,
+  Clock,
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -43,6 +44,8 @@ type NavItem = {
   label: string;
   tourId?: string;
   isLocked?: boolean;
+  isTrialFeature?: boolean;
+  trialDaysRemaining?: number | null;
 };
 
 
@@ -155,6 +158,8 @@ export const DashboardLayout = () => {
           icon: MODULE_ICONS[m.id] || Package,
           label: m.name, // This comes from industry template labels
           isLocked: m.isLocked,
+          isTrialFeature: m.isTrialFeature,
+          trialDaysRemaining: m.trialDaysRemaining,
           tourId: MODULE_TOUR_IDS[m.id]
         });
       }
@@ -278,10 +283,17 @@ export const DashboardLayout = () => {
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   } ${item.isLocked ? 'opacity-60' : ''}`
               }
+              title={item.isTrialFeature ? `Trial feature - ${item.trialDaysRemaining} days remaining` : undefined}
             >
               <item.icon size={20} className="mr-3" />
               <span className="font-medium">{item.label}</span>
               {item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
+              {item.isTrialFeature && !item.isLocked && (
+                <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
+                  <Clock size={10} />
+                  {item.trialDaysRemaining}d
+                </span>
+              )}
             </Link>
           ))}
 
