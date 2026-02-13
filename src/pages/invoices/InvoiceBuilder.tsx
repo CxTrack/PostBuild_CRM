@@ -517,7 +517,7 @@ export default function InvoiceBuilder() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate('/invoices')}>
+            <Button variant="outline" onClick={() => navigate(-1)}>
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>

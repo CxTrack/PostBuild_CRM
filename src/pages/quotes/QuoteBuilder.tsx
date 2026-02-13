@@ -448,7 +448,7 @@ export default function QuoteBuilder() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate('/quotes')}>
+            <Button variant="outline" onClick={() => navigate(-1)}>
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
@@ -563,8 +563,8 @@ export default function QuoteBuilder() {
                             type="button"
                             onClick={() => updateLineItem(index, 'product_type', 'product')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${item.product_type === 'product'
-                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
+                              ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
                               }`}
                           >
                             <Package size={18} />
@@ -575,8 +575,8 @@ export default function QuoteBuilder() {
                             type="button"
                             onClick={() => updateLineItem(index, 'product_type', 'service')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${item.product_type === 'service'
-                                ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
+                              ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
                               }`}
                           >
                             <Briefcase size={18} />
