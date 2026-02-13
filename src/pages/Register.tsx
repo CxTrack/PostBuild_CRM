@@ -1,31 +1,56 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getSafeErrorMessage } from '@/utils/errorHandler';
-import { validateEmail, validateRequired, validateMinLength } from '@/utils/validation';
+import { supabase } from '@/lib/supabase';
+
+const INDUSTRIES = [
+  { value: 'contractors_home_services', label: 'Contractors & Home Services' },
+  { value: 'distribution_logistics', label: 'Distribution & Logistics' },
+  { value: 'gyms_fitness', label: 'Gyms & Fitness' },
+  { value: 'tax_accounting', label: 'Tax & Accounting' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'legal_services', label: 'Legal Services' },
+  { value: 'software_development', label: 'Software Development' },
+  { value: 'mortgage_broker', label: 'Mortgage Broker' },
+  { value: 'construction', label: 'Construction' },
+  { value: 'general_business', label: 'General Business' },
+];
+
+const formatPhoneNumber = (value: string) => {
+  const cleaned = value.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  if (match) {
+    let formatted = '';
+    if (match[1]) formatted = `(${match[1]}`;
+    if (match[1]?.length === 3) formatted += ') ';
+    if (match[2]) formatted += match[2];
+    if (match[2]?.length === 3) formatted += '-';
+    if (match[3]) formatted += match[3];
+    return formatted;
+  }
+  return value;
+};
 
 export const Register: React.FC = () => {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signUp } = useAuthStore();
-  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    company: '',
+    industry: 'general_business',
+    phone: '',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
+    if (formData.password.length < 8) {
       toast.error('Password must be at least 8 characters');
       return;
     }
@@ -33,30 +58,91 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      // Validate email
-      const emailValidation = validateEmail(email);
-      if (!emailValidation.isValid) {
-        toast.error(emailValidation.error!);
-        return;
+      // 1. Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: `${formData.firstName} ${formData.lastName}`,
+          }
+        }
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      const userId = authData.user.id;
+
+      // 2. Create organization with 30-day trial (enterprise tier)
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: formData.company || `${formData.firstName}'s Business`,
+          slug: formData.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${userId.slice(0, 8)}`,
+          industry_template: formData.industry,
+          subscription_tier: 'enterprise', // 30-day trial with full access
+          primary_color: '#FFD700',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          business_hours: { start: '09:00', end: '17:00' },
+          enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+          max_users: 10,
+          metadata: {
+            trial_started_at: new Date().toISOString(),
+            signup_source: 'crm_register'
+          },
+        })
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      // 3. Create organization_members record
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: orgData.id,
+          user_id: userId,
+          role: 'owner',
+          permissions: {},
+          calendar_delegation: [],
+          can_view_team_calendars: true,
+        });
+
+      if (memberError) throw memberError;
+
+      // 4. Update user_profiles with organization_id and full_name
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone || null,
+          default_org_id: orgData.id,
+        })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.warn('Profile update warning:', profileError);
+        // Non-fatal - profile might be created by trigger
       }
 
-      // Validate password
-      const passwordValidation = validateMinLength(password, 8, 'Password');
-      if (!passwordValidation.isValid) {
-        toast.error(passwordValidation.error!);
-        return;
-      }
-
-      await signUp(email, password, fullName);
-      toast.success('Account created! Please check your email to verify.', {
+      toast.success('Account created! Redirecting to dashboard...', {
         style: {
           background: '#1a1a1a',
           color: '#FFD700',
           border: '1px solid rgba(255,215,0,0.2)'
         }
       });
-    } catch (error: any) {
-      toast.error(getSafeErrorMessage(error, 'auth'));
+
+      // Small delay for toast visibility, then navigate
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+
+    } catch (error: unknown) {
+      console.error('Signup error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -73,63 +159,81 @@ export const Register: React.FC = () => {
       <div className="relative z-10 w-full max-w-md">
         <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
           <div className="flex flex-col items-center mb-8">
-            <img
-              src="/cxtrack-logo.png"
-              alt="CxTrack"
-              className="h-12 mb-6 opacity-90"
-            />
+            <Link to="/">
+              <img
+                src="/logo.svg"
+                alt="CxTrack"
+                className="h-12 mb-6 opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
+              />
+            </Link>
             <h1 className="text-3xl font-bold text-white tracking-tight text-center">
               Create Your Account
             </h1>
             <p className="text-white/40 text-sm mt-2 text-center max-w-[280px]">
-              Get started with CxTrack
+              Start your 30-day free trial with full access
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label htmlFor="fullName" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Full Name
-              </label>
-              <input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                required
-              />
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  required
+                />
+              </div>
             </div>
 
+            {/* Email */}
             <div className="space-y-1">
-              <label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Email Address
+              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                Work Email
               </label>
               <input
-                id="email"
                 type="email"
-                placeholder="name@business.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                placeholder="john@company.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                 required
               />
             </div>
 
+            {/* Password */}
             <div className="space-y-1">
-              <label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
                 Password
               </label>
               <div className="relative">
                 <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   required
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -142,46 +246,78 @@ export const Register: React.FC = () => {
               </div>
             </div>
 
+            {/* Company Name */}
             <div className="space-y-1">
-              <label htmlFor="confirmPassword" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Confirm Password
+              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                Company Name
+              </label>
+              <input
+                type="text"
+                placeholder="Acme Corp"
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                required
+              />
+            </div>
+
+            {/* Industry */}
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                Industry
               </label>
               <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                <select
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all appearance-none cursor-pointer"
                   required
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  tabIndex={-1}
                 >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  {INDUSTRIES.map((ind) => (
+                    <option key={ind.value} value={ind.value} className="bg-black text-white">
+                      {ind.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
               </div>
             </div>
 
+            {/* Phone (Optional) */}
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+                Phone <span className="text-white/30">(Optional)</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="(555) 123-4567"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                maxLength={14}
+              />
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
+              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-4 flex items-center justify-center gap-2"
             >
               {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <>
+                  <Loader2 className="animate-spin h-5 w-5" />
                   Creating Account...
-                </span>
+                </>
               ) : (
-                'Create Account'
+                <>
+                  Start Free Trial
+                  <ArrowRight size={18} />
+                </>
               )}
             </button>
           </form>
@@ -195,7 +331,7 @@ export const Register: React.FC = () => {
         </div>
 
         <p className="text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
-          &copy; 2026 CxTrack Intelligent Systems. Proprietary Access Only.
+          © 2026 CxTrack Intelligent Systems. Proprietary Access Only.
         </p>
       </div>
     </main>
