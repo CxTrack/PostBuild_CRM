@@ -43,6 +43,8 @@ import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 
 // Onboarding Pages
 import SelectServicePage from './pages/onboarding/SelectServicePage';
+import PlanPage from './pages/onboarding/PlanPage';
+
 
 // Diagnostic component to track route changes
 const RouteChangeTracker = () => {
@@ -97,6 +99,8 @@ export default function App() {
 
           {/* Onboarding Routes (Public - user creates account during onboarding) */}
           <Route path="/onboarding/select-service" element={<SelectServicePage />} />
+          <Route path="/onboarding/plan" element={<PlanPage />} />
+
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}
           <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
