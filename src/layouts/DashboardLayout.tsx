@@ -24,6 +24,7 @@ import {
   BarChart3,
   Lock,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -241,14 +242,27 @@ export const DashboardLayout = () => {
           : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
           } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
       >
-        {/* Logo */}
+        {/* Logo + Upgrade Button */}
         <div className={theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} data-tour="sidebar">
-          <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
-          {currentOrganization?.industry_template && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
-              {currentOrganization.industry_template.replace(/_/g, ' ')}
-            </p>
-          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
+              {currentOrganization?.industry_template && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
+                  {currentOrganization.industry_template.replace(/_/g, ' ')}
+                </p>
+              )}
+            </div>
+            {currentOrganization?.subscription_tier === 'free' && (
+              <Link
+                to="/dashboard/upgrade"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-105"
+              >
+                <Sparkles size={14} />
+                Upgrade
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
@@ -283,14 +297,14 @@ export const DashboardLayout = () => {
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   } ${item.isLocked ? 'opacity-60' : ''}`
               }
-              title={item.isTrialFeature ? `Trial feature - ${item.trialDaysRemaining} days remaining` : undefined}
+              title={item.isTrialFeature ? `🎁 Premium feature free for ${item.trialDaysRemaining} days! Upgrade to keep access forever.` : undefined}
             >
               <item.icon size={20} className="mr-3" />
               <span className="font-medium">{item.label}</span>
               {item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
               {item.isTrialFeature && !item.isLocked && (
-                <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
-                  <Clock size={10} />
+                <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded" title={`Premium feature - ${item.trialDaysRemaining} days left in trial`}>
+                  <Sparkles size={10} />
                   {item.trialDaysRemaining}d
                 </span>
               )}
