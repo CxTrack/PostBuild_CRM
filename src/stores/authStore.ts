@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@supabase/supabase-js';
 
@@ -33,13 +33,12 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ loading: true });
 
-        // 0️⃣ Check for tokens in URL (from marketing site OAuth redirect)
+        // 0ï¸âƒ£ Check for tokens in URL (from marketing site OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
         const accessToken = urlParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
-          console.log('[Auth] Found tokens in URL, setting session...');
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -59,11 +58,10 @@ export const useAuthStore = create<AuthState>()(
             window.history.replaceState({}, '', cleanUrl);
             return;
           } else {
-            console.error('[Auth] Failed to set session from tokens:', error);
           }
         }
 
-        // 1️⃣ Load existing session (Supabase handles refresh automatically)
+        // 1ï¸âƒ£ Load existing session (Supabase handles refresh automatically)
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
@@ -81,9 +79,8 @@ export const useAuthStore = create<AuthState>()(
 
         set({ initialized: true, loading: false });
 
-        // 2️⃣ Subscribe to auth changes (CRITICAL)
+        // 2ï¸âƒ£ Subscribe to auth changes (CRITICAL)
         supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-          console.log('[Supabase auth event]', event);
 
           if (!session || event === 'SIGNED_OUT') {
             set({ user: null, profile: null });
@@ -131,7 +128,6 @@ export const useAuthStore = create<AuthState>()(
           password,
         });
 
-        console.log({ data, error });
 
 
         if (error) {
@@ -202,7 +198,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
 
-      // ⚠️ Persist ONLY profile (Supabase owns session + user)
+      // âš ï¸ Persist ONLY profile (Supabase owns session + user)
       partialize: (state) => ({
         profile: state.profile,
       }),

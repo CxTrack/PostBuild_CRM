@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Mail, Link2, Download, MessageSquare, Copy, Check, AlertCircle, Eye, Calendar, Lock, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
@@ -97,7 +97,7 @@ export default function ShareModal({
         });
       }
     } catch (error) {
-      console.error('Error loading share link:', error);
+      // Error handled silently
     }
   };
 
@@ -106,7 +106,7 @@ export default function ShareModal({
       const qr = await QRCode.toDataURL(url, { width: 200, margin: 1 });
       setQrCode(qr);
     } catch (error) {
-      console.error('Error generating QR code:', error);
+      // Error handled silently
     }
   };
 
@@ -211,7 +211,6 @@ export default function ShareModal({
 
   const handleDownloadPDF = () => {
     try {
-      console.log('Download PDF clicked', { documentType, document, organizationInfo });
       if (documentType === 'quote') {
         pdfService.generateQuotePDF(document as Quote, organizationInfo);
       } else {
@@ -219,7 +218,6 @@ export default function ShareModal({
       }
       toast.success('PDF downloaded successfully');
     } catch (error: any) {
-      console.error('PDF generation error:', error);
       toast.error(getSafeErrorMessage(error, 'create'));
     }
   };
@@ -531,10 +529,10 @@ export default function ShareModal({
                   PDF Details
                 </h4>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  <li>• Professional formatting with company branding</li>
-                  <li>• Complete {documentType} details and line items</li>
-                  <li>• Ready to print or email</li>
-                  <li>• Saved as: {documentType === 'quote' ? 'Quote' : 'Invoice'}-{documentNumber}.pdf</li>
+                  <li>â€¢ Professional formatting with company branding</li>
+                  <li>â€¢ Complete {documentType} details and line items</li>
+                  <li>â€¢ Ready to print or email</li>
+                  <li>â€¢ Saved as: {documentType === 'quote' ? 'Quote' : 'Invoice'}-{documentNumber}.pdf</li>
                 </ul>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { format } from 'date-fns';
 import {
   X,
@@ -129,7 +129,6 @@ export default function AppointmentDetailModal({
       toast.success('Appointment updated successfully');
       setMode('view');
     } catch (error) {
-      console.error('Failed to update appointment:', error);
       toast.error('Failed to update appointment');
     } finally {
       setSaving(false);
@@ -357,7 +356,7 @@ function ViewMode({
                   <div className="flex-1">
                     <p className="text-gray-900 dark:text-white font-medium">{activity.summary || activity.subject}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {activity.date} {activity.duration && `• ${activity.duration}`}
+                      {activity.date} {activity.duration && `â€¢ ${activity.duration}`}
                     </p>
                   </div>
                 </div>

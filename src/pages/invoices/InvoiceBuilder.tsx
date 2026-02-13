@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -77,7 +77,6 @@ export default function InvoiceBuilder() {
     if (customerId && customers.length > 0 && !formData.customer_id) {
       const customer = customers.find(c => c.id === customerId);
       if (customer) {
-        console.log('Auto-populating customer from URL:', customer);
         setFormData(prev => ({
           ...prev,
           customer_id: customer.id,
@@ -101,7 +100,7 @@ export default function InvoiceBuilder() {
         setFormData(prev => ({ ...prev, payment_terms: settings.default_payment_terms }));
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      // Error handled silently
     }
   };
 
@@ -142,7 +141,6 @@ export default function InvoiceBuilder() {
         });
       }
     } catch (error) {
-      console.error('Failed to load invoice:', error);
       toast.error('Failed to load invoice');
     } finally {
       setLoading(false);
@@ -169,7 +167,6 @@ export default function InvoiceBuilder() {
   };
 
   const handleCustomerCreated = (newCustomer: any) => {
-    console.log('✅ Customer created, auto-selecting:', newCustomer);
     setFormData(prev => ({
       ...prev,
       customer_id: newCustomer.id,
@@ -233,31 +230,23 @@ export default function InvoiceBuilder() {
     const item = formData.items[index];
 
     if (!item.product_type || item.product_type === 'bundle') {
-      console.log('⚠️ Cannot save: Type not selected or is bundle');
       return;
     }
 
     if (!item.product_name || !item.product_name.trim()) {
-      console.log('⚠️ Cannot save: Name is empty');
       return;
     }
 
     if (!item.unit_price || item.unit_price <= 0) {
-      console.log('⚠️ Cannot save: Price must be greater than 0');
       return;
     }
 
     if (item.product_id) {
-      console.log('✅ Already saved to catalog');
       return;
     }
 
     try {
-      console.log('💾 Saving to catalog:', {
-        name: item.product_name,
-        type: item.product_type,
-        price: item.unit_price
-      });
+      
 
       const organizationId = getOrganizationId();
 
@@ -279,11 +268,9 @@ export default function InvoiceBuilder() {
 
       if (newProduct) {
         updateLineItem(index, 'product_id', newProduct.id);
-        console.log('✅ Item saved to catalog with ID:', newProduct.id);
         toast.success(`"${item.product_name}" saved to catalog`);
       }
     } catch (error: any) {
-      console.error('❌ Error saving to catalog:', error);
       toast.error(getSafeErrorMessage(error, 'create'));
     }
   };
@@ -388,7 +375,6 @@ export default function InvoiceBuilder() {
         window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
       }
     } catch (error: any) {
-      console.error('Failed to save invoice:', error);
       const errorMessage = error?.message || error?.error_description || error?.hint || 'Failed to save invoice. Please try again.';
       toast.error(errorMessage);
     } finally {
@@ -441,7 +427,6 @@ export default function InvoiceBuilder() {
         window.history.replaceState(null, '', `/invoices/builder/${invoice.id}`);
       }
     } catch (error: any) {
-      console.error('Failed to create invoice:', error);
       const errorMessage = error?.message || error?.error_description || error?.hint || 'Failed to create invoice. Please try again.';
       toast.error(errorMessage);
     } finally {
@@ -461,16 +446,12 @@ export default function InvoiceBuilder() {
         return;
       }
       try {
-        console.log('🔄 Generating PDF for invoice:', savedInvoice.invoice_number);
-        console.log('Using organization ID:', currentOrganization.id);
 
         const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
 
-        console.log('📄 Generating PDF with organization info:', organizationInfo);
         pdfService.generateInvoicePDF(savedInvoice, organizationInfo);
         toast.success('Invoice PDF downloaded');
       } catch (error) {
-        console.error('Failed to generate PDF:', error);
         toast.error('Failed to generate PDF');
       }
       return;
@@ -663,7 +644,7 @@ export default function InvoiceBuilder() {
                           />
                           {!item.product_type && item.product_name === '' && (
                             <p className="text-xs text-red-600 mt-1">
-                              ↑ Select type first
+                              â†‘ Select type first
                             </p>
                           )}
                         </div>

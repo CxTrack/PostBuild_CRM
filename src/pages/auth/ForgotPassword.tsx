@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +29,7 @@ const ForgotPassword: React.FC = () => {
         }
       });
     } catch (err) {
-      console.error('Password reset error:', err);
+      // Error handled silently
     }
   };
 

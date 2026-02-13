@@ -1,10 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
@@ -15,7 +14,6 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   },
 });
 
-console.log('🔗 Supabase client initialized');
 
 export const getCurrentUser = async () => {
   try {
@@ -23,7 +21,6 @@ export const getCurrentUser = async () => {
     if (error) throw error;
     return user;
   } catch (error) {
-    console.error('Failed to get current user:', error);
     return null;
   }
 };
@@ -38,7 +35,6 @@ export const getUserProfile = async (userId: string) => {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Failed to get user profile:', error);
     return null;
   }
 };
@@ -52,7 +48,6 @@ export const getUserOrganizations = async (userId: string) => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Failed to get user organizations:', error);
     return [];
   }
 };

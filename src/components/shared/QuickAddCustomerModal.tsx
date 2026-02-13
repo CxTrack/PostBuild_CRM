@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { X, User, Building2 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { CustomerStatus } from '@/types/database.types';
@@ -89,7 +89,6 @@ export default function QuickAddCustomerModal({
       const newCustomer = await createCustomer(customerData);
 
       if (newCustomer) {
-        console.log('✅ Quick add customer created:', newCustomer);
         toast.success('Customer created successfully');
         onCustomerCreated(newCustomer);
         onClose();
@@ -104,7 +103,6 @@ export default function QuickAddCustomerModal({
         });
       }
     } catch (error: any) {
-      console.error('❌ Error creating customer:', error);
       setError(error.message || 'Failed to create customer');
       toast.error('Failed to create customer');
     } finally {

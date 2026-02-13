@@ -1,4 +1,4 @@
-import {
+﻿import {
   Routes,
   Route,
   Navigate,
@@ -45,7 +45,6 @@ import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 const RouteChangeTracker = () => {
   const location = useLocation();
   useEffect(() => {
-    console.log('[APP DEBUG] Route changed to:', location.pathname);
   }, [location.pathname]);
   return null;
 };

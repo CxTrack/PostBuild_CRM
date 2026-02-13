@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -40,7 +40,6 @@ const Login: React.FC = () => {
         navigate('/dashboard');
       }, 300);
     } catch (err) {
-      console.error('Login error in component:', err);
       if (retryCount >= 2) {
         toast.error('Having trouble logging in? Try using a different browser or clearing your cookies.');
       }
@@ -56,7 +55,6 @@ const Login: React.FC = () => {
       setGoogleLoading(true);
       await signInWithGoogle();
     } catch (err) {
-      console.error('Google sign in error:', err);
       toast.error('Failed to sign in with Google');
     } finally {
       setGoogleLoading(false);
@@ -94,7 +92,7 @@ const Login: React.FC = () => {
               {error}
               {isIOS && retryCount >= 1 && (
                 <p className="mt-2 text-xs text-red-400/70">
-                  iOS users: If you're having trouble, try enabling "Cross-Website Tracking" in Safari Settings → Privacy & Security.
+                  iOS users: If you're having trouble, try enabling "Cross-Website Tracking" in Safari Settings â†’ Privacy & Security.
                 </p>
               )}
             </div>
@@ -134,7 +132,7 @@ const Login: React.FC = () => {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   autoComplete="current-password"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {

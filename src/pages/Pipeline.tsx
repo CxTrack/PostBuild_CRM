@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '@/stores/themeStore';
 import { useQuoteStore } from '@/stores/quoteStore';
@@ -149,7 +149,7 @@ const Pipeline: React.FC = () => {
 
         setItems(pipelineItems);
       } catch (error) {
-        console.error('Error loading pipeline data from localStorage:', error);
+        // Error handled silently
       }
 
       await Promise.all([

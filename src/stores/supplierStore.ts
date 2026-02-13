@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Supplier } from '../types/app.types';
 
@@ -33,7 +33,6 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             if (error) throw error;
             set({ suppliers: data || [], loading: false });
         } catch (error: any) {
-            console.error('Error fetching suppliers:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -46,7 +45,6 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             set((state) => ({ suppliers: [...state.suppliers, data].sort((a, b) => a.name.localeCompare(b.name)), loading: false }));
             return data;
         } catch (error: any) {
-            console.error('Error creating supplier:', error);
             set({ error: error.message, loading: false });
             return null;
         }
@@ -62,7 +60,6 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
                 loading: false,
             }));
         } catch (error: any) {
-            console.error('Error updating supplier:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -74,7 +71,6 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             if (error) throw error;
             set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id), loading: false }));
         } catch (error: any) {
-            console.error('Error deleting supplier:', error);
             set({ error: error.message, loading: false });
         }
     },

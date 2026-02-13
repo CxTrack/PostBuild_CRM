@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { StockMovement, LowStockAlert } from '../types/app.types';
 import { useOrganizationStore } from './organizationStore';
@@ -57,7 +57,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             if (error) throw error;
             set({ alerts: data || [], loading: false });
         } catch (error: any) {
-            console.error('Error fetching alerts:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -90,7 +89,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             }));
             return movementData;
         } catch (error: any) {
-            console.error('Error adding movement:', error);
             set({ error: error.message, loading: false });
             return null;
         }
@@ -109,7 +107,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 loading: false
             }));
         } catch (error: any) {
-            console.error('Error acknowledging alert:', error);
             set({ error: error.message, loading: false });
         }
     }

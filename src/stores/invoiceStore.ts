@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Invoice, InvoiceItem, Payment } from '../types/app.types';
 
@@ -43,7 +43,6 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set({ invoices: data || [], loading: false });
     } catch (error: any) {
-      console.error('Error fetching invoices:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -92,7 +91,6 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       set((state) => ({ invoices: [data, ...state.invoices], loading: false }));
       return data;
     } catch (error: any) {
-      console.error('Error creating invoice:', error);
       set({ error: error.message, loading: false });
       return null;
     }
@@ -108,7 +106,6 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error('Error updating invoice:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -120,7 +117,6 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set((state) => ({ invoices: state.invoices.filter((inv) => inv.id !== id), loading: false }));
     } catch (error: any) {
-      console.error('Error deleting invoice:', error);
       set({ error: error.message, loading: false });
     }
   },

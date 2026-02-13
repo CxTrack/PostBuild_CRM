@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import { Lead, Opportunity } from '@/types/database.types';
@@ -45,7 +45,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (error) throw error;
             set({ leads: data as Lead[], loading: false });
         } catch (error: any) {
-            console.error('Error fetching leads:', error);
             toast.error('Failed to load leads');
             set({ loading: false });
         }
@@ -70,7 +69,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (error) throw error;
             set({ opportunities: data as any[], loading: false });
         } catch (error: any) {
-            console.error('Error fetching opportunities:', error);
             toast.error('Failed to load opportunities');
             set({ loading: false });
         }
@@ -103,7 +101,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             toast.success('Lead created successfully');
             return data as Lead;
         } catch (error: any) {
-            console.error('Error creating lead:', error);
             toast.error('Failed to create lead');
             return null;
         }
@@ -139,7 +136,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             }));
             toast.success('Lead updated');
         } catch (error: any) {
-            console.error('Error updating lead:', error);
             toast.error('Failed to update lead');
         }
     },
@@ -163,7 +159,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             set(state => ({ leads: state.leads.filter(l => l.id !== id) }));
             toast.success('Lead deleted');
         } catch (error: any) {
-            console.error('Error deleting lead:', error);
             toast.error('Failed to delete lead');
         }
     },
@@ -197,7 +192,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             toast.success('Opportunity created');
             return data as Opportunity;
         } catch (error: any) {
-            console.error('Error creating opportunity:', error);
             toast.error('Failed to create opportunity');
             return null;
         }
@@ -234,7 +228,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             }));
             toast.success('Opportunity updated');
         } catch (error: any) {
-            console.error('Error updating opportunity:', error);
             toast.error('Failed to update opportunity');
         }
     },
@@ -258,7 +251,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             set(state => ({ opportunities: state.opportunities.filter(o => o.id !== id) }));
             toast.success('Opportunity deleted');
         } catch (error: any) {
-            console.error('Error deleting opportunity:', error);
             toast.error('Failed to delete opportunity');
         }
     },
@@ -302,7 +294,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
             toast.success('Lead converted to Opportunity!');
         } catch (error: any) {
-            console.error('Error converting lead:', error);
             toast.error('Failed to convert lead');
         }
     },
@@ -328,7 +319,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
                 .single();
 
             if (invError) {
-                console.warn('Could not create invoice automatically (maybe no customer_id?)', invError);
             }
 
             // 2. Update Opportunity
@@ -341,7 +331,6 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
             toast.success('Opportunity marked Won!');
         } catch (error: any) {
-            console.error('Error marking won:', error);
             toast.error('Failed to mark won');
         }
     },

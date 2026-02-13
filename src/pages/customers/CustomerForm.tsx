@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, User, Building, Mail, Phone, MapPin, Globe, Calendar, Tag } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -124,7 +124,6 @@ export default function CustomerForm() {
       }
       navigate(`/dashboard/customers/${id}`);
     } catch (error) {
-      console.error('Error saving customer:', error);
       toast.error('Failed to save customer');
     } finally {
       setSaving(false);

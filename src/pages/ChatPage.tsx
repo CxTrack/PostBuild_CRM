@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Paperclip } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -179,7 +179,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 });
 
             if (error) {
-                console.error('Error sending message:', error);
             }
         }
     };

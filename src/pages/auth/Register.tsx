@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -45,7 +45,6 @@ const Register: React.FC = () => {
         setIsCheckingLocation(false);
       })
       .catch(err => {
-        console.error('Error checking location:', err);
         setIsCheckingLocation(false);
       });
   }, [navigate]);
@@ -64,7 +63,7 @@ const Register: React.FC = () => {
         }
       });
     } catch (err) {
-      console.error('Register error in component:', err);
+      // Error handled silently
     }
   };
 
@@ -84,7 +83,6 @@ const Register: React.FC = () => {
 
       if (error) throw error;
     } catch (err) {
-      console.error('Google sign in error:', err);
       toast.error('Failed to sign in with Google');
     } finally {
       setGoogleLoading(false);
@@ -195,7 +193,7 @@ const Register: React.FC = () => {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   autoComplete="new-password"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {
@@ -228,7 +226,7 @@ const Register: React.FC = () => {
                 <input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   autoComplete="new-password"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('confirmPassword', {

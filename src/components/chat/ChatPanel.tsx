@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MessageCircle, ArrowLeft, Send, Plus, X } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -107,7 +107,6 @@ export const ChatPanel = () => {
             });
 
         if (error) {
-            console.error('Error sending message:', error);
             // Optionally restore message
             setNewMessage(messageContent);
         } else {
@@ -117,7 +116,6 @@ export const ChatPanel = () => {
     };
 
     const handleStartNewConversation = () => {
-        console.log("Start new conversation logic here");
         // Implementation depends on how you select users
     };
 

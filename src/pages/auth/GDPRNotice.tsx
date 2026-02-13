@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
@@ -26,7 +26,6 @@ const GDPRNotice: React.FC = () => {
         }
       })
       .catch(err => {
-        console.error('Error checking location:', err);
       });
   }, [navigate]);
 
@@ -112,19 +111,19 @@ const GDPRNotice: React.FC = () => {
                 </h3>
                 <ul className="space-y-3 text-gray-300">
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">•</span>
+                    <span className="text-primary-400 mr-2">â€¢</span>
                     You are located in and accessing our services from North America
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">•</span>
+                    <span className="text-primary-400 mr-2">â€¢</span>
                     Your use of our services is not subject to GDPR regulations
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">•</span>
+                    <span className="text-primary-400 mr-2">â€¢</span>
                     Data handling and privacy practices follow North American standards
                   </li>
                   <li className="flex items-start">
-                    <span className="text-primary-400 mr-2">•</span>
+                    <span className="text-primary-400 mr-2">â€¢</span>
                     You will not attempt to circumvent regional access restrictions
                   </li>
                 </ul>

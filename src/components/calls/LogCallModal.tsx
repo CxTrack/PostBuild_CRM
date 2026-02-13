@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   X,
   Phone,
@@ -149,7 +149,6 @@ export default function LogCallModal({
       resetForm();
       onClose();
     } catch (error) {
-      console.error('Error logging call:', error);
       setErrors({ submit: 'Failed to log call. Please try again.' });
     } finally {
       setIsSubmitting(false);

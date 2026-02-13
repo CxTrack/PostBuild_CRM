@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Phone,
@@ -55,7 +55,6 @@ export default function Calls() {
           fetchCallStats()
         ]);
       } catch (error) {
-        console.error('Failed to fetch calls data:', error);
         toast.error('Failed to load calls history');
       }
     };

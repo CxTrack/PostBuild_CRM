@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
@@ -96,7 +96,6 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   createEvent: async (event) => {
-    console.log('📅 Creating calendar event:', event);
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -112,17 +111,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         loading: false,
       }));
 
-      console.log('✅ Event created (database):', data);
       return data;
     } catch (error: any) {
-      console.error('❌ Error creating event:', error);
       set({ error: error.message, loading: false });
       return null;
     }
   },
 
   updateEvent: async (id, updates) => {
-    console.log('📅 Updating event:', id, updates);
     set({ loading: true, error: null });
     try {
       const { error } = await supabase
@@ -138,16 +134,13 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         ),
         loading: false,
       }));
-      console.log('✅ Event updated (database)');
     } catch (error: any) {
-      console.error('❌ Error updating event:', error);
       set({ error: error.message, loading: false });
       throw error;
     }
   },
 
   deleteEvent: async (id) => {
-    console.log('📅 Deleting event:', id);
     set({ loading: true, error: null });
     try {
       const { error } = await supabase
@@ -161,9 +154,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         events: state.events.filter((e) => e.id !== id),
         loading: false,
       }));
-      console.log('✅ Event deleted (database)');
     } catch (error: any) {
-      console.error('❌ Error deleting event:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -207,7 +198,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         });
       }
     } catch (error: any) {
-      console.error('Failed to fetch preferences:', error);
+      // Error handled silently
     }
   },
 
@@ -228,7 +219,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
           : null,
       }));
     } catch (error: any) {
-      console.error('Failed to update preferences:', error);
+      // Error handled silently
     }
   },
 }));

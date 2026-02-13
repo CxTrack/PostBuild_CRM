@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { quoteService, Quote } from '@/services/quote.service';
@@ -58,7 +58,6 @@ export default function QuoteDetail() {
       setQuote(quoteData);
       setOrganizationInfo(orgInfo);
     } catch (error) {
-      console.error('Failed to load quote:', error);
       toast.error('Failed to load quote');
     } finally {
       setLoading(false);
@@ -72,7 +71,6 @@ export default function QuoteDetail() {
       toast.success('Quote sent successfully');
       loadQuote();
     } catch (error) {
-      console.error('Failed to send quote:', error);
       toast.error('Failed to send quote');
     }
   };
@@ -86,7 +84,6 @@ export default function QuoteDetail() {
       toast.success('Quote deleted successfully');
       navigate(-1);
     } catch (error) {
-      console.error('Failed to delete quote:', error);
       toast.error('Failed to delete quote');
     }
   };
@@ -106,7 +103,6 @@ export default function QuoteDetail() {
       toast.success('Quote converted to invoice successfully');
       navigate(`/invoices/${invoice.id}`);
     } catch (error) {
-      console.error('Failed to convert quote:', error);
       toast.error('Failed to convert quote to invoice');
     } finally {
       setConverting(false);
@@ -119,16 +115,12 @@ export default function QuoteDetail() {
 
     if (option === 'pdf') {
       try {
-        console.log('🔄 Generating PDF for quote:', quote.quote_number);
-        console.log('Using organization ID:', currentOrganization.id);
 
         const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
 
-        console.log('📄 Generating PDF with organization info:', organizationInfo);
         pdfService.generateQuotePDF(quote, organizationInfo);
         toast.success('Quote PDF downloaded');
       } catch (error) {
-        console.error('Failed to generate PDF:', error);
         toast.error('Failed to generate PDF');
       }
       return;

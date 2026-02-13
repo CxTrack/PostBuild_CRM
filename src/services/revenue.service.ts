@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+﻿import { supabase } from '@/lib/supabase';
 
 export interface RevenueStats {
   current_month_revenue: number;
@@ -52,7 +52,6 @@ export const revenueService = {
 
       return data as RevenueStats;
     } catch (error) {
-      console.error('Error fetching revenue stats:', error);
       throw error;
     }
   },
@@ -122,7 +121,6 @@ export const revenueService = {
         .sort((a, b) => b.total_revenue - a.total_revenue)
         .slice(0, limit);
     } catch (error) {
-      console.error('Error fetching revenue by customer:', error);
       throw error;
     }
   },
@@ -186,7 +184,6 @@ export const revenueService = {
         .sort((a, b) => b.total_revenue - a.total_revenue)
         .slice(0, limit);
     } catch (error) {
-      console.error('Error fetching revenue by product:', error);
       throw error;
     }
   },
@@ -240,7 +237,6 @@ export const revenueService = {
 
       return monthlyData;
     } catch (error) {
-      console.error('Error fetching monthly revenue trend:', error);
       throw error;
     }
   },
@@ -313,7 +309,6 @@ export const revenueService = {
 
       if (updateError) throw updateError;
     } catch (error) {
-      console.error('Error recording payment:', error);
       throw error;
     }
   },

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Call } from '@/types/database.types';
 import { useOrganizationStore } from './organizationStore';
@@ -286,7 +286,6 @@ export const useCallStore = create<CallStore>((set, get) => ({
     if (!organizationId) return () => { };
 
     if (!supabase || typeof supabase.channel !== 'function') {
-      console.log('Supabase realtime not available, skipping subscription');
       return () => { };
     }
 
@@ -327,7 +326,6 @@ export const useCallStore = create<CallStore>((set, get) => ({
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error('Error subscribing to calls:', error);
       return () => { };
     }
   },

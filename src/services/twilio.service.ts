@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+﻿import { supabase } from '../lib/supabase';
 
 export interface TwilioSettings {
     id: string;
@@ -146,7 +146,6 @@ export const twilioService = {
 
             return response.data as SMSResult;
         } catch (error: any) {
-            console.error('SMS send error:', error);
             return { success: false, error: error.message };
         }
     },
@@ -186,7 +185,6 @@ export const twilioService = {
 
             return response.data as CallResult;
         } catch (error: any) {
-            console.error('Call initiation error:', error);
             return { success: false, error: error.message };
         }
     },

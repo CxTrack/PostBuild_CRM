@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Phone, ArrowLeft, Download, Share2, Play, Pause,
@@ -98,7 +98,6 @@ export const CallDetail = () => {
                 setLoading(false);
             }, 800);
         } catch (error) {
-            console.error('Error loading call:', error);
             setLoading(false);
         }
     };

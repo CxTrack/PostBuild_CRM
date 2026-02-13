@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -41,7 +41,7 @@ export default function Quotes() {
         fetchQuotes(orgId);
       }
     } catch (error) {
-      console.error('Failed to fetch quotes:', error);
+      // Error handled silently
     }
   }, [currentOrganization?.id, demoMode]);
 
@@ -190,7 +190,7 @@ export default function Quotes() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportButton onExport={(format) => console.log(`Exporting quotes as ${format}`)} />
+          <ExportButton onExport={(_format) => {}} />
           <button
             onClick={() => setShowReportModal(true)}
             className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"

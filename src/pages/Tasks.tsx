@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import {
@@ -78,7 +78,6 @@ export default function Tasks({ embedded = false }: TasksProps) {
         .order('due_date', { ascending: true });
 
       if (error) {
-        console.error('Failed to fetch tasks:', error);
         return;
       }
 
@@ -549,7 +548,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
                               <td className="px-3 py-3">
                                 <span className="text-sm text-slate-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
-                                  {task.customer || '—'}
+                                  {task.customer || 'â€”'}
                                 </span>
                               </td>
 
@@ -622,7 +621,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Customer</span>
-                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || '—'}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || 'â€”'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Due Date</span>

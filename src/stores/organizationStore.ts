@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import type { Organization, OrganizationMember, UserProfile } from '../types/database.types';
@@ -65,7 +65,6 @@ export const useOrganizationStore = create<OrganizationState>()(
 
       fetchUserOrganizations: async (userId: string) => {
         if (!userId) {
-          console.error('fetchUserOrganizations called without userId');
           return;
         }
 
@@ -105,7 +104,6 @@ export const useOrganizationStore = create<OrganizationState>()(
             await get().setCurrentOrganization(orgs[0].organization.id);
           }
         } catch (error) {
-          console.error('Failed to fetch organizations:', error);
           set({ loading: false });
           throw error;
         }
@@ -127,7 +125,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         try {
           await get().fetchTeamMembers();
         } catch (error) {
-          console.warn('Could not fetch team members:', error);
+          // Error handled silently
         }
       },
 
@@ -154,7 +152,6 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           set({ teamMembers: members });
         } catch (error) {
-          console.error('Failed to fetch team members:', error);
           throw error;
         }
       },

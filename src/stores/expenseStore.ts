@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Expense, ExpenseCategory } from '../types/app.types';
 
@@ -36,7 +36,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set({ expenses: data || [], loading: false });
         } catch (error: any) {
-            console.error('Error fetching expenses:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -53,7 +52,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set({ categories: data || [], loading: false });
         } catch (error: any) {
-            console.error('Error fetching categories:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -66,7 +64,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             set((state) => ({ expenses: [data, ...state.expenses], loading: false }));
             return data;
         } catch (error: any) {
-            console.error('Error creating expense:', error);
             set({ error: error.message, loading: false });
             return null;
         }
@@ -82,7 +79,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
                 loading: false,
             }));
         } catch (error: any) {
-            console.error('Error updating expense:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -94,7 +90,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id), loading: false }));
         } catch (error: any) {
-            console.error('Error deleting expense:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -107,7 +102,6 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             set((state) => ({ categories: [...state.categories, data].sort((a, b) => a.name.localeCompare(b.name)), loading: false }));
             return data;
         } catch (error: any) {
-            console.error('Error creating category:', error);
             set({ error: error.message, loading: false });
             return null;
         }

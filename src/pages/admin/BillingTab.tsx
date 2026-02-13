@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
     DollarSign, TrendingUp, TrendingDown, CreditCard, FileText,
@@ -156,7 +156,6 @@ export const BillingTab = () => {
             toast.success('Subscription canceled successfully');
             loadBillingData();
         } catch (error) {
-            console.error('Cancel error:', error);
             toast.error('Failed to cancel subscription');
         }
         setActionMenu(null);

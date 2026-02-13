@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Mail, Phone, Calendar,
@@ -336,20 +336,20 @@ function OverviewTab({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-              <p className="text-gray-900 dark:text-white">{customer.email || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{customer.email || 'â€”'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
-              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || 'â€”'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
-              <p className="text-gray-900 dark:text-white">{customer.address || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{customer.address || 'â€”'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer Since</p>
               <p className="text-gray-900 dark:text-white">
-                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : '—'}
+                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : 'â€”'}
               </p>
             </div>
           </div>
@@ -987,7 +987,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {format(activity.date, 'MMM d, yyyy • h:mm a')}
+                        {format(activity.date, 'MMM d, yyyy â€¢ h:mm a')}
                       </p>
                     </div>
                     {activity.status && (
@@ -1078,7 +1078,6 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
     setSaving(true);
 
     try {
-      console.log('💾 Saving meeting to calendar...');
 
       const startTime24 = convertTo24Hour(formData.time);
       const startDateTime = `${formData.date}T${startTime24}:00`;
@@ -1105,14 +1104,12 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
       const newEvent = await createEvent(eventData as any);
 
       if (newEvent) {
-        console.log('✅ Meeting scheduled:', newEvent);
         toast.success('Meeting scheduled successfully!');
         onClose();
       } else {
         throw new Error('Failed to create event');
       }
     } catch (error: any) {
-      console.error('❌ Error scheduling meeting:', error);
       setError(error.message || 'Failed to schedule meeting');
       toast.error('Failed to schedule meeting');
     } finally {
@@ -1187,7 +1184,7 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-lg">
             <Calendar size={16} />
             <span>
-              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} • {formData.time} - {calculateEndTime()}
+              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} â€¢ {formData.time} - {calculateEndTime()}
             </span>
           </div>
 

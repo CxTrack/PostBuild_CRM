@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { useOrganizationStore } from '../stores/organizationStore';
 import {
     AVAILABLE_MODULES,
@@ -38,13 +38,9 @@ export const useVisibleModules = () => {
         const industryTemplate = currentOrganization?.industry_template || 'general_business';
 
         // Debug logging
-        console.log('[CxTrack] useVisibleModules - Org:', currentOrganization?.name);
-        console.log('[CxTrack] useVisibleModules - Raw tier:', currentOrganization?.subscription_tier, '→ Normalized:', planTier);
-        console.log('[CxTrack] useVisibleModules - Industry template:', industryTemplate);
 
         // 1. Get modules defined by industry template
         const templateModuleIds = INDUSTRY_TEMPLATES[industryTemplate] || INDUSTRY_TEMPLATES['general_business'];
-        console.log('[CxTrack] useVisibleModules - Template module IDs:', templateModuleIds);
 
         // 2. Get modules allowed by plan tier
         const planAllowedModuleIds = PLAN_MODULE_ACCESS[planTier] || PLAN_MODULE_ACCESS['free'];

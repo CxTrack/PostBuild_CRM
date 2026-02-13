@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error('[Auth] Session error:', error.message);
         }
 
         if (session?.user && isMounted) {
@@ -49,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (err) {
-        console.error('[Auth] Init error:', err);
+        // Error handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -61,7 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      console.log('[Auth] State change:', event);
 
       if (session?.user) {
         const { data: memberData } = await supabase

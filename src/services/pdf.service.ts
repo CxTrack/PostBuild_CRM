@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quote } from './quote.service';
 import { Invoice } from './invoice.service';
@@ -19,7 +19,6 @@ interface OrganizationInfo {
 export const pdfService = {
   generateQuotePDF(quote: Quote, organizationInfo: OrganizationInfo): void {
     try {
-      console.log('Starting PDF generation for quote:', quote);
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -201,18 +200,14 @@ export const pdfService = {
         { align: 'center' }
       );
 
-      console.log('Saving PDF:', `Quote-${quote.quote_number}.pdf`);
       doc.save(`Quote-${quote.quote_number}.pdf`);
-      console.log('PDF saved successfully');
     } catch (error) {
-      console.error('Error generating quote PDF:', error);
       throw error;
     }
   },
 
   generateInvoicePDF(invoice: Invoice, organizationInfo: OrganizationInfo): void {
     try {
-      console.log('Starting PDF generation for invoice:', invoice);
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -417,11 +412,8 @@ export const pdfService = {
         { align: 'center' }
       );
 
-      console.log('Saving PDF:', `Invoice-${invoice.invoice_number}.pdf`);
       doc.save(`Invoice-${invoice.invoice_number}.pdf`);
-      console.log('PDF saved successfully');
     } catch (error) {
-      console.error('Error generating invoice PDF:', error);
       throw error;
     }
   },

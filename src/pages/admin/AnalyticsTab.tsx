@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { HealthScoreCell } from '@/components/HealthScoreCell';
@@ -39,7 +39,6 @@ export const AnalyticsTab = () => {
     const orgOptions = orgMetrics.map(org => ({ value: org.id, label: org.name }));
 
     const handleExport = (format: string) => {
-        console.log(`Exporting analytics as ${format}`);
     };
 
     return (

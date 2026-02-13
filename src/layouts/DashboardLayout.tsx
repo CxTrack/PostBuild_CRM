@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -128,7 +128,6 @@ export const DashboardLayout = () => {
         if (error) throw error;
         setIsSuperAdmin(!!data?.is_admin);
       } catch (error) {
-        console.error('Failed to check admin status:', error);
         setIsSuperAdmin(false);
       }
     };
@@ -166,8 +165,6 @@ export const DashboardLayout = () => {
     // Set nav items directly from templates - no preference reordering for now
     setNavItems(moduleNavItems);
 
-    console.log('[CxTrack] Sidebar modules loaded:', moduleNavItems.map(m => `${m.label}${m.isLocked ? ' (locked)' : ''}`));
-    console.log('[CxTrack] Module IDs:', filteredModules.map((m: any) => m.id));
   }, [visibleModules]);
 
 
@@ -186,7 +183,6 @@ export const DashboardLayout = () => {
         // If no orgs fetched yet, or cached user doesn't match current user, refresh
         // Note: We no longer clear localStorage here - AuthContext handles that on actual user change
         if (orgs.length === 0 || !orgs.some(o => o.membership.user_id === user.id)) {
-          console.log('[CxTrack] Fetching organization data for user:', user.id);
           await fetchUserOrganizations(user.id);
         }
       }

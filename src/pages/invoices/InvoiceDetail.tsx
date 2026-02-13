@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { invoiceService, Invoice } from '@/services/invoice.service';
@@ -63,7 +63,6 @@ export default function InvoiceDetail() {
         setPaymentAmount(invoiceData.amount_due.toString());
       }
     } catch (error) {
-      console.error('Failed to load invoice:', error);
       toast.error('Failed to load invoice');
     } finally {
       setLoading(false);
@@ -77,7 +76,6 @@ export default function InvoiceDetail() {
       toast.success('Invoice sent successfully');
       loadInvoice();
     } catch (error) {
-      console.error('Failed to send invoice:', error);
       toast.error('Failed to send invoice');
     }
   };
@@ -91,7 +89,6 @@ export default function InvoiceDetail() {
       toast.success('Invoice deleted successfully');
       navigate(-1);
     } catch (error) {
-      console.error('Failed to delete invoice:', error);
       toast.error('Failed to delete invoice');
     }
   };
@@ -109,7 +106,6 @@ export default function InvoiceDetail() {
       setPaymentLink(link);
       setShowPaymentLinkDialog(true);
     } catch (error) {
-      console.error('Failed to generate payment link:', error);
       toast.error('Failed to generate payment link. Please ensure Stripe is configured in settings.');
     } finally {
       setGeneratingLink(false);
@@ -139,7 +135,6 @@ export default function InvoiceDetail() {
       setShowPaymentDialog(false);
       loadInvoice();
     } catch (error) {
-      console.error('Failed to record payment:', error);
       toast.error('Failed to record payment');
     } finally {
       setRecordingPayment(false);
@@ -156,16 +151,12 @@ export default function InvoiceDetail() {
 
     if (option === 'pdf') {
       try {
-        console.log('🔄 Generating PDF for invoice:', invoice.invoice_number);
-        console.log('Using organization ID:', currentOrganization.id);
 
         const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
 
-        console.log('📄 Generating PDF with organization info:', organizationInfo);
         pdfService.generateInvoicePDF(invoice, organizationInfo);
         toast.success('Invoice PDF downloaded');
       } catch (error) {
-        console.error('Failed to generate PDF:', error);
         toast.error('Failed to generate PDF');
       }
       return;

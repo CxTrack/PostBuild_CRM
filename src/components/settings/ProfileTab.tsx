@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Profile Tab Component
  * Premium user profile settings with avatar upload and AI CoPilot context
  * Design inspired by Monday.com, GoHighLevel, Linear
@@ -88,7 +88,7 @@ export const ProfileTab: React.FC = () => {
                     return;
                 }
             } catch (e) {
-                console.warn('Failed to parse saved profile', e);
+                // Error handled silently
             }
         }
         // No saved profile or different user - use auth user data

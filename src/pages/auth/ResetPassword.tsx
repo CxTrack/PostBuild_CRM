@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
@@ -44,7 +44,6 @@ const ResetPassword: React.FC = () => {
         navigate('/login');
       }, 1500);
     } catch (err) {
-      console.error('Password reset error:', err);
       const errorMessage = error?.includes('Invalid') || error?.includes('expired')
         ? 'This password reset link has expired. Please request a new one.'
         : error || 'Failed to reset password. Please try again.';
@@ -99,7 +98,7 @@ const ResetPassword: React.FC = () => {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {
                     required: 'Password is required',
@@ -131,7 +130,7 @@ const ResetPassword: React.FC = () => {
                 <input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('confirmPassword', {
                     required: 'Please confirm your password',

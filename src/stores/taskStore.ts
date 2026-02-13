@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -73,7 +73,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set({ tasks: formattedTasks, loading: false });
     } catch (error: any) {
-      console.error('Error fetching tasks:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -131,7 +130,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       return newTask;
     } catch (error: any) {
-      console.error('Error creating task:', error);
       set({ error: error.message, loading: false });
       throw error;
     }
@@ -181,7 +179,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       return updatedTask;
     } catch (error: any) {
-      console.error('Error updating task:', error);
       set({ error: error.message, loading: false });
       throw error;
     }
@@ -203,7 +200,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error('Error deleting task:', error);
       set({ error: error.message, loading: false });
       throw error;
     }

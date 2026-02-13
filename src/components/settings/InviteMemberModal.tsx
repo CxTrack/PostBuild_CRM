@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { AlertCircle, Loader2, Send } from 'lucide-react';
 import { Modal, Input, Select, Button } from '../theme/ThemeComponents';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -33,7 +33,6 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             setRole('user');
             onClose();
         } catch (error) {
-            console.error('Failed to invite member:', error);
             toast.error('Failed to send invitation');
         } finally {
             setLoading(false);

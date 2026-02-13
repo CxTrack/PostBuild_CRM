@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { industryService } from '../services/industryService';
 
@@ -49,7 +49,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       const { data: userData } = await supabase.auth.getUser();
 
       if (!userData?.user) {
-        console.log('No authenticated user found when fetching profile');
         set({
           profile: {
             company: 'CxTrack',
@@ -82,7 +81,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         .maybeSingle();
 
       if (profileError) {
-        console.error('Error fetching user_profile:', profileError);
         throw profileError;
       }
 
@@ -136,7 +134,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       set({ profile: defaultProfile, loading: false });
 
     } catch (error: any) {
-      console.error('Error in fetchProfile:', error);
       set({ error: error.message || 'Failed to fetch profile', loading: false });
     }
   },
@@ -159,7 +156,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
     // If nothing changed, just return without doing anything
     if (!hasChanges) {
-      console.log('No profile changes detected, skipping update');
       return;
     }
 
@@ -209,7 +205,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       }
 
       if (result.error) {
-        console.error('Error updating profile:', result.error);
         throw result.error;
       }
 
@@ -223,7 +218,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         loading: false
       });
     } catch (error: any) {
-      console.error('Error in updateProfile:', error);
       set({
         error: error.message || 'Failed to update profile',
         loading: false
@@ -238,7 +232,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   //   // Only update if industry actually changed
   //   if (currentProfile.industry === industryId) {
-  //     console.log('Industry not changed, skipping update');
+  //     /* console removed */
   //     return;
   //   }
 
@@ -260,7 +254,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   //       .single();
 
   //     if (error) {
-  //       console.error('Error updating industry:', error);
+  //       /* console removed */
   //       throw error;
   //     }
 
@@ -273,7 +267,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   //       loading: false
   //     });
   //   } catch (err: any) {
-  //     console.error('Error in updateProfileIndustry:', err);
+  //     /* console removed */
   //     set({ error: err.message || 'Failed to update industry', loading: false });
   //     throw err;
   //   }

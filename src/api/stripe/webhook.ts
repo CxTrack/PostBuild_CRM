@@ -1,4 +1,4 @@
-import type Stripe from 'stripe';
+﻿import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 
@@ -179,5 +179,4 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
             },
         });
 
-    console.log('Payment failed for invoice:', invoice.id);
 }

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -34,7 +34,6 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
     fetchPipelineStages: async () => {
         const { currentOrganization } = useOrganizationStore.getState();
         if (!currentOrganization) {
-            console.warn('No organization found, using default pipeline stages');
             set({ stages: getDefaultStages(), isLoading: false });
             return;
         }
@@ -65,7 +64,6 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
                 .order('stage_order');
 
             if (industryError) {
-                console.error('Error fetching pipeline stages:', industryError);
                 set({ stages: getDefaultStages(), isLoading: false, error: industryError.message });
                 return;
             }
@@ -77,7 +75,6 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
                 set({ stages: getDefaultStages(), isLoading: false });
             }
         } catch (err) {
-            console.error('Error in fetchPipelineStages:', err);
             set({ stages: getDefaultStages(), isLoading: false, error: 'Failed to load pipeline configuration' });
         }
     },

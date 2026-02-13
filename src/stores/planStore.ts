@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 
 export interface SubscriptionPlan {
@@ -55,7 +55,6 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             set({ plans: data || [], loading: false });
         } catch (error: any) {
-            console.error('❌ Error fetching plans:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -82,7 +81,6 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             return planData;
         } catch (error: any) {
-            console.error('❌ Error creating plan:', error);
             set({ error: error.message, loading: false });
             throw error;
         }
@@ -105,7 +103,6 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             return planData;
         } catch (error: any) {
-            console.error('❌ Error updating plan:', error);
             throw error;
         }
     },
@@ -123,7 +120,6 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
                 plans: state.plans.filter(p => p.id !== id),
             }));
         } catch (error: any) {
-            console.error('❌ Error deleting plan:', error);
             throw error;
         }
     },
@@ -144,7 +140,6 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             set({ plans: updatedPlans });
         } catch (error: any) {
-            console.error('❌ Error reordering plans:', error);
             throw error;
         }
     },

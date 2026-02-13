@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
@@ -47,7 +47,6 @@ export default function Settings() {
       await updateMember(memberId, { role: newRole as any });
       toast.success('Member role updated');
     } catch (error) {
-      console.error('Failed to update member role:', error);
       toast.error('Failed to update member role');
     }
   };
@@ -69,7 +68,6 @@ export default function Settings() {
       await useOrganizationStore.getState().updateOrganization({ metadata: newMetadata });
       toast.success('Sharing setting updated');
     } catch (error) {
-      console.error('Failed to update sharing setting:', error);
       toast.error('Failed to update sharing setting');
     }
   };
@@ -84,7 +82,6 @@ export default function Settings() {
         loadSettings();
       } else {
         // No currentOrganization - wait for it to load or show empty state
-        console.log('[CxTrack] Waiting for organization to load...');
         setLoading(false);
       }
     };
@@ -136,7 +133,6 @@ export default function Settings() {
           setQuoteTemplates(newQuoteTemps);
           setInvoiceTemplates(newInvoiceTemps);
         } catch (initError) {
-          console.error('Failed to initialize default templates:', initError);
           setQuoteTemplates([]);
           setInvoiceTemplates([]);
         }
@@ -145,7 +141,6 @@ export default function Settings() {
         setInvoiceTemplates(invoiceTemps);
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
       toast.error('Failed to load settings');
       // Still show page with default/empty state if possible
     } finally {
@@ -159,21 +154,14 @@ export default function Settings() {
 
     try {
       setSaving(true);
-      console.log('=== SAVE DEBUG ===');
-      console.log('Settings object:', settings);
-      console.log('City:', settings.business_city);
-      console.log('State:', settings.business_state);
-      console.log('Calling updateBusinessSettings with orgId:', orgId);
 
       await settingsService.updateBusinessSettings(orgId, settings);
-      console.log('Update call completed');
 
       const { data: afterUpdate } = await supabase
         .from('organizations')
         .select('business_city, business_state')
         .eq('id', orgId)
         .single();
-      console.log('DB AFTER update:', afterUpdate);
 
       localStorage.removeItem('organization-storage');
       await fetchUserOrganizations();
@@ -182,7 +170,6 @@ export default function Settings() {
       toast.success('Settings saved successfully');
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      console.error('Failed to save settings:', error);
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
@@ -202,7 +189,6 @@ export default function Settings() {
       setSettings(prev => prev ? { ...prev, [fieldName]: templateId } : null);
       toast.success(`Default ${type} template updated`);
     } catch (error) {
-      console.error('Failed to update template:', error);
       toast.error('Failed to update template');
     }
   };
@@ -612,7 +598,6 @@ export default function Settings() {
                   <PhoneInput
                     value={settings.business_phone || ''}
                     onChange={(e) => {
-                      console.log('Phone onChange fired:', e.target.value);
                       setSettings({ ...settings, business_phone: e.target.value });
                     }}
                   />
@@ -657,7 +642,6 @@ export default function Settings() {
                       type="text"
                       value={settings.business_city || ''}
                       onChange={(e) => {
-                        console.log('City onChange fired:', e.target.value);
                         setSettings({ ...settings, business_city: e.target.value });
                       }}
                       placeholder="Toronto"
@@ -672,7 +656,6 @@ export default function Settings() {
                       type="text"
                       value={settings.business_state || ''}
                       onChange={(e) => {
-                        console.log('State onChange fired:', e.target.value);
                         setSettings({ ...settings, business_state: e.target.value });
                       }}
                       placeholder="ON"
@@ -746,7 +729,7 @@ export default function Settings() {
                     </span>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Unlimited users • Advanced features • Priority support
+                    Unlimited users â€¢ Advanced features â€¢ Priority support
                   </p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -796,14 +779,14 @@ export default function Settings() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-gray-900 dark:text-white">
-                          •••• •••• •••• 4242
+                          â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ 4242
                         </p>
                         <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
                           Default
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Visa • Expires 12/2027
+                        Visa â€¢ Expires 12/2027
                       </p>
                     </div>
                   </div>
@@ -825,10 +808,10 @@ export default function Settings() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        •••• •••• •••• 5555
+                        â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ 5555
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Mastercard • Expires 03/2026
+                        Mastercard â€¢ Expires 03/2026
                       </p>
                     </div>
                   </div>
@@ -1010,7 +993,7 @@ export default function Settings() {
 
               <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                 <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  View all invoices →
+                  View all invoices â†’
                 </button>
               </div>
             </div>

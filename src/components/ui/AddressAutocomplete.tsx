@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AddressAutocomplete - Google Places API address input with autocomplete
  * Provides suggestions as user types, auto-fills city, state, postal code, country
  */
@@ -77,7 +77,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         }
 
         if (!isGoogleLoaded()) {
-            console.warn('Google Places API not loaded. Add your API key to enable address autocomplete.');
             return;
         }
 
@@ -109,7 +108,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             setPredictions(response);
             setShowDropdown(response.length > 0);
         } catch (error) {
-            console.error('Error fetching predictions:', error);
             setPredictions([]);
         } finally {
             setLoading(false);
@@ -180,7 +178,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             onAddressSelect?.(components);
 
         } catch (error) {
-            console.error('Error getting place details:', error);
             // Fallback to just setting the description
             onChange(description);
         }
@@ -345,7 +342,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             {showDropdown && predictions.length === 0 && value.length >= 3 && !loading && !isGoogleLoaded() && (
                 <div className="absolute z-50 w-full mt-1 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                        💡 Address autocomplete requires Google Places API. Add your API key to enable this feature.
+                        ðŸ’¡ Address autocomplete requires Google Places API. Add your API key to enable this feature.
                     </p>
                 </div>
             )}

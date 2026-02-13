@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Mail, MessageSquare, Check, X, Loader2, AlertCircle } from 'lucide-react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { smsService, SMSSettings } from '@/services/sms.service';
@@ -55,7 +55,6 @@ export default function SharingSettings() {
         }
       }
     } catch (error) {
-      console.error('Error loading sharing settings:', error);
       toast.error('Failed to load sharing settings');
     } finally {
       setLoading(false);
@@ -71,7 +70,6 @@ export default function SharingSettings() {
       toast.success('SMS settings saved successfully');
       await loadSettings();
     } catch (error: any) {
-      console.error('Error saving SMS settings:', error);
       toast.error(getSafeErrorMessage(error, 'update'));
     } finally {
       setSaving(false);
@@ -234,7 +232,7 @@ export default function SharingSettings() {
               type="password"
               value={smsFormData.twilio_auth_token}
               onChange={(e) => setSmsFormData({ ...smsFormData, twilio_auth_token: e.target.value })}
-              placeholder="••••••••••••••••••••••••••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             />
 
             <Input

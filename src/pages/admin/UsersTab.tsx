@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, Edit, Trash2 } from 'lucide-react';
 
@@ -38,7 +38,7 @@ export const UsersTab = () => {
             if (error) throw error;
             setUsers(data || []);
         } catch (error) {
-            console.error('Error loading users:', error);
+            // Error handled silently
         } finally {
             setLoading(false);
         }

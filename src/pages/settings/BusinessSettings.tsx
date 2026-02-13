@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { Building2, Mail, Phone, MapPin, Globe, CreditCard, FileText, Check, Loader2 } from 'lucide-react';
@@ -49,7 +49,6 @@ export default function BusinessSettings() {
         setInvoiceTemplates(invoiceTemps);
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
       toast.error('Failed to load settings');
     } finally {
       setLoading(false);
@@ -65,7 +64,6 @@ export default function BusinessSettings() {
       await settingsService.updateBusinessSettings(currentOrganization.id, settings);
       toast.success('Business information updated successfully');
     } catch (error) {
-      console.error('Failed to save settings:', error);
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
@@ -84,7 +82,6 @@ export default function BusinessSettings() {
       setSettings(prev => prev ? { ...prev, [fieldName]: templateId } : null);
       toast.success(`Default ${type} template updated`);
     } catch (error) {
-      console.error('Failed to update template:', error);
       toast.error('Failed to update template');
     }
   };

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
@@ -66,7 +66,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
             set({ isLoading: false });
         } catch (error) {
-            console.error('Error loading preferences:', error);
             set({ isLoading: false });
         }
     },
@@ -96,7 +95,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Navigation order saved');
         } catch (error) {
-            console.error('Error saving sidebar order:', error);
             toast.error('Failed to save navigation order');
         }
     },
@@ -126,7 +124,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Dashboard layout saved');
         } catch (error) {
-            console.error('Error saving dashboard layout:', error);
             toast.error('Failed to save dashboard layout');
         }
     },
@@ -156,7 +153,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Quick actions updated');
         } catch (error) {
-            console.error('Error saving quick actions order:', error);
             toast.error('Failed to save quick actions');
         }
     },
@@ -186,7 +182,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Mobile navigation updated');
         } catch (error) {
-            console.error('Error saving mobile nav items:', error);
             toast.error('Failed to update mobile navigation');
         }
     },

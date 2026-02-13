@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
     Send, Clock, Eye, X,
@@ -76,7 +76,6 @@ export const BroadcastPanel = () => {
             setPriority('normal');
             setBroadcastType('site_wide');
         } catch (error) {
-            console.error('Error sending broadcast:', error);
             toast.error('Failed to send broadcast');
         }
     };

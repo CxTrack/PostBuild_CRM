@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Calendar, Video, ExternalLink, RefreshCw, Palette
 } from 'lucide-react';
@@ -55,7 +55,7 @@ export default function CalendarSettings() {
         }));
       }
     } catch (error) {
-      console.error('Failed to load calendar settings:', error);
+      // Error handled silently
     }
   };
 

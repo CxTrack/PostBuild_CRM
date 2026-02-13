@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Quote, QuoteItem } from '../types/app.types';
 import { useOrganizationStore } from './organizationStore';
@@ -45,7 +45,6 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       if (error) throw error;
       set({ quotes: data || [], loading: false });
     } catch (error: any) {
-      console.error('Error fetching quotes:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -80,7 +79,6 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       set((state) => ({ quotes: [data, ...state.quotes], loading: false }));
       return data;
     } catch (error: any) {
-      console.error('Error creating quote:', error);
       set({ error: error.message, loading: false });
       return null;
     }
@@ -96,7 +94,6 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error('Error updating quote:', error);
       set({ error: error.message, loading: false });
     }
   },
@@ -108,7 +105,6 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       if (error) throw error;
       set((state) => ({ quotes: state.quotes.filter((q) => q.id !== id), loading: false }));
     } catch (error: any) {
-      console.error('Error deleting quote:', error);
       set({ error: error.message, loading: false });
     }
   },

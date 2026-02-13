@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Save, Package, DollarSign, Tag,
@@ -135,7 +135,6 @@ export default function ProductForm() {
         }
       }
     } catch (error) {
-      console.error('Error saving product:', error);
       toast.error('Failed to save product');
     } finally {
       setSaving(false);

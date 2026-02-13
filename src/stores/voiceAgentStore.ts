@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -154,7 +154,6 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 return configData;
             }
         } catch (error: any) {
-            console.error('Error saving voice agent config:', error);
             set({ error: error.message, loading: false });
             throw error;
         }

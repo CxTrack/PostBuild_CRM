@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 
@@ -123,7 +123,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             set({ tickets: data || [], loading: false });
         } catch (error: any) {
-            console.error('❌ Error fetching tickets:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -152,7 +151,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             return ticketData;
         } catch (error: any) {
-            console.error('❌ Error creating ticket:', error);
             set({ error: error.message, loading: false });
             throw error;
         }
@@ -181,7 +179,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             return ticketData;
         } catch (error: any) {
-            console.error('❌ Error updating ticket:', error);
             throw error;
         }
     },
@@ -205,7 +202,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
                 tickets: state.tickets.filter(t => t.id !== id),
             }));
         } catch (error: any) {
-            console.error('❌ Error deleting ticket:', error);
             throw error;
         }
     },
@@ -241,7 +237,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
                 .single();
 
             if (!ticket) {
-                console.error('❌ Ticket not found or access denied');
                 return [];
             }
 
@@ -259,7 +254,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             return data || [];
         } catch (error: any) {
-            console.error('❌ Error fetching messages:', error);
             return [];
         }
     },
@@ -304,7 +298,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             return data;
         } catch (error: any) {
-            console.error('❌ Error adding message:', error);
             throw error;
         }
     },

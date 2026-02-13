@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, User, Mail, Building, Save, AlertCircle } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -138,7 +138,6 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
         }
       }
     } catch (error: any) {
-      console.error('Error saving customer:', error);
       const errorMessage = error?.message || 'Failed to save customer. Please try again.';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -353,7 +352,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
 
           <div className="pt-2 pb-1">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-              <span className="mr-1">💡</span>
+              <span className="mr-1">ðŸ’¡</span>
               You can add more details (address, notes, etc.) from the customer profile page
             </p>
           </div>
