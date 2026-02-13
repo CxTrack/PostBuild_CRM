@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, User, Building2 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
+import { CustomerStatus } from '@/types/database.types';
 import toast from 'react-hot-toast';
 
 interface QuickAddCustomerModalProps {
@@ -54,7 +55,7 @@ export default function QuickAddCustomerModal({
         email: formData.email.trim() || '',
         phone: formData.phone.trim() || null,
         company: customerType === 'business' ? formData.company.trim() : null,
-        status: 'Active',
+        status: 'Active' as CustomerStatus,
       };
 
       const newCustomer = await createCustomer(customerData);

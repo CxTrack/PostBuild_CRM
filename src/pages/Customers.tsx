@@ -270,7 +270,7 @@ export const Customers: React.FC = () => {
                       >
                         <td className="px-6 py-4">
                           <Link
-                            to={`/customers/${customer.id}`}
+                            to={`/dashboard/customers/${customer.id}`}
                             className="flex items-center space-x-3 group"
                           >
                             <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold">
@@ -340,14 +340,14 @@ export const Customers: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end space-x-2">
                             <Link
-                              to={`/customers/${customer.id}`}
+                              to={`/dashboard/customers/${customer.id}`}
                               className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               title="View"
                             >
                               <Eye size={18} />
                             </Link>
                             <Link
-                              to={`/customers/${customer.id}/edit`}
+                              to={`/dashboard/customers/${customer.id}/edit`}
                               className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               title="Edit"
                             >
@@ -375,7 +375,7 @@ export const Customers: React.FC = () => {
               {filteredCustomers.map((customer) => (
                 <Link
                   key={customer.id}
-                  to={`/customers/${customer.id}`}
+                  to={`/dashboard/customers/${customer.id}`}
                   className="block bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm active:scale-[0.98] transition-all"
                 >
                   <div className="flex items-center justify-between mb-4">

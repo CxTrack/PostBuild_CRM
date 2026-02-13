@@ -165,7 +165,7 @@ export const CustomerProfile: React.FC = () => {
                   <Send size={18} />
                 </button>
                 <Link
-                  to={`/customers/${id}/edit`}
+                  to={`/dashboard/customers/${id}/edit`}
                   className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                 >
                   <Edit size={16} className="mr-2" />
@@ -328,7 +328,7 @@ function OverviewTab({
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Contact Information
             </h2>
-            <Link to={`/customers/${customer.id}/edit`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+            <Link to={`/dashboard/customers/${customer.id}/edit`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
               Edit
             </Link>
           </div>
