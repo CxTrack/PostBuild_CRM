@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useOrganizationStore } from './organizationStore';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
@@ -99,17 +100,23 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     error: null,
 
     fetchConfig: async () => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ loading: false, error: 'No organization selected' });
+            return;
+        }
+
         set({ loading: true, error: null });
         try {
             const { data, error } = await supabase
                 .from('voice_agent_configs')
                 .select('*')
-                .single();
+                .eq('organization_id', organizationId)
+                .maybeSingle();
 
             if (error && error.code !== 'PGRST116') throw error;
             set({ config: data || null, loading: false });
         } catch (error: any) {
-            console.error('Error fetching voice agent config:', error);
             set({ error: error.message, loading: false });
         }
     },
@@ -131,9 +138,14 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 set({ config: configData, loading: false });
                 return configData;
             } else {
+                const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+                if (!organizationId) {
+                    throw new Error('No organization selected');
+                }
+
                 const { data: configData, error } = await supabase
                     .from('voice_agent_configs')
-                    .insert({ ...DEFAULT_CONFIG, ...data })
+                    .insert({ ...DEFAULT_CONFIG, ...data, organization_id: organizationId })
                     .select()
                     .single();
 
@@ -164,18 +176,24 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     },
 
     fetchUsage: async () => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('voice_usage')
                 .select('*')
+                .eq('organization_id', organizationId)
                 .order('billing_period_start', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             if (error && error.code !== 'PGRST116') throw error;
             set({ usage: data || null });
         } catch (error: any) {
-            console.error('Error fetching usage:', error);
+            set({ error: error.message });
         }
     },
 
