@@ -160,10 +160,16 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     updateTicket: async (id, data) => {
         try {
+            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!organizationId) {
+                throw new Error('No organization selected');
+            }
+
             const { data: ticketData, error } = await supabase
                 .from('support_tickets')
                 .update({ ...data, updated_at: new Date().toISOString() })
                 .eq('id', id)
+                .eq('organization_id', organizationId)
                 .select()
                 .single();
 
@@ -182,10 +188,16 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     deleteTicket: async (id) => {
         try {
+            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!organizationId) {
+                throw new Error('No organization selected');
+            }
+
             const { error } = await supabase
                 .from('support_tickets')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .eq('organization_id', organizationId);
 
             if (error) throw error;
 
@@ -215,6 +227,24 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     fetchMessages: async (ticketId) => {
         try {
+            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!organizationId) {
+                return [];
+            }
+
+            // First verify ticket belongs to this organization
+            const { data: ticket } = await supabase
+                .from('support_tickets')
+                .select('id')
+                .eq('id', ticketId)
+                .eq('organization_id', organizationId)
+                .single();
+
+            if (!ticket) {
+                console.error('❌ Ticket not found or access denied');
+                return [];
+            }
+
             const { data, error } = await supabase
                 .from('ticket_messages')
                 .select('*')
@@ -236,6 +266,23 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     addMessage: async (ticketId, message, isInternal = false) => {
         try {
+            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!organizationId) {
+                throw new Error('No organization selected');
+            }
+
+            // Verify ticket belongs to this organization before adding message
+            const { data: ticket } = await supabase
+                .from('support_tickets')
+                .select('id')
+                .eq('id', ticketId)
+                .eq('organization_id', organizationId)
+                .single();
+
+            if (!ticket) {
+                throw new Error('Ticket not found or access denied');
+            }
+
             const { data, error } = await supabase
                 .from('ticket_messages')
                 .insert({
