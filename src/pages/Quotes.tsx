@@ -10,6 +10,7 @@ import {
 import { useQuoteStore } from '../stores/quoteStore';
 import { useOrganizationStore } from '../stores/organizationStore';
 import { useThemeStore } from '../stores/themeStore';
+import { useIndustryLabel } from '../hooks/useIndustryLabel';
 import { PageContainer, Card, IconBadge } from '../components/theme/ThemeComponents';
 import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
@@ -32,6 +33,8 @@ export default function Quotes() {
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
+  const quotesLabel = useIndustryLabel('quotes');
+  const singleLabel = quotesLabel.endsWith('s') ? quotesLabel.slice(0, -1) : quotesLabel;
   const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
@@ -95,33 +98,33 @@ export default function Quotes() {
   };
 
   const bulkMarkAccepted = () => {
-    toast.success(`${selectedQuotes.size} quotes marked as accepted`);
+    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} marked as accepted`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
 
   const bulkArchive = async () => {
     const confirmed = await confirm({
-      title: 'Archive Quotes',
-      message: `Archive ${selectedQuotes.size} selected quotes?`,
+      title: `Archive ${quotesLabel}`,
+      message: `Archive ${selectedQuotes.size} selected ${quotesLabel.toLowerCase()}?`,
       variant: 'warning',
       confirmText: 'Archive',
     });
     if (!confirmed) return;
-    toast.success(`${selectedQuotes.size} quotes archived`);
+    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} archived`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
 
   const bulkDelete = async () => {
     const confirmed = await confirm({
-      title: 'Delete Quotes',
-      message: `Permanently delete ${selectedQuotes.size} selected quotes? This cannot be undone.`,
+      title: `Delete ${quotesLabel}`,
+      message: `Permanently delete ${selectedQuotes.size} selected ${quotesLabel.toLowerCase()}? This cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
     if (!confirmed) return;
-    toast.success(`${selectedQuotes.size} quotes deleted`);
+    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} deleted`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
@@ -129,21 +132,21 @@ export default function Quotes() {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
-      toast.error('You do not have permission to delete quotes');
+      toast.error(`You do not have permission to delete ${quotesLabel.toLowerCase()}`);
       return;
     }
     const confirmed = await confirm({
-      title: 'Delete Quote',
-      message: 'Are you sure you want to delete this quote? This cannot be undone.',
+      title: `Delete ${singleLabel}`,
+      message: `Are you sure you want to delete this ${singleLabel.toLowerCase()}? This cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
     if (!confirmed) return;
     try {
       await deleteQuote(id);
-      toast.success('Quote deleted successfully');
+      toast.success(`${singleLabel} deleted successfully`);
     } catch (error) {
-      toast.error('Failed to delete quote');
+      toast.error(`Failed to delete ${singleLabel.toLowerCase()}`);
     }
   };
 
@@ -172,7 +175,7 @@ export default function Quotes() {
       <PageContainer className="items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading quotes...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading {quotesLabel.toLowerCase()}...</p>
         </div>
       </PageContainer>
     );
@@ -183,14 +186,14 @@ export default function Quotes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Sales Quotes
+            {quotesLabel}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Draft proposals, track customer interest, and convert leads
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportButton onExport={(_format) => {}} />
+          <ExportButton onExport={(_format) => { }} />
           <button
             onClick={() => setShowReportModal(true)}
             className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
@@ -203,7 +206,7 @@ export default function Quotes() {
             className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus size={18} className="mr-2" />
-            Create Quote
+            Create {singleLabel}
           </Link>
         </div>
       </div>
@@ -320,20 +323,20 @@ export default function Quotes() {
               <FileText size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No quotes found
+              No {quotesLabel.toLowerCase()} found
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
               {searchTerm || filterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
-                : 'Create your first quote to get started'}
+                : `Create your first ${singleLabel.toLowerCase()} to get started`}
             </p>
             {!searchTerm && filterStatus === 'all' && (
               <Link
-                to="/quotes/builder"
+                to="/dashboard/quotes/builder"
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
-                Create Your First Quote
+                Create Your First {singleLabel}
               </Link>
             )}
           </div>
@@ -355,7 +358,7 @@ export default function Quotes() {
               columns={[
                 {
                   id: 'quote_number',
-                  header: 'Quote #',
+                  header: `${singleLabel} #`,
                   defaultWidth: 120,
                   minWidth: 100,
                   render: (quote) => (

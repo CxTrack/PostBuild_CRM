@@ -16,6 +16,7 @@ import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
 import toast from 'react-hot-toast';
+import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
@@ -25,6 +26,7 @@ type TabType = 'overview' | 'communications' | 'documents' | 'tasks' | 'activity
 export const CustomerProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const quotesLabel = useIndustryLabel('quotes');
   const {
     currentCustomer,
     fetchCustomerById,
@@ -151,7 +153,7 @@ export const CustomerProfile: React.FC = () => {
                   <p className="text-sm font-bold text-gray-900 dark:text-white">${totalValue.toLocaleString()}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">Quotes</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">{quotesLabel}</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{customerQuotes.length}</p>
                 </div>
                 <div className="text-center">

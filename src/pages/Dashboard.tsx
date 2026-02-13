@@ -40,6 +40,7 @@ import TaskModal from '@/components/tasks/TaskModal';
 import { useTaskStore, Task } from '@/stores/taskStore';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
+import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -119,6 +120,8 @@ export const Dashboard: React.FC = () => {
   const { fetchPipelineStats, pipelineStats } = useDealStore();
   const { currentOrganization } = useOrganizationStore();
   const { preferences, saveQuickActionsOrder } = usePreferencesStore();
+  const quotesLabel = useIndustryLabel('quotes');
+  const singleLabel = quotesLabel.endsWith('s') ? quotesLabel.slice(0, -1) : quotesLabel;
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -193,7 +196,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'create-quote',
-      label: 'Create Quote',
+      label: `Create ${singleLabel}`,
       icon: FilePlus,
       onClick: handleCreateQuote,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -267,7 +270,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'create-quote',
-          label: 'Create Quote',
+          label: `Create ${singleLabel}`,
           icon: FilePlus,
           onClick: handleCreateQuote,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -316,7 +319,7 @@ export const Dashboard: React.FC = () => {
     if (currentOrganization) {
       revenueService.getRevenueStats(currentOrganization.id)
         .then(setRevenueStats)
-        .catch(error => // Error handled silently
+        .catch(() => { /* Error handled silently */ });
     }
 
     loadStatsFromLocalStorage();
@@ -431,7 +434,7 @@ export const Dashboard: React.FC = () => {
       activities.push({
         id: quote.id,
         type: 'quote',
-        title: `Quote #${quote.quote_number} created`,
+        title: `${singleLabel} #${quote.quote_number} created`,
         subtitle: customerName,
         timestamp: quote.created_at,
         icon: FileText,
@@ -624,8 +627,8 @@ export const Dashboard: React.FC = () => {
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
                 <FilePlus size={24} className="text-purple-600 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">Create Quote</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">New quote</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-1">Create {singleLabel}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">New {singleLabel.toLowerCase()}</p>
             </button>
 
             <button
