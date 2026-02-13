@@ -41,6 +41,9 @@ import Access from './website/Access';
 import QuoteBuilder from './pages/quotes/QuoteBuilder';
 import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 
+// Onboarding Pages
+import SelectServicePage from './pages/onboarding/SelectServicePage';
+
 // Diagnostic component to track route changes
 const RouteChangeTracker = () => {
   const location = useLocation();
@@ -91,6 +94,9 @@ export default function App() {
           <Route path="/access" element={<Access />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Onboarding Routes (Public - user creates account during onboarding) */}
+          <Route path="/onboarding/select-service" element={<SelectServicePage />} />
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}
           <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>

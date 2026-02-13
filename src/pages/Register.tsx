@@ -1,22 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-
-const INDUSTRIES = [
-  { value: 'contractors_home_services', label: 'Contractors & Home Services' },
-  { value: 'distribution_logistics', label: 'Distribution & Logistics' },
-  { value: 'gyms_fitness', label: 'Gyms & Fitness' },
-  { value: 'tax_accounting', label: 'Tax & Accounting' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'real_estate', label: 'Real Estate' },
-  { value: 'legal_services', label: 'Legal Services' },
-  { value: 'software_development', label: 'Software Development' },
-  { value: 'mortgage_broker', label: 'Mortgage Broker' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'general_business', label: 'General Business' },
-];
 
 const formatPhoneNumber = (value: string) => {
   const cleaned = value.replace(/\D/g, '');
@@ -43,7 +29,6 @@ export const Register: React.FC = () => {
     email: '',
     password: '',
     company: '',
-    industry: 'general_business',
     phone: '',
   });
 
@@ -72,61 +57,18 @@ export const Register: React.FC = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Failed to create user');
 
-      const userId = authData.user.id;
+      // 2. Store onboarding data in sessionStorage for next steps
+      const onboardingLead = {
+        userId: authData.user.id,
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        company: formData.company,
+        phone: formData.phone,
+      };
+      sessionStorage.setItem('onboarding_lead', JSON.stringify(onboardingLead));
 
-      // 2. Create organization with 30-day trial (enterprise tier)
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: formData.company || `${formData.firstName}'s Business`,
-          slug: formData.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${userId.slice(0, 8)}`,
-          industry_template: formData.industry,
-          subscription_tier: 'enterprise', // 30-day trial with full access
-          primary_color: '#FFD700',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          business_hours: { start: '09:00', end: '17:00' },
-          enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
-          max_users: 10,
-          metadata: {
-            trial_started_at: new Date().toISOString(),
-            signup_source: 'crm_register'
-          },
-        })
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      // 3. Create organization_members record
-      const { error: memberError } = await supabase
-        .from('organization_members')
-        .insert({
-          organization_id: orgData.id,
-          user_id: userId,
-          role: 'owner',
-          permissions: {},
-          calendar_delegation: [],
-          can_view_team_calendars: true,
-        });
-
-      if (memberError) throw memberError;
-
-      // 4. Update user_profiles with organization_id and full_name
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({
-          full_name: `${formData.firstName} ${formData.lastName}`,
-          phone: formData.phone || null,
-          default_org_id: orgData.id,
-        })
-        .eq('id', userId);
-
-      if (profileError) {
-        console.warn('Profile update warning:', profileError);
-        // Non-fatal - profile might be created by trigger
-      }
-
-      toast.success('Account created! Redirecting to dashboard...', {
+      toast.success('Account created! Let\'s set up your CRM.', {
         style: {
           background: '#1a1a1a',
           color: '#FFD700',
@@ -134,10 +76,8 @@ export const Register: React.FC = () => {
         }
       });
 
-      // Small delay for toast visibility, then navigate
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
+      // 3. Navigate to service selection
+      navigate('/onboarding/select-service');
 
     } catch (error: unknown) {
       console.error('Signup error:', error);
@@ -157,6 +97,13 @@ export const Register: React.FC = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
+        {/* Step indicator */}
+        <div className="text-center mb-6">
+          <span className="text-[#FFD700] text-xs font-bold tracking-[0.4em] uppercase">
+            Quick Setup &bull; Step 1 of 4
+          </span>
+        </div>
+
         <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
           <div className="flex flex-col items-center mb-8">
             <Link to="/">
@@ -170,7 +117,7 @@ export const Register: React.FC = () => {
               Create Your Account
             </h1>
             <p className="text-white/40 text-sm mt-2 text-center max-w-[280px]">
-              Start your 30-day free trial with full access
+              Tell us about your business to get started.
             </p>
           </div>
 
@@ -261,32 +208,6 @@ export const Register: React.FC = () => {
               />
             </div>
 
-            {/* Industry */}
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
-                Industry
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.industry}
-                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all appearance-none cursor-pointer"
-                  required
-                >
-                  {INDUSTRIES.map((ind) => (
-                    <option key={ind.value} value={ind.value} className="bg-black text-white">
-                      {ind.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">
-                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
             {/* Phone (Optional) */}
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
@@ -310,12 +231,15 @@ export const Register: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <Loader2 className="animate-spin h-5 w-5" />
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
                   Creating Account...
                 </>
               ) : (
                 <>
-                  Start Free Trial
+                  Continue
                   <ArrowRight size={18} />
                 </>
               )}
