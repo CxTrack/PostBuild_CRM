@@ -44,6 +44,9 @@ import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 // Onboarding Pages
 import SelectServicePage from './pages/onboarding/SelectServicePage';
 import PlanPage from './pages/onboarding/PlanPage';
+import VoiceSetupPage from './pages/onboarding/VoiceSetupPage';
+import CheckoutPage from './pages/onboarding/CheckoutPage';
+import SuccessPage from './pages/onboarding/SuccessPage';
 
 
 // Diagnostic component to track route changes
@@ -100,6 +103,9 @@ export default function App() {
           {/* Onboarding Routes (Public - user creates account during onboarding) */}
           <Route path="/onboarding/select-service" element={<SelectServicePage />} />
           <Route path="/onboarding/plan" element={<PlanPage />} />
+          <Route path="/onboarding/voice-setup" element={<VoiceSetupPage />} />
+          <Route path="/onboarding/checkout" element={<CheckoutPage />} />
+          <Route path="/onboarding/success" element={<SuccessPage />} />
 
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}

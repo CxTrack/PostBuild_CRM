@@ -4,6 +4,7 @@ const steps = [
   { id: 'account', label: 'Account', path: '/register' },
   { id: 'selection', label: 'Selection', path: '/onboarding/select-service' },
   { id: 'setup', label: 'Setup', path: '/onboarding/plan' },
+  { id: 'voice', label: 'Voice AI', path: '/onboarding/voice-setup' },
   { id: 'checkout', label: 'Secure', path: '/onboarding/checkout' },
 ];
 
@@ -14,9 +15,10 @@ export default function OnboardingHeader() {
     const path = location.pathname;
     if (path === '/register') return 0;
     if (path === '/onboarding/select-service') return 1;
-    if (['/onboarding/plan', '/onboarding/custom-crm', '/onboarding/audit', '/onboarding/voice-setup'].includes(path)) return 2;
-    if (path === '/onboarding/checkout') return 3;
-    if (path === '/onboarding/success') return 4;
+    if (['/onboarding/plan', '/onboarding/custom-crm', '/onboarding/audit'].includes(path)) return 2;
+    if (path === '/onboarding/voice-setup') return 3;
+    if (path === '/onboarding/checkout') return 4;
+    if (path === '/onboarding/success') return 5;
     return 0;
   };
 
@@ -74,12 +76,12 @@ export default function OnboardingHeader() {
         {/* Mobile Progress Indicator */}
         <div className="md:hidden flex flex-col items-end">
           <div className="text-[10px] font-black text-[#FFD700] uppercase tracking-widest mb-1">
-            Step {Math.min(activeIndex + 1, 4)} / 4
+            Step {Math.min(activeIndex + 1, 5)} / 5
           </div>
           <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#FFD700] transition-all duration-500"
-              style={{ width: `${Math.min((activeIndex + 1) * 25, 100)}%` }}
+              style={{ width: `${Math.min((activeIndex + 1) * 20, 100)}%` }}
             />
           </div>
         </div>
