@@ -80,7 +80,7 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           if (error) throw error;
 
-          const orgs = data.map((item: any) => ({
+          const orgs = data.map((item: { organization: Organization; id: string; organization_id: string; user_id: string; role: string; permissions: any; calendar_delegation: any; can_view_team_calendars: any; joined_at: string }) => ({
             organization: item.organization,
             membership: {
               id: item.id,
@@ -147,7 +147,12 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           if (error) throw error;
 
-          const members = data.map((item: any, index: number) => ({
+          interface MemberQueryResult {
+            user_id: string;
+            role: string;
+            user: { full_name: string; avatar_url: string | null } | null;
+          }
+          const members = data.map((item: MemberQueryResult, index: number) => ({
             ...item.user,
             role: item.role,
             color: generateUserColor(index),

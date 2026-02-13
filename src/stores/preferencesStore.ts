@@ -3,9 +3,19 @@ import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
 
+interface DashboardWidget {
+    i: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    minW?: number;
+    minH?: number;
+}
+
 interface UserPreferences {
     sidebarOrder: string[];
-    dashboardLayout: any[];
+    dashboardLayout: DashboardWidget[];
     quickActionsOrder: string[];
     mobileNavItems: string[];
 }
@@ -15,7 +25,7 @@ interface PreferencesStore {
     isLoading: boolean;
     loadPreferences: () => Promise<void>;
     saveSidebarOrder: (order: string[]) => Promise<void>;
-    saveDashboardLayout: (layout: any[]) => Promise<void>;
+    saveDashboardLayout: (layout: DashboardWidget[]) => Promise<void>;
     saveQuickActionsOrder: (order: string[]) => Promise<void>;
     saveMobileNavItems: (items: string[]) => Promise<void>;
 }
@@ -55,7 +65,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
             if (prefs) {
                 const newPreferences = { ...get().preferences };
-                prefs.forEach((p: any) => {
+                prefs.forEach((p: { preference_type: string; preference_value: any }) => {
                     if (p.preference_type === 'sidebar_order') newPreferences.sidebarOrder = p.preference_value;
                     if (p.preference_type === 'dashboard_layout') newPreferences.dashboardLayout = p.preference_value;
                     if (p.preference_type === 'quick_actions_order') newPreferences.quickActionsOrder = p.preference_value;
@@ -66,7 +76,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
             set({ isLoading: false });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+            const message = error instanceof Error ? error.message : 'An error occurred';
             set({ isLoading: false });
         }
     },
@@ -96,12 +106,12 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Navigation order saved');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to save navigation order';
+            const message = error instanceof Error ? error.message : 'Failed to save navigation order';
             toast.error(message);
         }
     },
 
-    saveDashboardLayout: async (layout: any[]) => {
+    saveDashboardLayout: async (layout: DashboardWidget[]) => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -126,7 +136,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Dashboard layout saved');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to save dashboard layout';
+            const message = error instanceof Error ? error.message : 'Failed to save dashboard layout';
             toast.error(message);
         }
     },
@@ -156,7 +166,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Quick actions updated');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to save quick actions';
+            const message = error instanceof Error ? error.message : 'Failed to save quick actions';
             toast.error(message);
         }
     },
@@ -186,7 +196,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Mobile navigation updated');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to update mobile navigation';
+            const message = error instanceof Error ? error.message : 'Failed to update mobile navigation';
             toast.error(message);
         }
     },

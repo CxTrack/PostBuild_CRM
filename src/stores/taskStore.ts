@@ -144,7 +144,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const updateData: any = {};
+      const updateData: Record<string, any> = {};
       if (data.title) updateData.title = data.title;
       if (data.description) updateData.description = data.description;
       if (data.type) updateData.category = data.type;

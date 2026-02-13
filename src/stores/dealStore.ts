@@ -4,6 +4,25 @@ import { useOrganizationStore } from './organizationStore';
 import toast from 'react-hot-toast';
 import { usePipelineConfigStore } from './pipelineConfigStore';
 
+interface DealProduct {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface DealCustomer {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+interface DealUserProfile {
+  id: string;
+  full_name: string;
+  avatar_url?: string;
+}
+
 export interface Deal {
   id: string;
   organization_id: string;
@@ -22,14 +41,14 @@ export interface Deal {
   source: string;
   revenue_type: 'one_time' | 'recurring';
   recurring_interval?: 'monthly' | 'quarterly' | 'annual';
-  products?: any[];
+  products?: DealProduct[];
   tags?: string[];
   metadata?: Record<string, any>;
   created_by?: string;
   created_at: string;
   updated_at: string;
-  customers?: any;
-  user_profiles?: any;
+  customers?: DealCustomer;
+  user_profiles?: DealUserProfile;
 }
 
 export interface PipelineStats {
@@ -219,10 +238,10 @@ export const useDealStore = create<DealStore>((set, get) => ({
 
   updateDeal: async (id: string, updates: Partial<Deal>) => {
     try {
-      const updateData: any = { ...updates };
+      const updateData: Partial<Deal> = { ...updates };
 
       if (updates.stage) {
-        updateData.probability = updates.probability ?? getDefaultProbability(updates.stage);
+        (updateData as any).probability = updates.probability ?? getDefaultProbability(updates.stage);
       }
 
       const { error } = await supabase
@@ -265,7 +284,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
     try {
       const probability = getDefaultProbability(stage);
 
-      const updates: any = {
+      const updates: Partial<Deal> = {
         stage,
         probability,
       };

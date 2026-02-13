@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User } from '@supabase/supabase-js';
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 import { supabase, getUserProfile } from '../lib/supabase';
 import type { UserProfile } from '../types/database.types';
@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
         set({ initialized: true, loading: false });
 
         // 2️⃣ Subscribe to auth changes (CRITICAL)
-        supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+        supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
 
           if (!session || event === 'SIGNED_OUT') {
             set({ user: null, profile: null });

@@ -110,7 +110,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customer.last_name
       ].filter(Boolean).join(' ').trim() || 'New Customer';
 
-      const insertData: any = {
+      const insertData: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { organization_id: string } = {
         ...customer,
         name: fullName,
         organization_id: organizationId,
