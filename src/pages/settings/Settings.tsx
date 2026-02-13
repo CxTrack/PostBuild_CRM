@@ -36,6 +36,17 @@ export default function Settings() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const navigate = useNavigate();
 
+  const MOBILE_NAV_OPTIONS = [
+    { path: '/customers', label: 'Customers', icon: Users },
+    { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    { path: '/products', label: 'Products', icon: Package },
+    { path: '/quotes', label: 'Quotes', icon: FileText },
+    { path: '/invoices', label: 'Invoices', icon: DollarSign },
+    { path: '/calls', label: 'Calls', icon: Phone },
+    { path: '/pipeline', label: 'Pipeline', icon: TrendingUp },
+    { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+  ];
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear();
@@ -429,16 +440,7 @@ export default function Settings() {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { path: '/customers', label: 'Customers', icon: Users },
-                  { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
-                  { path: '/products', label: 'Products', icon: Package },
-                  { path: '/quotes', label: 'Quotes', icon: FileText },
-                  { path: '/invoices', label: 'Invoices', icon: DollarSign },
-                  { path: '/calls', label: 'Calls', icon: Phone },
-                  { path: '/pipeline', label: 'Pipeline', icon: TrendingUp },
-                  { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-                ].map((option) => {
+                {MOBILE_NAV_OPTIONS.map((option) => {
                   const selectedItems = preferences.mobileNavItems || [];
                   const isSelected = selectedItems.includes(option.path);
                   const isMaxReached = selectedItems.length >= 3 && !isSelected;
@@ -489,16 +491,7 @@ export default function Settings() {
                 <div className="flex justify-around items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-slate-200 dark:border-gray-700 max-w-sm mx-auto">
                   <div className="flex flex-col items-center opacity-40"><LayoutGrid size={18} /><span className="text-[8px] mt-1 font-bold">Home</span></div>
                   {(preferences.mobileNavItems || []).map(path => {
-                    const item = [
-                      { path: '/customers', label: 'Customers', icon: Users },
-                      { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
-                      { path: '/products', label: 'Products', icon: Package },
-                      { path: '/quotes', label: 'Quotes', icon: FileText },
-                      { path: '/invoices', label: 'Invoices', icon: DollarSign },
-                      { path: '/calls', label: 'Calls', icon: Phone },
-                      { path: '/pipeline', label: 'Pipeline', icon: TrendingUp },
-                      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-                    ].find(o => o.path === path);
+                    const item = MOBILE_NAV_OPTIONS.find(o => o.path === path);
                     if (!item) return null;
                     return (
                       <div key={path} className="flex flex-col items-center text-blue-600">
