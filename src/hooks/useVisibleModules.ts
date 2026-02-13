@@ -53,6 +53,10 @@ export const useVisibleModules = () => {
                 const daysSinceStart = Math.floor((now.getTime() - trialStart.getTime()) / (1000 * 60 * 60 * 24));
                 trialDaysRemaining = Math.max(0, FREE_TRIAL_DAYS - daysSinceStart);
                 isTrialExpired = trialDaysRemaining <= 0;
+            } else {
+                // If no trial_started_at, assume trial just started (full days remaining)
+                trialDaysRemaining = FREE_TRIAL_DAYS;
+                isTrialExpired = false;
             }
         }
 

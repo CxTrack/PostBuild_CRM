@@ -242,27 +242,14 @@ export const DashboardLayout = () => {
           : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
           } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
       >
-        {/* Logo + Upgrade Button */}
+        {/* Logo */}
         <div className={theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} data-tour="sidebar">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
-              {currentOrganization?.industry_template && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
-                  {currentOrganization.industry_template.replace(/_/g, ' ')}
-                </p>
-              )}
-            </div>
-            {currentOrganization?.subscription_tier === 'free' && (
-              <Link
-                to="/dashboard/upgrade"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-105"
-              >
-                <Sparkles size={14} />
-                Upgrade
-              </Link>
-            )}
-          </div>
+          <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
+          {currentOrganization?.industry_template && (
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
+              {currentOrganization.industry_template.replace(/_/g, ' ')}
+            </p>
+          )}
         </div>
 
         {/* Navigation */}
@@ -325,6 +312,17 @@ export const DashboardLayout = () => {
             <SETTINGS_ITEM.icon size={20} className="mr-3" />
             <span className="font-medium">{SETTINGS_ITEM.label}</span>
           </Link>
+
+          {/* Upgrade Button - Only show for free tier */}
+          {currentOrganization?.subscription_tier === 'free' && (
+            <Link
+              to="/dashboard/upgrade"
+              className="flex items-center justify-center gap-2 mx-1 mt-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-[1.02]"
+            >
+              <Sparkles size={16} />
+              Upgrade Plan
+            </Link>
+          )}
 
         </nav>
 
