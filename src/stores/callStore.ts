@@ -110,9 +110,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
       const { data, error } = await query;
 
       if (error) throw error;
-      set({ calls: data || [], loading: false });
+      set({ calls: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -133,9 +135,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      set({ calls: data || [], loading: false });
+      set({ calls: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -156,9 +160,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
         .maybeSingle();
 
       if (error) throw error;
-      set({ currentCall: data, loading: false });
+      set({ currentCall: data });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -184,13 +190,14 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       set((state) => ({
         calls: [data, ...state.calls],
-        loading: false,
       }));
 
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -209,10 +216,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
       set((state) => ({
         calls: state.calls.map((c) => (c.id === id ? data : c)),
         currentCall: state.currentCall?.id === id ? data : state.currentCall,
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -228,10 +236,11 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
       set((state) => ({
         calls: state.calls.filter((c) => c.id !== id),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 

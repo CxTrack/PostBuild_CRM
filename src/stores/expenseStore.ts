@@ -25,7 +25,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
         set({ loading: true, error: null });
         try {
             if (!organizationId) {
-                set({ expenses: [], loading: false });
+                set({ expenses: [] });
                 return;
             }
             const { data, error } = await supabase
@@ -34,9 +34,11 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
                 .eq('organization_id', organizationId)
                 .order('expense_date', { ascending: false });
             if (error) throw error;
-            set({ expenses: data || [], loading: false });
+            set({ expenses: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -50,9 +52,11 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
                 .eq('is_active', true)
                 .order('name', { ascending: true });
             if (error) throw error;
-            set({ categories: data || [], loading: false });
+            set({ categories: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -61,11 +65,13 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
         try {
             const { data, error } = await supabase.from('expenses').insert([expense]).select().single();
             if (error) throw error;
-            set((state) => ({ expenses: [data, ...state.expenses], loading: false }));
+            set((state) => ({ expenses: [data, ...state.expenses] }));
             return data;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             return null;
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -76,10 +82,11 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
             if (error) throw error;
             set((state) => ({
                 expenses: state.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
-                loading: false,
             }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -88,9 +95,11 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
         try {
             const { error } = await supabase.from('expenses').delete().eq('id', id);
             if (error) throw error;
-            set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id), loading: false }));
+            set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -99,11 +108,13 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
         try {
             const { data, error } = await supabase.from('expense_categories').insert([category]).select().single();
             if (error) throw error;
-            set((state) => ({ categories: [...state.categories, data].sort((a, b) => a.name.localeCompare(b.name)), loading: false }));
+            set((state) => ({ categories: [...state.categories, data].sort((a, b) => a.name.localeCompare(b.name)) }));
             return data;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             return null;
+        } finally {
+            set({ loading: false });
         }
     }
 }));

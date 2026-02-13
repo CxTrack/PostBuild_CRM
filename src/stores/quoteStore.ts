@@ -34,7 +34,7 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       if (!organizationId) {
-        set({ quotes: [], loading: false });
+        set({ quotes: [] });
         return;
       }
       const { data, error } = await supabase
@@ -43,9 +43,11 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      set({ quotes: data || [], loading: false });
+      set({ quotes: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -60,10 +62,11 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         quoteItems: { ...state.quoteItems, [quoteId]: data || [] },
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -76,11 +79,13 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
         .select()
         .single();
       if (error) throw error;
-      set((state) => ({ quotes: [data, ...state.quotes], loading: false }));
+      set((state) => ({ quotes: [data, ...state.quotes] }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -91,10 +96,11 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         quotes: state.quotes.map((q) => (q.id === id ? { ...q, ...updates } : q)),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -103,9 +109,11 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
     try {
       const { error } = await supabase.from('quotes').delete().eq('id', id);
       if (error) throw error;
-      set((state) => ({ quotes: state.quotes.filter((q) => q.id !== id), loading: false }));
+      set((state) => ({ quotes: state.quotes.filter((q) => q.id !== id) }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -119,12 +127,13 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
           ...state.quoteItems,
           [item.quote_id]: [...(state.quoteItems[item.quote_id] || []), data],
         },
-        loading: false,
       }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -140,10 +149,12 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
             item.id === id ? { ...item, ...updates } : item
           );
         });
-        return { quoteItems: newQuoteItems, loading: false };
+        return { quoteItems: newQuoteItems };
       });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -157,10 +168,11 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
           ...state.quoteItems,
           [quoteId]: state.quoteItems[quoteId]?.filter((item) => item.id !== id) || [],
         },
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 

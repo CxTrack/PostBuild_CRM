@@ -53,9 +53,11 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             if (error) throw error;
 
-            set({ plans: data || [], loading: false });
+            set({ plans: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -76,13 +78,14 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
 
             set((state) => ({
                 plans: [...state.plans, planData],
-                loading: false,
             }));
 
             return planData;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             throw error;
+        } finally {
+            set({ loading: false });
         }
     },
 

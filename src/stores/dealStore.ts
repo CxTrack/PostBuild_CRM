@@ -102,10 +102,12 @@ export const useDealStore = create<DealStore>((set, get) => ({
 
       if (error) throw error;
 
-      set({ deals: data as Deal[], loading: false });
+      set({ deals: data as Deal[] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       toast.error('Failed to load deals');
+    } finally {
+      set({ loading: false });
     }
   },
 

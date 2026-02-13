@@ -115,9 +115,11 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 .maybeSingle();
 
             if (error && error.code !== 'PGRST116') throw error;
-            set({ config: data || null, loading: false });
+            set({ config: data || null });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -135,7 +137,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                     .single();
 
                 if (error) throw error;
-                set({ config: configData, loading: false });
+                set({ config: configData });
                 return configData;
             } else {
                 const organizationId = useOrganizationStore.getState().currentOrganization?.id;
@@ -150,12 +152,14 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                     .single();
 
                 if (error) throw error;
-                set({ config: configData, loading: false });
+                set({ config: configData });
                 return configData;
             }
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             throw error;
+        } finally {
+            set({ loading: false });
         }
     },
 

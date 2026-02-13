@@ -22,7 +22,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         set({ loading: true, error: null });
         try {
             if (!organizationId) {
-                set({ suppliers: [], loading: false });
+                set({ suppliers: [] });
                 return;
             }
             const { data, error } = await supabase
@@ -31,9 +31,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
                 .eq('organization_id', organizationId)
                 .order('name', { ascending: true });
             if (error) throw error;
-            set({ suppliers: data || [], loading: false });
+            set({ suppliers: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -42,11 +44,13 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         try {
             const { data, error } = await supabase.from('suppliers').insert([supplier]).select().single();
             if (error) throw error;
-            set((state) => ({ suppliers: [...state.suppliers, data].sort((a, b) => a.name.localeCompare(b.name)), loading: false }));
+            set((state) => ({ suppliers: [...state.suppliers, data].sort((a, b) => a.name.localeCompare(b.name)) }));
             return data;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             return null;
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -57,10 +61,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             if (error) throw error;
             set((state) => ({
                 suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-                loading: false,
             }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -69,9 +74,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         try {
             const { error } = await supabase.from('suppliers').delete().eq('id', id);
             if (error) throw error;
-            set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id), loading: false }));
+            set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id) }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 

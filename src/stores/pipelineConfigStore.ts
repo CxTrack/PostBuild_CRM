@@ -50,7 +50,7 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
                 .order('stage_order');
 
             if (!orgError && orgStages && orgStages.length > 0) {
-                set({ stages: orgStages, isLoading: false });
+                set({ stages: orgStages });
                 return;
             }
 
@@ -64,18 +64,20 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
                 .order('stage_order');
 
             if (industryError) {
-                set({ stages: getDefaultStages(), isLoading: false, error: industryError.message });
+                set({ stages: getDefaultStages(), error: industryError.message });
                 return;
             }
 
             if (industryStages && industryStages.length > 0) {
-                set({ stages: industryStages, isLoading: false });
+                set({ stages: industryStages });
             } else {
                 // Fallback to default stages
-                set({ stages: getDefaultStages(), isLoading: false });
+                set({ stages: getDefaultStages() });
             }
         } catch (err) {
-            set({ stages: getDefaultStages(), isLoading: false, error: 'Failed to load pipeline configuration' });
+            set({ stages: getDefaultStages(), error: 'Failed to load pipeline configuration' });
+        } finally {
+            set({ isLoading: false });
         }
     },
 

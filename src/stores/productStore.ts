@@ -36,9 +36,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      set({ products: data || [], loading: false });
+      set({ products: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -47,11 +49,13 @@ export const useProductStore = create<ProductState>((set, get) => ({
     try {
       const { data, error } = await supabase.from('products').insert([product]).select().single();
       if (error) throw error;
-      set((state) => ({ products: [data, ...state.products], loading: false }));
+      set((state) => ({ products: [data, ...state.products] }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -62,10 +66,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -74,9 +79,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
     try {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
-      set((state) => ({ products: state.products.filter((p) => p.id !== id), loading: false }));
+      set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 

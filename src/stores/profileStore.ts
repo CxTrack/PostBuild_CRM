@@ -1,6 +1,5 @@
 ﻿import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { industryService } from '../services/industryService';
 
 interface ProfileData {
   id?: string;
@@ -60,7 +59,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             phone: '',
             industry_id: 0
           },
-          loading: false
         });
         return;
       }
@@ -112,7 +110,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           full_name: userProfile.full_name || userData.user.user_metadata?.full_name || ''
         };
 
-        set({ profile: mappedProfile, loading: false });
+        set({ profile: mappedProfile });
         return;
       }
 
@@ -131,10 +129,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         subscription_tier: 'free'
       };
 
-      set({ profile: defaultProfile, loading: false });
+      set({ profile: defaultProfile });
 
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch profile', loading: false });
+      set({ error: error.message || 'Failed to fetch profile' });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -215,14 +215,14 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           ...profileData,
           user_id: userId
         },
-        loading: false
       });
     } catch (error: any) {
       set({
         error: error.message || 'Failed to update profile',
-        loading: false
       });
       throw error;
+    } finally {
+      set({ loading: false });
     }
   },
 

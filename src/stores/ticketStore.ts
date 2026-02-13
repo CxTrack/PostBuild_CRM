@@ -121,9 +121,11 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             if (error) throw error;
 
-            set({ tickets: data || [], loading: false });
+            set({ tickets: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -146,13 +148,14 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
             set((state) => ({
                 tickets: [ticketData, ...state.tickets],
-                loading: false,
             }));
 
             return ticketData;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             throw error;
+        } finally {
+            set({ loading: false });
         }
     },
 

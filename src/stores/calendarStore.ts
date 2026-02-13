@@ -74,9 +74,11 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       const { data, error } = await query.order('start_time', { ascending: true });
 
       if (error) throw error;
-      set({ events: data || [], loading: false });
+      set({ events: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -108,13 +110,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
       set((state) => ({
         events: [...state.events, data],
-        loading: false,
       }));
 
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -132,11 +135,12 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         events: state.events.map((e) =>
           e.id === id ? { ...e, ...updates } : e
         ),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       throw error;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -152,10 +156,11 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
       set((state) => ({
         events: state.events.filter((e) => e.id !== id),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 

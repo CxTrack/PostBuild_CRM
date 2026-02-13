@@ -38,10 +38,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             if (error) throw error;
             set((state) => ({
                 movements: { ...state.movements, [productId]: data || [] },
-                loading: false,
             }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -55,9 +56,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 .eq('status', 'active')
                 .order('created_at', { ascending: false });
             if (error) throw error;
-            set({ alerts: data || [], loading: false });
+            set({ alerts: data || [] });
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -85,12 +88,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                     ...state.movements,
                     [movement.product_id]: [movementData, ...(state.movements[movement.product_id] || [])]
                 },
-                loading: false,
             }));
             return movementData;
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
             return null;
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -104,10 +108,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             if (error) throw error;
             set((state) => ({
                 alerts: state.alerts.filter(a => a.id !== alertId),
-                loading: false
             }));
         } catch (error: any) {
-            set({ error: error.message, loading: false });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false });
         }
     }
 }));

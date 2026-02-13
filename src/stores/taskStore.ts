@@ -71,9 +71,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         customer_name: task.customer?.name || '',
       }));
 
-      set({ tasks: formattedTasks, loading: false });
+      set({ tasks: formattedTasks });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -125,13 +127,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set((state) => ({
         tasks: [newTask, ...state.tasks],
-        loading: false,
       }));
 
       return newTask;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       throw error;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -174,13 +177,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? updatedTask : t),
-        loading: false,
       }));
 
       return updatedTask;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       throw error;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -197,11 +201,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set((state) => ({
         tasks: state.tasks.filter(task => task.id !== id),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       throw error;
+    } finally {
+      set({ loading: false });
     }
   },
 

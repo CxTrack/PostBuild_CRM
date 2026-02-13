@@ -94,7 +94,7 @@ export const useOrganizationStore = create<OrganizationState>()(
             },
           }));
 
-          set({ organizations: orgs, loading: false });
+          set({ organizations: orgs });
 
           // If no current org selected or cached org doesn't belong to this user, select the first one
           const currentOrg = get().currentOrganization;
@@ -104,8 +104,9 @@ export const useOrganizationStore = create<OrganizationState>()(
             await get().setCurrentOrganization(orgs[0].organization.id);
           }
         } catch (error) {
-          set({ loading: false });
           throw error;
+        } finally {
+          set({ loading: false });
         }
       },
 

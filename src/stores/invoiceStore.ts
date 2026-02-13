@@ -32,7 +32,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       if (!organizationId) {
-        set({ invoices: [], loading: false });
+        set({ invoices: [] });
         return;
       }
       const { data, error } = await supabase
@@ -41,9 +41,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      set({ invoices: data || [], loading: false });
+      set({ invoices: data || [] });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -58,10 +60,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         invoiceItems: { ...state.invoiceItems, [invoiceId]: data || [] },
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -76,10 +79,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         payments: { ...state.payments, [invoiceId]: data || [] },
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -88,11 +92,13 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     try {
       const { data, error } = await supabase.from('invoices').insert([invoice]).select().single();
       if (error) throw error;
-      set((state) => ({ invoices: [data, ...state.invoices], loading: false }));
+      set((state) => ({ invoices: [data, ...state.invoices] }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -103,10 +109,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       if (error) throw error;
       set((state) => ({
         invoices: state.invoices.map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -115,9 +122,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     try {
       const { error } = await supabase.from('invoices').delete().eq('id', id);
       if (error) throw error;
-      set((state) => ({ invoices: state.invoices.filter((inv) => inv.id !== id), loading: false }));
+      set((state) => ({ invoices: state.invoices.filter((inv) => inv.id !== id) }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -131,12 +140,13 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
           ...state.invoiceItems,
           [item.invoice_id]: [...(state.invoiceItems[item.invoice_id] || []), data],
         },
-        loading: false,
       }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -152,10 +162,12 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
             item.id === id ? { ...item, ...updates } : item
           );
         });
-        return { invoiceItems: newInvoiceItems, loading: false };
+        return { invoiceItems: newInvoiceItems };
       });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -169,10 +181,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
           ...state.invoiceItems,
           [invoiceId]: state.invoiceItems[invoiceId]?.filter((item) => item.id !== id) || [],
         },
-        loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
+    } finally {
+      set({ loading: false });
     }
   },
 
@@ -186,12 +199,13 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
           ...state.payments,
           [payment.invoice_id]: [...(state.payments[payment.invoice_id] || []), data],
         },
-        loading: false,
       }));
       return data;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message });
       return null;
+    } finally {
+      set({ loading: false });
     }
   },
 
