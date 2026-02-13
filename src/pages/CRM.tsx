@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCRMStore } from '@/stores/crmStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import LeadsTable from '@/components/crm/LeadsTable';
 import OpportunitiesTable from '@/components/crm/OpportunitiesTable';
 import Tasks from '@/pages/Tasks';
@@ -12,14 +13,16 @@ import { PageContainer, Card, IconBadge } from '@/components/theme/ThemeComponen
 
 export default function CRM() {
     const { theme } = useThemeStore();
+    const { currentOrganization } = useOrganizationStore();
     const { fetchLeads, fetchOpportunities, leads, opportunities } = useCRMStore();
     const [activeTab, setActiveTab] = useState<'leads' | 'opportunities' | 'tasks'>('leads');
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
+        if (!currentOrganization?.id) return;
         fetchLeads();
         fetchOpportunities();
-    }, []);
+    }, [currentOrganization?.id]);
 
     // Calculate stats
     const totalLeads = leads.length;

@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useCallStore } from '@/stores/callStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { Call } from '@/types/database.types';
 import { format } from 'date-fns';
@@ -28,6 +29,7 @@ type TabType = 'all' | 'my-calls' | 'team' | 'ai-agents' | 'live';
 
 export default function Calls() {
   const { theme } = useThemeStore();
+  const { currentOrganization } = useOrganizationStore();
   const {
     calls,
     stats,
@@ -48,6 +50,9 @@ export default function Calls() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    // Don't fetch until organization is available
+    if (!currentOrganization?.id) return;
+
     const loadCallsData = async () => {
       try {
         await Promise.all([
@@ -62,7 +67,7 @@ export default function Calls() {
     loadCallsData();
     const unsubscribe = subscribeToLiveCalls();
     return () => unsubscribe();
-  }, []);
+  }, [currentOrganization?.id]);
 
   useEffect(() => {
     if (searchQuery !== filters.searchQuery) {
