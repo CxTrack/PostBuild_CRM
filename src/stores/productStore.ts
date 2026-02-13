@@ -37,8 +37,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       if (error) throw error;
       set({ products: data || [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -51,8 +52,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if (error) throw error;
       set((state) => ({ products: [data, ...state.products] }));
       return data;
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
       return null;
     } finally {
       set({ loading: false });
@@ -67,8 +69,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
       set((state) => ({
         products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -80,8 +83,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     } finally {
       set({ loading: false });
     }

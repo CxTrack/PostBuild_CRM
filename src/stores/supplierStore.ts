@@ -32,8 +32,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
                 .order('name', { ascending: true });
             if (error) throw error;
             set({ suppliers: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -46,8 +47,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             if (error) throw error;
             set((state) => ({ suppliers: [...state.suppliers, data].sort((a, b) => a.name.localeCompare(b.name)) }));
             return data;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             return null;
         } finally {
             set({ loading: false });
@@ -62,8 +64,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             set((state) => ({
                 suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updates } : s)),
             }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -75,8 +78,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
             const { error } = await supabase.from('suppliers').delete().eq('id', id);
             if (error) throw error;
             set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id) }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }

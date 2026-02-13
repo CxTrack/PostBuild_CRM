@@ -58,8 +58,9 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
             const { data, error } = await query;
             if (error) throw error;
             set({ fields: data || [], loading: false });
-        } catch (error: any) {
-            set({ error: error.message, loading: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message, loading: false });
         }
     },
 
@@ -98,8 +99,9 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
             if (error) throw error;
             set(state => ({ fields: [...state.fields, createdField], loading: false }));
             return createdField;
-        } catch (error: any) {
-            set({ error: error.message, loading: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message, loading: false });
             return null;
         }
     },
@@ -128,8 +130,9 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
                 ),
                 loading: false
             }));
-        } catch (error: any) {
-            set({ error: error.message, loading: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message, loading: false });
         }
     },
 
@@ -155,8 +158,9 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
                 fields: state.fields.filter(f => f.id !== id),
                 loading: false
             }));
-        } catch (error: any) {
-            set({ error: error.message, loading: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message, loading: false });
         }
     },
 
@@ -190,8 +194,9 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
                 .filter(Boolean) as CustomFieldDefinition[];
 
             set({ fields: reorderedFields, loading: false });
-        } catch (error: any) {
-            set({ error: error.message, loading: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message, loading: false });
         }
     },
 

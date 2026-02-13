@@ -66,6 +66,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
 
             set({ isLoading: false });
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             set({ isLoading: false });
         }
     },
@@ -95,7 +96,8 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Navigation order saved');
         } catch (error) {
-            toast.error('Failed to save navigation order');
+          const message = error instanceof Error ? error.message : 'Failed to save navigation order';
+            toast.error(message);
         }
     },
 
@@ -124,7 +126,8 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Dashboard layout saved');
         } catch (error) {
-            toast.error('Failed to save dashboard layout');
+          const message = error instanceof Error ? error.message : 'Failed to save dashboard layout';
+            toast.error(message);
         }
     },
 
@@ -153,7 +156,8 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Quick actions updated');
         } catch (error) {
-            toast.error('Failed to save quick actions');
+          const message = error instanceof Error ? error.message : 'Failed to save quick actions';
+            toast.error(message);
         }
     },
 
@@ -182,7 +186,8 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
             }));
             toast.success('Mobile navigation updated');
         } catch (error) {
-            toast.error('Failed to update mobile navigation');
+          const message = error instanceof Error ? error.message : 'Failed to update mobile navigation';
+            toast.error(message);
         }
     },
 }));

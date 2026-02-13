@@ -39,8 +39,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             set((state) => ({
                 movements: { ...state.movements, [productId]: data || [] },
             }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -57,8 +58,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 .order('created_at', { ascending: false });
             if (error) throw error;
             set({ alerts: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -90,8 +92,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 },
             }));
             return movementData;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             return null;
         } finally {
             set({ loading: false });
@@ -109,8 +112,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             set((state) => ({
                 alerts: state.alerts.filter(a => a.id !== alertId),
             }));
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }

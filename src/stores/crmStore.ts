@@ -45,7 +45,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (error) throw error;
             set({ leads: data as Lead[], loading: false });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to load leads';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
             set({ loading: false });
         }
@@ -70,7 +70,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (error) throw error;
             set({ opportunities: data as any[], loading: false });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to load opportunities';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
             set({ loading: false });
         }
@@ -103,7 +103,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             toast.success('Lead created successfully');
             return data as Lead;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to create lead';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
             return null;
         }
@@ -139,7 +139,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             }));
             toast.success('Lead updated');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to update lead';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },
@@ -163,7 +163,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             set(state => ({ leads: state.leads.filter(l => l.id !== id) }));
             toast.success('Lead deleted');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to delete lead';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },
@@ -197,7 +197,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             toast.success('Opportunity created');
             return data as Opportunity;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to create opportunity';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
             return null;
         }
@@ -234,7 +234,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             }));
             toast.success('Opportunity updated');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to update opportunity';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },
@@ -258,7 +258,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             set(state => ({ opportunities: state.opportunities.filter(o => o.id !== id) }));
             toast.success('Opportunity deleted');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to delete opportunity';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },
@@ -302,7 +302,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
             toast.success('Lead converted to Opportunity!');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to convert lead';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },
@@ -340,7 +340,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
             toast.success('Opportunity marked Won!');
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to mark won';
+          const message = error instanceof Error ? error.message : 'An error occurred';
             toast.error(message);
         }
     },

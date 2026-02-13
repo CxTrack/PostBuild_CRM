@@ -54,8 +54,9 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
             if (error) throw error;
 
             set({ plans: data || [] });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -81,8 +82,9 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
             }));
 
             return planData;
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             throw error;
         } finally {
             set({ loading: false });
@@ -105,7 +107,8 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
             }));
 
             return planData;
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -122,7 +125,8 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
             set((state) => ({
                 plans: state.plans.filter(p => p.id !== id),
             }));
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -142,7 +146,8 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
             }
 
             set({ plans: updatedPlans });
-        } catch (error: any) {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },

@@ -104,6 +104,7 @@ export const useOrganizationStore = create<OrganizationState>()(
             await get().setCurrentOrganization(orgs[0].organization.id);
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
           throw error;
         } finally {
           set({ loading: false });
@@ -126,6 +127,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         try {
           await get().fetchTeamMembers();
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
           // Error handled silently
         }
       },
@@ -153,6 +155,7 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           set({ teamMembers: members });
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
           throw error;
         }
       },

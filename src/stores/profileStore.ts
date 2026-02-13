@@ -131,8 +131,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
       set({ profile: defaultProfile });
 
-    } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch profile' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message || 'Failed to fetch profile' });
     } finally {
       set({ loading: false });
     }
@@ -216,9 +217,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           user_id: userId
         },
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
       set({
-        error: error.message || 'Failed to update profile',
+        error: message || 'Failed to update profile',
       });
       throw error;
     } finally {

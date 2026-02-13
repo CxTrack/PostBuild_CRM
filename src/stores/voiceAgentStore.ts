@@ -116,8 +116,9 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
 
             if (error && error.code !== 'PGRST116') throw error;
             set({ config: data || null });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         } finally {
             set({ loading: false });
         }
@@ -155,8 +156,9 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                 set({ config: configData });
                 return configData;
             }
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
             throw error;
         } finally {
             set({ loading: false });
@@ -195,8 +197,9 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
 
             if (error && error.code !== 'PGRST116') throw error;
             set({ usage: data || null });
-        } catch (error: any) {
-            set({ error: error.message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
         }
     },
 
