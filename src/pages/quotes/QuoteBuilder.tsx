@@ -3,10 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useProductStore } from '@/stores/productStore';
-import { quoteService, QuoteLineItem, QuoteFormData } from '@/services/quote.service';
+import { quoteService, QuoteLineItem, QuoteFormData, RealEstateProposalFields } from '@/services/quote.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check } from 'lucide-react';
+import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, Home, MapPin, DollarSign, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ProductSelector from '@/components/products/ProductSelector';
@@ -58,7 +58,36 @@ export default function QuoteBuilder() {
     notes: '',
     terms: '',
     status: 'draft',
+    custom_fields: {},
   });
+
+  // Check if industry is real estate for showing property-specific fields
+  const isRealEstate = currentOrganization?.industry_template === 'real_estate';
+
+  // Helper to update real estate property fields
+  const updatePropertyField = <K extends keyof RealEstateProposalFields>(
+    field: K,
+    value: RealEstateProposalFields[K]
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      custom_fields: {
+        ...prev.custom_fields,
+        [field]: value,
+      },
+    }));
+  };
+
+  // Get property fields from custom_fields
+  const propertyFields = (formData.custom_fields || {}) as RealEstateProposalFields;
+
+  // Calculate commission when listing price or rate changes
+  const calculateCommission = (listingPrice?: number, commissionRate?: number) => {
+    if (listingPrice && commissionRate) {
+      const commissionAmount = (listingPrice * commissionRate) / 100;
+      updatePropertyField('commission_amount', commissionAmount);
+    }
+  };
 
   useEffect(() => {
     if (currentOrganization) {
@@ -127,6 +156,7 @@ export default function QuoteBuilder() {
           notes: quote.notes || '',
           terms: quote.terms || '',
           status: quote.status,
+          custom_fields: (quote as any).custom_fields || {},
         });
       }
     } catch (error) {
@@ -501,15 +531,18 @@ export default function QuoteBuilder() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+            {/* Seller/Customer Selection */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Customer</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                {isRealEstate ? 'Seller' : 'Customer'}
+              </h2>
               <div className="flex gap-2">
                 <select
                   value={formData.customer_id}
                   onChange={(e) => handleCustomerChange(e.target.value)}
                   className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 >
-                  <option value="">Select customer...</option>
+                  <option value="">{isRealEstate ? 'Select seller...' : 'Select customer...'}</option>
                   {customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {getCustomerFullName(customer)}
@@ -527,9 +560,266 @@ export default function QuoteBuilder() {
               </div>
             </div>
 
+            {/* Real Estate Property Details Section */}
+            {isRealEstate && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border-2 border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                    <Home size={20} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Property Details</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Information about the listing</p>
+                  </div>
+                </div>
+
+                {/* Property Address */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2 mb-4">
+                    <MapPin size={18} className="text-gray-400 mt-2.5" />
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Property Address
+                        </label>
+                        <Input
+                          type="text"
+                          value={propertyFields.property_address || ''}
+                          onChange={(e) => updatePropertyField('property_address', e.target.value)}
+                          placeholder="123 Main Street"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          City
+                        </label>
+                        <Input
+                          type="text"
+                          value={propertyFields.property_city || ''}
+                          onChange={(e) => updatePropertyField('property_city', e.target.value)}
+                          placeholder="City"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            State
+                          </label>
+                          <Input
+                            type="text"
+                            value={propertyFields.property_state || ''}
+                            onChange={(e) => updatePropertyField('property_state', e.target.value)}
+                            placeholder="CA"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            ZIP
+                          </label>
+                          <Input
+                            type="text"
+                            value={propertyFields.property_zip || ''}
+                            onChange={(e) => updatePropertyField('property_zip', e.target.value)}
+                            placeholder="90210"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Property Type & Details */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Property Type
+                      </label>
+                      <select
+                        value={propertyFields.property_type || ''}
+                        onChange={(e) => updatePropertyField('property_type', e.target.value as any)}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Select...</option>
+                        <option value="single_family">Single Family</option>
+                        <option value="condo">Condo</option>
+                        <option value="townhouse">Townhouse</option>
+                        <option value="multi_family">Multi-Family</option>
+                        <option value="land">Land</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Bedrooms
+                      </label>
+                      <Input
+                        type="number"
+                        value={propertyFields.bedrooms || ''}
+                        onChange={(e) => updatePropertyField('bedrooms', parseInt(e.target.value) || undefined)}
+                        placeholder="3"
+                        className="text-sm"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Bathrooms
+                      </label>
+                      <Input
+                        type="number"
+                        value={propertyFields.bathrooms || ''}
+                        onChange={(e) => updatePropertyField('bathrooms', parseFloat(e.target.value) || undefined)}
+                        placeholder="2"
+                        className="text-sm"
+                        min="0"
+                        step="0.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Square Feet
+                      </label>
+                      <Input
+                        type="number"
+                        value={propertyFields.square_feet || ''}
+                        onChange={(e) => updatePropertyField('square_feet', parseInt(e.target.value) || undefined)}
+                        placeholder="2,000"
+                        className="text-sm"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pricing & Commission */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                        <DollarSign size={14} />
+                        Listing Price
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <Input
+                          type="number"
+                          value={propertyFields.listing_price || ''}
+                          onChange={(e) => {
+                            const price = parseFloat(e.target.value) || undefined;
+                            updatePropertyField('listing_price', price);
+                            calculateCommission(price, propertyFields.commission_rate);
+                          }}
+                          placeholder="500,000"
+                          className="text-sm pl-7"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                        <Percent size={14} />
+                        Commission Rate
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={propertyFields.commission_rate || ''}
+                          onChange={(e) => {
+                            const rate = parseFloat(e.target.value) || undefined;
+                            updatePropertyField('commission_rate', rate);
+                            calculateCommission(propertyFields.listing_price, rate);
+                          }}
+                          placeholder="6"
+                          className="text-sm pr-8"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Estimated Commission
+                      </label>
+                      <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-700 dark:text-emerald-400 font-semibold">
+                        ${propertyFields.commission_amount?.toLocaleString() || '0'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Listing Terms */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Listing Type
+                      </label>
+                      <select
+                        value={propertyFields.listing_type || ''}
+                        onChange={(e) => updatePropertyField('listing_type', e.target.value as any)}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Select...</option>
+                        <option value="exclusive">Exclusive Right to Sell</option>
+                        <option value="open">Open Listing</option>
+                        <option value="net">Net Listing</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Listing Duration (months)
+                      </label>
+                      <Input
+                        type="number"
+                        value={propertyFields.listing_duration || ''}
+                        onChange={(e) => updatePropertyField('listing_duration', parseInt(e.target.value) || undefined)}
+                        placeholder="6"
+                        className="text-sm"
+                        min="1"
+                        max="24"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Property Highlights */}
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Property Highlights
+                    </label>
+                    <textarea
+                      value={propertyFields.property_highlights || ''}
+                      onChange={(e) => updatePropertyField('property_highlights', e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white text-sm"
+                      placeholder="Describe the key selling points of this property..."
+                    />
+                  </div>
+
+                  {/* Marketing Plan */}
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Marketing Plan
+                    </label>
+                    <textarea
+                      value={propertyFields.marketing_plan || ''}
+                      onChange={(e) => updatePropertyField('marketing_plan', e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white text-sm"
+                      placeholder="Outline your marketing strategy: professional photos, virtual tour, open houses, online listings, print materials, etc."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Services & Fees Section (replaces Line Items for non-real estate, or supplementary for real estate) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Line Items</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isRealEstate ? 'Additional Services & Fees' : 'Line Items'}
+                </h2>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowProductCatalog(!showProductCatalog)}>
                     <Plus className="w-4 h-4 mr-2" />

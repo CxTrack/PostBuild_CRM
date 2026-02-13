@@ -16,6 +16,29 @@ export interface QuoteLineItem {
   sort_order: number;
 }
 
+// Real estate specific fields stored in custom_fields
+export interface RealEstateProposalFields {
+  property_address?: string;
+  property_city?: string;
+  property_state?: string;
+  property_zip?: string;
+  property_type?: 'single_family' | 'condo' | 'townhouse' | 'multi_family' | 'land' | 'commercial' | 'other';
+  bedrooms?: number;
+  bathrooms?: number;
+  square_feet?: number;
+  lot_size?: string;
+  year_built?: number;
+  listing_price?: number;
+  commission_rate?: number;
+  commission_amount?: number;
+  marketing_budget?: number;
+  listing_type?: 'exclusive' | 'open' | 'net';
+  listing_duration?: number; // months
+  property_highlights?: string;
+  marketing_plan?: string;
+  comparable_sales?: string;
+}
+
 export interface QuoteFormData {
   customer_id: string;
   customer_name: string;
@@ -33,6 +56,7 @@ export interface QuoteFormData {
   notes?: string;
   terms?: string;
   status?: 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' | 'converted';
+  custom_fields?: RealEstateProposalFields | Record<string, any>;
 }
 
 export interface Quote extends QuoteFormData {
@@ -96,6 +120,7 @@ export const quoteService = {
       notes: quoteData.notes,
       terms: quoteData.terms,
       status: quoteData.status || 'draft',
+      custom_fields: quoteData.custom_fields || {},
     };
 
     if (userId && userId !== '00000000-0000-0000-0000-000000000001') {
@@ -203,6 +228,7 @@ export const quoteService = {
         notes: updates.notes,
         terms: updates.terms,
         status: updates.status,
+        custom_fields: updates.custom_fields,
       })
       .eq('id', quoteId)
       .eq('organization_id', organizationId);

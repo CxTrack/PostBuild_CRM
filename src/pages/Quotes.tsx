@@ -5,7 +5,8 @@ import {
   Search, Plus, Filter, FileText, DollarSign, Download,
   Clock, MoreVertical, List, Grid,
   Archive, CheckCircle2, Trash2,
-  ArrowRight, Target, Zap
+  ArrowRight, Target, Zap, Home, TrendingUp, Users, Send,
+  Sparkles, BarChart3, MapPin
 } from 'lucide-react';
 import { useQuoteStore } from '../stores/quoteStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -20,6 +21,158 @@ import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { QuoteStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
+import type { PageLabels } from '../config/modules.config';
+
+// Industry-specific feature cards for empty state
+const INDUSTRY_FEATURES: Record<string, { icon: any; title: string; description: string }[]> = {
+  real_estate: [
+    {
+      icon: Home,
+      title: 'Property Details',
+      description: 'Include property photos, features, and neighborhood info',
+    },
+    {
+      icon: BarChart3,
+      title: 'Market Analysis',
+      description: 'Add comparable sales and pricing recommendations',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Marketing Plan',
+      description: 'Outline your professional marketing strategy',
+    },
+    {
+      icon: Send,
+      title: 'Digital Delivery',
+      description: 'Send proposals via email or shareable link',
+    },
+  ],
+  default: [
+    {
+      icon: FileText,
+      title: 'Professional Design',
+      description: 'Create beautiful, branded documents',
+    },
+    {
+      icon: DollarSign,
+      title: 'Pricing & Terms',
+      description: 'Itemized pricing with discounts and taxes',
+    },
+    {
+      icon: Send,
+      title: 'Easy Sharing',
+      description: 'Send via email, SMS, or shareable link',
+    },
+    {
+      icon: Target,
+      title: 'Track Status',
+      description: 'Know when clients view and accept',
+    },
+  ],
+};
+
+interface EmptyStateProps {
+  labels: PageLabels;
+  searchTerm: string;
+  filterStatus: string;
+  industryTemplate?: string | null;
+}
+
+function EmptyState({ labels, searchTerm, filterStatus, industryTemplate }: EmptyStateProps) {
+  const isRealEstate = industryTemplate === 'real_estate';
+  const features = INDUSTRY_FEATURES[industryTemplate || ''] || INDUSTRY_FEATURES.default;
+
+  if (searchTerm || filterStatus !== 'all') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center py-16">
+        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+          <Search size={32} className="text-gray-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          No results found
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+          Try adjusting your search or filters
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 px-4">
+      {/* Hero Section */}
+      <div className="text-center max-w-2xl mb-10">
+        <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${
+          isRealEstate
+            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+            : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+        }`}>
+          {isRealEstate ? (
+            <Home size={40} className="text-white" />
+          ) : (
+            <FileText size={40} className="text-white" />
+          )}
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+          {labels.emptyStateTitle}
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
+          {labels.emptyStateDescription}
+        </p>
+      </div>
+
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl w-full mb-10">
+        {features.map((feature, index) => (
+          <div
+            key={index}
+            className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
+          >
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
+              isRealEstate
+                ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                : 'bg-blue-100 dark:bg-blue-900/30'
+            }`}>
+              <feature.icon size={20} className={
+                isRealEstate
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-blue-600 dark:text-blue-400'
+              } />
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+              {feature.title}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {feature.description}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA Button */}
+      <Link
+        to="/dashboard/quotes/builder"
+        className={`flex items-center px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all hover:scale-105 active:scale-95 ${
+          isRealEstate
+            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'
+            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25'
+        }`}
+      >
+        <Plus size={20} className="mr-2" />
+        {labels.emptyStateButton}
+        <Sparkles size={16} className="ml-2 opacity-75" />
+      </Link>
+
+      {/* Help Text */}
+      {isRealEstate && (
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
+          <MapPin size={14} className="inline mr-1" />
+          Your listing proposals will help you present property details, pricing strategy, and your marketing plan professionally.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function Quotes() {
   const navigate = useNavigate();
@@ -316,28 +469,12 @@ export default function Quotes() {
 
       <div className="flex-1 overflow-y-auto">
         {filteredQuotes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <FileText size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {labels.emptyStateTitle}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
-              {searchTerm || filterStatus !== 'all'
-                ? 'Try adjusting your search or filters'
-                : labels.emptyStateDescription}
-            </p>
-            {!searchTerm && filterStatus === 'all' && (
-              <Link
-                to="/dashboard/quotes/builder"
-                className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-              >
-                <Plus size={20} className="mr-2" />
-                {labels.emptyStateButton}
-              </Link>
-            )}
-          </div>
+          <EmptyState
+            labels={labels}
+            searchTerm={searchTerm}
+            filterStatus={filterStatus}
+            industryTemplate={currentOrganization?.industry_template}
+          />
         ) : viewMode === 'compact' ? (
           <>
             {/* Compact Stats */}

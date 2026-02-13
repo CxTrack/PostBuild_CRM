@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Users, Calendar, FileText, DollarSign, TrendingUp,
@@ -42,6 +42,7 @@ import { usePreferencesStore } from '@/stores/preferencesStore';
 import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useVisibleModules } from '@/hooks/useVisibleModules';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -129,6 +130,10 @@ export const Dashboard: React.FC = () => {
   const tasksLabels = usePageLabels('tasks');
   const calendarLabels = usePageLabels('calendar');
 
+  // Get visible modules for this industry to filter quick actions
+  const { visibleModules } = useVisibleModules();
+  const enabledModuleIds = visibleModules.map(m => m.id);
+
   // For backwards compatibility with existing code
   const quotesLabel = useIndustryLabel('quotes');
   const singleLabel = quotesLabel.endsWith('s') ? quotesLabel.slice(0, -1) : quotesLabel;
@@ -187,9 +192,11 @@ export const Dashboard: React.FC = () => {
     return filtered.slice(0, 10);
   };
 
-  const [quickActions, setQuickActions] = useState<QuickAction[]>([
+  // Define all possible quick actions with their module mapping
+  const allQuickActions = useMemo(() => [
     {
       id: 'add-customer',
+      moduleId: 'crm',
       label: crmLabels.newButton,
       icon: UserPlus,
       onClick: handleAddCustomer,
@@ -198,6 +205,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'schedule',
+      moduleId: 'calendar',
       label: calendarLabels.newButton,
       icon: CalendarPlus,
       onClick: handleSchedule,
@@ -206,6 +214,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'create-quote',
+      moduleId: 'quotes',
       label: quotesLabels.newButton,
       icon: FilePlus,
       onClick: handleCreateQuote,
@@ -214,6 +223,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'new-invoice',
+      moduleId: 'invoices',
       label: invoicesLabels.newButton,
       icon: FileText,
       onClick: handleNewInvoice,
@@ -222,13 +232,31 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'create-task',
+      moduleId: 'tasks',
       label: tasksLabels.newButton,
       icon: CheckCircle,
       onClick: handleCreateTask,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
       iconColor: 'text-primary-600 dark:text-white',
     },
-  ]);
+  ], [crmLabels.newButton, calendarLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton]);
+
+  // Filter quick actions based on enabled modules for this industry
+  const filteredQuickActions = useMemo(() =>
+    allQuickActions
+      .filter(action => enabledModuleIds.includes(action.moduleId))
+      .map(({ moduleId, ...action }) => action as QuickAction),
+    [allQuickActions, enabledModuleIds]
+  );
+
+  const [quickActions, setQuickActions] = useState<QuickAction[]>([]);
+
+  // Update quick actions when filtered actions change
+  useEffect(() => {
+    if (filteredQuickActions.length > 0) {
+      setQuickActions(filteredQuickActions);
+    }
+  }, [filteredQuickActions]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
