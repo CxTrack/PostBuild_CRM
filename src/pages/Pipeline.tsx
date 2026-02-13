@@ -13,6 +13,7 @@ import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
 import { useDealStore } from '../stores/dealStore';
 import { useOrganizationStore } from '../stores/organizationStore';
+import { useIndustryLabel } from '../hooks/useIndustryLabel';
 import { useMemo } from 'react';
 
 interface PipelineItem {
@@ -42,7 +43,15 @@ const Pipeline: React.FC = () => {
   const { customers, fetchCustomers } = useCustomerStore();
   const { deals, fetchDeals } = useDealStore();
   const { currentOrganization } = useOrganizationStore();
-  const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore } = usePipelineConfigStore();
+  const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
+  const pipelineLabel = useIndustryLabel('pipeline');
+  const quotesLabel = useIndustryLabel('quotes');
+
+  // Helper to display stage label instead of raw key
+  const getStageLabel = (stageKey: string): string => {
+    const stage = getStageByKey(stageKey);
+    return stage?.stage_label || stageKey.replace(/_/g, ' ');
+  };
 
   const STAGES = useMemo(() => {
     if (configStages.length === 0) {
@@ -421,10 +430,10 @@ const Pipeline: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Sales Pipeline
+            {pipelineLabel}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Track quotes and invoices through your sales process
+            Track deals through your sales process
           </p>
         </div>
 
@@ -463,11 +472,11 @@ const Pipeline: React.FC = () => {
           </div>
 
           <button
-            onClick={() => navigate('/quotes/builder')}
+            onClick={() => navigate('/dashboard/quotes/builder')}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">New Quote</span>
+            <span className="hidden sm:inline">New Deal</span>
           </button>
         </div>
       </div>
@@ -564,10 +573,10 @@ const Pipeline: React.FC = () => {
             No pipeline items
           </h3>
           <p className={`mb-6 ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
-            Create quotes and invoices to build your sales pipeline
+            Create deals to build your sales pipeline
           </p>
           <button
-            onClick={() => navigate('/quotes/builder')}
+            onClick={() => navigate('/dashboard/quotes/builder')}
             className={theme === 'soft-modern' ? "px-6 py-3 rounded-xl font-medium transition-all" : "px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700"}
             style={theme === 'soft-modern' ? {
               background: 'linear-gradient(135deg, #A8C5E8, #90B5D8)',
@@ -575,7 +584,7 @@ const Pipeline: React.FC = () => {
               boxShadow: '4px 4px 8px rgba(0,0,0,0.08)'
             } : undefined}
           >
-            Create Your First Quote
+            Create Your First Deal
           </button>
         </Card>
       ) : viewMode === 'table' ? (
@@ -619,7 +628,7 @@ const Pipeline: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${getStageColor(item.stage)}`}>
-                      {item.stage}
+                      {getStageLabel(item.stage)}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       {Math.round(item.probability * 100)}% probability
@@ -637,7 +646,7 @@ const Pipeline: React.FC = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
-                        {selectedItem.type === 'invoice' ? 'Invoice' : 'Quote'}
+                        {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? 'Deal' : quotesLabel}
                       </p>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                         {selectedItem.customer_name}
@@ -655,7 +664,7 @@ const Pipeline: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold capitalize ${getStageColor(selectedItem.stage)}`}>
-                      {selectedItem.stage}
+                      {getStageLabel(selectedItem.stage)}
                     </span>
                     <div className="flex items-center gap-2">
                       <div className="w-32 h-2 bg-white/50 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -698,7 +707,7 @@ const Pipeline: React.FC = () => {
                       <div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Type</p>
                         <p className="font-semibold text-slate-900 dark:text-white">
-                          {selectedItem.type === 'invoice' ? 'Invoice' : 'Quote'}
+                          {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? 'Deal' : quotesLabel}
                         </p>
                       </div>
                     </div>
@@ -830,7 +839,7 @@ const Pipeline: React.FC = () => {
                                 item.type === 'invoice' ? '#7A6050' :
                                   '#6366F1'
                             } : undefined}>
-                            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+                            {item.type === 'quote' ? quotesLabel : item.type === 'invoice' ? 'Invoice' : 'Deal'}
                           </span>
                           <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>
                             {item.number}
