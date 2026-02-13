@@ -20,6 +20,7 @@ import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import toast from 'react-hot-toast';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useVisibleModules } from '@/hooks/useVisibleModules';
 
 export default function Settings() {
   const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations } = useOrganizationStore();
@@ -45,16 +46,24 @@ export default function Settings() {
   const pipelineLabels = usePageLabels('pipeline');
   const tasksLabels = usePageLabels('tasks');
 
-  const MOBILE_NAV_OPTIONS = [
-    { path: '/customers', label: crmLabels.entityPlural, icon: Users },
-    { path: '/calendar', label: calendarLabels.title, icon: CalendarIcon },
-    { path: '/products', label: 'Products', icon: Package },
-    { path: '/quotes', label: quotesLabels.entityPlural, icon: FileText },
-    { path: '/invoices', label: invoicesLabels.entityPlural, icon: DollarSign },
-    { path: '/calls', label: 'Calls', icon: Phone },
-    { path: '/pipeline', label: pipelineLabels.title, icon: TrendingUp },
-    { path: '/tasks', label: tasksLabels.entityPlural, icon: CheckSquare },
+  // Get visible modules for this industry to filter options
+  const { visibleModules } = useVisibleModules();
+  const enabledModuleIds = visibleModules.map(m => m.id);
+
+  // All possible mobile nav options with their module IDs
+  const ALL_MOBILE_NAV_OPTIONS = [
+    { path: '/customers', label: crmLabels.entityPlural, icon: Users, moduleId: 'crm' },
+    { path: '/calendar', label: calendarLabels.title, icon: CalendarIcon, moduleId: 'calendar' },
+    { path: '/products', label: 'Products', icon: Package, moduleId: 'products' },
+    { path: '/quotes', label: quotesLabels.entityPlural, icon: FileText, moduleId: 'quotes' },
+    { path: '/invoices', label: invoicesLabels.entityPlural, icon: DollarSign, moduleId: 'invoices' },
+    { path: '/calls', label: 'Calls', icon: Phone, moduleId: 'calls' },
+    { path: '/pipeline', label: pipelineLabels.title, icon: TrendingUp, moduleId: 'pipeline' },
+    { path: '/tasks', label: tasksLabels.entityPlural, icon: CheckSquare, moduleId: 'tasks' },
   ];
+
+  // Filter to only show modules enabled for this industry
+  const MOBILE_NAV_OPTIONS = ALL_MOBILE_NAV_OPTIONS.filter(opt => enabledModuleIds.includes(opt.moduleId));
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

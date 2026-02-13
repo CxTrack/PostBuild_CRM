@@ -18,6 +18,7 @@ import TaskModal from '@/components/tasks/TaskModal';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useVisibleModules } from '@/hooks/useVisibleModules';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
@@ -30,6 +31,8 @@ export const CustomerProfile: React.FC = () => {
   const quotesLabel = useIndustryLabel('quotes');
   const quotesLabels = usePageLabels('quotes');
   const invoicesLabels = usePageLabels('invoices');
+  const { visibleModules } = useVisibleModules();
+  const enabledModuleIds = visibleModules.map(m => m.id);
   const {
     currentCustomer,
     fetchCustomerById,
@@ -237,6 +240,9 @@ export const CustomerProfile: React.FC = () => {
             contacts={contacts}
             onAddContact={addContact}
             onDeleteContact={(contactId) => deleteContact(contactId, id || '')}
+            enabledModuleIds={enabledModuleIds}
+            quotesLabels={quotesLabels}
+            invoicesLabels={invoicesLabels}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
@@ -306,7 +312,10 @@ function OverviewTab({
   notes,
   contacts,
   onAddContact: _onAddContact,
-  onDeleteContact
+  onDeleteContact,
+  enabledModuleIds,
+  quotesLabels,
+  invoicesLabels
 }: {
   customer: any;
   quotes: any[];
@@ -322,6 +331,9 @@ function OverviewTab({
   contacts: any[];
   onAddContact: (contact: any) => Promise<void>;
   onDeleteContact: (id: string, customerId: string) => Promise<void>;
+  enabledModuleIds: string[];
+  quotesLabels: any;
+  invoicesLabels: any;
 }) {
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
 
@@ -431,99 +443,103 @@ function OverviewTab({
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent {quotesLabels.entityPlural}
-            </h2>
-            <Link
-              to={`/quotes/builder?customer=${customer.id}`}
-              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              {quotesLabels.newButton}
-            </Link>
+        {enabledModuleIds.includes('quotes') && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Recent {quotesLabels.entityPlural}
+              </h2>
+              <Link
+                to={`/quotes/builder?customer=${customer.id}`}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                {quotesLabels.newButton}
+              </Link>
+            </div>
+
+            {quotes.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText size={48} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600 dark:text-gray-400">No {quotesLabels.entityPlural.toLowerCase()} yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {quotes.slice(0, 5).map((quote) => (
+                  <Link
+                    key={quote.id}
+                    to={`/quotes/${quote.id}`}
+                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{quote.quote_number}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {format(new Date(quote.quote_date), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900 dark:text-white">${quote.total_amount.toFixed(2)}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${quote.status === 'accepted' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
+                        quote.status === 'sent' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                        {quote.status}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
+        )}
 
-          {quotes.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText size={48} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">No {quotesLabels.entityPlural.toLowerCase()} yet</p>
+        {enabledModuleIds.includes('invoices') && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Recent {invoicesLabels.entityPlural}
+              </h2>
+              <Link
+                to={`/invoices/builder?customer=${customer.id}`}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                {invoicesLabels.newButton}
+              </Link>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {quotes.slice(0, 5).map((quote) => (
-                <Link
-                  key={quote.id}
-                  to={`/quotes/${quote.id}`}
-                  className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{quote.quote_number}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {format(new Date(quote.quote_date), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900 dark:text-white">${quote.total_amount.toFixed(2)}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${quote.status === 'accepted' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
-                      quote.status === 'sent' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
-                      {quote.status}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent {invoicesLabels.entityPlural}
-            </h2>
-            <Link
-              to={`/invoices/builder?customer=${customer.id}`}
-              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              {invoicesLabels.newButton}
-            </Link>
+            {invoices.length === 0 ? (
+              <div className="text-center py-8">
+                <DollarSign size={48} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600 dark:text-gray-400">No {invoicesLabels.entityPlural.toLowerCase()} yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invoices.slice(0, 5).map((invoice) => (
+                  <Link
+                    key={invoice.id}
+                    to={`/invoices/${invoice.id}`}
+                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{invoice.invoice_number}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900 dark:text-white">${invoice.total_amount.toFixed(2)}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${invoice.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
+                        invoice.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
+                          'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'
+                        }`}>
+                        {invoice.status}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-
-          {invoices.length === 0 ? (
-            <div className="text-center py-8">
-              <DollarSign size={48} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">No invoices yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {invoices.slice(0, 5).map((invoice) => (
-                <Link
-                  key={invoice.id}
-                  to={`/invoices/${invoice.id}`}
-                  className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{invoice.invoice_number}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900 dark:text-white">${invoice.total_amount.toFixed(2)}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${invoice.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
-                      invoice.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
-                        'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'
-                      }`}>
-                      {invoice.status}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -532,34 +548,42 @@ function OverviewTab({
             Quick Actions
           </h3>
           <div className="space-y-2">
-            <button
-              onClick={onScheduleMeeting}
-              className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
-            >
-              <Calendar size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">Schedule Meeting</span>
-            </button>
-            <button
-              onClick={onCreateQuote}
-              className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
-            >
-              <FileText size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">{quotesLabels.newButton}</span>
-            </button>
-            <button
-              onClick={onCreateInvoice}
-              className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
-            >
-              <DollarSign size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">{invoicesLabels.newButton}</span>
-            </button>
-            <button
-              onClick={onAddTask}
-              className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
-            >
-              <CheckSquare size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">Add Task</span>
-            </button>
+            {enabledModuleIds.includes('calendar') && (
+              <button
+                onClick={onScheduleMeeting}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <Calendar size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">Schedule Meeting</span>
+              </button>
+            )}
+            {enabledModuleIds.includes('quotes') && (
+              <button
+                onClick={onCreateQuote}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <FileText size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">{quotesLabels.newButton}</span>
+              </button>
+            )}
+            {enabledModuleIds.includes('invoices') && (
+              <button
+                onClick={onCreateInvoice}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <DollarSign size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">{invoicesLabels.newButton}</span>
+              </button>
+            )}
+            {enabledModuleIds.includes('tasks') && (
+              <button
+                onClick={onAddTask}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <CheckSquare size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">Add Task</span>
+              </button>
+            )}
           </div>
         </div>
 

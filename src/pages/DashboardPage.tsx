@@ -35,6 +35,7 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { format } from 'date-fns';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useVisibleModules } from '@/hooks/useVisibleModules';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -175,19 +176,26 @@ export const DashboardPage = () => {
     const calendarLabels = usePageLabels('calendar');
     const pipelineLabels = usePageLabels('pipeline');
 
+    // Get visible modules for this industry to filter quick actions
+    const { visibleModules } = useVisibleModules();
+    const enabledModuleIds = visibleModules.map(m => m.id);
+
     const [currentTime, setCurrentTime] = useState(new Date());
 
-    const [quickActions, setQuickActions] = useState([
+    // Define all quick actions with their module mapping
+    const allQuickActions = [
         {
             id: 'add-customer',
+            moduleId: 'crm',
             label: crmLabels.newButton,
             icon: UserPlus,
-            onClick: () => navigate('/dashboard/customers'), // Direct nav for now as modal handling is not brought over fully yet
+            onClick: () => navigate('/dashboard/customers'),
             bgColor: 'bg-blue-50 text-blue-600',
             iconColor: 'text-blue-600',
         },
         {
             id: 'schedule',
+            moduleId: 'calendar',
             label: calendarLabels.newButton,
             icon: CalendarPlus,
             onClick: () => navigate('/dashboard/calendar'),
@@ -196,6 +204,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'create-quote',
+            moduleId: 'quotes',
             label: quotesLabels.newButton,
             icon: FilePlus,
             onClick: () => navigate('/quotes/builder'),
@@ -204,6 +213,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'new-invoice',
+            moduleId: 'invoices',
             label: invoicesLabels.newButton,
             icon: FileText,
             onClick: () => navigate('/invoices/builder'),
@@ -212,13 +222,21 @@ export const DashboardPage = () => {
         },
         {
             id: 'create-task',
+            moduleId: 'tasks',
             label: tasksLabels.newButton,
             icon: CheckCircle,
             onClick: () => navigate('/dashboard/tasks'),
             bgColor: 'bg-pink-50 text-pink-600',
             iconColor: 'text-pink-600',
         },
-    ]);
+    ];
+
+    // Filter quick actions based on enabled modules for this industry
+    const filteredQuickActions = allQuickActions
+        .filter(action => enabledModuleIds.includes(action.moduleId))
+        .map(({ moduleId, ...action }) => action);
+
+    const [quickActions, setQuickActions] = useState(filteredQuickActions);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -246,18 +264,23 @@ export const DashboardPage = () => {
         }
     };
 
+    // Update quick actions when filtered actions or preferences change
     useEffect(() => {
-        if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0) {
-            setQuickActions(prev => {
+        if (filteredQuickActions.length > 0) {
+            if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0) {
+                // Reorder based on saved preferences, but only include enabled modules
                 const ordered = preferences.quickActionsOrder
-                    .map(id => prev.find(a => a.id === id))
-                    .filter((a): a is typeof prev[0] => a !== undefined);
+                    .map(id => filteredQuickActions.find(a => a.id === id))
+                    .filter((a): a is typeof filteredQuickActions[0] => a !== undefined);
 
-                const missing = prev.filter(a => !preferences.quickActionsOrder?.includes(a.id));
-                return [...ordered, ...missing];
-            });
+                const existingIds = new Set(preferences.quickActionsOrder);
+                const missing = filteredQuickActions.filter(a => !existingIds.has(a.id));
+                setQuickActions([...ordered, ...missing]);
+            } else {
+                setQuickActions(filteredQuickActions);
+            }
         }
-    }, [preferences.quickActionsOrder]);
+    }, [filteredQuickActions.length, enabledModuleIds.length, preferences.quickActionsOrder]);
 
     useEffect(() => {
         if (currentOrganization?.id) {
