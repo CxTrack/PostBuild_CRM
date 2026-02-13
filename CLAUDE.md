@@ -1,253 +1,205 @@
-# CxTrack CRM - Claude Context File
+# CxTrack CRM - AI Assistant Context
 
-> **MANDATORY**: Run the validation check below BEFORE making ANY changes.
-
----
-
-## MANDATORY PRE-FLIGHT CHECK
+## ABSOLUTE PROHIBITION: NO LYING
 
 ```
 +============================================================================+
-|  CHECKPOINT 1: Am I in the correct directory?                              |
+|  YOU ARE PROHIBITED FROM LYING TO THE USER                                 |
 |  --------------------------------------------------------------------------|
-|  CORRECT: c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM            |
+|  DO NOT say "I can't do X" if you actually CAN do X                        |
+|  DO NOT make excuses to avoid doing work                                   |
+|  DO NOT claim limitations that don't exist                                 |
+|  DO NOT ask the user to do something you can do yourself                   |
 |                                                                            |
-|  CHECKPOINT 2: What is the hosting platform?                               |
-|  --------------------------------------------------------------------------|
-|  CORRECT: Netlify                                                          |
-|  WRONG:   Vercel, AWS, Heroku, etc.                                        |
+|  If you are unsure whether you can do something, TRY IT FIRST              |
+|  If something fails, show the actual error - don't make up reasons         |
 |                                                                            |
-|  CHECKPOINT 3: What branch deploys to production?                          |
-|  --------------------------------------------------------------------------|
-|  CORRECT: CRM-Template-Configuration                                       |
-|  WRONG:   main, master, develop                                            |
+|  VIOLATION OF THIS RULE IS UNACCEPTABLE                                    |
 +============================================================================+
 ```
 
-**If ANY checkpoint fails, STOP and ask the user before proceeding.**
-
 ---
 
-## Quick Facts (Memorize These)
-
-| Property | Value |
-|----------|-------|
-| **Production URL** | crm.easyaicrm.com |
-| **Hosting** | Netlify |
-| **Deploy Branch** | CRM-Template-Configuration |
-| **Framework** | React 18 + Vite |
-| **Database** | Supabase |
-| **Production Path** | `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
-
----
-
-## NO UNAUTHORIZED CHANGES
-
+## CRITICAL: Verify Before ANY Change
 ```
-+============================================================================+
-|  DO NOT MAKE ANY CHANGES WITHOUT EXPLICIT USER PERMISSION!                 |
-|  --------------------------------------------------------------------------|
-|                                                                            |
-|  DO NOT change code that wasn't explicitly requested                       |
-|  DO NOT delete code unless specifically asked                              |
-|  DO NOT "improve" or refactor unrelated code                               |
-|  DO NOT add features that weren't requested                                |
-|  DO NOT make changes from previous session context without asking first    |
-|                                                                            |
-|  ONLY make changes that directly address the user's current request        |
-|  ASK for permission before touching anything outside the request scope     |
-|  If unsure whether something is in scope, ASK FIRST                        |
-|                                                                            |
-+============================================================================+
+Directory:  c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM
+Hosting:    Netlify (NOT Vercel/AWS/Heroku)
+Branch:     CRM-Template-Configuration (NOT main/master)
+URL:        crm.easyaicrm.com
 ```
 
-### The Rule
-**If the user asks to fix X, ONLY fix X. Do not touch Y or Z even if they seem related or were mentioned in previous context.**
+## Rules
+1. **NO LYING** - Do not claim you can't do something if you can
+2. **ONLY change what is explicitly requested** - nothing else
+3. **USE the Supabase credentials below** - never ask user to run queries
+4. **VERIFY directory** before any file operation
 
 ---
 
-## The Two Production Repositories
+## Supabase Database
 
-### Marketing Website
-| Property | Value |
-|----------|-------|
-| **Path** | `c:\AntiGravity\CxTrack_Manik_Website_Production_02` |
-| **GitHub Remote** | `https://github.com/CxTrack/CxTrack_Official_Website.git` |
-| **URL** | easyaicrm.com |
-| **Branch** | main |
-| **Hosting** | Netlify |
+**Project:** zkpfzrbbupgiqkzqydji
+**URL:** https://zkpfzrbbupgiqkzqydji.supabase.co
+**Dashboard:** https://supabase.com/dashboard/project/zkpfzrbbupgiqkzqydji
+
+### Service Role Key (USE THIS - DO NOT ASK USER)
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ
+```
+
+### YOU CAN DELETE AUTH USERS - USE THIS API
+
+**DELETE a user from auth.users (YES, YOU CAN DO THIS):**
+```bash
+curl -X DELETE "https://zkpfzrbbupgiqkzqydji.supabase.co/auth/v1/admin/users/USER_UUID_HERE" \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
+```
+
+**LIST all auth users:**
+```bash
+curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/auth/v1/admin/users" \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
+```
+
+### REST API Query Examples
+
+**Get all organization_members:**
+```bash
+curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
+```
+
+**Get all organizations:**
+```bash
+curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organizations?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
+```
+
+**Get user_profiles:**
+```bash
+curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/user_profiles?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
+```
+
+**INSERT organization_member:**
+```bash
+curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members" -X POST -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"user_id": "UUID", "organization_id": "UUID", "role": "owner"}'
+```
+
+### API Capabilities Summary
+| Action | API | Endpoint | CAN DO? |
+|--------|-----|----------|---------|
+| List auth users | Auth Admin | `/auth/v1/admin/users` | **YES** |
+| Delete auth user | Auth Admin | `/auth/v1/admin/users/{id}` | **YES** |
+| Query tables | REST | `/rest/v1/{table}` | **YES** |
+| Insert records | REST | `/rest/v1/{table}` | **YES** |
+| Update records | REST | `/rest/v1/{table}?id=eq.{id}` | **YES** |
+| Delete records | REST | `/rest/v1/{table}?id=eq.{id}` | **YES** |
+
+### Key Tables
+| Table | Purpose |
+|-------|---------|
+| `auth.users` | User accounts - USE Auth Admin API above |
+| `user_profiles` | Extended user info (REST API accessible) |
+| `organizations` | Companies, industry_template, subscription_tier |
+| `organization_members` | Links users to orgs (user_id, organization_id, role) |
+
+---
+
+## Two Production Repositories
 
 ### CRM Application (THIS REPO)
 | Property | Value |
 |----------|-------|
-| **Path** | `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
-| **GitHub Remote** | `https://github.com/CxTrack/PostBuild_CRM.git` |
-| **URL** | crm.easyaicrm.com |
-| **Branch** | CRM-Template-Configuration |
-| **Hosting** | Netlify |
+| Path | `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
+| GitHub | `https://github.com/CxTrack/PostBuild_CRM.git` |
+| URL | crm.easyaicrm.com |
+| Branch | CRM-Template-Configuration |
+| Framework | React 18 + Vite |
+
+### Marketing Website
+| Property | Value |
+|----------|-------|
+| Path | `c:\AntiGravity\CxTrack_Manik_Website_Production_02` |
+| GitHub | `https://github.com/CxTrack/CxTrack_Official_Website.git` |
+| URL | easyaicrm.com |
+| Branch | main |
 
 ---
 
-## Deployment Commands
+## Deploy Commands
 
+**CRM:**
 ```bash
-# CRM Application
 cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
-npm run build                                    # Test build
-git add .
-git commit -m "Description"
-git push origin CRM-Template-Configuration       # Deploys to Netlify
+npm run build && git add . && git commit -m "Description" && git push origin CRM-Template-Configuration
+```
 
-# Marketing Website
+**Marketing Website:**
+```bash
 cd "c:\AntiGravity\CxTrack_Manik_Website_Production_02"
-npm run build
-git add .
-git commit -m "Description"
-git push origin main                             # Deploys to Netlify
+npm run build && git add . && git commit -m "Description" && git push origin main
 ```
-
----
-
-## Database: Supabase
-
-- **Project ID**: zkpfzrbbupgiqkzqydji
-- **URL**: https://zkpfzrbbupgiqkzqydji.supabase.co
-- **Dashboard**: https://supabase.com/dashboard/project/zkpfzrbbupgiqkzqydji
-- **Service Role Key**: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ
-
-### How to Query Database
-
-**To run SQL queries, ASK THE USER to either:**
-1. Provide the **service role key** (for auth tables)
-2. Run the query in Supabase Dashboard and share results
-
-**Key Tables:**
-| Table | Purpose |
-|-------|---------|
-| `auth.users` | User accounts (requires service role) |
-| `user_profiles` | Extended user info |
-| `organizations` | Companies, industry_template, subscription_tier |
-| `organization_members` | Links users to orgs |
-
-**Common Debug Query (ask user to run in dashboard):**
-```sql
-SELECT u.email, om.organization_id, o.name, o.industry_template, o.subscription_tier
-FROM auth.users u
-LEFT JOIN organization_members om ON u.id = om.user_id
-LEFT JOIN organizations o ON om.organization_id = o.id
-WHERE u.email = 'user@example.com';
-```
-
----
-
-## Common Issues
-
-### Login not working
-1. Clear localStorage: `localStorage.clear(); sessionStorage.clear(); location.reload();`
-2. Check AuthContext.tsx - should be simple, no complex timeouts
-3. Verify Supabase is accessible
-4. Check browser console for `[Auth]` log messages
-
-### Changes not appearing on production
-1. Verify you're in the correct directory
-2. Check Netlify deploy logs
-3. Hard refresh: Ctrl+Shift+R
-
-### Build failing
-1. Run `npm run build` locally first
-2. Check TypeScript errors
-3. Verify all imports exist
-
-### Navigation redirects to dashboard unexpectedly
-1. Check if the route exists in `src/App.tsx`
-2. Check if the component is imported in App.tsx
-3. Check if the component file exists
-4. The fallback route `<Route path="*" element={<Navigate to="/dashboard" replace />}` catches unmatched routes
-
----
-
-## Historical Mistakes (Learn From These)
-
-### 2026-02-12: Missing Route Definition in App.tsx
-- CustomerProfile component existed at `src/pages/CustomerProfile.tsx`
-- But it was NEVER imported or routed in App.tsx
-- Result: Clicking a customer redirected to dashboard (fallback route)
-- Prevention: **When debugging navigation issues, ALWAYS check:**
-  1. Does the component file exist?
-  2. Is it imported in App.tsx?
-  3. Is the route defined in App.tsx?
-
-### 2026-02-12: Searching Wrong Directory
-- Kept searching in `Website-CRM-integration` directory
-- Correct path is `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM`
-- Result: Wasted time, user frustration
-- Prevention: **ALWAYS use the paths in MANDATORY PRE-FLIGHT CHECK above**
-
-### 2026-02-12: Wrong Platform
-- Said "deploy to Vercel" when platform is Netlify
-- Result: Confused instructions
-- Prevention: Platform is ALWAYS Netlify for this project
-
-### 2026-02-12: Timeout Too Short
-- 3-second getSession() timeout was too aggressive
-- Result: Auth tokens cleared prematurely, users couldn't log in
-- Prevention: Removed timeout entirely - Supabase handles tokens automatically
-
----
-
-## AI Assistant Rules
-
-1. **READ THIS FILE** at the start of every session
-2. **VERIFY DIRECTORY** before any file edit
-3. **ASK PERMISSION** before changing anything not explicitly requested
-4. **NEVER ASSUME** - always verify platform, branch, directory
-5. **STATE CLEARLY** if something is impossible instead of trying hacky workarounds
-6. **PROVIDE GEMINI PROMPT** - Always end with a copy-paste ready prompt for Gemini
-7. **ASK QUESTIONS WHEN STUCK** - Do NOT guess or make things up. If missing info, ASK THE USER.
-8. **BE EFFICIENT** - Minimize token usage, don't repeat yourself, be concise
-9. **NO QUICK FIXES** - Always build proper, production-ready systems. Never apply band-aid solutions.
-10. **ANALYZE HARDCODED VALUES** - When finding hardcoded strings/values, analyze if they should be dynamic. This CRM is highly flexible and industry-variable - most hardcoded text should be configurable per industry template.
 
 ---
 
 ## Industry Template System
 
-**CRITICAL**: CxTrack is a multi-industry CRM. ALL user-facing text must be dynamic based on `industry_template`.
+CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 
-### Architecture
-- **Config:** `src/config/modules.config.ts` - defines available modules and industry labels
-- **Hook:** `src/hooks/useIndustryLabel.ts` - retrieves industry-specific labels
-- **Templates:** Each industry has different terminology (see below)
+**Config:** `src/config/modules.config.ts`
+**Hook:** `src/hooks/useIndustryLabel.ts` and `src/hooks/usePageLabels.ts`
 
-### Industry Terminology Reference
+| Industry | customers | invoices | quotes | pipeline |
+|----------|-----------|----------|--------|----------|
+| mortgage_broker | Borrowers | Commissions | - | Applications |
+| real_estate | Contacts | - | Listing Proposals | Deal Pipeline |
+| contractors | Clients | Invoices | Estimates | Job Pipeline |
+| healthcare | Patients | Invoices | - | - |
+| legal_services | Clients | Invoices | Fee Proposals | Case Pipeline |
+| construction | Clients | Invoices | Bids | Projects |
+| general_business | Customers | Invoices | Quotes | Pipeline |
 
-| Industry | customers → | invoices → | quotes → | pipeline → | tasks → |
-|----------|-------------|------------|----------|------------|---------|
-| **mortgage_broker** | Borrowers | Commissions | - | Applications | Follow-ups |
-| **real_estate** | Contacts | - | Listing Proposals | Deal Pipeline | Tasks |
-| **contractors_home_services** | Clients | Invoices | Estimates | Job Pipeline | Tasks |
-| **healthcare** | Patients | Invoices | - | - | Tasks |
-| **legal_services** | Clients | Invoices | Fee Proposals | Case Pipeline | Tasks |
-| **tax_accounting** | Clients | Invoices | Engagement Letters | - | Tasks |
-| **construction** | Clients | Invoices | Bids | Projects | Punch List |
-| **gyms_fitness** | Members | Invoices | - | Membership Pipeline | Tasks |
-| **software_development** | Clients | Billing | Proposals | Projects | Sprints & Tasks |
-| **general_business** | Customers | Invoices | Quotes | Pipeline | Tasks |
-
-### When Adding New Pages/Features
-1. NEVER hardcode user-facing strings
-2. Use `useIndustryLabel(moduleId)` for module names
-3. Use `usePageLabels(pageId)` for page content (titles, descriptions, buttons, empty states)
-4. Check `modules.config.ts` for existing labels before adding new ones
+**Rule:** Never hardcode user-facing strings. Use `usePageLabels(pageId)` or `useIndustryLabel(moduleId)`.
 
 ---
 
-## Claude to Gemini Workflow
+## Common Issues
 
-**Claude's Role:** Planning, analysis, code review, architecture decisions
-**Gemini's Role:** Execute file changes, run commands, deploy
+### "No Organization Found"
+1. User exists in `auth.users` but NOT in `organization_members`
+2. Query `organization_members` to verify
+3. INSERT the missing record linking user to org
 
-### After Every Task, Claude MUST Provide:
+### Login not working
+1. Clear storage: `localStorage.clear(); sessionStorage.clear(); location.reload();`
+2. Check browser console for `[Auth]` messages
+3. Check AuthContext.tsx
+
+### Navigation redirects to dashboard
+1. Check route exists in `src/App.tsx`
+2. Check component is imported
+3. Fallback `<Route path="*">` catches unmatched routes
+
+### Build failing
+1. Run `npm run build` locally
+2. Fix TypeScript errors
+3. Verify imports exist
+
+---
+
+## Historical Mistakes (LEARN FROM THESE - DO NOT REPEAT)
+
+| Date | Mistake | What Actually Happened | Prevention |
+|------|---------|------------------------|------------|
+| 2026-02-13 | **LIED about auth user deletion** | Said "I cannot delete auth.users via API" when the Auth Admin API at `/auth/v1/admin/users/{id}` exists and works with the service role key | **NEVER claim you can't do something without trying. The Auth Admin API CAN delete users.** |
+| 2026-02-12 | Asked user to run DB queries | Had the service role key but didn't use it | USE the service role key via curl |
+| 2026-02-12 | Missing route in App.tsx | Component existed but wasn't routed | Check: file exists, imported, route defined |
+| 2026-02-12 | Searched wrong directory | Kept looking in wrong path | ALWAYS verify: `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
+| 2026-02-12 | Said "Vercel" instead of Netlify | Wrong platform mentioned | Platform is ALWAYS Netlify |
+
+---
+
+## Gemini Handoff Template
 
 ```
 ## Gemini Execution Prompt
@@ -257,61 +209,20 @@ WHERE u.email = 'user@example.com';
 **Task:** [Brief description]
 
 ### File Changes:
+**File:** `src/path/file.tsx`
+- Line X: Change `old` to `new`
 
-**File: `src/path/to/file.tsx`**
-- Line X: Change `old code` to `new code`
-- Line Y: Change `old code` to `new code`
-
-### Commands to Run:
+### Commands:
 ```bash
 cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
 npm run build
-git add [specific files]
-git commit -m "Description of change"
+git add [files]
+git commit -m "Description"
 git push origin CRM-Template-Configuration
 ```
 
-### Verification:
+### Verify:
 - [ ] Build succeeds
 - [ ] No TypeScript errors
-- [ ] Feature works as expected
-```
-
-### Template for Find & Replace Tasks:
-
-```
-**File:** `src/path/to/file.tsx`
-**Find:** `/old-pattern/`
-**Replace with:** `/new-pattern/`
-**Replace all:** Yes/No
-```
-
-### Template for New Code:
-
-```
-**File:** `src/path/to/file.tsx`
-**Insert after line X:**
-```tsx
-// new code here
-```
-```
-
----
-
-## Quick Reference Commands
-
-### Marketing Website
-```bash
-cd "c:\AntiGravity\CxTrack_Manik_Website_Production_02"
-npm run dev          # Local development
-npm run build        # Test production build
-git push origin main # Deploy to production
-```
-
-### CRM Application
-```bash
-cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
-npm run dev          # Local development
-npm run build        # Test production build
-git push origin CRM-Template-Configuration  # Deploy to production
+- [ ] Feature works
 ```
