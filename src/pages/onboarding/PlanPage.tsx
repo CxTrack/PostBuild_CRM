@@ -109,70 +109,99 @@ export default function PlanPage() {
         }
     }, [navigate]);
 
-    const handleSelectPlan = async (planId: string) => {
+    // Just visually select a plan (no navigation)
+    const handleSelectPlan = (planId: string) => {
         if (isProcessing) return;
-        setIsProcessing(true);
         setSelectedPlan(planId);
+    };
+
+    // Confirm selection and proceed to next step
+    const handleConfirmPlan = async () => {
+        if (isProcessing || !selectedPlan) return;
+        setIsProcessing(true);
 
         try {
             // Update session storage
-            const updatedLead = { ...lead, industry: selectedIndustry, planId };
+            const updatedLead = { ...lead, industry: selectedIndustry, planId: selectedPlan };
             sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
             // Create organization in database
             if (lead?.userId) {
-                const { data: orgData, error: orgError } = await supabase
-                    .from('organizations')
-                    .insert({
-                        name: lead.company || `${lead.firstName}'s Business`,
-                        slug: lead.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${lead.userId.slice(0, 8)}`,
-                        industry_template: selectedIndustry,
-                        subscription_tier: planId === 'free' ? 'free' : planId === 'business' ? 'business' : planId === 'elite_premium' ? 'elite_premium' : 'enterprise',
-                        primary_color: '#FFD700',
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        business_hours: { start: '09:00', end: '17:00' },
-                        enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
-                        max_users: planId === 'free' ? 1 : planId === 'business' ? 5 : planId === 'elite_premium' ? 10 : 999,
-                        metadata: {
-                            trial_started_at: new Date().toISOString(),
-                            signup_source: 'crm_onboarding',
-                        },
-                    })
-                    .select()
-                    .single();
+                // First check if user already has an organization (from previous attempt)
+                const { data: existingMember } = await supabase
+                    .from('organization_members')
+                    .select('organization_id')
+                    .eq('user_id', lead.userId)
+                    .maybeSingle();
 
-                if (orgError) {
-                    console.error('Org creation error:', orgError);
-                } else if (orgData) {
-                    // Create organization_members record
-                    await supabase.from('organization_members').insert({
-                        organization_id: orgData.id,
-                        user_id: lead.userId,
-                        role: 'owner',
-                        permissions: {},
-                        calendar_delegation: [],
-                        can_view_team_calendars: true,
-                    });
+                if (existingMember?.organization_id) {
+                    // User already has an org - just update it and continue
+                    await supabase
+                        .from('organizations')
+                        .update({
+                            industry_template: selectedIndustry,
+                            subscription_tier: selectedPlan === 'free' ? 'free' : selectedPlan === 'business' ? 'business' : selectedPlan === 'elite_premium' ? 'elite_premium' : 'enterprise',
+                        })
+                        .eq('id', existingMember.organization_id);
 
-                    // Update user_profiles
-                    await supabase.from('user_profiles').update({
-                        full_name: `${lead.firstName} ${lead.lastName}`,
-                        phone: lead.phone || null,
-                        default_org_id: orgData.id,
-                    }).eq('id', lead.userId);
-
-                    // Store org ID in session
-                    updatedLead.organizationId = orgData.id;
+                    updatedLead.organizationId = existingMember.organization_id;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+                } else {
+                    // Create new organization
+                    const { data: orgData, error: orgError } = await supabase
+                        .from('organizations')
+                        .insert({
+                            name: lead.company || `${lead.firstName}'s Business`,
+                            slug: lead.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${lead.userId.slice(0, 8)}`,
+                            industry_template: selectedIndustry,
+                            subscription_tier: selectedPlan === 'free' ? 'free' : selectedPlan === 'business' ? 'business' : selectedPlan === 'elite_premium' ? 'elite_premium' : 'enterprise',
+                            primary_color: '#FFD700',
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            business_hours: { start: '09:00', end: '17:00' },
+                            enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+                            max_users: selectedPlan === 'free' ? 1 : selectedPlan === 'business' ? 5 : selectedPlan === 'elite_premium' ? 10 : 999,
+                            metadata: {
+                                trial_started_at: new Date().toISOString(),
+                                signup_source: 'crm_onboarding',
+                            },
+                        })
+                        .select()
+                        .single();
+
+                    if (orgError) {
+                        // Don't block navigation for org errors - user can still proceed
+                        console.warn('[Onboarding] Org creation warning:', orgError.message || orgError);
+                    } else if (orgData) {
+                        // Create organization_members record
+                        await supabase.from('organization_members').insert({
+                            organization_id: orgData.id,
+                            user_id: lead.userId,
+                            role: 'owner',
+                            permissions: {},
+                            calendar_delegation: [],
+                            can_view_team_calendars: true,
+                        });
+
+                        // Update user_profiles
+                        await supabase.from('user_profiles').update({
+                            full_name: `${lead.firstName} ${lead.lastName}`,
+                            phone: lead.phone || null,
+                            default_org_id: orgData.id,
+                        }).eq('id', lead.userId);
+
+                        // Store org ID in session
+                        updatedLead.organizationId = orgData.id;
+                        sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+                    }
                 }
             }
 
             // Navigate to next step
-            if (planId === 'enterprise') {
+            if (selectedPlan === 'enterprise') {
                 // Enterprise goes to contact sales
                 navigate('/onboarding/enterprise');
             } else {
-                navigate(`/onboarding/voice-setup?plan=${planId}`);
+                navigate(`/onboarding/voice-setup?plan=${selectedPlan}`);
             }
         } catch (error) {
             console.error('Error selecting plan:', error);
@@ -247,6 +276,7 @@ export default function PlanPage() {
                                 tier={tier}
                                 selected={selectedPlan === tier.id}
                                 onClick={() => handleSelectPlan(tier.id)}
+                                onConfirm={handleConfirmPlan}
                             />
                         ))}
                     </div>

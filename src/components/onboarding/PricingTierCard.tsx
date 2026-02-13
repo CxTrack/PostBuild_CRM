@@ -19,9 +19,10 @@ interface PricingTierCardProps {
     tier: PricingTier;
     selected: boolean;
     onClick: () => void;
+    onConfirm: () => void;
 }
 
-export default function PricingTierCard({ tier, selected, onClick }: PricingTierCardProps) {
+export default function PricingTierCard({ tier, selected, onClick, onConfirm }: PricingTierCardProps) {
     return (
         <div
             onClick={onClick}
@@ -65,6 +66,14 @@ export default function PricingTierCard({ tier, selected, onClick }: PricingTier
             </div>
 
             <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (selected) {
+                        onConfirm();
+                    } else {
+                        onClick();
+                    }
+                }}
                 className={`w-full mt-8 py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all ${selected
                         ? 'bg-[#FFD700] text-black shadow-[0_0_20px_rgba(255,215,0,0.3)]'
                         : tier.highlighted
@@ -72,7 +81,7 @@ export default function PricingTierCard({ tier, selected, onClick }: PricingTier
                             : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
                     }`}
             >
-                {selected ? '✓ Selected' : tier.cta}
+                {selected ? 'Continue →' : tier.cta}
             </button>
         </div>
     );

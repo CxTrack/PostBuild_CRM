@@ -72,6 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (err) {
+        // Ignore AbortError - happens during navigation/unmount
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('[Auth] Init error:', err);
       } finally {
         completeInit();
