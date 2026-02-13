@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { motion, useInView, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
@@ -73,7 +73,7 @@ const TOOLS = ["Salesforce", "HubSpot", "Zoho", "Custom CRM", "Spreadsheets", "S
 const SOLUTION_MAP: Record<string, { title: string; description: string }> = {
     "lead-loss": {
         title: "AI Voice Agents",
-        description: "Instant pickup on every call. Qualify leads, book meetings, log everything â€” automatically.",
+        description: "Instant pickup on every call. Qualify leads, book meetings, log everything — automatically.",
     },
     "data-scatter": {
         title: "Custom CRM",
@@ -89,7 +89,7 @@ const SOLUTION_MAP: Record<string, { title: string; description: string }> = {
     },
     "manual-reporting": {
         title: "Automated Dashboards",
-        description: "Real-time dashboards that build themselves. Scheduled reports delivered automatically â€” zero manual work.",
+        description: "Real-time dashboards that build themselves. Scheduled reports delivered automatically — zero manual work.",
     },
 };
 
@@ -381,7 +381,7 @@ export default function MiniAuditSection() {
                                         Know your exact cost per hour?
                                     </p>
                                     <p className="text-white/40 text-xs mb-4">
-                                        Include salary, benefits, overhead â€” the real number.
+                                        Include salary, benefits, overhead — the real number.
                                     </p>
                                     <div className="flex items-center justify-center gap-3">
                                         <span className="text-white/50 text-2xl font-light">$</span>
@@ -498,7 +498,7 @@ export default function MiniAuditSection() {
                             </motion.div>
                         )}
 
-                        {/* TEASER â€” The Hook */}
+                        {/* TEASER — The Hook */}
                         {step === 3 && (
                             <motion.div
                                 key="teaser"
@@ -566,7 +566,7 @@ export default function MiniAuditSection() {
                                                 <div className="absolute inset-0 flex items-center justify-center">
                                                     <div className="bg-black/90 backdrop-blur-sm px-5 py-3 rounded-full border border-white/10">
                                                         <span className="text-white/80 text-sm font-medium">
-                                                            See how much you could save â†’
+                                                            See how much you could save →
                                                         </span>
                                                     </div>
                                                 </div>
@@ -594,7 +594,7 @@ export default function MiniAuditSection() {
                                                 onClick={() => setStep(2)}
                                                 className="block mx-auto mt-6 text-white/25 text-sm hover:text-white/40 transition-colors"
                                             >
-                                                â† Adjust my answers
+                                                ← Adjust my answers
                                             </button>
                                         </>
                                     );
@@ -602,7 +602,7 @@ export default function MiniAuditSection() {
                             </motion.div>
                         )}
 
-                        {/* LEAD CAPTURE â€” The Exchange */}
+                        {/* LEAD CAPTURE — The Exchange */}
                         {step === 4 && (
                             <motion.div
                                 key="lead-capture"
@@ -681,14 +681,14 @@ export default function MiniAuditSection() {
                                             : "bg-white/[0.02] border border-white/10 text-white/30 cursor-not-allowed"
                                             }`}
                                     >
-                                        Show Me Everything â†’
+                                        Show Me Everything →
                                     </button>
                                 </div>
 
                                 {/* Trust signals */}
                                 <div className="mt-8 space-y-2">
                                     <p className="text-white/20 text-xs">
-                                        âœ“ No credit card &nbsp;&nbsp; âœ“ No sales call required &nbsp;&nbsp; âœ“ Instant results
+                                        ✓ No credit card &nbsp;&nbsp; ✓ No sales call required &nbsp;&nbsp; ✓ Instant results
                                     </p>
                                     <p className="text-white/15 text-xs">
                                         We&apos;ll send a copy to your inbox too.
@@ -699,12 +699,12 @@ export default function MiniAuditSection() {
                                     onClick={() => setStep(3)}
                                     className="block mx-auto mt-6 text-white/25 text-sm hover:text-white/40 transition-colors"
                                 >
-                                    â† Go back
+                                    ← Go back
                                 </button>
                             </motion.div>
                         )}
 
-                        {/* FULL RESULTS â€” The Payoff */}
+                        {/* FULL RESULTS — The Payoff */}
                         {step === 5 && (
                             <motion.div
                                 key="results"
@@ -746,14 +746,14 @@ export default function MiniAuditSection() {
                                                     ${results.annualCost.toLocaleString()}
                                                 </div>
                                                 <p className="text-white/30 text-sm mt-3">
-                                                    That&apos;s <span className="text-[#FF4444] font-bold">${Math.round(results.annualCost / 365).toLocaleString()}/day</span> walking out the door â€”
+                                                    That&apos;s <span className="text-[#FF4444] font-bold">${Math.round(results.annualCost / 365).toLocaleString()}/day</span> walking out the door —
                                                     <span className="text-white/50"> ${Math.round(results.annualCost / 365 / 8).toLocaleString()} every working hour.</span>
                                                 </p>
                                                 <p className="text-white/20 text-xs mt-1">
                                                     {results.annualCost > 200000
-                                                        ? `That's the salary of ${Math.round(results.annualCost / 65000)} full-time employees â€” doing nothing productive.`
+                                                        ? `That's the salary of ${Math.round(results.annualCost / 65000)} full-time employees — doing nothing productive.`
                                                         : results.annualCost > 100000
-                                                            ? `That's more than a full-time senior hire â€” burned on busywork.`
+                                                            ? `That's more than a full-time senior hire — burned on busywork.`
                                                             : `That's real money being wasted on tasks a machine could handle.`
                                                     }
                                                 </p>
@@ -776,7 +776,7 @@ export default function MiniAuditSection() {
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <span className="text-white/50">Impact severity</span>
-                                                            <p className="text-white/25 text-xs mt-0.5">Bottlenecks don&apos;t just waste time â€” they compound through lost leads, rework, and errors</p>
+                                                            <p className="text-white/25 text-xs mt-0.5">Bottlenecks don&apos;t just waste time — they compound through lost leads, rework, and errors</p>
                                                         </div>
                                                         <span className="text-white/70 font-medium shrink-0 ml-4">{maxMultiplier.toFixed(1)}x</span>
                                                     </div>
@@ -792,7 +792,7 @@ export default function MiniAuditSection() {
                                                 </div>
                                             </div>
 
-                                            {/* What this means â€” Urgency block */}
+                                            {/* What this means — Urgency block */}
                                             <div className="mb-10 p-5 rounded-2xl border border-[#FF4444]/10 bg-[#FF4444]/[0.03] max-w-md mx-auto text-center">
                                                 <p className="text-[#FF4444]/70 text-xs uppercase tracking-[0.15em] mb-3">
                                                     What this actually means
@@ -845,7 +845,7 @@ export default function MiniAuditSection() {
                                                     </div>
                                                     <p className="text-white/50 text-sm font-medium">back in your pocket</p>
                                                     <p className="text-white/25 text-xs mt-1">
-                                                        Conservative estimate â€” 60% automation rate
+                                                        Conservative estimate — 60% automation rate
                                                     </p>
                                                 </div>
                                             </div>
@@ -853,7 +853,7 @@ export default function MiniAuditSection() {
                                             {/* ROI Payback */}
                                             <div className="text-center mb-10 max-w-md mx-auto">
                                                 <p className="text-white/30 text-sm">
-                                                    Most clients see full ROI in <span className="text-emerald-400 font-semibold">60â€“90 days</span>.
+                                                    Most clients see full ROI in <span className="text-emerald-400 font-semibold">60—90 days</span>.
                                                     After that, it&apos;s pure profit.
                                                 </p>
                                             </div>
@@ -946,7 +946,7 @@ export default function MiniAuditSection() {
                                                     This was the mini version.
                                                 </h3>
                                                 <p className="text-white/40 text-sm mb-2 max-w-sm mx-auto">
-                                                    The full audit goes 10x deeper â€” we map every workflow, find every leak, and hand you a prioritized automation roadmap.
+                                                    The full audit goes 10x deeper — we map every workflow, find every leak, and hand you a prioritized automation roadmap.
                                                 </p>
                                                 <p className="text-white/30 text-sm mb-6 max-w-sm mx-auto">
                                                     Takes us 4 weeks. Costs you nothing.
