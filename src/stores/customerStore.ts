@@ -67,11 +67,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   fetchCustomerById: async (id: string) => {
     set({ loading: true, error: null });
 
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ loading: false, error: 'No organization selected' });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
         .eq('id', id)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (error) throw error;

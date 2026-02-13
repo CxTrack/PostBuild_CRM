@@ -117,12 +117,19 @@ export const useCallStore = create<CallStore>((set, get) => ({
   },
 
   fetchCallsByCustomer: async (customerId: string) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ loading: false });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
         .from('calls')
         .select('*')
         .eq('customer_id', customerId)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -133,12 +140,19 @@ export const useCallStore = create<CallStore>((set, get) => ({
   },
 
   fetchCallById: async (id: string) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ loading: false, error: 'No organization selected' });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
         .from('calls')
         .select('*')
         .eq('id', id)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (error) throw error;
