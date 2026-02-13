@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { StockMovement, LowStockAlert } from '../types/app.types';
+import { useOrganizationStore } from './organizationStore';
 
 interface InventoryState {
     movements: Record<string, StockMovement[]>;
@@ -20,12 +21,19 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     error: null,
 
     fetchMovements: async (productId: string) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ loading: false, error: 'No organization selected' });
+            return;
+        }
+
         set({ loading: true, error: null });
         try {
             const { data, error } = await supabase
                 .from('stock_movements')
                 .select('*')
                 .eq('product_id', productId)
+                .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false });
             if (error) throw error;
             set((state) => ({
@@ -33,7 +41,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 loading: false,
             }));
         } catch (error: any) {
-            console.error('Error fetching movements:', error);
             set({ error: error.message, loading: false });
         }
     },

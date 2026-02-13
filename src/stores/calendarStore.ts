@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
+import { useOrganizationStore } from './organizationStore';
 
 interface CalendarPreferences {
   default_view: 'month' | 'week' | 'day' | 'agenda';
@@ -48,16 +49,19 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   error: null,
 
   fetchEvents: async (organizationId?: string, from?: Date, to?: Date) => {
-    console.log('📅 Fetching calendar events...');
+    // Get org from store if not provided
+    const orgId = organizationId || useOrganizationStore.getState().currentOrganization?.id;
+    if (!orgId) {
+      set({ loading: false, error: 'No organization selected' });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
       let query = supabase
         .from('calendar_events')
-        .select('*');
-
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
+        .select('*')
+        .eq('organization_id', orgId);
 
       if (from) {
         query = query.gte('start_time', from.toISOString());
@@ -70,10 +74,8 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       const { data, error } = await query.order('start_time', { ascending: true });
 
       if (error) throw error;
-      console.log('✅ Loaded events from database:', data?.length || 0);
       set({ events: data || [], loading: false });
     } catch (error: any) {
-      console.error('❌ Error fetching events:', error);
       set({ error: error.message, loading: false });
     }
   },

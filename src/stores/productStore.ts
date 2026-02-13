@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Product } from '../types/app.types';
+import { useOrganizationStore } from './organizationStore';
 
 interface ProductState {
   products: Product[];
@@ -19,13 +20,21 @@ export const useProductStore = create<ProductState>((set, get) => ({
   error: null,
 
   fetchProducts: async (organizationId?: string) => {
+    // Get org from store if not provided
+    const orgId = organizationId || useOrganizationStore.getState().currentOrganization?.id;
+    if (!orgId) {
+      set({ loading: false, error: 'No organization selected' });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      let query = supabase.from('products').select('*');
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
       set({ products: data || [], loading: false });
     } catch (error: any) {
