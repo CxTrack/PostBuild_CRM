@@ -120,8 +120,9 @@ git push origin main                             # Deploys to Netlify
 
 ### Login not working
 1. Clear localStorage: `localStorage.clear(); sessionStorage.clear(); location.reload();`
-2. Check if getSession() is timing out (currently 10s timeout)
+2. Check AuthContext.tsx - should be simple, no complex timeouts
 3. Verify Supabase is accessible
+4. Check browser console for `[Auth]` log messages
 
 ### Changes not appearing on production
 1. Verify you're in the correct directory
@@ -133,9 +134,30 @@ git push origin main                             # Deploys to Netlify
 2. Check TypeScript errors
 3. Verify all imports exist
 
+### Navigation redirects to dashboard unexpectedly
+1. Check if the route exists in `src/App.tsx`
+2. Check if the component is imported in App.tsx
+3. Check if the component file exists
+4. The fallback route `<Route path="*" element={<Navigate to="/dashboard" replace />}` catches unmatched routes
+
 ---
 
 ## Historical Mistakes (Learn From These)
+
+### 2026-02-12: Missing Route Definition in App.tsx
+- CustomerProfile component existed at `src/pages/CustomerProfile.tsx`
+- But it was NEVER imported or routed in App.tsx
+- Result: Clicking a customer redirected to dashboard (fallback route)
+- Prevention: **When debugging navigation issues, ALWAYS check:**
+  1. Does the component file exist?
+  2. Is it imported in App.tsx?
+  3. Is the route defined in App.tsx?
+
+### 2026-02-12: Searching Wrong Directory
+- Kept searching in `Website-CRM-integration` directory
+- Correct path is `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM`
+- Result: Wasted time, user frustration
+- Prevention: **ALWAYS use the paths in MANDATORY PRE-FLIGHT CHECK above**
 
 ### 2026-02-12: Wrong Platform
 - Said "deploy to Vercel" when platform is Netlify
@@ -145,7 +167,7 @@ git push origin main                             # Deploys to Netlify
 ### 2026-02-12: Timeout Too Short
 - 3-second getSession() timeout was too aggressive
 - Result: Auth tokens cleared prematurely, users couldn't log in
-- Prevention: Now using 10-second timeout
+- Prevention: Removed timeout entirely - Supabase handles tokens automatically
 
 ---
 
