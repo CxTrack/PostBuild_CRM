@@ -19,12 +19,14 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 export default function QuoteBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentOrganization, demoMode, getOrganizationId } = useOrganizationStore();
+  const labels = usePageLabels('quotes');
   const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts, createProduct } = useProductStore();
   const [loading, setLoading] = useState(false);
@@ -450,10 +452,10 @@ export default function QuoteBuilder() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id ? 'Edit Quote' : 'Create Quote'}
+              {id ? `Edit ${labels.entitySingular}` : labels.newButton}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Build a professional quote for your customer
+              Build a professional {labels.entitySingular} for your customer
             </p>
           </div>
           <div className="flex gap-3">
@@ -491,7 +493,7 @@ export default function QuoteBuilder() {
                   {id ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                id ? 'Update Quote' : 'Create Quote'
+                id ? `Update ${labels.entitySingular}` : labels.newButton
               )}
             </Button>
           </div>

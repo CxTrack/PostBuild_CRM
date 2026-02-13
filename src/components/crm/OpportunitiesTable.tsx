@@ -8,11 +8,13 @@ import {
     Edit2, Calendar, Target, TrendingUp, Info
 } from 'lucide-react';
 import { Card, Badge } from '@/components/theme/ThemeComponents';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 export default function OpportunitiesTable() {
     const { opportunities, loading, markOpportunityWon, markOpportunityLost } = useCRMStore();
     const [showProbabilityInfo, setShowProbabilityInfo] = React.useState(false);
     const { theme } = useThemeStore();
+    const quotesLabels = usePageLabels('quotes');
 
     const getStageVariant = (stage: string) => {
         switch (stage) {
@@ -131,7 +133,7 @@ export default function OpportunitiesTable() {
                                             <CheckCircle size={16} />
                                         </button>
                                         <button
-                                            title="Create Quote"
+                                            title={quotesLabels.newButton}
                                             className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded transition-colors"
                                         >
                                             <FileText size={16} />

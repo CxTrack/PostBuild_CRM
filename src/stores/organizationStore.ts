@@ -65,9 +65,11 @@ export const useOrganizationStore = create<OrganizationState>()(
 
       fetchUserOrganizations: async (userId: string) => {
         if (!userId) {
+          console.warn('[OrgStore] fetchUserOrganizations called without userId');
           return;
         }
 
+        console.log('[OrgStore] Fetching organizations for user:', userId);
         set({ loading: true });
         try {
           const { data, error } = await supabase
@@ -78,33 +80,53 @@ export const useOrganizationStore = create<OrganizationState>()(
             `)
             .eq('user_id', userId);
 
-          if (error) throw error;
+          if (error) {
+            console.error('[OrgStore] Error fetching organizations:', error);
+            throw error;
+          }
 
-          const orgs = data.map((item: { organization: Organization; id: string; organization_id: string; user_id: string; role: string; permissions: any; calendar_delegation: any; can_view_team_calendars: any; joined_at: string }) => ({
-            organization: item.organization,
-            membership: {
-              id: item.id,
-              organization_id: item.organization_id,
-              user_id: item.user_id,
-              role: item.role,
-              permissions: item.permissions,
-              calendar_delegation: item.calendar_delegation,
-              can_view_team_calendars: item.can_view_team_calendars,
-              joined_at: item.joined_at,
-            },
-          }));
+          console.log('[OrgStore] Fetched organizations:', data?.length || 0, 'memberships');
 
+          const orgs = data
+            .filter((item: { organization: Organization | null }) => {
+              // Filter out memberships where the organization join failed (RLS or deleted org)
+              if (!item.organization) {
+                console.warn('[OrgStore] Membership found but organization is null (possible RLS issue)');
+                return false;
+              }
+              return true;
+            })
+            .map((item: { organization: Organization; id: string; organization_id: string; user_id: string; role: string; permissions: any; calendar_delegation: any; can_view_team_calendars: any; joined_at: string }) => ({
+              organization: item.organization,
+              membership: {
+                id: item.id,
+                organization_id: item.organization_id,
+                user_id: item.user_id,
+                role: item.role,
+                permissions: item.permissions,
+                calendar_delegation: item.calendar_delegation,
+                can_view_team_calendars: item.can_view_team_calendars,
+                joined_at: item.joined_at,
+              },
+            }));
+
+          console.log('[OrgStore] Valid organizations after filtering:', orgs.length);
           set({ organizations: orgs });
+
+          if (orgs.length === 0) {
+            console.warn('[OrgStore] No organizations found for user:', userId);
+          }
 
           // If no current org selected or cached org doesn't belong to this user, select the first one
           const currentOrg = get().currentOrganization;
           const orgBelongsToUser = orgs.some(o => o.organization.id === currentOrg?.id);
 
           if ((!currentOrg || !orgBelongsToUser) && orgs.length > 0) {
+            console.log('[OrgStore] Setting current organization to:', orgs[0].organization.name);
             await get().setCurrentOrganization(orgs[0].organization.id);
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+          console.error('[OrgStore] fetchUserOrganizations failed:', error);
           throw error;
         } finally {
           set({ loading: false });

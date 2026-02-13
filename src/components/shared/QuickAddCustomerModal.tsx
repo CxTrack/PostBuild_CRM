@@ -5,6 +5,7 @@ import { CustomerStatus } from '@/types/database.types';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 interface QuickAddCustomerModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function QuickAddCustomerModal({
   onCustomerCreated,
 }: QuickAddCustomerModalProps) {
   const { createCustomer } = useCustomerStore();
+  const crmLabels = usePageLabels('crm');
 
   const [customerType, setCustomerType] = useState<'personal' | 'business'>('personal');
   const [saving, setSaving] = useState(false);
@@ -118,10 +120,10 @@ export default function QuickAddCustomerModal({
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Quick Add Customer
+              Quick {crmLabels.newButton}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              You can add more details later from the customer profile
+              You can add more details later from the {crmLabels.entitySingular} profile
             </p>
           </div>
           <button

@@ -17,6 +17,7 @@ import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
@@ -27,6 +28,8 @@ export const CustomerProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const quotesLabel = useIndustryLabel('quotes');
+  const quotesLabels = usePageLabels('quotes');
+  const invoicesLabels = usePageLabels('invoices');
   const {
     currentCustomer,
     fetchCustomerById,
@@ -338,20 +341,20 @@ function OverviewTab({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-              <p className="text-gray-900 dark:text-white">{customer.email || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{customer.email || 'ï¿½'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
-              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || 'ï¿½'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
-              <p className="text-gray-900 dark:text-white">{customer.address || '—'}</p>
+              <p className="text-gray-900 dark:text-white">{customer.address || 'ï¿½'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer Since</p>
               <p className="text-gray-900 dark:text-white">
-                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : '—'}
+                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : 'ï¿½'}
               </p>
             </div>
           </div>
@@ -431,20 +434,20 @@ function OverviewTab({
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Quotes
+              Recent {quotesLabels.entityPlural}
             </h2>
             <Link
               to={`/quotes/builder?customer=${customer.id}`}
               className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
             >
-              New Quote
+              {quotesLabels.newButton}
             </Link>
           </div>
 
           {quotes.length === 0 ? (
             <div className="text-center py-8">
               <FileText size={48} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">No quotes yet</p>
+              <p className="text-gray-600 dark:text-gray-400">No {quotesLabels.entityPlural.toLowerCase()} yet</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -478,13 +481,13 @@ function OverviewTab({
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Invoices
+              Recent {invoicesLabels.entityPlural}
             </h2>
             <Link
               to={`/invoices/builder?customer=${customer.id}`}
               className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
             >
-              New Invoice
+              {invoicesLabels.newButton}
             </Link>
           </div>
 
@@ -541,14 +544,14 @@ function OverviewTab({
               className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
             >
               <FileText size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">Create Quote</span>
+              <span className="text-sm text-gray-900 dark:text-white">{quotesLabels.newButton}</span>
             </button>
             <button
               onClick={onCreateInvoice}
               className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
             >
               <DollarSign size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-900 dark:text-white">Create Invoice</span>
+              <span className="text-sm text-gray-900 dark:text-white">{invoicesLabels.newButton}</span>
             </button>
             <button
               onClick={onAddTask}
@@ -989,7 +992,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {format(activity.date, 'MMM d, yyyy €¢ h:mm a')}
+                        {format(activity.date, 'MMM d, yyyy ï¿½ï¿½ h:mm a')}
                       </p>
                     </div>
                     {activity.status && (
@@ -1186,7 +1189,7 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-lg">
             <Calendar size={16} />
             <span>
-              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} €¢ {formData.time} - {calculateEndTime()}
+              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} ï¿½ï¿½ {formData.time} - {calculateEndTime()}
             </span>
           </div>
 

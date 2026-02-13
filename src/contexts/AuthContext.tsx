@@ -1,6 +1,7 @@
 ﻿import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useOrganizationStore } from '@/stores/organizationStore';
 
 interface User extends SupabaseUser {
   role?: string;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const initCompleteRef = useRef(false);
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user && isMounted) {
+          // Track current user ID for detecting user changes
+          previousUserIdRef.current = session.user.id;
           // Set user immediately (org data can be fetched later by DashboardLayout)
           setUser(session.user);
 
@@ -91,6 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'INITIAL_SESSION') return;
 
       if (session?.user) {
+        // Clear organization cache if user changed (different user logged in)
+        if (previousUserIdRef.current && previousUserIdRef.current !== session.user.id) {
+          console.log('[Auth] User changed, clearing organization cache');
+          useOrganizationStore.getState().clearCache();
+        }
+        previousUserIdRef.current = session.user.id;
+
         setUser(session.user);
 
         // Fetch org data in background
@@ -127,6 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
+    // Clear organization cache before signing out to prevent stale data
+    useOrganizationStore.getState().clearCache();
     await supabase.auth.signOut();
     setUser(null);
     setLoading(false);

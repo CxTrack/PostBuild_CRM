@@ -22,6 +22,7 @@ import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval, subMont
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 // Helper to format duration in seconds to mm:ss
 const formatDuration = (seconds: number): string => {
@@ -62,6 +63,10 @@ export const ReportsPage = () => {
     const { calls, fetchCalls } = useCallStore();
     const { fetchPipelineStats, pipelineStats } = useDealStore();
     const { currentOrganization } = useOrganizationStore();
+
+    // Industry-specific labels
+    const crmLabels = usePageLabels('crm');
+    const pipelineLabels = usePageLabels('pipeline');
 
     const [activeSection, setActiveSection] = useState<ReportSection>('overview');
     const [datePreset, setDatePreset] = useState('Last 30 Days');
@@ -323,7 +328,7 @@ export const ReportsPage = () => {
                 color: 'blue',
             },
             {
-                label: 'Customers',
+                label: crmLabels.entityPlural,
                 value: totalCustomers.toString(),
                 change: '+8.2%',
                 isPositive: true,
@@ -412,8 +417,8 @@ export const ReportsPage = () => {
         { id: 'overview', label: 'Overview', icon: BarChart3 },
         { id: 'revenue', label: 'Revenue', icon: DollarSign },
         { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
-        { id: 'customers', label: 'Customers', icon: Users },
-        { id: 'pipeline', label: 'Pipeline', icon: Target },
+        { id: 'customers', label: crmLabels.entityPlural, icon: Users },
+        { id: 'pipeline', label: pipelineLabels.title, icon: Target },
         { id: 'calls', label: 'Calls', icon: Phone },
         { id: 'team', label: 'Team', icon: Activity },
     ];

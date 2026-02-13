@@ -20,12 +20,14 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 export default function InvoiceBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentOrganization, demoMode, getOrganizationId } = useOrganizationStore();
+  const labels = usePageLabels('invoices');
   const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts, createProduct } = useProductStore();
   const { updateInvoice: updateInvoiceStore, getInvoiceById } = useInvoiceStore();
@@ -475,10 +477,10 @@ export default function InvoiceBuilder() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id ? 'Edit Invoice' : 'Create Invoice'}
+              {id ? `Edit ${labels.entitySingular}` : labels.newButton}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Build a professional invoice for your customer
+              Build a professional {labels.entitySingular} for your customer
             </p>
           </div>
           <div className="flex gap-3">
@@ -516,7 +518,7 @@ export default function InvoiceBuilder() {
                   {id ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                id ? 'Update Invoice' : 'Create Invoice'
+                id ? `Update ${labels.entitySingular}` : labels.newButton
               )}
             </Button>
           </div>

@@ -19,6 +19,7 @@ import SecurityTab from '@/components/settings/SecurityTab';
 import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import toast from 'react-hot-toast';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 export default function Settings() {
   const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations } = useOrganizationStore();
@@ -36,15 +37,23 @@ export default function Settings() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const navigate = useNavigate();
 
+  // Industry-specific labels
+  const crmLabels = usePageLabels('crm');
+  const calendarLabels = usePageLabels('calendar');
+  const quotesLabels = usePageLabels('quotes');
+  const invoicesLabels = usePageLabels('invoices');
+  const pipelineLabels = usePageLabels('pipeline');
+  const tasksLabels = usePageLabels('tasks');
+
   const MOBILE_NAV_OPTIONS = [
-    { path: '/customers', label: 'Customers', icon: Users },
-    { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    { path: '/customers', label: crmLabels.entityPlural, icon: Users },
+    { path: '/calendar', label: calendarLabels.title, icon: CalendarIcon },
     { path: '/products', label: 'Products', icon: Package },
-    { path: '/quotes', label: 'Quotes', icon: FileText },
-    { path: '/invoices', label: 'Invoices', icon: DollarSign },
+    { path: '/quotes', label: quotesLabels.entityPlural, icon: FileText },
+    { path: '/invoices', label: invoicesLabels.entityPlural, icon: DollarSign },
     { path: '/calls', label: 'Calls', icon: Phone },
-    { path: '/pipeline', label: 'Pipeline', icon: TrendingUp },
-    { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+    { path: '/pipeline', label: pipelineLabels.title, icon: TrendingUp },
+    { path: '/tasks', label: tasksLabels.entityPlural, icon: CheckSquare },
   ];
 
   const handleLogout = async () => {

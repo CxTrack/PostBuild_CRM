@@ -184,11 +184,19 @@ export const DashboardLayout = () => {
   useEffect(() => {
     const refreshOrganizations = async () => {
       if (user?.id) {
-        const orgs = useOrganizationStore.getState().organizations;
+        const state = useOrganizationStore.getState();
+        const orgs = state.organizations;
+        const cachedMembership = state.currentMembership;
+
+        // Clear cache if cached membership belongs to a different user (stale data)
+        if (cachedMembership && cachedMembership.user_id !== user.id) {
+          console.log('[DashboardLayout] Clearing stale organization cache - user mismatch');
+          state.clearCache();
+        }
 
         // If no orgs fetched yet, or cached user doesn't match current user, refresh
-        // Note: We no longer clear localStorage here - AuthContext handles that on actual user change
         if (orgs.length === 0 || !orgs.some(o => o.membership.user_id === user.id)) {
+          console.log('[DashboardLayout] Fetching organizations for user:', user.id);
           await fetchUserOrganizations(user.id);
         }
       }

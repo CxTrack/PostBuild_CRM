@@ -41,6 +41,7 @@ import { useTaskStore, Task } from '@/stores/taskStore';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -120,6 +121,15 @@ export const Dashboard: React.FC = () => {
   const { fetchPipelineStats, pipelineStats } = useDealStore();
   const { currentOrganization } = useOrganizationStore();
   const { preferences, saveQuickActionsOrder } = usePreferencesStore();
+
+  // Industry-specific labels
+  const crmLabels = usePageLabels('crm');
+  const quotesLabels = usePageLabels('quotes');
+  const invoicesLabels = usePageLabels('invoices');
+  const tasksLabels = usePageLabels('tasks');
+  const calendarLabels = usePageLabels('calendar');
+
+  // For backwards compatibility with existing code
   const quotesLabel = useIndustryLabel('quotes');
   const singleLabel = quotesLabel.endsWith('s') ? quotesLabel.slice(0, -1) : quotesLabel;
 
@@ -180,7 +190,7 @@ export const Dashboard: React.FC = () => {
   const [quickActions, setQuickActions] = useState<QuickAction[]>([
     {
       id: 'add-customer',
-      label: 'Add Customer',
+      label: crmLabels.newButton,
       icon: UserPlus,
       onClick: handleAddCustomer,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -188,7 +198,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'schedule',
-      label: 'Schedule',
+      label: calendarLabels.newButton,
       icon: CalendarPlus,
       onClick: handleSchedule,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -196,7 +206,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'create-quote',
-      label: `Create ${singleLabel}`,
+      label: quotesLabels.newButton,
       icon: FilePlus,
       onClick: handleCreateQuote,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -204,7 +214,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'new-invoice',
-      label: 'New Invoice',
+      label: invoicesLabels.newButton,
       icon: FileText,
       onClick: handleNewInvoice,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -212,7 +222,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       id: 'create-task',
-      label: 'Create Task',
+      label: tasksLabels.newButton,
       icon: CheckCircle,
       onClick: handleCreateTask,
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -254,7 +264,7 @@ export const Dashboard: React.FC = () => {
       const defaultActions: QuickAction[] = [
         {
           id: 'add-customer',
-          label: 'Add Customer',
+          label: crmLabels.newButton,
           icon: UserPlus,
           onClick: handleAddCustomer,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -262,7 +272,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'schedule',
-          label: 'Schedule',
+          label: calendarLabels.newButton,
           icon: CalendarPlus,
           onClick: handleSchedule,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -270,7 +280,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'create-quote',
-          label: `Create ${singleLabel}`,
+          label: quotesLabels.newButton,
           icon: FilePlus,
           onClick: handleCreateQuote,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -278,7 +288,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'new-invoice',
-          label: 'New Invoice',
+          label: invoicesLabels.newButton,
           icon: FileText,
           onClick: handleNewInvoice,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -286,7 +296,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'create-task',
-          label: 'Create Task',
+          label: tasksLabels.newButton,
           icon: CheckCircle,
           onClick: handleCreateTask,
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
@@ -304,7 +314,7 @@ export const Dashboard: React.FC = () => {
 
       setQuickActions([...orderedActions, ...missingActions]);
     }
-  }, [preferences.quickActionsOrder]);
+  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton]);
 
   useEffect(() => {
     fetchCustomers();
@@ -489,7 +499,7 @@ export const Dashboard: React.FC = () => {
         id: task.id,
         type: 'task',
         title: `Task: ${task.title}`,
-        subtitle: `${customerName} €¢ ${task.type}`,
+        subtitle: `${customerName} ï¿½ï¿½ ${task.type}`,
         timestamp: task.created_at,
         icon: CheckCircle,
         iconBg: 'bg-teal-100 dark:bg-teal-900/30',
@@ -605,8 +615,8 @@ export const Dashboard: React.FC = () => {
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-3">
                 <UserPlus size={24} className="text-blue-600 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">Add Customer</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Create new customer</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-1">{crmLabels.newButton}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Create new {crmLabels.entitySingular}</p>
             </button>
 
             <button
@@ -616,8 +626,8 @@ export const Dashboard: React.FC = () => {
               <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mb-3">
                 <CalendarPlus size={24} className="text-green-600 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">Schedule</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Book appointment</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-1">{calendarLabels.newButton}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Book {calendarLabels.entitySingular}</p>
             </button>
 
             <button
@@ -627,8 +637,8 @@ export const Dashboard: React.FC = () => {
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
                 <FilePlus size={24} className="text-purple-600 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">Create {singleLabel}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">New {singleLabel.toLowerCase()}</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-1">{quotesLabels.newButton}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">New {quotesLabels.entitySingular}</p>
             </button>
 
             <button
@@ -638,8 +648,8 @@ export const Dashboard: React.FC = () => {
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
                 <FileText size={24} className="text-orange-600 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">New Invoice</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Create invoice</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-1">{invoicesLabels.newButton}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Create {invoicesLabels.entitySingular}</p>
             </button>
           </div>
         </div>
@@ -688,7 +698,7 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {call.phone_number} €¢ {Math.floor(call.duration_seconds / 60)}m
+                        {call.phone_number} ï¿½ï¿½ {Math.floor(call.duration_seconds / 60)}m
                       </p>
                     </div>
                   </div>
@@ -946,7 +956,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/calendar" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Calendar
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' †’'}
+                    {theme !== 'soft-modern' && ' ï¿½ï¿½'}
                   </Link>
                 </div>
               </div>
@@ -996,7 +1006,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/pipeline" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Pipeline
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' †’'}
+                    {theme !== 'soft-modern' && ' ï¿½ï¿½'}
                   </Link>
                 </div>
               </div>
@@ -1047,13 +1057,21 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
-                  {['All', 'Appointments', 'Quotes', 'Invoices', 'Products', 'Customers', 'Tasks'].map((filter) => (
+                  {[
+                    { key: 'all', label: 'All' },
+                    { key: 'appointments', label: calendarLabels.entityPlural },
+                    { key: 'quotes', label: quotesLabels.entityPlural },
+                    { key: 'invoices', label: invoicesLabels.entityPlural },
+                    { key: 'products', label: 'Products' },
+                    { key: 'customers', label: crmLabels.entityPlural },
+                    { key: 'tasks', label: tasksLabels.entityPlural },
+                  ].map((filter) => (
                     <button
-                      key={filter}
-                      onClick={() => setActivityFilter(filter.toLowerCase() as ActivityFilter)}
+                      key={filter.key}
+                      onClick={() => setActivityFilter(filter.key as ActivityFilter)}
                       className={`
                       px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all
-                      ${activityFilter === filter.toLowerCase()
+                      ${activityFilter === filter.key
                           ? 'bg-blue-600 text-white shadow-md'
                           : theme === 'soft-modern'
                             ? 'bg-white text-slate-600 shadow-[2px_2px_4px_rgba(0,0,0,0.06),-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[1px_1px_3px_rgba(0,0,0,0.08)]'
@@ -1061,7 +1079,7 @@ export const Dashboard: React.FC = () => {
                         }
                     `}
                     >
-                      {filter}
+                      {filter.label}
                     </button>
                   ))}
                 </div>
@@ -1164,7 +1182,7 @@ export const Dashboard: React.FC = () => {
                               )}
                               <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400 flex-wrap">
                                 <Clock className="w-4 h-4 shrink-0" />
-                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy €¢ h:mm a')}</span>
+                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy ï¿½ï¿½ h:mm a')}</span>
                               </div>
                             </div>
                             <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

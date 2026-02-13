@@ -34,6 +34,7 @@ import { useDealStore } from '@/stores/dealStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { format } from 'date-fns';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -166,12 +167,20 @@ export const DashboardPage = () => {
     const { fetchPipelineStats } = useDealStore();
     const { preferences, saveQuickActionsOrder } = usePreferencesStore();
 
+    // Industry-specific labels
+    const crmLabels = usePageLabels('crm');
+    const quotesLabels = usePageLabels('quotes');
+    const invoicesLabels = usePageLabels('invoices');
+    const tasksLabels = usePageLabels('tasks');
+    const calendarLabels = usePageLabels('calendar');
+    const pipelineLabels = usePageLabels('pipeline');
+
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const [quickActions, setQuickActions] = useState([
         {
             id: 'add-customer',
-            label: 'Add Customer',
+            label: crmLabels.newButton,
             icon: UserPlus,
             onClick: () => navigate('/dashboard/customers'), // Direct nav for now as modal handling is not brought over fully yet
             bgColor: 'bg-blue-50 text-blue-600',
@@ -179,7 +188,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'schedule',
-            label: 'Schedule',
+            label: calendarLabels.newButton,
             icon: CalendarPlus,
             onClick: () => navigate('/dashboard/calendar'),
             bgColor: 'bg-green-50 text-green-600',
@@ -187,7 +196,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'create-quote',
-            label: 'Create Quote',
+            label: quotesLabels.newButton,
             icon: FilePlus,
             onClick: () => navigate('/quotes/builder'),
             bgColor: 'bg-purple-50 text-purple-600',
@@ -195,7 +204,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'new-invoice',
-            label: 'New Invoice',
+            label: invoicesLabels.newButton,
             icon: FileText,
             onClick: () => navigate('/invoices/builder'),
             bgColor: 'bg-orange-50 text-orange-600',
@@ -203,7 +212,7 @@ export const DashboardPage = () => {
         },
         {
             id: 'create-task',
-            label: 'Create Task',
+            label: tasksLabels.newButton,
             icon: CheckCircle,
             onClick: () => navigate('/dashboard/tasks'),
             bgColor: 'bg-pink-50 text-pink-600',
@@ -304,7 +313,7 @@ export const DashboardPage = () => {
             {/* Mini Stat Cards Row (6 Columns) */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <CompactStatCard
-                    label="Customers"
+                    label={crmLabels.entityPlural}
                     value={customers.length}
                     subValue={`+${activeCustomers} Active`}
                     icon={Users}
@@ -312,7 +321,7 @@ export const DashboardPage = () => {
                     onClick={() => navigate('/dashboard/customers')}
                 />
                 <CompactStatCard
-                    label="Schedules"
+                    label={calendarLabels.entityPlural}
                     value={todaysEvents.length}
                     subValue="Today"
                     icon={Calendar}
@@ -320,9 +329,9 @@ export const DashboardPage = () => {
                     onClick={() => navigate('/dashboard/calendar')}
                 />
                 <CompactStatCard
-                    label="Pipeline"
+                    label={pipelineLabels.title}
                     value={`$${(pipelineValue / 1000).toFixed(1)}k`}
-                    subValue={`${quotes.length} Deals`}
+                    subValue={`${quotes.length} ${pipelineLabels.entityPlural}`}
                     icon={TrendingUp}
                     color="purple"
                     onClick={() => navigate('/dashboard/pipeline')}
@@ -336,7 +345,7 @@ export const DashboardPage = () => {
                     onClick={() => navigate('/dashboard/invoices')}
                 />
                 <CompactStatCard
-                    label="Tasks"
+                    label={tasksLabels.entityPlural}
                     value={pendingTasks.length}
                     subValue="Pending"
                     icon={CheckCircle}
