@@ -33,6 +33,7 @@ export const stripeService = {
     invoiceId: string,
     amount: number,
     paymentMethod: string,
+    organizationId: string,
     transactionId?: string,
     referenceNumber?: string
   ): Promise<void> {
@@ -40,6 +41,7 @@ export const stripeService = {
       .from('payments')
       .insert({
         invoice_id: invoiceId,
+        organization_id: organizationId,
         amount,
         payment_method: paymentMethod,
         transaction_id: transactionId,
@@ -56,6 +58,7 @@ export const stripeService = {
       .from('invoices')
       .select('total_amount, amount_paid')
       .eq('id', invoiceId)
+      .eq('organization_id', organizationId) // Add organization filter
       .single();
 
     if (!invoice) throw new Error('Invoice not found');
@@ -76,17 +79,23 @@ export const stripeService = {
         status,
         paid_at: status === 'paid' ? new Date().toISOString() : null,
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('organization_id', organizationId); // Add organization filter
 
     if (updateError) throw updateError;
   },
 
-  async getPaymentHistory(invoiceId: string) {
-    const { data, error } = await supabase
+  async getPaymentHistory(invoiceId: string, organizationId?: string) {
+    let query = supabase
       .from('payments')
       .select('*')
-      .eq('invoice_id', invoiceId)
-      .order('created_at', { ascending: false });
+      .eq('invoice_id', invoiceId);
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];

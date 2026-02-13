@@ -110,8 +110,12 @@ export default function InvoiceDetail() {
     }
 
     try {
+      if (!currentOrganization) {
+        toast.error('No organization selected');
+        return;
+      }
       setRecordingPayment(true);
-      await stripeService.recordPayment(invoice.id, amount, paymentMethod);
+      await stripeService.recordPayment(invoice.id, amount, paymentMethod, currentOrganization.id);
       toast.success('Payment recorded successfully');
       setShowPaymentDialog(false);
       loadInvoice();
