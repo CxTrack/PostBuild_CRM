@@ -120,13 +120,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2️⃣ Check for session (works for both token flow and regular login)
-      console.log('[CxTrack] Calling getSession() with 3s timeout...');
+      console.log('[CxTrack] Calling getSession() with 10s timeout...');
 
       try {
         // Race against a timeout to prevent hanging on corrupted storage
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT')), 3000)
+          setTimeout(() => reject(new Error('TIMEOUT')), 10000)
         );
 
         let session = null;
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           session = result.data?.session;
         } catch (raceErr: any) {
           if (raceErr.message === 'TIMEOUT') {
-            console.warn('[CxTrack] getSession() HUNG - clearing corrupted auth storage');
+            console.warn('[CxTrack] getSession() HUNG after 10s - clearing corrupted auth storage');
             localStorage.removeItem('sb-zkpfzrbbupgiqkzqydji-auth-token');
           } else {
             console.error('[CxTrack] getSession() race error:', raceErr);
