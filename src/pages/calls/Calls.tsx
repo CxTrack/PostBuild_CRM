@@ -50,9 +50,6 @@ export default function Calls() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Don't fetch until organization is available
-    if (!currentOrganization?.id) return;
-
     const loadCallsData = async () => {
       try {
         await Promise.all([
@@ -124,7 +121,8 @@ export default function Calls() {
     }
   };
 
-  if (loading && calls.length === 0) {
+  // Show loading while waiting for organization or fetching calls
+  if (!currentOrganization || (loading && calls.length === 0)) {
     return (
       <PageContainer className="items-center justify-center">
         <div className="text-center">
