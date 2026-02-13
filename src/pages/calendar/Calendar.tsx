@@ -20,6 +20,7 @@ import WeekView from '@/components/calendar/WeekView';
 import DayView from '@/components/calendar/DayView';
 import AgendaView from '@/components/calendar/AgendaView';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -39,6 +40,8 @@ export default function Calendar() {
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
   const { fetchTasks, getTasksByDate } = useTaskStore();
   const { theme } = useThemeStore();
+  const labels = usePageLabels('calendar');
+  const taskLabels = usePageLabels('tasks');
 
   useEffect(() => {
     let orgId;
@@ -111,10 +114,10 @@ export default function Calendar() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Calendar
+              {labels.title}
             </h1>
             <span className="hidden sm:block text-sm text-gray-600 dark:text-gray-400">
-              Manage your appointments and schedule
+              {labels.subtitle}
             </span>
           </div>
 
@@ -144,7 +147,7 @@ export default function Calendar() {
               className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
             >
               <Plus size={20} className="mr-2" />
-              <span>New Event</span>
+              <span>{labels.newButton}</span>
             </button>
           </div>
         </div>
@@ -394,8 +397,8 @@ export default function Calendar() {
                   <CalendarIcon size={24} className="text-white" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Appointment</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Schedule a meeting or event</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Schedule a meeting or {labels.entitySingular}</p>
                 </div>
               </button>
 
@@ -411,8 +414,8 @@ export default function Calendar() {
                   <CheckCircle size={24} className="text-white" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Task</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Create a to-do item</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{taskLabels.entitySingular.charAt(0).toUpperCase() + taskLabels.entitySingular.slice(1)}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Create a {taskLabels.entitySingular}</p>
                 </div>
               </button>
             </div>

@@ -13,8 +13,9 @@ import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
 import { useDealStore } from '../stores/dealStore';
 import { useOrganizationStore } from '../stores/organizationStore';
-import { useIndustryLabel } from '../hooks/useIndustryLabel';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import { useMemo } from 'react';
+import { DashboardStatsSkeleton, TableSkeleton } from '@/components/ui/skeletons';
 
 interface PipelineItem {
   id: string;
@@ -44,8 +45,8 @@ const Pipeline: React.FC = () => {
   const { deals, fetchDeals } = useDealStore();
   const { currentOrganization } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
-  const pipelineLabel = useIndustryLabel('pipeline');
-  const quotesLabel = useIndustryLabel('quotes');
+  const labels = usePageLabels('pipeline');
+  const quotesLabels = usePageLabels('quotes');
 
   // Helper to display stage label instead of raw key
   const getStageLabel = (stageKey: string): string => {
@@ -304,7 +305,7 @@ const Pipeline: React.FC = () => {
   const pipelineColumns: ColumnDef<PipelineItem>[] = [
     {
       id: 'deal',
-      header: 'Deal',
+      header: labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1),
       defaultWidth: 250,
       minWidth: 200,
       render: (item) => (
@@ -323,7 +324,7 @@ const Pipeline: React.FC = () => {
     },
     {
       id: 'customer',
-      header: 'Customer',
+      header: labels.columns?.customer || 'Customer',
       defaultWidth: 200,
       minWidth: 150,
       render: (item) => (
@@ -339,7 +340,7 @@ const Pipeline: React.FC = () => {
     },
     {
       id: 'amount',
-      header: 'Amount',
+      header: labels.columns?.value || 'Amount',
       defaultWidth: 120,
       minWidth: 100,
       render: (item) => (
@@ -430,10 +431,10 @@ const Pipeline: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {pipelineLabel}
+            {labels.title}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Track deals through your sales process
+            {labels.subtitle}
           </p>
         </div>
 
@@ -476,7 +477,7 @@ const Pipeline: React.FC = () => {
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">New Deal</span>
+            <span className="hidden sm:inline">{labels.newButton}</span>
           </button>
         </div>
       </div>
@@ -553,7 +554,7 @@ const Pipeline: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search pipeline..."
+              placeholder={labels.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
             />
           </div>
@@ -562,18 +563,18 @@ const Pipeline: React.FC = () => {
 
       {/* Views */}
       {loading ? (
-        <Card className="p-12 text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className={theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>Loading pipeline...</p>
-        </Card>
+        <div className="space-y-6">
+          <DashboardStatsSkeleton />
+          <TableSkeleton rows={8} />
+        </div>
       ) : filteredItems.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className={`w-16 h-16 mx-auto mb-4 ${theme === 'soft-modern' ? '' : 'text-gray-400 dark:text-gray-500'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined} />
           <h3 className={`text-xl font-semibold mb-2 ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
-            No pipeline items
+            {labels.emptyStateTitle}
           </h3>
           <p className={`mb-6 ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
-            Create deals to build your sales pipeline
+            {labels.emptyStateDescription}
           </p>
           <button
             onClick={() => navigate('/dashboard/quotes/builder')}
@@ -584,7 +585,7 @@ const Pipeline: React.FC = () => {
               boxShadow: '4px 4px 8px rgba(0,0,0,0.08)'
             } : undefined}
           >
-            Create Your First Deal
+            {labels.emptyStateButton}
           </button>
         </Card>
       ) : viewMode === 'table' ? (
@@ -601,7 +602,7 @@ const Pipeline: React.FC = () => {
         <div className="grid grid-cols-12 gap-6" style={{ height: 'calc(100vh - 400px)' }}>
           <div className="col-span-12 lg:col-span-5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
             <div className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-700 px-6 py-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">All Deals ({filteredItems.length})</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
             </div>
             <div className="overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
               {sortedItems.map(item => (
@@ -646,7 +647,7 @@ const Pipeline: React.FC = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
-                        {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? 'Deal' : quotesLabel}
+                        {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
                       </p>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                         {selectedItem.customer_name}
@@ -683,7 +684,7 @@ const Pipeline: React.FC = () => {
                 <div className="p-8 space-y-8">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                      Deal Information
+                      {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Information
                     </h3>
                     <div className="grid grid-cols-2 gap-6">
                       <div>
@@ -707,7 +708,7 @@ const Pipeline: React.FC = () => {
                       <div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Type</p>
                         <p className="font-semibold text-slate-900 dark:text-white">
-                          {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? 'Deal' : quotesLabel}
+                          {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
                         </p>
                       </div>
                     </div>
@@ -715,7 +716,7 @@ const Pipeline: React.FC = () => {
 
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                      Deal Timeline
+                      {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Timeline
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-start gap-4">
@@ -723,7 +724,7 @@ const Pipeline: React.FC = () => {
                           <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 dark:text-white">Deal Created</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">{labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Created</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             {new Date(selectedItem.created_at).toLocaleString()}
                           </p>
@@ -769,10 +770,10 @@ const Pipeline: React.FC = () => {
                 <div>
                   <Mouse className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                    Select a deal
+                    Select a {labels.entitySingular}
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400">
-                    Click a deal from the list to view details
+                    Click a {labels.entitySingular} from the list to view details
                   </p>
                 </div>
               </div>
@@ -839,7 +840,7 @@ const Pipeline: React.FC = () => {
                                 item.type === 'invoice' ? '#7A6050' :
                                   '#6366F1'
                             } : undefined}>
-                            {item.type === 'quote' ? quotesLabel : item.type === 'invoice' ? 'Invoice' : 'Deal'}
+                            {item.type === 'quote' ? quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1) : item.type === 'invoice' ? 'Invoice' : labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
                           </span>
                           <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>
                             {item.number}

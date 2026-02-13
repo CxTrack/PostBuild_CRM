@@ -1,20 +1,23 @@
 import React from 'react';
 import { Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { usePageLabels } from '../hooks/usePageLabels';
 
 export const CalendarPage: React.FC = () => {
+  const labels = usePageLabels('calendar');
+
   return (
     <div className="p-8 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Calendar
+            {labels.title}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage your appointments and schedule
+            {labels.subtitle}
           </p>
         </div>
-        <Button icon={<Plus size={18} />}>New Event</Button>
+        <Button icon={<Plus size={18} />}>{labels.newButton}</Button>
       </div>
 
       {/* Calendar Placeholder - Will implement react-big-calendar */}
@@ -25,12 +28,12 @@ export const CalendarPage: React.FC = () => {
               <CalendarIcon size={32} className="text-indigo-600 dark:text-white" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Calendar View
+              {labels.title}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Your calendar events will appear here
+              {labels.emptyStateDescription}
             </p>
-            <Button icon={<Plus size={18} />}>Schedule Appointment</Button>
+            <Button icon={<Plus size={18} />}>{labels.emptyStateButton}</Button>
           </div>
         </div>
       </div>

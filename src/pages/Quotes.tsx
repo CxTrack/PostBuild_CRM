@@ -10,7 +10,8 @@ import {
 import { useQuoteStore } from '../stores/quoteStore';
 import { useOrganizationStore } from '../stores/organizationStore';
 import { useThemeStore } from '../stores/themeStore';
-import { useIndustryLabel } from '../hooks/useIndustryLabel';
+import { usePageLabels } from '../hooks/usePageLabels';
+import { DashboardStatsSkeleton, TableSkeleton } from '../components/ui/skeletons';
 import { PageContainer, Card, IconBadge } from '../components/theme/ThemeComponents';
 import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
@@ -33,8 +34,7 @@ export default function Quotes() {
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
-  const quotesLabel = useIndustryLabel('quotes');
-  const singleLabel = quotesLabel.endsWith('s') ? quotesLabel.slice(0, -1) : quotesLabel;
+  const labels = usePageLabels('quotes');
   const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
@@ -98,33 +98,33 @@ export default function Quotes() {
   };
 
   const bulkMarkAccepted = () => {
-    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} marked as accepted`);
+    toast.success(`${selectedQuotes.size} ${labels.entityPlural.toLowerCase()} marked as accepted`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
 
   const bulkArchive = async () => {
     const confirmed = await confirm({
-      title: `Archive ${quotesLabel}`,
-      message: `Archive ${selectedQuotes.size} selected ${quotesLabel.toLowerCase()}?`,
+      title: `Archive ${labels.entityPlural}`,
+      message: `Archive ${selectedQuotes.size} selected ${labels.entityPlural.toLowerCase()}?`,
       variant: 'warning',
       confirmText: 'Archive',
     });
     if (!confirmed) return;
-    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} archived`);
+    toast.success(`${selectedQuotes.size} ${labels.entityPlural.toLowerCase()} archived`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
 
   const bulkDelete = async () => {
     const confirmed = await confirm({
-      title: `Delete ${quotesLabel}`,
-      message: `Permanently delete ${selectedQuotes.size} selected ${quotesLabel.toLowerCase()}? This cannot be undone.`,
+      title: `Delete ${labels.entityPlural}`,
+      message: `Permanently delete ${selectedQuotes.size} selected ${labels.entityPlural.toLowerCase()}? This cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
     if (!confirmed) return;
-    toast.success(`${selectedQuotes.size} ${quotesLabel.toLowerCase()} deleted`);
+    toast.success(`${selectedQuotes.size} ${labels.entityPlural.toLowerCase()} deleted`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
@@ -132,21 +132,21 @@ export default function Quotes() {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
-      toast.error(`You do not have permission to delete ${quotesLabel.toLowerCase()}`);
+      toast.error(`You do not have permission to delete ${labels.entityPlural.toLowerCase()}`);
       return;
     }
     const confirmed = await confirm({
-      title: `Delete ${singleLabel}`,
-      message: `Are you sure you want to delete this ${singleLabel.toLowerCase()}? This cannot be undone.`,
+      title: `Delete ${labels.entitySingular}`,
+      message: `Are you sure you want to delete this ${labels.entitySingular.toLowerCase()}? This cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
     if (!confirmed) return;
     try {
       await deleteQuote(id);
-      toast.success(`${singleLabel} deleted successfully`);
+      toast.success(`${labels.entitySingular} deleted successfully`);
     } catch (error) {
-      toast.error(`Failed to delete ${singleLabel.toLowerCase()}`);
+      toast.error(`Failed to delete ${labels.entitySingular.toLowerCase()}`);
     }
   };
 
@@ -172,11 +172,9 @@ export default function Quotes() {
 
   if (loading && quotes.length === 0) {
     return (
-      <PageContainer className="items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading {quotesLabel.toLowerCase()}...</p>
-        </div>
+      <PageContainer className="gap-6">
+        <DashboardStatsSkeleton />
+        <TableSkeleton rows={8} />
       </PageContainer>
     );
   }
@@ -186,10 +184,10 @@ export default function Quotes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {quotesLabel}
+            {labels.title}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Draft proposals, track customer interest, and convert leads
+            {labels.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -206,7 +204,7 @@ export default function Quotes() {
             className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus size={18} className="mr-2" />
-            Create {singleLabel}
+            {labels.newButton}
           </Link>
         </div>
       </div>
@@ -286,7 +284,7 @@ export default function Quotes() {
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search quotes..."
+              placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
@@ -323,12 +321,12 @@ export default function Quotes() {
               <FileText size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No {quotesLabel.toLowerCase()} found
+              {labels.emptyStateTitle}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
               {searchTerm || filterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
-                : `Create your first ${singleLabel.toLowerCase()} to get started`}
+                : labels.emptyStateDescription}
             </p>
             {!searchTerm && filterStatus === 'all' && (
               <Link
@@ -336,7 +334,7 @@ export default function Quotes() {
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
-                Create Your First {singleLabel}
+                {labels.emptyStateButton}
               </Link>
             )}
           </div>
@@ -358,7 +356,7 @@ export default function Quotes() {
               columns={[
                 {
                   id: 'quote_number',
-                  header: `${singleLabel} #`,
+                  header: `${labels.entitySingular} #`,
                   defaultWidth: 120,
                   minWidth: 100,
                   render: (quote) => (
@@ -370,7 +368,7 @@ export default function Quotes() {
                 },
                 {
                   id: 'customer',
-                  header: 'Customer',
+                  header: labels.columns?.customer || 'Customer',
                   defaultWidth: 200,
                   minWidth: 120,
                   render: (quote) => (
@@ -448,7 +446,7 @@ export default function Quotes() {
                       #
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Quote #
+                      {labels.entitySingular} #
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       Customer

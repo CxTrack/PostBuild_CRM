@@ -113,6 +113,30 @@ git push origin main                             # Deploys to Netlify
 - **Project ID**: zkpfzrbbupgiqkzqydji
 - **URL**: https://zkpfzrbbupgiqkzqydji.supabase.co
 - **Dashboard**: https://supabase.com/dashboard/project/zkpfzrbbupgiqkzqydji
+- **Service Role Key**: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ
+
+### How to Query Database
+
+**To run SQL queries, ASK THE USER to either:**
+1. Provide the **service role key** (for auth tables)
+2. Run the query in Supabase Dashboard and share results
+
+**Key Tables:**
+| Table | Purpose |
+|-------|---------|
+| `auth.users` | User accounts (requires service role) |
+| `user_profiles` | Extended user info |
+| `organizations` | Companies, industry_template, subscription_tier |
+| `organization_members` | Links users to orgs |
+
+**Common Debug Query (ask user to run in dashboard):**
+```sql
+SELECT u.email, om.organization_id, o.name, o.industry_template, o.subscription_tier
+FROM auth.users u
+LEFT JOIN organization_members om ON u.id = om.user_id
+LEFT JOIN organizations o ON om.organization_id = o.id
+WHERE u.email = 'user@example.com';
+```
 
 ---
 
@@ -179,6 +203,42 @@ git push origin main                             # Deploys to Netlify
 4. **NEVER ASSUME** - always verify platform, branch, directory
 5. **STATE CLEARLY** if something is impossible instead of trying hacky workarounds
 6. **PROVIDE GEMINI PROMPT** - Always end with a copy-paste ready prompt for Gemini
+7. **ASK QUESTIONS WHEN STUCK** - Do NOT guess or make things up. If missing info, ASK THE USER.
+8. **BE EFFICIENT** - Minimize token usage, don't repeat yourself, be concise
+9. **NO QUICK FIXES** - Always build proper, production-ready systems. Never apply band-aid solutions.
+10. **ANALYZE HARDCODED VALUES** - When finding hardcoded strings/values, analyze if they should be dynamic. This CRM is highly flexible and industry-variable - most hardcoded text should be configurable per industry template.
+
+---
+
+## Industry Template System
+
+**CRITICAL**: CxTrack is a multi-industry CRM. ALL user-facing text must be dynamic based on `industry_template`.
+
+### Architecture
+- **Config:** `src/config/modules.config.ts` - defines available modules and industry labels
+- **Hook:** `src/hooks/useIndustryLabel.ts` - retrieves industry-specific labels
+- **Templates:** Each industry has different terminology (see below)
+
+### Industry Terminology Reference
+
+| Industry | customers → | invoices → | quotes → | pipeline → | tasks → |
+|----------|-------------|------------|----------|------------|---------|
+| **mortgage_broker** | Borrowers | Commissions | - | Applications | Follow-ups |
+| **real_estate** | Contacts | - | Listing Proposals | Deal Pipeline | Tasks |
+| **contractors_home_services** | Clients | Invoices | Estimates | Job Pipeline | Tasks |
+| **healthcare** | Patients | Invoices | - | - | Tasks |
+| **legal_services** | Clients | Invoices | Fee Proposals | Case Pipeline | Tasks |
+| **tax_accounting** | Clients | Invoices | Engagement Letters | - | Tasks |
+| **construction** | Clients | Invoices | Bids | Projects | Punch List |
+| **gyms_fitness** | Members | Invoices | - | Membership Pipeline | Tasks |
+| **software_development** | Clients | Billing | Proposals | Projects | Sprints & Tasks |
+| **general_business** | Customers | Invoices | Quotes | Pipeline | Tasks |
+
+### When Adding New Pages/Features
+1. NEVER hardcode user-facing strings
+2. Use `useIndustryLabel(moduleId)` for module names
+3. Use `usePageLabels(pageId)` for page content (titles, descriptions, buttons, empty states)
+4. Check `modules.config.ts` for existing labels before adding new ones
 
 ---
 

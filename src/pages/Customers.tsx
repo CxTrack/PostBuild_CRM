@@ -12,6 +12,9 @@ import CustomerModal from '@/components/customers/CustomerModal';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { formatPhoneDisplay } from '@/utils/phone.utils';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { CustomerTableSkeleton } from '@/components/ui/TableSkeleton';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import SettingsPopover from '@/components/settings/SettingsPopover';
 import CustomFieldsPanel from '@/components/settings/CustomFieldsPanel';
 import CSVImporter from '@/components/import/CSVImporter';
@@ -32,6 +35,7 @@ export const Customers: React.FC = () => {
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
+  const labels = usePageLabels('crm');
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -60,12 +64,12 @@ export const Customers: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
-      toast.error('You do not have permission to delete customers');
+      toast.error(`You do not have permission to delete ${labels.entityPlural}`);
       return;
     }
     const confirmed = await confirm({
-      title: 'Delete Customer',
-      message: 'Are you sure you want to delete this customer? This action cannot be undone.',
+      title: `Delete ${labels.entitySingular}`,
+      message: `Are you sure you want to delete this ${labels.entitySingular}? This action cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
@@ -73,9 +77,9 @@ export const Customers: React.FC = () => {
     if (confirmed) {
       try {
         await deleteCustomer(id);
-        toast.success('Customer deleted successfully');
+        toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
       } catch (error) {
-        toast.error('Failed to delete customer');
+        toast.error(`Failed to delete ${labels.entitySingular}`);
       }
     }
   };
@@ -85,9 +89,9 @@ export const Customers: React.FC = () => {
       <Card className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Customers</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Manage your customer relationships
+              {labels.subtitle}
             </p>
           </div>
           <Button
@@ -96,7 +100,7 @@ export const Customers: React.FC = () => {
             className="flex items-center"
           >
             <Plus size={20} className="mr-2" />
-            Add Customer
+            {labels.newButton}
           </Button>
           <div className="ml-2">
             <SettingsPopover
@@ -113,7 +117,7 @@ export const Customers: React.FC = () => {
             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
-              placeholder="Search customers..."
+              placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={
@@ -156,7 +160,7 @@ export const Customers: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Customer Type
+                  {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Type
                 </label>
                 <div className="flex space-x-2">
                   {(['all', 'personal', 'business'] as const).map((type) => (
@@ -223,8 +227,12 @@ export const Customers: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-10 w-32 rounded-lg" />
+            </div>
+            <CustomerTableSkeleton />
           </div>
         ) : filteredCustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-4">
@@ -232,19 +240,19 @@ export const Customers: React.FC = () => {
               <Users size={40} className="text-gray-400 dark:text-gray-500" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {searchTerm ? 'No customers found' : 'No customers yet'}
+              {searchTerm ? labels.emptyStateTitle : `No ${labels.entityPlural} yet`}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
               {searchTerm
                 ? 'Try adjusting your search or filters'
-                : 'Get started by adding your first customer'}
+                : labels.emptyStateDescription}
             </p>
             {!searchTerm && (
               <button
                 onClick={() => setShowCustomerModal(true)}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm"
               >
-                Add Your First Customer
+                {labels.emptyStateButton}
               </button>
             )}
           </div>
@@ -256,7 +264,7 @@ export const Customers: React.FC = () => {
                   <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Customer
+                        {labels.columns?.name}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                         Type

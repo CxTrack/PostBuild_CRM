@@ -10,6 +10,7 @@ import {
 import { useInvoiceStore } from '../stores/invoiceStore';
 import { useOrganizationStore } from '../stores/organizationStore';
 import { useThemeStore } from '../stores/themeStore';
+import { usePageLabels } from '../hooks/usePageLabels';
 import { PageContainer, Card, IconBadge } from '../components/theme/ThemeComponents';
 import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
@@ -34,6 +35,7 @@ export default function Invoices() {
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
+  const labels = usePageLabels('invoices');
 
   useEffect(() => {
     try {
@@ -107,33 +109,33 @@ export default function Invoices() {
   };
 
   const bulkMarkPaid = () => {
-    toast.success(`${selectedInvoices.size} invoices marked as paid`);
+    toast.success(`${selectedInvoices.size} ${labels.entityPlural} marked as paid`);
     setSelectedInvoices(new Set());
     setSelectAll(false);
   };
 
   const bulkArchive = async () => {
     const confirmed = await confirm({
-      title: 'Archive Invoices',
-      message: `Archive ${selectedInvoices.size} selected invoices?`,
+      title: `Archive ${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}`,
+      message: `Archive ${selectedInvoices.size} selected ${labels.entityPlural}?`,
       variant: 'warning',
       confirmText: 'Archive',
     });
     if (!confirmed) return;
-    toast.success(`${selectedInvoices.size} invoices archived`);
+    toast.success(`${selectedInvoices.size} ${labels.entityPlural} archived`);
     setSelectedInvoices(new Set());
     setSelectAll(false);
   };
 
   const bulkDelete = async () => {
     const confirmed = await confirm({
-      title: 'Delete Invoices',
-      message: `Permanently delete ${selectedInvoices.size} selected invoices? This cannot be undone.`,
+      title: `Delete ${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}`,
+      message: `Permanently delete ${selectedInvoices.size} selected ${labels.entityPlural}? This cannot be undone.`,
       variant: 'danger',
       confirmText: 'Delete',
     });
     if (!confirmed) return;
-    toast.success(`${selectedInvoices.size} invoices deleted`);
+    toast.success(`${selectedInvoices.size} ${labels.entityPlural} deleted`);
     setSelectedInvoices(new Set());
     setSelectAll(false);
   };
@@ -159,7 +161,7 @@ export default function Invoices() {
     }
   };
 
-  const ActionsDropdown = ({ invoice, onClose }: { invoice: any; onClose: () => void }) => {
+  const ActionsDropdown = ({ invoice, onClose, entityLabels }: { invoice: any; onClose: () => void; entityLabels: typeof labels }) => {
     return (
       <div
         className="absolute right-0 top-full mt-2 w-48 rounded-xl border-2 shadow-lg z-50"
@@ -189,7 +191,7 @@ export default function Invoices() {
             className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
           >
             <Edit className="w-4 h-4" />
-            Edit Invoice
+            Edit {entityLabels.entitySingular.charAt(0).toUpperCase() + entityLabels.entitySingular.slice(1)}
           </button>
 
           <button
@@ -221,25 +223,25 @@ export default function Invoices() {
             <button
               onClick={async () => {
                 const confirmed = await confirm({
-                  title: 'Delete Invoice',
-                  message: 'Are you sure you want to delete this invoice? This cannot be undone.',
+                  title: `Delete ${entityLabels.entitySingular.charAt(0).toUpperCase() + entityLabels.entitySingular.slice(1)}`,
+                  message: `Are you sure you want to delete this ${entityLabels.entitySingular}? This cannot be undone.`,
                   variant: 'danger',
                   confirmText: 'Delete',
                 });
                 if (confirmed) {
                   try {
                     await deleteInvoice(invoice.id);
-                    toast.success('Invoice deleted successfully');
+                    toast.success(`${entityLabels.entitySingular.charAt(0).toUpperCase() + entityLabels.entitySingular.slice(1)} deleted successfully`);
                     onClose();
                   } catch (error) {
-                    toast.error('Failed to delete invoice');
+                    toast.error(`Failed to delete ${entityLabels.entitySingular}`);
                   }
                 }
               }}
               className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              Delete Invoice
+              Delete {entityLabels.entitySingular.charAt(0).toUpperCase() + entityLabels.entitySingular.slice(1)}
             </button>
           )}
         </div>
@@ -252,7 +254,7 @@ export default function Invoices() {
       <PageContainer className="items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading invoices...</p>
+          <p className="text-gray-600 dark:text-gray-400">{labels.loadingText}</p>
         </div>
       </PageContainer>
     );
@@ -263,10 +265,10 @@ export default function Invoices() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Financial Center
+            {labels.title}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Generate invoices, track receivables, and manage billing
+            {labels.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -283,7 +285,7 @@ export default function Invoices() {
             className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus size={18} className="mr-2" />
-            New Invoice
+            {labels.newButton}
           </Link>
         </div>
       </div>
@@ -296,7 +298,7 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Revenue</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalRevenue}</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
           </div>
           <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
@@ -309,7 +311,7 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Paid</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalPaid}</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalPaid / 1000).toFixed(1)}k</h3>
           </div>
           <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
@@ -322,7 +324,7 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Outstanding</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.outstanding}</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalOutstanding / 1000).toFixed(1)}k</h3>
           </div>
           <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
@@ -335,7 +337,7 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Overdue</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.overdue}</p>
             <h3 className="text-2xl font-bold text-rose-600">{stats.overdueCount}</h3>
           </div>
           <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
@@ -363,7 +365,7 @@ export default function Invoices() {
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search invoices..."
+              placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
@@ -400,12 +402,12 @@ export default function Invoices() {
               <FileText size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No invoices found
+              {labels.emptyStateTitle}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
               {searchTerm || filterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
-                : 'Create your first invoice to start billing customers'}
+                : labels.emptyStateDescription}
             </p>
             {!searchTerm && filterStatus === 'all' && (
               <Link
@@ -413,7 +415,7 @@ export default function Invoices() {
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
-                Create Your First Invoice
+                {labels.emptyStateButton}
               </Link>
             )}
           </div>
@@ -435,7 +437,7 @@ export default function Invoices() {
               columns={[
                 {
                   id: 'invoice_number',
-                  header: 'Invoice #',
+                  header: labels.columns?.number || 'Invoice #',
                   defaultWidth: 140,
                   minWidth: 100,
                   render: (invoice) => (
@@ -447,7 +449,7 @@ export default function Invoices() {
                 },
                 {
                   id: 'customer',
-                  header: 'Customer',
+                  header: labels.columns?.customer || 'Customer',
                   defaultWidth: 180,
                   minWidth: 120,
                   render: (invoice) => (
@@ -526,7 +528,7 @@ export default function Invoices() {
                       >
                         <MoreVertical className="w-3.5 h-3.5 text-gray-500" />
                         {activeDropdown === invoice.id && (
-                          <ActionsDropdown invoice={invoice} onClose={() => setActiveDropdown(null)} />
+                          <ActionsDropdown invoice={invoice} onClose={() => setActiveDropdown(null)} entityLabels={labels} />
                         )}
                       </button>
                     </div>
@@ -554,10 +556,10 @@ export default function Invoices() {
                       #
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Invoice #
+                      {labels.columns?.number || 'Invoice #'}
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Customer
+                      {labels.columns?.customer || 'Customer'}
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       Date / Due
@@ -724,7 +726,7 @@ export default function Invoices() {
                         onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${invoice.id}`); }}
                         className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold"
                       >
-                        View Invoice
+                        View {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); activeDropdown === invoice.id ? setActiveDropdown(null) : setActiveDropdown(invoice.id); }}
@@ -736,7 +738,7 @@ export default function Invoices() {
                         )}
                         {activeDropdown === invoice.id && (
                           <div className="absolute right-0 bottom-full mb-2 z-50">
-                            <ActionsDropdown invoice={invoice} onClose={() => setActiveDropdown(null)} />
+                            <ActionsDropdown invoice={invoice} onClose={() => setActiveDropdown(null)} entityLabels={labels} />
                           </div>
                         )}
                       </button>

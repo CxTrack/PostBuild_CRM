@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+Ôªøimport { useState, useMemo, useEffect } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import {
@@ -19,6 +19,7 @@ import TaskModal from '@/components/tasks/TaskModal';
 import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
 import { useThemeStore } from '@/stores/themeStore';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 type ViewMode = 'table' | 'kanban';
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -66,6 +67,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const { currentOrganization } = useOrganizationStore();
+  const labels = usePageLabels('tasks');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -199,7 +201,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
   };
 
   const bulkArchive = () => {
-    if (!confirm(`Archive ${selectedTasks.size} tasks?`)) return;
+    if (!confirm(`Archive ${selectedTasks.size} ${labels.entityPlural}?`)) return;
     setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
     setSelectedTasks(new Set());
     setSelectAll(false);
@@ -210,13 +212,13 @@ export default function Tasks({ embedded = false }: TasksProps) {
     setSelectedTasks(new Set());
     setSelectAll(false);
     setShowDeleteModal(false);
-    toast.success('Tasks deleted successfully');
+    toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
   };
 
   const deleteTask = (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    if (!confirm(`Are you sure you want to delete this ${labels.entitySingular}?`)) return;
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
-    toast.success('Task deleted successfully');
+    toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
   };
 
   const updateTaskStatus = (taskId: string, newStatus: string) => {
@@ -263,8 +265,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
               {!embedded && (
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Tasks</h1>
-                    <p className="text-slate-600 dark:text-gray-400 mt-1">Manage your tasks and to-dos</p>
+                    <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">{labels.title}</h1>
+                    <p className="text-slate-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
                   </div>
 
                   <button
@@ -275,7 +277,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                     className={theme === 'soft-modern' ? 'btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all' : 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors'}
                   >
                     <Plus size={18} />
-                    New Task
+                    {labels.newButton}
                   </button>
                 </div>
               )}
@@ -286,7 +288,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" size={18} />
                   <input
                     type="text"
-                    placeholder="Search tasks..."
+                    placeholder={labels.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={
@@ -548,7 +550,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
                               <td className="px-3 py-3">
                                 <span className="text-sm text-slate-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
-                                  {task.customer || 'Äî'}
+                                  {task.customer || '‚Ç¨‚Äù'}
                                 </span>
                               </td>
 
@@ -621,7 +623,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Customer</span>
-                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || 'Äî'}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || '‚Ç¨‚Äù'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Due Date</span>
@@ -665,7 +667,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 {filteredTasks.length === 0 && (
                   <div className="py-12 text-center text-slate-500 dark:text-gray-400">
                     <ListTodo className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-gray-600" />
-                    <p className="font-medium">No tasks found</p>
+                    <p className="font-medium">{labels.emptyStateTitle}</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters</p>
                   </div>
                 )}
@@ -745,9 +747,9 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Delete Tasks</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Delete {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}</h3>
                 <p className="text-sm text-slate-600 dark:text-gray-400">
-                  Are you sure you want to delete {selectedTasks.size} task(s)? This action cannot
+                  Are you sure you want to delete {selectedTasks.size} {labels.entityPlural}? This action cannot
                   be undone.
                 </p>
               </div>

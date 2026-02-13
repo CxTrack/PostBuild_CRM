@@ -195,6 +195,780 @@ export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
   enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
 };
 
+// ============================================================================
+// PAGE LABELS - Industry-specific page content
+// ============================================================================
+// Every user-facing string should come from here, not hardcoded in components
+
+export interface PageLabels {
+  title: string;
+  subtitle: string;
+  entitySingular: string;
+  entityPlural: string;
+  newButton: string;
+  searchPlaceholder: string;
+  emptyStateTitle: string;
+  emptyStateDescription: string;
+  emptyStateButton: string;
+  loadingText: string;
+  // Table column headers
+  columns?: {
+    number?: string;
+    customer?: string;
+    date?: string;
+    amount?: string;
+    status?: string;
+    actions?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    stage?: string;
+    value?: string;
+    priority?: string;
+    dueDate?: string;
+    assignee?: string;
+  };
+  // Stats labels
+  stats?: {
+    total?: string;
+    totalRevenue?: string;
+    totalPaid?: string;
+    outstanding?: string;
+    overdue?: string;
+    active?: string;
+    completed?: string;
+    pending?: string;
+  };
+}
+
+// Default labels (general_business) - used as fallback
+const DEFAULT_PAGE_LABELS: Record<string, PageLabels> = {
+  invoices: {
+    title: 'Financial Center',
+    subtitle: 'Generate invoices, track receivables, and manage billing',
+    entitySingular: 'invoice',
+    entityPlural: 'invoices',
+    newButton: 'New Invoice',
+    searchPlaceholder: 'Search invoices...',
+    emptyStateTitle: 'No invoices found',
+    emptyStateDescription: 'Create your first invoice to start billing customers',
+    emptyStateButton: 'Create Your First Invoice',
+    loadingText: 'Loading invoices...',
+    columns: {
+      number: 'Invoice #',
+      customer: 'Customer',
+      date: 'Date / Due',
+      amount: 'Amount',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    stats: {
+      totalRevenue: 'Total Revenue',
+      totalPaid: 'Total Paid',
+      outstanding: 'Outstanding',
+      overdue: 'Overdue',
+    },
+  },
+  crm: {
+    title: 'Customers',
+    subtitle: 'Manage your customer relationships and contact information',
+    entitySingular: 'customer',
+    entityPlural: 'customers',
+    newButton: 'Add Customer',
+    searchPlaceholder: 'Search customers...',
+    emptyStateTitle: 'No customers yet',
+    emptyStateDescription: 'Add your first customer to get started',
+    emptyStateButton: 'Add Your First Customer',
+    loadingText: 'Loading customers...',
+    columns: {
+      name: 'Name',
+      email: 'Email',
+      phone: 'Phone',
+      company: 'Company',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    stats: {
+      total: 'Total Customers',
+      active: 'Active',
+      pending: 'Pending',
+    },
+  },
+  pipeline: {
+    title: 'Sales Pipeline',
+    subtitle: 'Track deals and opportunities through your sales process',
+    entitySingular: 'deal',
+    entityPlural: 'deals',
+    newButton: 'New Deal',
+    searchPlaceholder: 'Search deals...',
+    emptyStateTitle: 'No deals in pipeline',
+    emptyStateDescription: 'Add your first deal to start tracking opportunities',
+    emptyStateButton: 'Add Your First Deal',
+    loadingText: 'Loading pipeline...',
+    columns: {
+      name: 'Deal Name',
+      customer: 'Customer',
+      value: 'Value',
+      stage: 'Stage',
+      actions: 'Actions',
+    },
+    stats: {
+      total: 'Total Deals',
+      totalRevenue: 'Pipeline Value',
+      active: 'Active Deals',
+    },
+  },
+  quotes: {
+    title: 'Quotes',
+    subtitle: 'Create and manage quotes for your customers',
+    entitySingular: 'quote',
+    entityPlural: 'quotes',
+    newButton: 'New Quote',
+    searchPlaceholder: 'Search quotes...',
+    emptyStateTitle: 'No quotes found',
+    emptyStateDescription: 'Create your first quote to start selling',
+    emptyStateButton: 'Create Your First Quote',
+    loadingText: 'Loading quotes...',
+    columns: {
+      number: 'Quote #',
+      customer: 'Customer',
+      date: 'Date',
+      amount: 'Amount',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    stats: {
+      total: 'Total Quotes',
+      pending: 'Pending',
+      active: 'Accepted',
+    },
+  },
+  tasks: {
+    title: 'Tasks',
+    subtitle: 'Manage and track your to-do items',
+    entitySingular: 'task',
+    entityPlural: 'tasks',
+    newButton: 'New Task',
+    searchPlaceholder: 'Search tasks...',
+    emptyStateTitle: 'No tasks found',
+    emptyStateDescription: 'Create your first task to stay organized',
+    emptyStateButton: 'Create Your First Task',
+    loadingText: 'Loading tasks...',
+    columns: {
+      name: 'Task',
+      dueDate: 'Due Date',
+      priority: 'Priority',
+      assignee: 'Assignee',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    stats: {
+      total: 'Total Tasks',
+      completed: 'Completed',
+      pending: 'Pending',
+      overdue: 'Overdue',
+    },
+  },
+  calendar: {
+    title: 'Calendar',
+    subtitle: 'Schedule and manage your appointments',
+    entitySingular: 'event',
+    entityPlural: 'events',
+    newButton: 'New Event',
+    searchPlaceholder: 'Search events...',
+    emptyStateTitle: 'No events scheduled',
+    emptyStateDescription: 'Schedule your first event to get started',
+    emptyStateButton: 'Schedule Your First Event',
+    loadingText: 'Loading calendar...',
+    columns: {},
+    stats: {
+      total: 'Total Events',
+      pending: 'Upcoming',
+    },
+  },
+  products: {
+    title: 'Products',
+    subtitle: 'Manage your product catalog',
+    entitySingular: 'product',
+    entityPlural: 'products',
+    newButton: 'New Product',
+    searchPlaceholder: 'Search products...',
+    emptyStateTitle: 'No products found',
+    emptyStateDescription: 'Add your first product to build your catalog',
+    emptyStateButton: 'Add Your First Product',
+    loadingText: 'Loading products...',
+    columns: {
+      name: 'Product Name',
+      amount: 'Price',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    stats: {
+      total: 'Total Products',
+      active: 'Active',
+    },
+  },
+};
+
+// Industry-specific page label overrides
+export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = {
+  // MORTGAGE BROKER
+  mortgage_broker: {
+    invoices: {
+      title: 'Commission Center',
+      subtitle: 'Track commissions, manage payouts, and monitor earnings',
+      entitySingular: 'commission',
+      entityPlural: 'commissions',
+      newButton: 'New Commission',
+      searchPlaceholder: 'Search commissions...',
+      emptyStateTitle: 'No commissions found',
+      emptyStateDescription: 'Add your first commission to start tracking earnings',
+      emptyStateButton: 'Add Your First Commission',
+      loadingText: 'Loading commissions...',
+      columns: {
+        number: 'Transaction #',
+        customer: 'Borrower / Loan',
+        date: 'Close Date',
+        amount: 'Commission',
+        status: 'Status',
+      },
+      stats: {
+        totalRevenue: 'Total Commissions',
+        totalPaid: 'Paid Out',
+        outstanding: 'Pending',
+        overdue: 'Overdue',
+      },
+    },
+    crm: {
+      title: 'Borrowers',
+      subtitle: 'Manage your borrower relationships and loan applications',
+      entitySingular: 'borrower',
+      entityPlural: 'borrowers',
+      newButton: 'Add Borrower',
+      searchPlaceholder: 'Search borrowers...',
+      emptyStateTitle: 'No borrowers yet',
+      emptyStateDescription: 'Add your first borrower to get started',
+      emptyStateButton: 'Add Your First Borrower',
+      loadingText: 'Loading borrowers...',
+      columns: {
+        name: 'Borrower Name',
+        email: 'Email',
+        phone: 'Phone',
+        status: 'Loan Status',
+      },
+    },
+    pipeline: {
+      title: 'Loan Applications',
+      subtitle: 'Track loan applications through the approval process',
+      entitySingular: 'application',
+      entityPlural: 'applications',
+      newButton: 'New Application',
+      searchPlaceholder: 'Search applications...',
+      emptyStateTitle: 'No applications in pipeline',
+      emptyStateDescription: 'Add your first loan application',
+      emptyStateButton: 'Add Your First Application',
+      loadingText: 'Loading applications...',
+      columns: {
+        name: 'Loan Type',
+        customer: 'Borrower',
+        value: 'Loan Amount',
+        stage: 'Stage',
+      },
+      stats: {
+        total: 'Total Applications',
+        totalRevenue: 'Total Loan Value',
+        active: 'In Progress',
+      },
+    },
+    tasks: {
+      title: 'Follow-ups',
+      subtitle: 'Track follow-ups and action items for your loans',
+      entitySingular: 'follow-up',
+      entityPlural: 'follow-ups',
+      newButton: 'New Follow-up',
+      searchPlaceholder: 'Search follow-ups...',
+      emptyStateTitle: 'No follow-ups found',
+      emptyStateDescription: 'Create your first follow-up to stay on track',
+      emptyStateButton: 'Create Your First Follow-up',
+      loadingText: 'Loading follow-ups...',
+    },
+    calendar: {
+      title: 'Appointments',
+      subtitle: 'Schedule meetings with borrowers and partners',
+      entitySingular: 'appointment',
+      entityPlural: 'appointments',
+      newButton: 'New Appointment',
+      searchPlaceholder: 'Search appointments...',
+      emptyStateTitle: 'No appointments scheduled',
+      emptyStateDescription: 'Schedule your first appointment',
+      emptyStateButton: 'Schedule Appointment',
+      loadingText: 'Loading appointments...',
+    },
+  },
+
+  // REAL ESTATE
+  real_estate: {
+    crm: {
+      title: 'Contacts',
+      subtitle: 'Manage buyers, sellers, and prospects',
+      entitySingular: 'contact',
+      entityPlural: 'contacts',
+      newButton: 'Add Contact',
+      searchPlaceholder: 'Search contacts...',
+      emptyStateTitle: 'No contacts yet',
+      emptyStateDescription: 'Add your first contact to get started',
+      emptyStateButton: 'Add Your First Contact',
+      loadingText: 'Loading contacts...',
+    },
+    pipeline: {
+      title: 'Deal Pipeline',
+      subtitle: 'Track deals from listing to closing',
+      entitySingular: 'deal',
+      entityPlural: 'deals',
+      newButton: 'New Deal',
+      searchPlaceholder: 'Search deals...',
+      emptyStateTitle: 'No deals in pipeline',
+      emptyStateDescription: 'Add your first real estate deal',
+      emptyStateButton: 'Add Your First Deal',
+      loadingText: 'Loading deals...',
+      columns: {
+        name: 'Property',
+        customer: 'Client',
+        value: 'Price',
+        stage: 'Stage',
+      },
+    },
+    quotes: {
+      title: 'Listing Proposals',
+      subtitle: 'Create and manage listing presentations',
+      entitySingular: 'proposal',
+      entityPlural: 'proposals',
+      newButton: 'New Proposal',
+      searchPlaceholder: 'Search proposals...',
+      emptyStateTitle: 'No proposals found',
+      emptyStateDescription: 'Create your first listing proposal',
+      emptyStateButton: 'Create Your First Proposal',
+      loadingText: 'Loading proposals...',
+    },
+  },
+
+  // CONTRACTORS / HOME SERVICES
+  contractors_home_services: {
+    crm: {
+      title: 'Clients',
+      subtitle: 'Manage your client relationships',
+      entitySingular: 'client',
+      entityPlural: 'clients',
+      newButton: 'Add Client',
+      searchPlaceholder: 'Search clients...',
+      emptyStateTitle: 'No clients yet',
+      emptyStateDescription: 'Add your first client to get started',
+      emptyStateButton: 'Add Your First Client',
+      loadingText: 'Loading clients...',
+    },
+    quotes: {
+      title: 'Estimates',
+      subtitle: 'Create and manage job estimates',
+      entitySingular: 'estimate',
+      entityPlural: 'estimates',
+      newButton: 'New Estimate',
+      searchPlaceholder: 'Search estimates...',
+      emptyStateTitle: 'No estimates found',
+      emptyStateDescription: 'Create your first estimate to start quoting jobs',
+      emptyStateButton: 'Create Your First Estimate',
+      loadingText: 'Loading estimates...',
+      columns: {
+        number: 'Estimate #',
+        customer: 'Client',
+      },
+    },
+    pipeline: {
+      title: 'Job Pipeline',
+      subtitle: 'Track jobs from estimate to completion',
+      entitySingular: 'job',
+      entityPlural: 'jobs',
+      newButton: 'New Job',
+      searchPlaceholder: 'Search jobs...',
+      emptyStateTitle: 'No jobs in pipeline',
+      emptyStateDescription: 'Add your first job to start tracking',
+      emptyStateButton: 'Add Your First Job',
+      loadingText: 'Loading jobs...',
+      columns: {
+        name: 'Job Name',
+        customer: 'Client',
+        value: 'Job Value',
+        stage: 'Stage',
+      },
+    },
+  },
+
+  // HEALTHCARE
+  healthcare: {
+    crm: {
+      title: 'Patients',
+      subtitle: 'Manage patient information and records',
+      entitySingular: 'patient',
+      entityPlural: 'patients',
+      newButton: 'Add Patient',
+      searchPlaceholder: 'Search patients...',
+      emptyStateTitle: 'No patients yet',
+      emptyStateDescription: 'Add your first patient to get started',
+      emptyStateButton: 'Add Your First Patient',
+      loadingText: 'Loading patients...',
+      columns: {
+        name: 'Patient Name',
+        email: 'Email',
+        phone: 'Phone',
+        status: 'Status',
+      },
+    },
+    calendar: {
+      title: 'Appointments',
+      subtitle: 'Schedule and manage patient appointments',
+      entitySingular: 'appointment',
+      entityPlural: 'appointments',
+      newButton: 'New Appointment',
+      searchPlaceholder: 'Search appointments...',
+      emptyStateTitle: 'No appointments scheduled',
+      emptyStateDescription: 'Schedule your first patient appointment',
+      emptyStateButton: 'Schedule Appointment',
+      loadingText: 'Loading appointments...',
+    },
+  },
+
+  // LEGAL SERVICES
+  legal_services: {
+    crm: {
+      title: 'Clients',
+      subtitle: 'Manage client relationships and case contacts',
+      entitySingular: 'client',
+      entityPlural: 'clients',
+      newButton: 'Add Client',
+      searchPlaceholder: 'Search clients...',
+      emptyStateTitle: 'No clients yet',
+      emptyStateDescription: 'Add your first client to get started',
+      emptyStateButton: 'Add Your First Client',
+      loadingText: 'Loading clients...',
+    },
+    pipeline: {
+      title: 'Case Pipeline',
+      subtitle: 'Track cases through your legal process',
+      entitySingular: 'case',
+      entityPlural: 'cases',
+      newButton: 'New Case',
+      searchPlaceholder: 'Search cases...',
+      emptyStateTitle: 'No cases in pipeline',
+      emptyStateDescription: 'Add your first case to start tracking',
+      emptyStateButton: 'Add Your First Case',
+      loadingText: 'Loading cases...',
+      columns: {
+        name: 'Case Name',
+        customer: 'Client',
+        value: 'Case Value',
+        stage: 'Stage',
+      },
+    },
+    quotes: {
+      title: 'Fee Proposals',
+      subtitle: 'Create and manage fee proposals',
+      entitySingular: 'fee proposal',
+      entityPlural: 'fee proposals',
+      newButton: 'New Fee Proposal',
+      searchPlaceholder: 'Search proposals...',
+      emptyStateTitle: 'No fee proposals found',
+      emptyStateDescription: 'Create your first fee proposal',
+      emptyStateButton: 'Create Your First Proposal',
+      loadingText: 'Loading proposals...',
+    },
+  },
+
+  // TAX & ACCOUNTING
+  tax_accounting: {
+    crm: {
+      title: 'Clients',
+      subtitle: 'Manage client accounts and tax information',
+      entitySingular: 'client',
+      entityPlural: 'clients',
+      newButton: 'Add Client',
+      searchPlaceholder: 'Search clients...',
+      emptyStateTitle: 'No clients yet',
+      emptyStateDescription: 'Add your first client to get started',
+      emptyStateButton: 'Add Your First Client',
+      loadingText: 'Loading clients...',
+    },
+    quotes: {
+      title: 'Engagement Letters',
+      subtitle: 'Create and manage engagement letters',
+      entitySingular: 'engagement letter',
+      entityPlural: 'engagement letters',
+      newButton: 'New Engagement Letter',
+      searchPlaceholder: 'Search engagement letters...',
+      emptyStateTitle: 'No engagement letters found',
+      emptyStateDescription: 'Create your first engagement letter',
+      emptyStateButton: 'Create Your First Letter',
+      loadingText: 'Loading engagement letters...',
+      columns: {
+        number: 'Letter #',
+        customer: 'Client',
+      },
+    },
+  },
+
+  // CONSTRUCTION
+  construction: {
+    crm: {
+      title: 'Clients',
+      subtitle: 'Manage project clients and contacts',
+      entitySingular: 'client',
+      entityPlural: 'clients',
+      newButton: 'Add Client',
+      searchPlaceholder: 'Search clients...',
+      emptyStateTitle: 'No clients yet',
+      emptyStateDescription: 'Add your first client to get started',
+      emptyStateButton: 'Add Your First Client',
+      loadingText: 'Loading clients...',
+    },
+    pipeline: {
+      title: 'Projects',
+      subtitle: 'Track construction projects from bid to completion',
+      entitySingular: 'project',
+      entityPlural: 'projects',
+      newButton: 'New Project',
+      searchPlaceholder: 'Search projects...',
+      emptyStateTitle: 'No projects in pipeline',
+      emptyStateDescription: 'Add your first project to start tracking',
+      emptyStateButton: 'Add Your First Project',
+      loadingText: 'Loading projects...',
+      columns: {
+        name: 'Project Name',
+        customer: 'Client',
+        value: 'Contract Value',
+        stage: 'Phase',
+      },
+    },
+    quotes: {
+      title: 'Bids',
+      subtitle: 'Create and manage project bids',
+      entitySingular: 'bid',
+      entityPlural: 'bids',
+      newButton: 'New Bid',
+      searchPlaceholder: 'Search bids...',
+      emptyStateTitle: 'No bids found',
+      emptyStateDescription: 'Create your first bid to start quoting projects',
+      emptyStateButton: 'Create Your First Bid',
+      loadingText: 'Loading bids...',
+      columns: {
+        number: 'Bid #',
+        customer: 'Client',
+      },
+    },
+    tasks: {
+      title: 'Punch List',
+      subtitle: 'Track project tasks and punch list items',
+      entitySingular: 'item',
+      entityPlural: 'items',
+      newButton: 'New Item',
+      searchPlaceholder: 'Search items...',
+      emptyStateTitle: 'No punch list items',
+      emptyStateDescription: 'Add your first punch list item',
+      emptyStateButton: 'Add Your First Item',
+      loadingText: 'Loading punch list...',
+    },
+    calendar: {
+      title: 'Schedule',
+      subtitle: 'Manage project schedules and milestones',
+      entitySingular: 'milestone',
+      entityPlural: 'milestones',
+      newButton: 'Add Milestone',
+      searchPlaceholder: 'Search schedule...',
+      emptyStateTitle: 'No milestones scheduled',
+      emptyStateDescription: 'Add your first project milestone',
+      emptyStateButton: 'Add First Milestone',
+      loadingText: 'Loading schedule...',
+    },
+  },
+
+  // GYMS & FITNESS
+  gyms_fitness: {
+    crm: {
+      title: 'Members',
+      subtitle: 'Manage gym memberships and member information',
+      entitySingular: 'member',
+      entityPlural: 'members',
+      newButton: 'Add Member',
+      searchPlaceholder: 'Search members...',
+      emptyStateTitle: 'No members yet',
+      emptyStateDescription: 'Add your first member to get started',
+      emptyStateButton: 'Add Your First Member',
+      loadingText: 'Loading members...',
+    },
+    pipeline: {
+      title: 'Membership Pipeline',
+      subtitle: 'Track prospects through the membership journey',
+      entitySingular: 'prospect',
+      entityPlural: 'prospects',
+      newButton: 'New Prospect',
+      searchPlaceholder: 'Search prospects...',
+      emptyStateTitle: 'No prospects in pipeline',
+      emptyStateDescription: 'Add your first prospect to start tracking',
+      emptyStateButton: 'Add Your First Prospect',
+      loadingText: 'Loading prospects...',
+    },
+    calendar: {
+      title: 'Class Schedule',
+      subtitle: 'Manage fitness classes and sessions',
+      entitySingular: 'class',
+      entityPlural: 'classes',
+      newButton: 'New Class',
+      searchPlaceholder: 'Search classes...',
+      emptyStateTitle: 'No classes scheduled',
+      emptyStateDescription: 'Schedule your first fitness class',
+      emptyStateButton: 'Schedule Your First Class',
+      loadingText: 'Loading class schedule...',
+    },
+  },
+
+  // SOFTWARE DEVELOPMENT
+  software_development: {
+    crm: {
+      title: 'Clients',
+      subtitle: 'Manage client relationships and project contacts',
+      entitySingular: 'client',
+      entityPlural: 'clients',
+      newButton: 'Add Client',
+      searchPlaceholder: 'Search clients...',
+      emptyStateTitle: 'No clients yet',
+      emptyStateDescription: 'Add your first client to get started',
+      emptyStateButton: 'Add Your First Client',
+      loadingText: 'Loading clients...',
+    },
+    pipeline: {
+      title: 'Projects',
+      subtitle: 'Track software projects through development lifecycle',
+      entitySingular: 'project',
+      entityPlural: 'projects',
+      newButton: 'New Project',
+      searchPlaceholder: 'Search projects...',
+      emptyStateTitle: 'No projects in pipeline',
+      emptyStateDescription: 'Add your first project to start tracking',
+      emptyStateButton: 'Add Your First Project',
+      loadingText: 'Loading projects...',
+      columns: {
+        name: 'Project Name',
+        customer: 'Client',
+        value: 'Budget',
+        stage: 'Phase',
+      },
+    },
+    tasks: {
+      title: 'Sprints & Tasks',
+      subtitle: 'Manage development sprints and tasks',
+      entitySingular: 'task',
+      entityPlural: 'tasks',
+      newButton: 'New Task',
+      searchPlaceholder: 'Search tasks...',
+      emptyStateTitle: 'No tasks found',
+      emptyStateDescription: 'Create your first task to start tracking work',
+      emptyStateButton: 'Create Your First Task',
+      loadingText: 'Loading tasks...',
+    },
+    quotes: {
+      title: 'Proposals',
+      subtitle: 'Create and manage project proposals',
+      entitySingular: 'proposal',
+      entityPlural: 'proposals',
+      newButton: 'New Proposal',
+      searchPlaceholder: 'Search proposals...',
+      emptyStateTitle: 'No proposals found',
+      emptyStateDescription: 'Create your first project proposal',
+      emptyStateButton: 'Create Your First Proposal',
+      loadingText: 'Loading proposals...',
+    },
+    invoices: {
+      title: 'Billing',
+      subtitle: 'Manage project billing and invoices',
+      entitySingular: 'invoice',
+      entityPlural: 'invoices',
+      newButton: 'New Invoice',
+      searchPlaceholder: 'Search invoices...',
+      emptyStateTitle: 'No invoices found',
+      emptyStateDescription: 'Create your first invoice',
+      emptyStateButton: 'Create Your First Invoice',
+      loadingText: 'Loading invoices...',
+    },
+    calendar: {
+      title: 'Milestones',
+      subtitle: 'Track project milestones and deadlines',
+      entitySingular: 'milestone',
+      entityPlural: 'milestones',
+      newButton: 'Add Milestone',
+      searchPlaceholder: 'Search milestones...',
+      emptyStateTitle: 'No milestones scheduled',
+      emptyStateDescription: 'Add your first project milestone',
+      emptyStateButton: 'Add First Milestone',
+      loadingText: 'Loading milestones...',
+    },
+  },
+
+  // DISTRIBUTION & LOGISTICS
+  distribution_logistics: {
+    crm: {
+      title: 'Accounts',
+      subtitle: 'Manage customer accounts and shipping contacts',
+      entitySingular: 'account',
+      entityPlural: 'accounts',
+      newButton: 'Add Account',
+      searchPlaceholder: 'Search accounts...',
+      emptyStateTitle: 'No accounts yet',
+      emptyStateDescription: 'Add your first account to get started',
+      emptyStateButton: 'Add Your First Account',
+      loadingText: 'Loading accounts...',
+    },
+    pipeline: {
+      title: 'Order Pipeline',
+      subtitle: 'Track orders through fulfillment',
+      entitySingular: 'order',
+      entityPlural: 'orders',
+      newButton: 'New Order',
+      searchPlaceholder: 'Search orders...',
+      emptyStateTitle: 'No orders in pipeline',
+      emptyStateDescription: 'Add your first order to start tracking',
+      emptyStateButton: 'Add Your First Order',
+      loadingText: 'Loading orders...',
+      columns: {
+        name: 'Order #',
+        customer: 'Account',
+        value: 'Order Value',
+        stage: 'Status',
+      },
+    },
+  },
+};
+
+/**
+ * Get page labels for a specific page and industry
+ * Returns merged labels (industry-specific overrides + defaults)
+ */
+export const getPageLabels = (pageId: string, industryTemplate: string): PageLabels => {
+  const defaults = DEFAULT_PAGE_LABELS[pageId] || DEFAULT_PAGE_LABELS.crm;
+  const industryOverrides = PAGE_LABELS[industryTemplate]?.[pageId] || {};
+
+  // Deep merge columns and stats
+  return {
+    ...defaults,
+    ...industryOverrides,
+    columns: {
+      ...defaults.columns,
+      ...industryOverrides.columns,
+    },
+    stats: {
+      ...defaults.stats,
+      ...industryOverrides.stats,
+    },
+  };
+};
+
 export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
   owner: [
     'customers.read',
