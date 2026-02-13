@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, Filter, FileText, DollarSign, Download,
@@ -14,12 +15,14 @@ import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { QuoteStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
 
 export default function Quotes() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<'all' | QuoteStatus>('all');
   const [selectedQuotes, setSelectedQuotes] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
@@ -29,6 +32,7 @@ export default function Quotes() {
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
     try {
@@ -48,8 +52,8 @@ export default function Quotes() {
       filtered = filtered.filter((q) => q.status === filterStatus);
     }
 
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+    if (debouncedSearchTerm) {
+      const search = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter((q) =>
         q.quote_number.toLowerCase().includes(search) ||
         q.customer_name.toLowerCase().includes(search) ||
@@ -58,7 +62,7 @@ export default function Quotes() {
     }
 
     return filtered;
-  }, [quotes, filterStatus, searchTerm]);
+  }, [quotes, filterStatus, debouncedSearchTerm]);
 
   const stats = useMemo(() => {
     const totalValue = quotes.reduce((sum, q) => sum + q.total_amount, 0);
@@ -96,15 +100,27 @@ export default function Quotes() {
     setSelectAll(false);
   };
 
-  const bulkArchive = () => {
-    if (!confirm(`Archive ${selectedQuotes.size} quotes?`)) return;
+  const bulkArchive = async () => {
+    const confirmed = await confirm({
+      title: 'Archive Quotes',
+      message: `Archive ${selectedQuotes.size} selected quotes?`,
+      variant: 'warning',
+      confirmText: 'Archive',
+    });
+    if (!confirmed) return;
     toast.success(`${selectedQuotes.size} quotes archived`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
   };
 
-  const bulkDelete = () => {
-    if (!confirm(`Delete ${selectedQuotes.size} quotes permanently?`)) return;
+  const bulkDelete = async () => {
+    const confirmed = await confirm({
+      title: 'Delete Quotes',
+      message: `Permanently delete ${selectedQuotes.size} selected quotes? This cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     toast.success(`${selectedQuotes.size} quotes deleted`);
     setSelectedQuotes(new Set());
     setSelectAll(false);
@@ -116,7 +132,13 @@ export default function Quotes() {
       toast.error('You do not have permission to delete quotes');
       return;
     }
-    if (!confirm('Are you sure you want to delete this quote?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Quote',
+      message: 'Are you sure you want to delete this quote? This cannot be undone.',
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     try {
       await deleteQuote(id);
       toast.success('Quote deleted successfully');
@@ -634,6 +656,7 @@ export default function Quotes() {
         onClose={() => setShowReportModal(false)}
         defaultType="quotes"
       />
+      <DialogComponent />
     </PageContainer >
   );
 }

@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getSafeErrorMessage } from '@/utils/errorHandler';
+import { validateEmail, validateRequired } from '@/utils/validation';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +19,22 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
+      // Validate email format
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) {
+        toast.error(emailValidation.error!);
+        setLoading(false);
+        return;
+      }
+
+      // Validate password not empty
+      const passwordValidation = validateRequired(password, 'Password');
+      if (!passwordValidation.isValid) {
+        toast.error(passwordValidation.error!);
+        setLoading(false);
+        return;
+      }
+
       await signIn(email, password);
       toast.success('Welcome back!', {
         style: {
@@ -27,7 +45,7 @@ export const Login: React.FC = () => {
       });
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to sign in');
+      toast.error(getSafeErrorMessage(error, 'auth'));
     } finally {
       setLoading(false);
     }

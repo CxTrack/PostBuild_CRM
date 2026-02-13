@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, Filter, FileText,
@@ -14,12 +15,14 @@ import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { InvoiceStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
 
 export default function Invoices() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<'all' | InvoiceStatus>('all');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -30,6 +33,7 @@ export default function Invoices() {
   const { invoices, loading, fetchInvoices, deleteInvoice } = useInvoiceStore();
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
     try {
@@ -60,8 +64,8 @@ export default function Invoices() {
       filtered = filtered.filter((inv) => inv.status === filterStatus);
     }
 
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+    if (debouncedSearchTerm) {
+      const search = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter((inv) =>
         inv.invoice_number.toLowerCase().includes(search) ||
         inv.customer_name.toLowerCase().includes(search) ||
@@ -70,7 +74,7 @@ export default function Invoices() {
     }
 
     return filtered;
-  }, [invoices, filterStatus, searchTerm]);
+  }, [invoices, filterStatus, debouncedSearchTerm]);
 
   const stats = useMemo(() => {
     const totalValue = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
@@ -108,15 +112,27 @@ export default function Invoices() {
     setSelectAll(false);
   };
 
-  const bulkArchive = () => {
-    if (!confirm(`Archive ${selectedInvoices.size} invoices?`)) return;
+  const bulkArchive = async () => {
+    const confirmed = await confirm({
+      title: 'Archive Invoices',
+      message: `Archive ${selectedInvoices.size} selected invoices?`,
+      variant: 'warning',
+      confirmText: 'Archive',
+    });
+    if (!confirmed) return;
     toast.success(`${selectedInvoices.size} invoices archived`);
     setSelectedInvoices(new Set());
     setSelectAll(false);
   };
 
-  const bulkDelete = () => {
-    if (!confirm(`Delete ${selectedInvoices.size} invoices permanently?`)) return;
+  const bulkDelete = async () => {
+    const confirmed = await confirm({
+      title: 'Delete Invoices',
+      message: `Permanently delete ${selectedInvoices.size} selected invoices? This cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     toast.success(`${selectedInvoices.size} invoices deleted`);
     setSelectedInvoices(new Set());
     setSelectAll(false);
@@ -204,7 +220,13 @@ export default function Invoices() {
           {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
             <button
               onClick={async () => {
-                if (confirm('Are you sure you want to delete this invoice?')) {
+                const confirmed = await confirm({
+                  title: 'Delete Invoice',
+                  message: 'Are you sure you want to delete this invoice? This cannot be undone.',
+                  variant: 'danger',
+                  confirmText: 'Delete',
+                });
+                if (confirmed) {
                   try {
                     await deleteInvoice(invoice.id);
                     toast.success('Invoice deleted successfully');
@@ -783,6 +805,7 @@ export default function Invoices() {
         onClose={() => setShowReportModal(false)}
         defaultType="invoices"
       />
+      <DialogComponent />
     </PageContainer>
   );
 }

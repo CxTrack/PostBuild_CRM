@@ -17,6 +17,7 @@ import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import { User, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 
 export default function QuoteBuilder() {
@@ -270,7 +271,7 @@ export default function QuoteBuilder() {
       }
     } catch (error: any) {
       console.error('❌ Error saving to catalog:', error);
-      toast.error(`Failed to save to catalog: ${error.message}`);
+      toast.error(getSafeErrorMessage(error, 'create'));
     }
   };
 

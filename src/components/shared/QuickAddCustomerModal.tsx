@@ -3,6 +3,8 @@ import { X, User, Building2 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { CustomerStatus } from '@/types/database.types';
 import toast from 'react-hot-toast';
+import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
 
 interface QuickAddCustomerModalProps {
   isOpen: boolean;
@@ -34,9 +36,35 @@ export default function QuickAddCustomerModal({
     e.preventDefault();
     setError('');
 
-    if (!formData.first_name || !formData.last_name) {
-      setError('First name and last name are required');
+    // Validate required fields
+    const firstNameValidation = validateRequired(formData.first_name, 'First name');
+    if (!firstNameValidation.isValid) {
+      setError(firstNameValidation.error!);
       return;
+    }
+
+    const lastNameValidation = validateRequired(formData.last_name, 'Last name');
+    if (!lastNameValidation.isValid) {
+      setError(lastNameValidation.error!);
+      return;
+    }
+
+    // Validate email if provided
+    if (formData.email) {
+      const emailValidation = validateEmail(formData.email);
+      if (!emailValidation.isValid) {
+        setError(emailValidation.error!);
+        return;
+      }
+    }
+
+    // Validate phone if provided
+    if (formData.phone) {
+      const phoneValidation = validatePhone(formData.phone);
+      if (!phoneValidation.isValid) {
+        setError(phoneValidation.error!);
+        return;
+      }
     }
 
     if (!formData.email && !formData.phone) {
@@ -53,7 +81,7 @@ export default function QuickAddCustomerModal({
         middle_name: formData.middle_name?.trim() || null,
         last_name: formData.last_name.trim(),
         email: formData.email.trim() || '',
-        phone: formData.phone.trim() || null,
+        phone: formatPhoneForStorage(formData.phone.trim()) || null,
         company: customerType === 'business' ? formData.company.trim() : null,
         status: 'Active' as CustomerStatus,
       };

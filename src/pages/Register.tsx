@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getSafeErrorMessage } from '@/utils/errorHandler';
+import { validateEmail, validateRequired, validateMinLength } from '@/utils/validation';
 
 export const Register: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -31,6 +33,20 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
+      // Validate email
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) {
+        toast.error(emailValidation.error!);
+        return;
+      }
+
+      // Validate password
+      const passwordValidation = validateMinLength(password, 8, 'Password');
+      if (!passwordValidation.isValid) {
+        toast.error(passwordValidation.error!);
+        return;
+      }
+
       await signUp(email, password, fullName);
       toast.success('Account created! Please check your email to verify.', {
         style: {
@@ -40,7 +56,7 @@ export const Register: React.FC = () => {
         }
       });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+      toast.error(getSafeErrorMessage(error, 'auth'));
     } finally {
       setLoading(false);
     }

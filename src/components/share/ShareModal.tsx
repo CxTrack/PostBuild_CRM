@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Link2, Download, MessageSquare, Copy, Check, AlertCircle, Eye, Calendar, Lock, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getSafeErrorMessage } from '@/utils/errorHandler';
 import QRCode from 'qrcode';
 import { shareLinkService, ShareLink } from '@/services/shareLink.service';
 import { emailService } from '@/services/email.service';
@@ -126,7 +127,7 @@ export default function ShareModal({
       setShareLink(link);
       toast.success('Share link generated successfully');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to generate share link');
+      toast.error(getSafeErrorMessage(error, 'create'));
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,7 @@ export default function ShareModal({
         toast.error(result.error || 'Failed to send email');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send email');
+      toast.error(getSafeErrorMessage(error, 'create'));
     } finally {
       setLoading(false);
     }
@@ -202,7 +203,7 @@ export default function ShareModal({
         toast.error(result.error || 'Failed to send SMS');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send SMS');
+      toast.error(getSafeErrorMessage(error, 'create'));
     } finally {
       setLoading(false);
     }
@@ -219,7 +220,7 @@ export default function ShareModal({
       toast.success('PDF downloaded successfully');
     } catch (error: any) {
       console.error('PDF generation error:', error);
-      toast.error(error.message || 'Failed to generate PDF');
+      toast.error(getSafeErrorMessage(error, 'create'));
     }
   };
 
@@ -270,11 +271,10 @@ export default function ShareModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  activeTab === tab.id
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
                     ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}

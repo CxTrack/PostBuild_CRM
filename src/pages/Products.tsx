@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
   Search, Plus, Grid, List, Package,
@@ -14,16 +15,19 @@ import { PageContainer, Card, IconBadge } from '../components/theme/ThemeCompone
 import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
 import toast from 'react-hot-toast';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { ProductType } from '../types/app.types';
 
 export default function Products() {
   const [viewMode, setViewMode] = useState<'compact' | 'grid' | 'list'>('compact');
   const [filterType, setFilterType] = useState<'all' | ProductType>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const { products, loading, fetchProducts, deleteProduct } = useProductStore();
   const { currentOrganization, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
     fetchProducts(currentOrganization?.id);
@@ -36,8 +40,8 @@ export default function Products() {
       filtered = filtered.filter((p) => p.product_type === filterType);
     }
 
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+    if (debouncedSearchTerm) {
+      const search = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter((p) =>
         p.name.toLowerCase().includes(search) ||
         p.description?.toLowerCase().includes(search) ||
@@ -47,7 +51,7 @@ export default function Products() {
     }
 
     return filtered;
-  }, [products, filterType, searchTerm]);
+  }, [products, filterType, debouncedSearchTerm]);
 
   const stats = useMemo(() => {
     const totalProducts = products.filter((p) => p.product_type === 'product').length;
@@ -65,7 +69,13 @@ export default function Products() {
       toast.error('You do not have permission to delete products');
       return;
     }
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product? This action cannot be undone.',
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     try {
       await deleteProduct(id);
       toast.success('Product deleted successfully');
@@ -623,6 +633,7 @@ export default function Products() {
           </>
         )}
       </div>
+      <DialogComponent />
     </PageContainer>
   );
 }

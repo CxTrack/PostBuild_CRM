@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
   Search, Plus, Filter, Users, Building2, Mail, Phone,
@@ -15,9 +16,11 @@ import SettingsPopover from '@/components/settings/SettingsPopover';
 import CustomFieldsPanel from '@/components/settings/CustomFieldsPanel';
 import CSVImporter from '@/components/import/CSVImporter';
 import toast from 'react-hot-toast';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterType, setFilterType] = useState<'all' | 'personal' | 'business'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -28,6 +31,7 @@ export const Customers: React.FC = () => {
   const { currentOrganization, currentMembership } = useOrganizationStore();
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { theme } = useThemeStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -35,29 +39,38 @@ export const Customers: React.FC = () => {
     }
   }, [currentOrganization?.id]);
 
-  const filteredCustomers = customers.filter(customer => {
-    const fullName = getCustomerFullName(customer);
-    const matchesSearch =
-      fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone?.includes(searchTerm) ||
-      customer.company?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => {
+      const fullName = getCustomerFullName(customer);
+      const matchesSearch =
+        fullName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.first_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.last_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.phone?.includes(debouncedSearchTerm) ||
+        customer.company?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
 
-    const matchesType = filterType === 'all' || customer.customer_type === filterType;
-    const matchesStatus = filterStatus === 'all' || customer.status === filterStatus;
+      const matchesType = filterType === 'all' || customer.customer_type === filterType;
+      const matchesStatus = filterStatus === 'all' || customer.status === filterStatus;
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [customers, debouncedSearchTerm, filterType, filterStatus]);
 
   const handleDelete = async (id: string) => {
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
       toast.error('You do not have permission to delete customers');
       return;
     }
-    if (confirm('Are you sure you want to delete this customer?')) {
+    const confirmed = await confirm({
+      title: 'Delete Customer',
+      message: 'Are you sure you want to delete this customer? This action cannot be undone.',
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+
+    if (confirmed) {
       try {
         await deleteCustomer(id);
         toast.success('Customer deleted successfully');
@@ -463,6 +476,7 @@ export const Customers: React.FC = () => {
         onClose={() => setShowCustomFields(false)}
         entityType="customer"
       />
+      <DialogComponent />
     </PageContainer>
   );
 };

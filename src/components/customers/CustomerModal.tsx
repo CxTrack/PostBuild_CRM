@@ -4,6 +4,8 @@ import { X, User, Mail, Building, Save, AlertCircle } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import toast from 'react-hot-toast';
+import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -61,12 +63,56 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
     setSaving(true);
 
     try {
+      // Validate required fields
+      const firstNameValidation = validateRequired(formData.first_name, 'First Name');
+      if (!firstNameValidation.isValid) {
+        toast.error(firstNameValidation.error!);
+        setSaving(false);
+        return;
+      }
+
+      const lastNameValidation = validateRequired(formData.last_name, 'Last Name');
+      if (!lastNameValidation.isValid) {
+        toast.error(lastNameValidation.error!);
+        setSaving(false);
+        return;
+      }
+
+      const emailReqValidation = validateRequired(formData.email, 'Email');
+      if (!emailReqValidation.isValid) {
+        toast.error(emailReqValidation.error!);
+        setSaving(false);
+        return;
+      }
+
+      // Validate email format
+      const emailValidation = validateEmail(formData.email);
+      if (!emailValidation.isValid) {
+        toast.error(emailValidation.error!);
+        setSaving(false);
+        return;
+      }
+
+      // Validate phone if provided
+      const phoneValidation = validatePhone(formData.phone);
+      if (!phoneValidation.isValid) {
+        toast.error(phoneValidation.error!);
+        setSaving(false);
+        return;
+      }
+
       if (customer) {
-        await updateCustomer(customer.id, formData);
+        await updateCustomer(customer.id, {
+          ...formData,
+          phone: formatPhoneForStorage(formData.phone)
+        });
         toast.success('Customer updated successfully');
         onClose();
       } else {
-        const newCustomer = await createCustomer(formData);
+        const newCustomer = await createCustomer({
+          ...formData,
+          phone: formatPhoneForStorage(formData.phone)
+        });
 
         if (!newCustomer) {
           throw new Error('Failed to create customer');

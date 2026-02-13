@@ -137,7 +137,7 @@ export const CustomerProfile: React.FC = () => {
                   )}
                   {currentCustomer.phone && (
                     <span className="text-gray-500 flex items-center">
-                      <Phone size={12} className="mr-1" /> {currentCustomer.phone}
+                      <Phone size={12} className="mr-1" /> {formatPhoneDisplay(currentCustomer.phone)}
                     </span>
                   )}
                 </div>

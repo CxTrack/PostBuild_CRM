@@ -6,6 +6,7 @@ import { emailService, EmailSettings, EmailProvider } from '@/services/email.ser
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
+import { getSafeErrorMessage } from '@/utils/errorHandler';
 
 export default function SharingSettings() {
   const { currentOrganization } = useOrganizationStore();
@@ -71,7 +72,7 @@ export default function SharingSettings() {
       await loadSettings();
     } catch (error: any) {
       console.error('Error saving SMS settings:', error);
-      toast.error(error.message || 'Failed to save SMS settings');
+      toast.error(getSafeErrorMessage(error, 'update'));
     } finally {
       setSaving(false);
     }
@@ -88,7 +89,7 @@ export default function SharingSettings() {
         toast.error(result.error || 'SMS configuration test failed');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to test SMS connection');
+      toast.error(getSafeErrorMessage(error, 'default'));
     }
   };
 
