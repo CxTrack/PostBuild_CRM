@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useOrganizationStore } from './organizationStore';
 import {
     CustomFieldDefinition,
     CustomFieldFormData,
@@ -36,10 +37,17 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
     fetchFields: async (entityType?: string) => {
         set({ loading: true, error: null });
 
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ error: 'No organization selected', loading: false });
+            return;
+        }
+
         try {
             let query = supabase
                 .from('custom_field_definitions')
                 .select('*')
+                .eq('organization_id', organizationId)
                 .eq('is_active', true)
                 .order('order', { ascending: true });
 
@@ -58,6 +66,12 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
     createField: async (data: CustomFieldFormData, entityType: string) => {
         set({ loading: true, error: null });
 
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ error: 'No organization selected', loading: false });
+            return null;
+        }
+
         const fieldKey = data.field_key || generateFieldKey(data.field_label);
         const existingKeys = get().fields.map(f => f.field_key);
 
@@ -74,6 +88,7 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
                     ...data,
                     field_key: fieldKey,
                     entity_type: entityType,
+                    organization_id: organizationId,
                     is_active: true,
                     order: get().fields.length + 1
                 })
@@ -92,11 +107,18 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
     updateField: async (id: string, updates: Partial<CustomFieldFormData>) => {
         set({ loading: true, error: null });
 
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ error: 'No organization selected', loading: false });
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('custom_field_definitions')
                 .update({ ...updates, updated_at: new Date().toISOString() })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('organization_id', organizationId);
 
             if (error) throw error;
 
@@ -114,12 +136,19 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
     deleteField: async (id: string) => {
         set({ loading: true, error: null });
 
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ error: 'No organization selected', loading: false });
+            return;
+        }
+
         try {
             // Soft delete
             const { error } = await supabase
                 .from('custom_field_definitions')
                 .update({ is_active: false })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('organization_id', organizationId);
 
             if (error) throw error;
             set(state => ({
@@ -134,6 +163,12 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
     reorderFields: async (fieldIds: string[]) => {
         set({ loading: true, error: null });
 
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            set({ error: 'No organization selected', loading: false });
+            return;
+        }
+
         try {
             // Batch update order
             const updates = fieldIds.map((id, index) => ({
@@ -145,7 +180,8 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
                 await supabase
                     .from('custom_field_definitions')
                     .update({ order: update.order })
-                    .eq('id', update.id);
+                    .eq('id', update.id)
+                    .eq('organization_id', organizationId);
             }
 
             const currentFields = get().fields;
