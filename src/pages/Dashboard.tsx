@@ -287,11 +287,21 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Map module IDs to action IDs for filtering
+  const moduleToActionId: Record<string, string> = {
+    'crm': 'add-customer',
+    'calendar': 'schedule',
+    'quotes': 'create-quote',
+    'invoices': 'new-invoice',
+    'tasks': 'create-task',
+  };
+
   useEffect(() => {
-    if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0) {
-      const defaultActions: QuickAction[] = [
+    if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0 && enabledModuleIds.length > 0) {
+      const defaultActions: (QuickAction & { moduleId: string })[] = [
         {
           id: 'add-customer',
+          moduleId: 'crm',
           label: crmLabels.newButton,
           icon: UserPlus,
           onClick: handleAddCustomer,
@@ -300,6 +310,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'schedule',
+          moduleId: 'calendar',
           label: calendarLabels.newButton,
           icon: CalendarPlus,
           onClick: handleSchedule,
@@ -308,6 +319,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'create-quote',
+          moduleId: 'quotes',
           label: quotesLabels.newButton,
           icon: FilePlus,
           onClick: handleCreateQuote,
@@ -316,6 +328,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'new-invoice',
+          moduleId: 'invoices',
           label: invoicesLabels.newButton,
           icon: FileText,
           onClick: handleNewInvoice,
@@ -324,6 +337,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           id: 'create-task',
+          moduleId: 'tasks',
           label: tasksLabels.newButton,
           icon: CheckCircle,
           onClick: handleCreateTask,
@@ -332,17 +346,22 @@ export const Dashboard: React.FC = () => {
         },
       ];
 
+      // Filter to only include actions for enabled modules
+      const enabledActions = defaultActions.filter(a => enabledModuleIds.includes(a.moduleId));
+
       const orderedActions = preferences.quickActionsOrder
-        .map((id: string) => defaultActions.find(a => a.id === id))
-        .filter((a): a is QuickAction => a !== undefined);
+        .map((id: string) => enabledActions.find(a => a.id === id))
+        .filter((a): a is (QuickAction & { moduleId: string }) => a !== undefined);
 
-      // Add any missing default actions
+      // Add any missing enabled actions
       const existingIds = new Set(preferences.quickActionsOrder);
-      const missingActions = defaultActions.filter(a => !existingIds.has(a.id));
+      const missingActions = enabledActions.filter(a => !existingIds.has(a.id));
 
-      setQuickActions([...orderedActions, ...missingActions]);
+      // Strip moduleId before setting state
+      const finalActions = [...orderedActions, ...missingActions].map(({ moduleId, ...action }) => action as QuickAction);
+      setQuickActions(finalActions);
     }
-  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton]);
+  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, enabledModuleIds]);
 
   useEffect(() => {
     fetchCustomers();
@@ -636,49 +655,70 @@ export const Dashboard: React.FC = () => {
 
         <div className="px-4 mb-4">
           <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={handleAddCustomer}
-              className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-            >
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-3">
-                <UserPlus size={24} className="text-blue-600 dark:text-white" />
-              </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">{crmLabels.newButton}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Create new {crmLabels.entitySingular}</p>
-            </button>
+            {enabledModuleIds.includes('crm') && (
+              <button
+                onClick={handleAddCustomer}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <UserPlus size={24} className="text-blue-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{crmLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Create new {crmLabels.entitySingular}</p>
+              </button>
+            )}
 
-            <button
-              onClick={handleSchedule}
-              className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-            >
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mb-3">
-                <CalendarPlus size={24} className="text-green-600 dark:text-white" />
-              </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">{calendarLabels.newButton}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Book {calendarLabels.entitySingular}</p>
-            </button>
+            {enabledModuleIds.includes('calendar') && (
+              <button
+                onClick={handleSchedule}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <CalendarPlus size={24} className="text-green-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{calendarLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Book {calendarLabels.entitySingular}</p>
+              </button>
+            )}
 
-            <button
-              onClick={handleCreateQuote}
-              className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-            >
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
-                <FilePlus size={24} className="text-purple-600 dark:text-white" />
-              </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">{quotesLabels.newButton}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">New {quotesLabels.entitySingular}</p>
-            </button>
+            {enabledModuleIds.includes('quotes') && (
+              <button
+                onClick={handleCreateQuote}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <FilePlus size={24} className="text-purple-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{quotesLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">New {quotesLabels.entitySingular}</p>
+              </button>
+            )}
 
-            <button
-              onClick={handleNewInvoice}
-              className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-            >
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
-                <FileText size={24} className="text-orange-600 dark:text-white" />
-              </div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1">{invoicesLabels.newButton}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Create {invoicesLabels.entitySingular}</p>
-            </button>
+            {enabledModuleIds.includes('invoices') && (
+              <button
+                onClick={handleNewInvoice}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <FileText size={24} className="text-orange-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{invoicesLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Create {invoicesLabels.entitySingular}</p>
+              </button>
+            )}
+
+            {enabledModuleIds.includes('tasks') && (
+              <button
+                onClick={handleCreateTask}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-teal-100 dark:bg-teal-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <CheckCircle size={24} className="text-teal-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{tasksLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Create {tasksLabels.entitySingular}</p>
+              </button>
+            )}
           </div>
         </div>
 
