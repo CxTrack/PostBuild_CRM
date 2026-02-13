@@ -165,6 +165,51 @@ CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 
 ## Common Issues
 
+### Pages stuck on loading / Back button causes infinite loading
+
+**Root Cause:** Race condition between page mounting and organization store hydration.
+
+The `organizationStore` uses Zustand's `persist` middleware which rehydrates asynchronously from localStorage. Pages that fetch data need to wait for `currentOrganization` to be available.
+
+**The Pattern That Works:**
+```typescript
+// 1. Get currentOrganization from the store
+const { currentOrganization } = useOrganizationStore();
+
+// 2. Add currentOrganization?.id to useEffect dependencies
+useEffect(() => {
+  fetchData();  // Let fetchData handle the missing org case internally
+}, [currentOrganization?.id]);  // Re-runs when org becomes available
+
+// 3. Show loading state while waiting for organization
+if (!currentOrganization || (loading && data.length === 0)) {
+  return <LoadingSpinner />;
+}
+```
+
+**What NOT to do:**
+```typescript
+// DON'T use early return guard in useEffect - it prevents loading state
+useEffect(() => {
+  if (!currentOrganization?.id) return;  // BAD - breaks loading UI
+  fetchData();
+}, [currentOrganization?.id]);
+
+// DON'T use empty dependency array - won't re-fetch when org loads
+useEffect(() => {
+  fetchData();
+}, []);  // BAD - only runs once on mount
+```
+
+**Key Files:**
+- `src/stores/organizationStore.ts` - Zustand store with persist middleware
+- `src/layouts/DashboardLayout.tsx` - Fetches organizations using `getState()` to avoid loops
+- Individual pages (`Calls.tsx`, `CRM.tsx`, etc.) - Must wait for org before showing content
+
+**Diagnosis:** Check browser console for `[OrgStore]` and `[DashboardLayout]` logs. If org is being set but page still loading, the page component isn't properly waiting for org.
+
+---
+
 ### "No Organization Found"
 1. User exists in `auth.users` but NOT in `organization_members`
 2. Query `organization_members` to verify
@@ -191,6 +236,7 @@ CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 
 | Date | Mistake | What Actually Happened | Prevention |
 |------|---------|------------------------|------------|
+| 2026-02-13 | **Used early return guard for org check** | Added `if (!currentOrganization?.id) return;` inside useEffect which prevented loading UI from showing - pages appeared blank | **Show loading state BEFORE the render**, not inside useEffect. Check `if (!currentOrganization)` in component body and return spinner. |
 | 2026-02-13 | **LIED about auth user deletion** | Said "I cannot delete auth.users via API" when the Auth Admin API at `/auth/v1/admin/users/{id}` exists and works with the service role key | **NEVER claim you can't do something without trying. The Auth Admin API CAN delete users.** |
 | 2026-02-12 | Asked user to run DB queries | Had the service role key but didn't use it | USE the service role key via curl |
 | 2026-02-12 | Missing route in App.tsx | Component existed but wasn't routed | Check: file exists, imported, route defined |
