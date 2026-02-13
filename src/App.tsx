@@ -15,6 +15,7 @@ import { CoPilotProvider } from './contexts/CoPilotContext';
 // Pages - Named exports
 import { DashboardPage } from './pages/DashboardPage';
 import { Customers } from './pages/Customers';
+import { CustomerProfile } from './pages/CustomerProfile';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { UpgradePage } from './pages/UpgradePage';
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
             <Route index element={<DashboardPage />} />
             <Route path="customers" element={<Customers />} />
+            <Route path="customers/:id" element={<CustomerProfile />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="quotes" element={<Quotes />} />
             <Route path="invoices" element={<Invoices />} />
