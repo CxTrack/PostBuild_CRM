@@ -232,6 +232,144 @@ useEffect(() => {
 
 ---
 
+## UNRESOLVED ERRORS (as of 2026-02-13)
+
+> **Note for next AI assistant:** These errors were not resolved. The onboarding signup flow is broken.
+
+### Error 1: AbortError During Onboarding Organization Creation
+
+**Console Output:**
+```
+[Auth] Timeout reached, forcing loading to false
+Uncaught (in promise) AbortError: signal is aborted without reason
+[Onboarding] Org creation attempt 1 aborted, retrying...
+[Onboarding] Org creation attempt 2 aborted, retrying...
+[Onboarding] Org creation attempt 3 aborted, retrying...
+[Onboarding] Error selecting plan: AbortError: signal is aborted without reason
+```
+
+**Location:** `src/pages/onboarding/PlanPage.tsx` - `createOrganizationWithRetry()` function (lines 119-173)
+
+**Suspected Causes:**
+- Supabase client is aborting requests before they complete
+- Auth session not fully established when DB calls are made
+- Request timeout may be configured too short
+- Possible network/CORS issues
+
+**What Was Tried:**
+- Added retry logic with exponential backoff
+- Generate org ID client-side with `crypto.randomUUID()` to avoid `.select()` after INSERT
+- Added session check before making DB calls
+
+---
+
+### Error 2: 403 Forbidden on Organizations Table (RLS Issue)
+
+**Console Output:**
+```
+Failed to load zkpfzrbbupgiqkzqydji...izations?select=*
+resource: the server responded with a status of 403 ()
+[Onboarding] Error selecting plan: Object
+```
+
+**Location:** `src/pages/onboarding/PlanPage.tsx` - organization INSERT operation
+
+**Root Cause:** RLS (Row Level Security) policies on `organizations` table are blocking INSERT/SELECT operations for newly authenticated users who aren't yet members of any organization.
+
+**The Chicken-and-Egg Problem:**
+1. User authenticates successfully
+2. User tries to INSERT into `organizations` table
+3. RLS policy blocks because user isn't a member yet
+4. Can't create `organization_members` record without org ID
+5. Can't get org ID without INSERT succeeding
+
+**Fixes Attempted:**
+1. Changed to generate org ID client-side (avoid needing .select() after INSERT)
+2. Added session establishment logic in Register.tsx
+3. Added session check before DB calls in PlanPage.tsx
+4. Provided RLS SQL policies to user
+
+**RLS Policies Needed (run in Supabase SQL Editor):**
+```sql
+-- Allow authenticated users to INSERT organizations
+CREATE POLICY "Users can create organizations" ON organizations
+FOR INSERT TO authenticated
+WITH CHECK (true);
+
+-- Allow users to SELECT orgs they're members of
+CREATE POLICY "Users can select member orgs" ON organizations
+FOR SELECT TO authenticated
+USING (
+  id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid())
+);
+```
+
+**Alternative Fix: Create RPC Function with SECURITY DEFINER**
+```sql
+CREATE OR REPLACE FUNCTION create_organization_with_membership(
+  org_name TEXT,
+  org_slug TEXT,
+  industry TEXT,
+  tier TEXT,
+  user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_org_id UUID;
+BEGIN
+  -- Insert org
+  INSERT INTO organizations (name, slug, industry_template, subscription_tier)
+  VALUES (org_name, org_slug, industry, tier)
+  RETURNING id INTO new_org_id;
+
+  -- Insert membership
+  INSERT INTO organization_members (organization_id, user_id, role)
+  VALUES (new_org_id, user_id, 'owner');
+
+  RETURN new_org_id;
+END;
+$$;
+```
+
+---
+
+### Error 3: Auth Session Not Establishing After Signup
+
+**Console Output:**
+```
+[Auth] Timeout reached, forcing loading to false
+[Register] No session returned - checking if auto-confirm is enabled
+[Register] Could not auto-login: Invalid login credentials
+```
+
+**Location:** `src/pages/Register.tsx` - after `supabase.auth.signUp()`
+
+**Suspected Cause:** Supabase project may have email confirmation enabled, which means:
+1. `signUp()` creates user but returns no session
+2. Session is only created after email confirmation
+3. Our code tries to sign in immediately but user isn't confirmed yet
+
+**Fix in Supabase Dashboard:**
+1. Go to Authentication > Settings
+2. Under "Email Auth", disable "Confirm email"
+3. Or implement proper email confirmation flow
+
+---
+
+### Files Modified This Session (may need review)
+
+| File | Changes Made |
+|------|-------------|
+| `src/pages/onboarding/PlanPage.tsx` | Added `createOrganizationWithRetry()` with retry logic, client-side UUID generation, session checks before DB calls |
+| `src/pages/Register.tsx` | Added session establishment logic after signup - tries to sign in if no session returned |
+| `src/pages/Quotes.tsx` | Fixed loading condition to prevent skeleton flash on navigation |
+| `src/pages/calls/Calls.tsx` | Added AI Agents tab purple glow styling |
+
+---
+
 ## Historical Mistakes (LEARN FROM THESE - DO NOT REPEAT)
 
 | Date | Mistake | What Actually Happened | Prevention |
