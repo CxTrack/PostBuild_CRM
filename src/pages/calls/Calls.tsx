@@ -121,6 +121,17 @@ export default function Calls() {
     }
   };
 
+  // Premium AI feature glow styles
+  const aiAgentTabStyles = `
+    relative
+    before:absolute before:inset-0 before:rounded-md
+    before:bg-gradient-to-r before:from-purple-500/20 before:to-violet-500/20
+    before:blur-sm before:opacity-60
+    before:-z-10
+    shadow-[0_0_15px_rgba(139,92,246,0.3)]
+    border border-purple-300/30 dark:border-purple-500/30
+  `;
+
   // Show loading while waiting for hydration, organization, or fetching calls
   if (!_hasHydrated || !currentOrganization || (loading && calls.length === 0)) {
     return (
@@ -223,13 +234,16 @@ export default function Calls() {
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id as TabType)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${activeTab === tab.id
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${tab.id === 'ai-agents' ? aiAgentTabStyles : ''
+                } ${activeTab === tab.id
+                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               {tab.id === 'live' ? (
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              ) : tab.id === 'ai-agents' ? (
+                <tab.icon className="w-3 h-3 text-purple-500" />
               ) : (
                 tab.icon && <tab.icon className="w-3 h-3" />
               )}
