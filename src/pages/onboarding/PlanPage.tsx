@@ -119,9 +119,13 @@ export default function PlanPage() {
     const createOrganizationWithRetry = async (retries = 3): Promise<{ id: string } | null> => {
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
-                const { data: orgData, error: orgError } = await supabase
+                // Generate org ID client-side to avoid RLS issues with SELECT after INSERT
+                const newOrgId = crypto.randomUUID();
+
+                const { error: orgError } = await supabase
                     .from('organizations')
                     .insert({
+                        id: newOrgId, // Provide ID upfront to avoid needing SELECT
                         name: lead.company || `${lead.firstName}'s Business`,
                         slug: lead.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${lead.userId.slice(0, 8)}`,
                         industry_template: selectedIndustry,
@@ -135,9 +139,10 @@ export default function PlanPage() {
                             trial_started_at: new Date().toISOString(),
                             signup_source: 'crm_onboarding',
                         },
-                    })
-                    .select()
-                    .single();
+                    });
+
+                // Return the ID we generated (no SELECT needed)
+                const orgData = orgError ? null : { id: newOrgId };
 
                 if (orgError) {
                     // Check if it's an AbortError - retry
