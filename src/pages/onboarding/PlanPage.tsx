@@ -182,6 +182,18 @@ export default function PlanPage() {
             const updatedLead = { ...lead, industry: selectedIndustry, planId: selectedPlan };
             sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
+            // Ensure we have an active session before making DB calls
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+                console.warn('[Onboarding] No active session, attempting to establish one...');
+                // Wait a moment for session to propagate
+                await new Promise(r => setTimeout(r, 1000));
+                const { data: retrySession } = await supabase.auth.getSession();
+                if (!retrySession.session) {
+                    throw new Error('Session not established. Please try logging in again.');
+                }
+            }
+
             // Create organization in database
             if (lead?.userId) {
                 // First check if user already has an organization (from previous attempt)
