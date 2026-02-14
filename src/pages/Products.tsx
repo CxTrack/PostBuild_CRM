@@ -16,6 +16,7 @@ import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import type { ProductType } from '../types/app.types';
 
 export default function Products() {
@@ -28,6 +29,7 @@ export default function Products() {
   const { currentOrganization, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
+  const labels = usePageLabels('products');
 
   useEffect(() => {
     fetchProducts(currentOrganization?.id);
@@ -193,7 +195,7 @@ export default function Products() {
       <PageContainer className="items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading products...</p>
+          <p className="text-gray-600 dark:text-gray-400">{labels.loadingText}</p>
         </div>
       </PageContainer>
     );
@@ -204,10 +206,10 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Product Catalog
+            {labels.title}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Manage your inventory, services, and digital assets
+            {labels.subtitle}
           </p>
         </div>
         <Link
@@ -215,7 +217,7 @@ export default function Products() {
           className="flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
         >
           <Plus size={18} className="mr-2" />
-          <span className="whitespace-nowrap">Add Product</span>
+          <span className="whitespace-nowrap">{labels.newButton}</span>
         </Link>
       </div>
 
@@ -294,7 +296,7 @@ export default function Products() {
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search catalog..."
+              placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
@@ -327,12 +329,12 @@ export default function Products() {
               <Boxes size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No products found
+              {labels.emptyStateTitle}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
               {searchTerm || filterType !== 'all'
                 ? 'Try adjusting your search or filters'
-                : 'Get started by creating your first product or service'}
+                : labels.emptyStateDescription}
             </p>
             {!searchTerm && filterType === 'all' && (
               <Link
@@ -340,7 +342,7 @@ export default function Products() {
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
-                Add Your First Product
+                {labels.emptyStateButton}
               </Link>
             )}
           </div>

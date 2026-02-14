@@ -16,6 +16,7 @@ const industries = [
     { id: 'legal_services', label: 'Legal Services', icon: 'gavel', description: 'Client intake, case management, billing' },
     { id: 'software_development', label: 'Software Development', icon: 'code', description: 'Sprint management, bug tracking, releases' },
     { id: 'mortgage_broker', label: 'Mortgage Broker', icon: 'account_balance', description: 'Loan pipeline, lender management, rate tracking' },
+    { id: 'construction', label: 'Construction', icon: 'engineering', description: 'Project bids, punch lists, scheduling, invoicing' },
     { id: 'general_business', label: 'General Business', icon: 'business', description: 'Standard CRM pipelines, lead management' },
 ];
 

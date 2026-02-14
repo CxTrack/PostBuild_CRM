@@ -177,6 +177,7 @@ export const DashboardPage = () => {
     const pipelineLabels = usePageLabels('pipeline');
     const productsLabels = usePageLabels('products');
     const financialsLabels = usePageLabels('financials');
+    const callsLabels = usePageLabels('calls');
 
     // Get visible modules for this industry to filter quick actions
     const { visibleModules } = useVisibleModules();
@@ -381,7 +382,7 @@ export const DashboardPage = () => {
                     onClick={() => navigate('/dashboard/pipeline')}
                 />
                 <CompactStatCard
-                    label="Revenue"
+                    label={invoicesLabels.stats?.totalRevenue || 'Revenue'}
                     value={`$${(revenueValue / 1000).toFixed(1)}k`}
                     subValue="Paid"
                     icon={DollarSign}
@@ -397,7 +398,7 @@ export const DashboardPage = () => {
                     onClick={() => navigate('/dashboard/tasks')}
                 />
                 <CompactStatCard
-                    label="Calls"
+                    label={callsLabels.entityPlural}
                     value={todaysCalls.length}
                     subValue="Today"
                     icon={Phone}
@@ -417,7 +418,7 @@ export const DashboardPage = () => {
                         items={quickActions.map(a => a.id)}
                         strategy={rectSortingStrategy}
                     >
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div className={`grid grid-cols-2 gap-3 ${quickActions.length <= 5 ? 'md:grid-cols-5' : quickActions.length <= 6 ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-4 lg:grid-cols-7'}`}>
                             {quickActions.map((action) => (
                                 <SortableQuickAction key={action.id} action={action} />
                             ))}

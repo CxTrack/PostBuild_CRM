@@ -8,6 +8,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import SupplierModal from '@/components/suppliers/SupplierModal';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import toast from 'react-hot-toast';
 
 export const Suppliers: React.FC = () => {
@@ -20,6 +21,7 @@ export const Suppliers: React.FC = () => {
     const { currentOrganization, currentMembership } = useOrganizationStore();
     const { suppliers, loading, fetchSuppliers, deleteSupplier } = useSupplierStore();
     const { theme } = useThemeStore();
+    const labels = usePageLabels('suppliers');
 
     useEffect(() => {
         if (currentOrganization?.id) {
@@ -69,9 +71,9 @@ export const Suppliers: React.FC = () => {
             <Card className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Suppliers</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Manage your product vendors and service providers
+                            {labels.subtitle}
                         </p>
                     </div>
                     <Button
@@ -80,7 +82,7 @@ export const Suppliers: React.FC = () => {
                         className="flex items-center"
                     >
                         <Plus size={20} className="mr-2" />
-                        Add Supplier
+                        {labels.newButton}
                     </Button>
                 </div>
 
@@ -89,7 +91,7 @@ export const Suppliers: React.FC = () => {
                         <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                         <input
                             type="text"
-                            placeholder="Search suppliers by name, email or code..."
+                            placeholder={labels.searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className={
@@ -145,14 +147,14 @@ export const Suppliers: React.FC = () => {
                             <Building2 size={40} />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                            {searchTerm ? 'No suppliers found' : 'No suppliers yet'}
+                            {searchTerm ? `No ${labels.entityPlural} found` : labels.emptyStateTitle}
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                            {searchTerm ? 'Try adjusting your search or filters' : 'Start by adding your first supplier to track inventory origins and expenses.'}
+                            {searchTerm ? 'Try adjusting your search or filters' : labels.emptyStateDescription}
                         </p>
                         {!searchTerm && (
                             <Button variant="primary" onClick={openCreateModal}>
-                                Add Your First Supplier
+                                {labels.emptyStateButton}
                             </Button>
                         )}
                     </div>

@@ -7,6 +7,7 @@ import { useInventoryStore } from '@/stores/inventoryStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { PageContainer, Card, IconBadge, Button } from '@/components/theme/ThemeComponents';
 import StockMovementModal from '@/components/inventory/StockMovementModal';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 export const Inventory: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +19,7 @@ export const Inventory: React.FC = () => {
     const { products, fetchProducts } = useProductStore();
     const { fetchAlerts } = useInventoryStore();
     const { currentOrganization } = useOrganizationStore();
+    const labels = usePageLabels('inventory');
 
     useEffect(() => {
         if (currentOrganization?.id) {
@@ -57,9 +59,9 @@ export const Inventory: React.FC = () => {
         <PageContainer>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Track stock levels, movements, and replenishment
+                        {labels.subtitle}
                     </p>
                 </div>
             </div>

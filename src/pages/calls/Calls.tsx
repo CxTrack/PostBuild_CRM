@@ -24,12 +24,14 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import LogCallModal from '@/components/calls/LogCallModal';
 import { PageContainer, Card, IconBadge } from '@/components/theme/ThemeComponents';
+import { usePageLabels } from '@/hooks/usePageLabels';
 
 type TabType = 'all' | 'my-calls' | 'team' | 'ai-agents' | 'live';
 
 export default function Calls() {
   const { theme } = useThemeStore();
   const { currentOrganization, _hasHydrated } = useOrganizationStore();
+  const labels = usePageLabels('calls');
   const {
     calls,
     stats,
@@ -138,7 +140,7 @@ export default function Calls() {
       <PageContainer className="items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading calls...</p>
+          <p className="text-gray-600 dark:text-gray-400">{labels.loadingText}</p>
         </div>
       </PageContainer>
     );
@@ -150,10 +152,10 @@ export default function Calls() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Calls
+            {labels.title}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Log and track customer communications
+            {labels.subtitle}
           </p>
         </div>
 
@@ -162,7 +164,7 @@ export default function Calls() {
           className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
         >
           <Plus size={18} className="mr-2" />
-          Log Call
+          {labels.newButton}
         </button>
       </div>
 
@@ -257,7 +259,7 @@ export default function Calls() {
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search calls..."
+              placeholder={labels.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
@@ -396,13 +398,13 @@ export default function Calls() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <Phone className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No calls found</h3>
-            <p className="text-slate-500 mb-6">Start tracking your customer communications</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{labels.emptyStateTitle}</h3>
+            <p className="text-slate-500 mb-6">{labels.emptyStateDescription}</p>
             <button
               onClick={() => setShowLogCallModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow hover:bg-blue-700 transition"
             >
-              Log Your First Call
+              {labels.emptyStateButton}
             </button>
           </div>
         )}

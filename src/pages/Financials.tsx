@@ -9,6 +9,7 @@ import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { PageContainer, Card, IconBadge, Button } from '@/components/theme/ThemeComponents';
 import ExpenseModal from '@/components/financials/ExpenseModal';
+import { usePageLabels } from '@/hooks/usePageLabels';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -23,6 +24,7 @@ export const Financials: React.FC = () => {
     const { expenses, fetchExpenses, categories, fetchCategories, deleteExpense } = useExpenseStore();
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { currentOrganization } = useOrganizationStore();
+    const labels = usePageLabels('financials');
 
     useEffect(() => {
         if (currentOrganization?.id) {
@@ -62,9 +64,9 @@ export const Financials: React.FC = () => {
         <PageContainer>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financial Dashboard</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Track your revenue, expenses, and overall profitability
+                        {labels.subtitle}
                     </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -74,7 +76,7 @@ export const Financials: React.FC = () => {
                     </Button>
                     <Button variant="primary" onClick={() => setShowExpenseModal(true)} className="flex items-center">
                         <Plus size={18} className="mr-2" />
-                        Add Expense
+                        {labels.newButton}
                     </Button>
                 </div>
             </div>
