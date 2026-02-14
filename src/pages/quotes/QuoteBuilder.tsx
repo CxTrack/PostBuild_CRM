@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { getQuoteFieldLabels } from '@/config/modules.config';
 
 export default function QuoteBuilder() {
   const { id } = useParams();
@@ -63,6 +64,9 @@ export default function QuoteBuilder() {
 
   // Check if industry is real estate for showing property-specific fields
   const isRealEstate = currentOrganization?.industry_template === 'real_estate';
+
+  // Get industry-specific field labels for the Quote Details section
+  const fieldLabels = getQuoteFieldLabels(currentOrganization?.industry_template || 'general_business');
 
   // Helper to update real estate property fields
   const updatePropertyField = <K extends keyof RealEstateProposalFields>(
@@ -1102,11 +1106,11 @@ export default function QuoteBuilder() {
 
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quote Details</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.sectionTitle}</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Quote Date
+                    {fieldLabels.dateLabel}
                   </label>
                   <Input
                     type="date"
@@ -1116,7 +1120,7 @@ export default function QuoteBuilder() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Expiry Date
+                    {fieldLabels.expiryLabel}
                   </label>
                   <Input
                     type="date"
@@ -1124,17 +1128,19 @@ export default function QuoteBuilder() {
                     onChange={(e) => setFormData(prev => ({ ...prev, expiry_date: e.target.value }))}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Payment Terms
-                  </label>
-                  <Input
-                    type="text"
-                    value={formData.payment_terms || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                    placeholder="Net 30"
-                  />
-                </div>
+                {fieldLabels.showTermsField && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {fieldLabels.termsLabel}
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.payment_terms || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
+                      placeholder={fieldLabels.termsPlaceholder}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

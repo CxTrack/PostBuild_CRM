@@ -1025,6 +1025,140 @@ export const getPageLabels = (pageId: string, industryTemplate: string): PageLab
   };
 };
 
+// ============================================================================
+// QUOTE/PROPOSAL FIELD LABELS - Industry-specific field labels for the Quote Builder
+// ============================================================================
+// These replace generic "Quote Date", "Expiry Date", "Payment Terms" with industry-appropriate terms
+
+export interface QuoteFieldLabels {
+  sectionTitle: string;
+  dateLabel: string;
+  expiryLabel: string;
+  termsLabel: string;
+  termsPlaceholder: string;
+  showTermsField: boolean; // Some industries don't need this field
+}
+
+export const QUOTE_FIELD_LABELS: Record<string, QuoteFieldLabels> = {
+  // Real Estate - Listing Proposals
+  real_estate: {
+    sectionTitle: 'Proposal Details',
+    dateLabel: 'Proposal Date',
+    expiryLabel: 'Listing Agreement End',
+    termsLabel: 'Additional Terms',
+    termsPlaceholder: 'e.g., Exclusive right to sell',
+    showTermsField: false, // Listing Duration is already in Property Details section
+  },
+
+  // Contractors/Home Services - Estimates
+  contractors_home_services: {
+    sectionTitle: 'Estimate Details',
+    dateLabel: 'Estimate Date',
+    expiryLabel: 'Valid Until',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., 50% upfront, 50% on completion',
+    showTermsField: true,
+  },
+
+  // Legal Services - Fee Proposals
+  legal_services: {
+    sectionTitle: 'Fee Proposal Details',
+    dateLabel: 'Proposal Date',
+    expiryLabel: 'Valid Until',
+    termsLabel: 'Billing Terms',
+    termsPlaceholder: 'e.g., Hourly, Retainer, Flat Fee',
+    showTermsField: true,
+  },
+
+  // Tax & Accounting - Engagement Letters
+  tax_accounting: {
+    sectionTitle: 'Engagement Details',
+    dateLabel: 'Letter Date',
+    expiryLabel: 'Engagement Period Ends',
+    termsLabel: 'Billing Terms',
+    termsPlaceholder: 'e.g., Billed monthly, Due on receipt',
+    showTermsField: true,
+  },
+
+  // Construction - Bids
+  construction: {
+    sectionTitle: 'Bid Details',
+    dateLabel: 'Bid Date',
+    expiryLabel: 'Bid Valid Until',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Progress payments, Net 30',
+    showTermsField: true,
+  },
+
+  // Software Development - Proposals
+  software_development: {
+    sectionTitle: 'Proposal Details',
+    dateLabel: 'Proposal Date',
+    expiryLabel: 'Valid Until',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Milestone-based, Monthly retainer',
+    showTermsField: true,
+  },
+
+  // Mortgage Broker - doesn't typically have quotes, but just in case
+  mortgage_broker: {
+    sectionTitle: 'Quote Details',
+    dateLabel: 'Quote Date',
+    expiryLabel: 'Rate Lock Expires',
+    termsLabel: 'Loan Terms',
+    termsPlaceholder: 'e.g., 30-year fixed, 15-year ARM',
+    showTermsField: true,
+  },
+
+  // Healthcare
+  healthcare: {
+    sectionTitle: 'Service Quote Details',
+    dateLabel: 'Quote Date',
+    expiryLabel: 'Valid Until',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Due at time of service',
+    showTermsField: true,
+  },
+
+  // Gyms & Fitness
+  gyms_fitness: {
+    sectionTitle: 'Membership Quote',
+    dateLabel: 'Quote Date',
+    expiryLabel: 'Offer Expires',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Monthly, Annual prepay',
+    showTermsField: true,
+  },
+
+  // Distribution & Logistics
+  distribution_logistics: {
+    sectionTitle: 'Quote Details',
+    dateLabel: 'Quote Date',
+    expiryLabel: 'Valid Until',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Net 30, COD',
+    showTermsField: true,
+  },
+
+  // Default / General Business
+  general_business: {
+    sectionTitle: 'Quote Details',
+    dateLabel: 'Quote Date',
+    expiryLabel: 'Expiry Date',
+    termsLabel: 'Payment Terms',
+    termsPlaceholder: 'e.g., Net 30',
+    showTermsField: true,
+  },
+};
+
+/**
+ * Get quote field labels for a specific industry
+ * Falls back to general_business defaults
+ */
+export const getQuoteFieldLabels = (industryTemplate: string): QuoteFieldLabels => {
+  return QUOTE_FIELD_LABELS[industryTemplate] || QUOTE_FIELD_LABELS.general_business;
+};
+
 export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
   owner: [
     'customers.read',
