@@ -55,27 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user && isMounted) {
           // Track current user ID for detecting user changes
           previousUserIdRef.current = session.user.id;
-          // Set user immediately (org data can be fetched later by DashboardLayout)
+          // Set user immediately — org data is fetched by DashboardLayout via organizationStore
+          // DO NOT query organization_members here — it creates in-flight requests that get
+          // killed by the Supabase JS client's AbortController during auth state transitions
           setUser(session.user);
-
-          // Try to get org membership, but don't block on it
-          try {
-            const { data: memberData } = await supabase
-              .from('organization_members')
-              .select('organization_id, role')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-
-            if (isMounted && memberData) {
-              setUser({
-                ...session.user,
-                role: memberData.role,
-                organization_id: memberData.organization_id
-              });
-            }
-          } catch {
-            // Org data fetch failed, but user is still authenticated
-          }
         }
       } catch (err) {
         // Ignore AbortError - happens during navigation/unmount
@@ -104,26 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         previousUserIdRef.current = session.user.id;
 
+        // Set user immediately — org data is fetched by DashboardLayout via organizationStore
+        // DO NOT query organization_members here — it creates in-flight requests that get
+        // killed by the Supabase JS client's AbortController during auth state transitions
         setUser(session.user);
-
-        // Fetch org data in background
-        try {
-          const { data: memberData } = await supabase
-            .from('organization_members')
-            .select('organization_id, role')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          if (isMounted && memberData) {
-            setUser({
-              ...session.user,
-              role: memberData.role,
-              organization_id: memberData.organization_id
-            });
-          }
-        } catch {
-          // Org data fetch failed, keep user without org data
-        }
       } else {
         // CRITICAL: When auth becomes null (logout, token expiry, session invalidation)
         // Clear all data stores to prevent stale data on next login

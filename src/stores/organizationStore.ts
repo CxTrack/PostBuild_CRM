@@ -1,8 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { Organization, OrganizationMember, UserProfile } from '../types/database.types';
 import { clearOrganizationDataStores } from './storeCleanup';
+
+// Read auth token directly from localStorage — bypasses Supabase JS client's AbortController.
+// The Supabase client persists session under sb-{ref}-auth-token in localStorage.
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* malformed JSON, skip */ }
+    }
+  }
+  return null;
+};
 
 interface OrganizationState {
   currentOrganization: Organization | null;
@@ -80,22 +94,49 @@ export const useOrganizationStore = create<OrganizationState>()(
         console.log('[OrgStore] Fetching organizations for user:', userId);
         set({ loading: true });
         try {
-          const { data, error } = await supabase
-            .from('organization_members')
-            .select(`
-              *,
-              organization:organizations(*)
-            `)
-            .eq('user_id', userId);
-
-          if (error) {
-            console.error('[OrgStore] Error fetching organizations:', error);
-            throw error;
+          // Use direct fetch() to bypass Supabase JS client's internal AbortController
+          // which kills in-flight requests during auth state transitions
+          const token = getAuthToken();
+          if (!token) {
+            console.warn('[OrgStore] No auth token found in localStorage');
+            return;
           }
 
+          const fetchUrl = `${supabaseUrl}/rest/v1/organization_members?user_id=eq.${userId}&select=*,organization:organizations(*)`;
+          const fetchHeaders = {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          };
+
+          let res = await fetch(fetchUrl, { headers: fetchHeaders });
+          if (!res.ok) {
+            console.error('[OrgStore] Fetch failed:', res.status, await res.text());
+            throw new Error(`Organization fetch failed (${res.status})`);
+          }
+
+          let data = await res.json();
           console.log('[OrgStore] Fetched organizations:', data?.length || 0, 'memberships');
 
-          const orgs = data
+          // If empty on first try, the JWT may not be fully propagated for RLS yet — retry once after delay
+          if (!data || data.length === 0) {
+            console.log('[OrgStore] No orgs found on first attempt, retrying after 1.5s...');
+            await new Promise(r => setTimeout(r, 1500));
+            const retryToken = getAuthToken();
+            if (retryToken) {
+              const retryRes = await fetch(fetchUrl, {
+                headers: { ...fetchHeaders, 'Authorization': `Bearer ${retryToken}` },
+              });
+              if (retryRes.ok) {
+                const retryData = await retryRes.json();
+                if (retryData?.length > 0) {
+                  console.log('[OrgStore] Retry succeeded:', retryData.length, 'memberships');
+                  data = retryData;
+                }
+              }
+            }
+          }
+
+          const orgs = (data || [])
             .filter((item: { organization: Organization | null }) => {
               // Filter out memberships where the organization join failed (RLS or deleted org)
               if (!item.organization) {
@@ -172,15 +213,22 @@ export const useOrganizationStore = create<OrganizationState>()(
         if (!currentOrganization) return;
 
         try {
-          const { data, error } = await supabase
-            .from('organization_members')
-            .select(`
-              role,
-              user:user_profiles(*)
-            `)
-            .eq('organization_id', currentOrganization.id);
+          // Use direct fetch() to bypass AbortController
+          const token = getAuthToken();
+          if (!token) return;
 
-          if (error) throw error;
+          const res = await fetch(
+            `${supabaseUrl}/rest/v1/organization_members?organization_id=eq.${currentOrganization.id}&select=role,user:user_profiles(*)`,
+            {
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!res.ok) throw new Error(`Team members fetch failed (${res.status})`);
+          const data = await res.json();
 
           interface MemberQueryResult {
             user_id: string;
