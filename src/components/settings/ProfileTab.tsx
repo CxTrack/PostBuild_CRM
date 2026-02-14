@@ -37,6 +37,8 @@ import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ProfileData {
     full_name: string;
+    first_name: string;
+    last_name: string;
     email: string;
     phone: string;
     title: string;
@@ -61,8 +63,15 @@ interface ProfileData {
 const PROFILE_KEY = 'cxtrack_user_profile';
 
 // Default profile factory - uses auth user data when available
-const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_name?: string } } | null): ProfileData => ({
-    full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_name?: string } } | null): ProfileData => {
+    const rawName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+    const spaceIdx = rawName.indexOf(' ');
+    const firstName = spaceIdx > -1 ? rawName.slice(0, spaceIdx) : rawName;
+    const lastName = spaceIdx > -1 ? rawName.slice(spaceIdx + 1) : '';
+    return {
+    full_name: rawName,
+    first_name: firstName,
+    last_name: lastName,
     email: user?.email || '',
     phone: '',
     title: '',
@@ -80,7 +89,7 @@ const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_na
     interests: [],
     expertise: [],
     learning_topics: []
-});
+}; };
 
 export const ProfileTab: React.FC = () => {
     const { user } = useAuthContext();
@@ -101,6 +110,12 @@ export const ProfileTab: React.FC = () => {
                 const parsed = JSON.parse(saved);
                 // If saved email matches current user, use saved data
                 if (user?.email && parsed.email === user.email) {
+                    // Migrate old profiles: split full_name into first/last if not present
+                    if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
+                        const spaceIdx = parsed.full_name.indexOf(' ');
+                        parsed.first_name = spaceIdx > -1 ? parsed.full_name.slice(0, spaceIdx) : parsed.full_name;
+                        parsed.last_name = spaceIdx > -1 ? parsed.full_name.slice(spaceIdx + 1) : '';
+                    }
                     setProfile(parsed);
                     if (parsed.avatar_url) {
                         setAvatarPreview(parsed.avatar_url);
@@ -175,7 +190,7 @@ export const ProfileTab: React.FC = () => {
                             {avatarPreview ? (
                                 <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
-                                profile.full_name?.charAt(0)?.toUpperCase() || 'U'
+                                (profile.first_name?.charAt(0)?.toUpperCase() || '') + (profile.last_name?.charAt(0)?.toUpperCase() || '') || 'U'
                             )}
                         </div>
 
@@ -300,13 +315,26 @@ export const ProfileTab: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Full Name
+                            First Name
                         </label>
                         <input
                             type="text"
-                            value={profile.full_name}
-                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                            placeholder="John Doe"
+                            value={profile.first_name}
+                            onChange={(e) => setProfile({ ...profile, first_name: e.target.value, full_name: `${e.target.value} ${profile.last_name}`.trim() })}
+                            placeholder="John"
+                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Last Name
+                        </label>
+                        <input
+                            type="text"
+                            value={profile.last_name}
+                            onChange={(e) => setProfile({ ...profile, last_name: e.target.value, full_name: `${profile.first_name} ${e.target.value}`.trim() })}
+                            placeholder="Doe"
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                     </div>

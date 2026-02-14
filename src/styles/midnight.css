@@ -64,6 +64,14 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* Exclude form inputs from blur — icons inside get distorted */
+.midnight input.dark\:bg-gray-800,
+.midnight select.dark\:bg-gray-800,
+.midnight textarea.dark\:bg-gray-800 {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 /* Elevated surfaces: dark:bg-gray-700 → elevated glass */
 .midnight .dark\:bg-gray-700 {
   background-color: var(--mn-bg-elevated) !important;

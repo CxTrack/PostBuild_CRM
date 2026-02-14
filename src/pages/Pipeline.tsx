@@ -430,7 +430,7 @@ const Pipeline: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/dashboard/quotes/builder')}
+            onClick={() => navigate('/invoices/builder')}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -547,7 +547,7 @@ const Pipeline: React.FC = () => {
               Quick Add {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
             </button>
             <button
-              onClick={() => navigate('/dashboard/quotes/builder')}
+              onClick={() => navigate('/invoices/builder')}
               className={theme === 'soft-modern' ? "px-6 py-3 rounded-xl font-medium transition-all border-2" : "px-6 py-3 border-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 rounded-xl font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"}
               style={theme === 'soft-modern' ? {
                 borderColor: 'rgba(168, 197, 232, 0.5)',

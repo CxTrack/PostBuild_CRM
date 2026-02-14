@@ -16,6 +16,9 @@ export interface BusinessSettings {
   default_payment_terms: string;
   default_quote_template_id: string | null;
   default_invoice_template_id: string | null;
+  business_tax_id: string | null;
+  default_tax_rate: number;
+  tax_label: string;
 }
 
 export interface DocumentTemplate {
@@ -72,7 +75,10 @@ export const settingsService = {
         invoice_prefix,
         default_payment_terms,
         default_quote_template_id,
-        default_invoice_template_id
+        default_invoice_template_id,
+        business_tax_id,
+        default_tax_rate,
+        tax_label
       `)
       .eq('id', organizationId)
       .maybeSingle();

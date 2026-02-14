@@ -42,6 +42,9 @@ export default function InvoiceBuilder() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const { user } = useAuthContext();
   const [organizationInfo, setOrganizationInfo] = useState<any>(null);
+  const [orgTaxRate, setOrgTaxRate] = useState<number>(0);
+  const [orgTaxLabel, setOrgTaxLabel] = useState<string>('Tax');
+  const [invoiceTaxRate, setInvoiceTaxRate] = useState<number>(0);
 
   const [formData, setFormData] = useState<InvoiceFormData>({
     customer_id: '',
@@ -98,8 +101,20 @@ export default function InvoiceBuilder() {
         settingsService.getOrganizationForPDF(currentOrganization.id)
       ]);
       setOrganizationInfo(orgInfo);
-      if (settings?.default_payment_terms) {
-        setFormData(prev => ({ ...prev, payment_terms: settings.default_payment_terms }));
+      if (settings) {
+        setFormData(prev => ({
+          ...prev,
+          ...(settings.default_payment_terms ? { payment_terms: settings.default_payment_terms } : {}),
+        }));
+        // Store org tax settings for use when applying tax
+        if (settings.default_tax_rate) {
+          setOrgTaxRate(settings.default_tax_rate);
+          setOrgTaxLabel(settings.tax_label || 'Tax');
+          // Pre-populate invoice tax rate for new invoices (not editing existing)
+          if (!id) {
+            setInvoiceTaxRate(settings.default_tax_rate);
+          }
+        }
       }
     } catch (error) {
       // Error handled silently
@@ -899,8 +914,30 @@ export default function InvoiceBuilder() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Tax</span>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 dark:text-gray-400">{orgTaxLabel || 'Tax'}</span>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        value={invoiceTaxRate}
+                        onChange={(e) => {
+                          const rate = parseFloat(e.target.value) || 0;
+                          setInvoiceTaxRate(rate);
+                          // Apply rate to all line items
+                          const updatedItems = formData.items.map(item => ({ ...item, tax_rate: rate }));
+                          setFormData(prev => ({ ...prev, items: updatedItems }));
+                          calculateTotals(updatedItems);
+                        }}
+                        className="w-20 text-sm"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        placeholder="0"
+                      />
+                      <span className="text-gray-400 text-xs">%</span>
+                    </div>
+                  </div>
                   <span className="font-medium text-gray-900 dark:text-white">
                     ${formData.tax_amount.toFixed(2)}
                   </span>
@@ -932,6 +969,36 @@ export default function InvoiceBuilder() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Bottom Action Buttons */}
+        <div className="flex justify-end gap-3 mt-6 pb-8">
+          <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={
+              saving ||
+              !formData.customer_id ||
+              formData.items.length === 0 ||
+              formData.total_amount <= 0
+            }
+            className="px-6"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {id ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                {id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`}
+              </>
+            )}
+          </Button>
         </div>
 
         {savedInvoice && currentOrganization && user && organizationInfo && (

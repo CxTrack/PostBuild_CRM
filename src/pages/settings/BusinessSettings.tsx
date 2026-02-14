@@ -297,7 +297,95 @@ export default function BusinessSettings() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          {/* Tax & Identification */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Tax & Identification
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Business Tax ID
+                </label>
+                <Input
+                  type="text"
+                  value={settings.business_tax_id || ''}
+                  onChange={(e) => setSettings({ ...settings, business_tax_id: e.target.value })}
+                  placeholder="GST/HST Number, EIN, or VAT Number"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Canada: GST/HST registration number &bull; US: EIN &bull; Displayed on invoices
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Default Tax Rate (%)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={settings.default_tax_rate ?? 0}
+                    onChange={(e) => setSettings({ ...settings, default_tax_rate: parseFloat(e.target.value) || 0 })}
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    className="flex-1"
+                  />
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [rate, label] = e.target.value.split('|');
+                        setSettings({ ...settings, default_tax_rate: parseFloat(rate), tax_label: label });
+                      }
+                    }}
+                    className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">Presets...</option>
+                    <optgroup label="Canada">
+                      <option value="13|HST">HST 13% (Ontario)</option>
+                      <option value="15|HST">HST 15% (Atlantic)</option>
+                      <option value="5|GST">GST 5%</option>
+                      <option value="12|GST+PST">GST+PST 12% (BC)</option>
+                      <option value="11|GST+PST">GST+PST 11% (SK)</option>
+                      <option value="14.975|GST+QST">GST+QST 14.975% (QC)</option>
+                    </optgroup>
+                    <optgroup label="United States">
+                      <option value="0|Sales Tax">No Sales Tax</option>
+                      <option value="6|Sales Tax">Sales Tax 6%</option>
+                      <option value="7|Sales Tax">Sales Tax 7%</option>
+                      <option value="8|Sales Tax">Sales Tax 8%</option>
+                      <option value="8.875|Sales Tax">Sales Tax 8.875% (NYC)</option>
+                      <option value="10|Sales Tax">Sales Tax 10%</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Applied to new invoices and quotes by default. Can be overridden per document.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tax Display Label
+                </label>
+                <Input
+                  type="text"
+                  value={settings.tax_label || 'Tax'}
+                  onChange={(e) => setSettings({ ...settings, tax_label: e.target.value })}
+                  placeholder="Tax"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Shown on invoices/quotes (e.g. "HST", "GST", "Sales Tax", "VAT")
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-6">
             <Button type="submit" disabled={saving}>
               {saving ? (
                 <>
