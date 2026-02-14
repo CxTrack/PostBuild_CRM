@@ -115,63 +115,6 @@ export default function PlanPage() {
         setSelectedPlan(planId);
     };
 
-    // Helper: Create organization with retry logic for AbortErrors
-    const createOrganizationWithRetry = async (retries = 3): Promise<{ id: string } | null> => {
-        for (let attempt = 1; attempt <= retries; attempt++) {
-            try {
-                // Generate org ID client-side to avoid RLS issues with SELECT after INSERT
-                const newOrgId = crypto.randomUUID();
-
-                const { error: orgError } = await supabase
-                    .from('organizations')
-                    .insert({
-                        id: newOrgId, // Provide ID upfront to avoid needing SELECT
-                        name: lead.company || `${lead.firstName}'s Business`,
-                        slug: lead.company?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${lead.userId.slice(0, 8)}`,
-                        industry_template: selectedIndustry,
-                        subscription_tier: selectedPlan === 'free' ? 'free' : selectedPlan === 'business' ? 'business' : selectedPlan === 'elite_premium' ? 'elite_premium' : 'enterprise',
-                        primary_color: '#FFD700',
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        business_hours: { start: '09:00', end: '17:00' },
-                        enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
-                        max_users: selectedPlan === 'free' ? 1 : selectedPlan === 'business' ? 5 : selectedPlan === 'elite_premium' ? 10 : 999,
-                        metadata: {
-                            trial_started_at: new Date().toISOString(),
-                            signup_source: 'crm_onboarding',
-                        },
-                    });
-
-                // Return the ID we generated (no SELECT needed)
-                const orgData = orgError ? null : { id: newOrgId };
-
-                if (orgError) {
-                    // Check if it's an AbortError - retry
-                    const isAbortError = orgError.message?.includes('abort') ||
-                                        (orgError as Error).name === 'AbortError';
-                    if (isAbortError && attempt < retries) {
-                        console.warn(`[Onboarding] Org creation attempt ${attempt} aborted, retrying...`);
-                        await new Promise(r => setTimeout(r, 500 * attempt)); // Exponential backoff
-                        continue;
-                    }
-                    throw orgError;
-                }
-
-                return orgData;
-            } catch (err) {
-                // Check for AbortError and retry
-                const isAbortError = err instanceof Error &&
-                    (err.name === 'AbortError' || err.message?.includes('abort'));
-                if (isAbortError && attempt < retries) {
-                    console.warn(`[Onboarding] Org creation attempt ${attempt} aborted, retrying...`);
-                    await new Promise(r => setTimeout(r, 500 * attempt));
-                    continue;
-                }
-                throw err;
-            }
-        }
-        return null;
-    };
-
     // Confirm selection and proceed to next step
     const handleConfirmPlan = async () => {
         if (isProcessing || !selectedPlan) return;
@@ -185,18 +128,12 @@ export default function PlanPage() {
             // Ensure we have an active session before making DB calls
             const { data: sessionData } = await supabase.auth.getSession();
             if (!sessionData.session) {
-                console.warn('[Onboarding] No active session, attempting to establish one...');
-                // Wait a moment for session to propagate
-                await new Promise(r => setTimeout(r, 1000));
-                const { data: retrySession } = await supabase.auth.getSession();
-                if (!retrySession.session) {
-                    throw new Error('Session not established. Please try logging in again.');
-                }
+                throw new Error('No active session. Please try logging in again.');
             }
 
             // Create organization in database
             if (lead?.userId) {
-                // First check if user already has an organization (from previous attempt)
+                // Check if user already has an organization (from previous attempt)
                 const { data: existingMember } = await supabase
                     .from('organization_members')
                     .select('organization_id')
@@ -209,62 +146,45 @@ export default function PlanPage() {
                         .from('organizations')
                         .update({
                             industry_template: selectedIndustry,
-                            subscription_tier: selectedPlan === 'free' ? 'free' : selectedPlan === 'business' ? 'business' : selectedPlan === 'elite_premium' ? 'elite_premium' : 'enterprise',
+                            subscription_tier: selectedPlan,
                         })
                         .eq('id', existingMember.organization_id);
 
                     updatedLead.organizationId = existingMember.organization_id;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
                 } else {
-                    // Step 1: Create public.users record first (FK constraint requirement)
-                    await supabase.from('users').upsert({
-                        id: lead.userId,
-                        email: lead.email,
-                    }, { onConflict: 'id' });
+                    // Atomic organization + owner creation via SECURITY DEFINER RPC
+                    const slug = lead.company
+                        ?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                        || `org-${lead.userId.slice(0, 8)}`;
 
-                    // Step 2: Create new organization with retry logic
-                    const orgData = await createOrganizationWithRetry(3);
+                    const { data: orgId, error: rpcError } = await supabase.rpc('create_organization_with_owner', {
+                        p_user_id: lead.userId,
+                        p_user_email: lead.email,
+                        p_user_full_name: `${lead.firstName} ${lead.lastName}`,
+                        p_org_name: lead.company || `${lead.firstName}'s Business`,
+                        p_org_slug: slug,
+                        p_industry_template: selectedIndustry,
+                        p_subscription_tier: selectedPlan,
+                        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        p_enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+                        p_max_users: selectedPlan === 'free' ? 1 : selectedPlan === 'business' ? 5 : selectedPlan === 'elite_premium' ? 10 : 999,
+                        p_metadata: { trial_started_at: new Date().toISOString(), signup_source: 'crm_onboarding' },
+                        p_business_name: lead.company || null,
+                    });
 
-                    if (!orgData) {
-                        throw new Error('Failed to create organization after multiple attempts');
+                    if (rpcError) {
+                        console.error('[Onboarding] RPC error:', rpcError);
+                        throw rpcError;
                     }
 
-                    // Step 3: Create user_profiles (FK to public.users)
-                    const { error: profileError } = await supabase.from('user_profiles').upsert({
-                        id: lead.userId,
-                        email: lead.email,
-                        full_name: `${lead.firstName} ${lead.lastName}`,
-                        business_name: lead.company || null,
-                        organization_id: orgData.id,
-                    }, { onConflict: 'id' });
-
-                    if (profileError) {
-                        console.error('[Onboarding] user_profiles error:', profileError);
-                    }
-
-                    // Step 4: Create organization_members (FK to user_profiles)
-                    const { error: memberError } = await supabase.from('organization_members').upsert({
-                        organization_id: orgData.id,
-                        user_id: lead.userId,
-                        role: 'owner',
-                        permissions: {},
-                        calendar_delegation: [],
-                        can_view_team_calendars: true,
-                    }, { onConflict: 'organization_id,user_id' });
-
-                    if (memberError) {
-                        console.error('[Onboarding] organization_members error:', memberError);
-                    }
-
-                    // Store org ID in session
-                    updatedLead.organizationId = orgData.id;
+                    updatedLead.organizationId = orgId;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
                 }
             }
 
             // Navigate to next step
             if (selectedPlan === 'enterprise') {
-                // Enterprise goes to contact sales
                 navigate('/onboarding/enterprise');
             } else {
                 navigate(`/onboarding/voice-setup?plan=${selectedPlan}`);
@@ -273,7 +193,7 @@ export default function PlanPage() {
             console.error('[Onboarding] Error selecting plan:', error);
             toast.error('Setup failed. Please try again.');
             setIsProcessing(false);
-            return; // Don't navigate on error
+            return;
         } finally {
             setIsProcessing(false);
         }

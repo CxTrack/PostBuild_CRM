@@ -14,8 +14,6 @@ export interface BusinessSettings {
   quote_prefix: string;
   invoice_prefix: string;
   default_payment_terms: string;
-  stripe_publishable_key: string | null;
-  // stripe_secret_key removed - never expose to frontend
   default_quote_template_id: string | null;
   default_invoice_template_id: string | null;
 }
@@ -73,7 +71,6 @@ export const settingsService = {
         quote_prefix,
         invoice_prefix,
         default_payment_terms,
-        stripe_publishable_key,
         default_quote_template_id,
         default_invoice_template_id
       `)

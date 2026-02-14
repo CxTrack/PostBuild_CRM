@@ -57,24 +57,6 @@ export const Register: React.FC = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Failed to create user');
 
-      // 1.5. Wait for session to be established (important for RLS)
-      // If no session returned, user might need email confirmation
-      if (!authData.session) {
-        console.log('[Register] No session returned - checking if auto-confirm is enabled');
-        // Try to get the session explicitly
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          // Auto-confirm might be disabled - try signing in
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          });
-          if (signInError) {
-            console.warn('[Register] Could not auto-login:', signInError.message);
-          }
-        }
-      }
-
       // 2. Store onboarding data in sessionStorage for next steps
       const onboardingLead = {
         userId: authData.user.id,

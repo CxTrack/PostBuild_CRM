@@ -146,8 +146,6 @@ export default function Settings() {
         quote_prefix: 'Q-',
         invoice_prefix: 'INV-',
         default_payment_terms: 'Net 30',
-        stripe_publishable_key: null,
-        stripe_secret_key: null,
         default_quote_template_id: null,
         default_invoice_template_id: null,
       });
@@ -1178,51 +1176,14 @@ export default function Settings() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {settings.stripe_secret_key ? (
-                    <>
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Not Connected</span>
-                    </>
-                  )}
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Not Connected</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Stripe Publishable Key
-                  </label>
-                  <Input
-                    type="text"
-                    value={settings.stripe_publishable_key || ''}
-                    onChange={(e) => setSettings({ ...settings, stripe_publishable_key: e.target.value })}
-                    placeholder="pk_test_..."
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Your public Stripe API key (starts with pk_)
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Stripe Secret Key
-                  </label>
-                  <Input
-                    type="password"
-                    value={settings.stripe_secret_key || ''}
-                    onChange={(e) => setSettings({ ...settings, stripe_secret_key: e.target.value })}
-                    placeholder="sk_test_..."
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Your secret Stripe API key (starts with sk_)
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Stripe integration will be configured via Stripe Connect in a future update. Your API keys are managed securely server-side.
+              </p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">

@@ -365,46 +365,9 @@ export default function BusinessSettings() {
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Stripe Publishable Key
-              </label>
-              <Input
-                type="text"
-                value={settings.stripe_publishable_key || ''}
-                onChange={(e) => setSettings({ ...settings, stripe_publishable_key: e.target.value })}
-                placeholder="pk_test_..."
-              />
-              <p className="text-xs text-gray-500 mt-1">Your public Stripe API key (starts with pk_)</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Stripe Secret Key
-              </label>
-              <Input
-                type="password"
-                value={settings.stripe_secret_key || ''}
-                onChange={(e) => setSettings({ ...settings, stripe_secret_key: e.target.value })}
-                placeholder="sk_test_..."
-              />
-              <p className="text-xs text-gray-500 mt-1">Your secret Stripe API key (starts with sk_)</p>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSaveBusinessInfo} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Stripe Settings'
-              )}
-            </Button>
-          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Stripe integration will be configured via Stripe Connect in a future update. Your API keys are managed securely server-side.
+          </p>
         </div>
       )}
     </div>

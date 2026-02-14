@@ -27,7 +27,6 @@ export interface Organization {
   quote_prefix?: string;
   invoice_prefix?: string;
   default_payment_terms?: string;
-  stripe_publishable_key?: string | null;
   default_quote_template_id?: string | null;
   default_invoice_template_id?: string | null;
   created_at: string;

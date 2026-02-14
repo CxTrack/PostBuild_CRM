@@ -47,7 +47,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       teamMembers: [],
       loading: false,
       demoMode: false,
-      _hasHydrated: true, // Default to true - real loading states handle the rest
+      _hasHydrated: false,
 
       setHasHydrated: (state: boolean) => {
         set({ _hasHydrated: state });
@@ -250,8 +250,9 @@ export const useOrganizationStore = create<OrganizationState>()(
         currentOrganization: state.currentOrganization,
         currentMembership: state.currentMembership,
       }),
-      // Note: _hasHydrated is now true by default, so no special handling needed
-      // The real loading states (loading, orgLoading) handle the actual data fetch status
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
