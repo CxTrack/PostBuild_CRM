@@ -12,7 +12,27 @@ import {
     Brain, Lightbulb, Sparkles, Save
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
+import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
 import toast from 'react-hot-toast';
+
+// Get comprehensive timezone list from browser
+const TIMEZONE_OPTIONS = (() => {
+    try {
+        // Modern browsers support this
+        return (Intl as any).supportedValuesOf('timeZone') as string[];
+    } catch {
+        // Fallback for older browsers
+        return [
+            'America/Toronto', 'America/New_York', 'America/Chicago', 'America/Denver',
+            'America/Los_Angeles', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg',
+            'America/Halifax', 'America/St_Johns', 'America/Anchorage', 'Pacific/Honolulu',
+            'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
+            'Europe/Amsterdam', 'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata', 'Asia/Dubai',
+            'Asia/Singapore', 'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland',
+            'America/Sao_Paulo', 'America/Mexico_City', 'Africa/Johannesburg', 'Africa/Lagos',
+        ];
+    }
+})();
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ProfileData {
@@ -48,7 +68,7 @@ const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_na
     title: '',
     department: '',
     location: '',
-    timezone: 'Eastern Time (ET)',
+    timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/Toronto'; } })(),
     bio: '',
     linkedin: '',
     website: '',
@@ -356,16 +376,12 @@ export const ProfileTab: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Location
                         </label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="text"
-                                value={profile.location}
-                                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                                placeholder="New York, NY"
-                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            />
-                        </div>
+                        <AddressAutocomplete
+                            value={profile.location}
+                            onChange={(value) => setProfile({ ...profile, location: value })}
+                            placeholder="Start typing your city..."
+                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
                     </div>
 
                     <div>
@@ -377,12 +393,9 @@ export const ProfileTab: React.FC = () => {
                             onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         >
-                            <option>Eastern Time (ET)</option>
-                            <option>Central Time (CT)</option>
-                            <option>Mountain Time (MT)</option>
-                            <option>Pacific Time (PT)</option>
-                            <option>Alaska Time (AKT)</option>
-                            <option>Hawaii Time (HT)</option>
+                            {TIMEZONE_OPTIONS.map(tz => (
+                                <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+                            ))}
                         </select>
                     </div>
 

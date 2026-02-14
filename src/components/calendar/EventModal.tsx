@@ -136,10 +136,12 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
     return `${displayHours}:${endMinutes.toString().padStart(2, '0')} ${endPeriod}`;
   };
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-    c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
-  ).slice(0, 5);
+  const filteredCustomers = customerSearchTerm
+    ? customers.filter(c =>
+        c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+        c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
+      ).slice(0, 5)
+    : customers.slice(0, 4);
 
   const handleCustomerSelect = (customer: any) => {
     setFormData({
@@ -260,7 +262,7 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
 
       const eventData = {
         organization_id: orgId,
-        user_id: event?.user_id || orgId, // Fallback to orgId as user_id if missing for demo/mock
+        user_id: event?.user_id || user?.id || orgId,
         title: formData.title,
         description: formData.description,
         start_time: startDateTime.toISOString(),
@@ -292,6 +294,7 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
         toast.success('Event updated successfully');
       } else {
         await createEvent(eventData);
+        await fetchEvents(orgId);
         toast.success('Event created successfully');
       }
 
@@ -412,10 +415,13 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
                   className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   autoFocus
                 />
-                {customerSearchTerm && (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {filteredCustomers.length > 0 ? (
-                      filteredCustomers.map((customer) => (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {filteredCustomers.length > 0 ? (
+                    <>
+                      {!customerSearchTerm && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 px-1">Recent customers</p>
+                      )}
+                      {filteredCustomers.map((customer) => (
                         <button
                           key={customer.id}
                           type="button"
@@ -427,14 +433,14 @@ export default function EventModal({ isOpen, onClose, selectedDate, event }: Eve
                             <p className="text-sm text-gray-600 dark:text-gray-400">{customer.email}</p>
                           )}
                         </button>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
-                        No customers found
-                      </p>
-                    )}
-                  </div>
-                )}
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                      No customers found
+                    </p>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => {

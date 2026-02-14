@@ -740,319 +740,52 @@ export default function Settings() {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Professional Plan
+                      Free Plan
                     </h3>
                     <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full">
                       Active
                     </span>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Unlimited users • Advanced features • Priority support
+                    All features included during your 30-day trial
                   </p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                      $49
+                      $0
                     </span>
                     <span className="text-gray-600 dark:text-gray-400">
                       / month
                     </span>
                   </div>
                 </div>
-                <button className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors">
-                  Change Plan
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors">
+                  Upgrade Plan
                 </button>
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Next billing date: January 15, 2026
-                  </span>
-                  <button className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                    Cancel subscription
-                  </button>
-                </div>
               </div>
             </div>
 
             {/* Payment Methods */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Payment Methods
-                </h3>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm flex items-center gap-2 transition-colors">
-                  <Plus className="w-4 h-4" />
-                  Add Card
-                </button>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="w-8 h-8 text-gray-400" />
               </div>
-
-              <div className="p-6 space-y-4">
-                {/* Card 1 - Default */}
-                <div className="flex items-center justify-between p-4 border-2 border-blue-200 dark:border-blue-800 rounded-xl bg-blue-50 dark:bg-blue-900/10">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          •••• •••• •••• 4242
-                        </p>
-                        <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
-                          Default
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Visa • Expires 12/2027
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
-                      <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    </button>
-                    <button className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Card 2 */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        •••• •••• •••• 5555
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Mastercard • Expires 03/2026
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg font-medium transition-colors">
-                      Set as Default
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                      <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    </button>
-                    <button className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Payment Methods</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Add a payment method when you upgrade your plan.</p>
             </div>
 
             {/* Billing History */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Billing History
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    View and download your invoices
-                  </p>
-                </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-gray-400" />
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                    <tr>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Invoice
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Date
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Amount
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Status
-                      </th>
-                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {/* Invoice Row 1 */}
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              INV-2025-001
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              Professional Plan
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        Dec 15, 2025
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          $49.00
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-800">
-                          Paid
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="View Invoice">
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Download PDF">
-                            <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Invoice Row 2 */}
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              INV-2024-012
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              Professional Plan
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        Nov 15, 2025
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          $49.00
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-800">
-                          Paid
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                            <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Invoice Row 3 - Failed */}
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              INV-2024-011
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              Professional Plan
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        Oct 15, 2025
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          $49.00
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-semibold rounded-full border border-rose-200 dark:border-rose-800">
-                          Failed
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="px-3 py-1.5 bg-rose-600 text-white text-xs font-medium rounded-lg hover:bg-rose-700 transition-colors">
-                            Retry Payment
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-                <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  View all invoices →
-                </button>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Billing History</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Your billing invoices will appear here once you subscribe to a plan.</p>
             </div>
 
             {/* Usage Stats */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Usage This Month
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    Active Users
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    12 <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">/ Unlimited</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    API Calls
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    8,342 <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">/ 10,000</span>
-                  </p>
-                  <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div className="bg-blue-600 h-full rounded-full" style={{ width: '83%' }}></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    Storage
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    2.4 GB <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">/ 10 GB</span>
-                  </p>
-                  <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div className="bg-emerald-600 h-full rounded-full" style={{ width: '24%' }}></div>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Usage This Month</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Usage statistics will be available once billing is activated.</p>
             </div>
 
           </div>

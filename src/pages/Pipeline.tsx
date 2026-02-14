@@ -96,78 +96,7 @@ const Pipeline: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
 
-      try {
-        const quotesJSON = localStorage.getItem('cxtrack_demo_quotes');
-        const invoicesJSON = localStorage.getItem('cxtrack_demo_invoices');
-        const customersJSON = localStorage.getItem('cxtrack_demo_customers');
-
-        const localQuotes = quotesJSON ? JSON.parse(quotesJSON) : [];
-        const localInvoices = invoicesJSON ? JSON.parse(invoicesJSON) : [];
-        const localCustomers = customersJSON ? JSON.parse(customersJSON) : [];
-
-        const pipelineItems: PipelineItem[] = [];
-
-        localQuotes.forEach((quote: any) => {
-          if (['sent', 'viewed', 'draft'].includes(quote.status)) {
-            const customer = localCustomers.find((c: any) => c.id === quote.customer_id);
-            pipelineItems.push({
-              id: quote.id,
-              type: 'quote',
-              number: quote.quote_number,
-              customer_name: customer?.name || 'Unknown',
-              customer_email: customer?.email || '',
-              total_amount: quote.total_amount,
-              status: quote.status,
-              created_at: quote.created_at,
-              stage: 'proposal',
-              probability: 0.5,
-            });
-          }
-        });
-
-        localInvoices.forEach((invoice: any) => {
-          if (['sent', 'viewed', 'draft'].includes(invoice.status)) {
-            const customer = localCustomers.find((c: any) => c.id === invoice.customer_id);
-            pipelineItems.push({
-              id: invoice.id,
-              type: 'invoice',
-              number: invoice.invoice_number,
-              customer_name: customer?.name || 'Unknown',
-              customer_email: customer?.email || '',
-              total_amount: invoice.total_amount,
-              status: invoice.status,
-              created_at: invoice.created_at,
-              stage: 'negotiation',
-              probability: 0.75,
-            });
-          } else if (invoice.status === 'paid') {
-            const customer = localCustomers.find((c: any) => c.id === invoice.customer_id);
-            pipelineItems.push({
-              id: invoice.id,
-              type: 'invoice',
-              number: invoice.invoice_number,
-              customer_name: customer?.name || 'Unknown',
-              customer_email: customer?.email || '',
-              total_amount: invoice.total_amount,
-              status: invoice.status,
-              created_at: invoice.created_at,
-              stage: 'won',
-              probability: 1,
-            });
-          }
-        });
-
-        pipelineItems.sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-
-        if (mounted) setItems(pipelineItems);
-      } catch (error) {
-        if (!mounted) return;
-        // Error handled silently
-      }
-
-      // Only fetch from Supabase if organization is available
+      // Fetch from Supabase if organization is available
       if (currentOrganization?.id) {
         try {
           await Promise.all([

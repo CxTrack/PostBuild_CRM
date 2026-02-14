@@ -6,12 +6,10 @@
 import React, { useState } from 'react';
 import {
     Search, Book, Video, FileText, MessageCircle,
-    ExternalLink, PlayCircle, HelpCircle,
+    ExternalLink, HelpCircle,
     Lightbulb, Zap, Users, Calendar, DollarSign,
-    BarChart3, Phone, Settings, RefreshCw
+    BarChart3, Phone, Settings
 } from 'lucide-react';
-import { TourManager, tours } from '@/lib/tourManager';
-import toast from 'react-hot-toast';
 
 // ═══════════════════════════════════════════════════════════════════════
 // HELP ARTICLES DATA
@@ -228,21 +226,6 @@ export const HelpCenterTab: React.FC = () => {
         ),
     })).filter(category => category.articles.length > 0);
 
-    const handleRestartTour = async (tourId: string) => {
-        await TourManager.clearTourProgress(tourId);
-        toast.success(`${tours[tourId]?.name || 'Tour'} will start on next page load`);
-        // Optionally reload for tours that need it
-        if (tourId === 'first_login') {
-            window.location.href = '/';
-        }
-    };
-
-    const handleResetAllTours = async () => {
-        await TourManager.resetAllTours();
-        await TourManager.resetAllTooltips();
-        toast.success('All tours and tooltips have been reset');
-    };
-
     return (
         <div className="space-y-6 max-w-4xl">
             {/* Header */}
@@ -268,22 +251,7 @@ export const HelpCenterTab: React.FC = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                    onClick={() => handleRestartTour('first_login')}
-                    className="p-6 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-2xl hover:shadow-lg transition-all group text-left"
-                >
-                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <PlayCircle className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-                        Restart Tour
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Take the welcome tour again
-                    </p>
-                </button>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <a
                     href="mailto:support@cxtrack.com"
                     className="p-6 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl hover:shadow-lg transition-all group"
@@ -299,50 +267,16 @@ export const HelpCenterTab: React.FC = () => {
                     </p>
                 </a>
 
-                <button
-                    onClick={handleResetAllTours}
-                    className="p-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-2xl hover:shadow-lg transition-all group text-left"
-                >
-                    <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <RefreshCw className="w-6 h-6 text-white" />
+                <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-2xl">
+                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
+                        <Zap className="w-6 h-6 text-white" />
                     </div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-                        Reset All Tours
+                        AI CoPilot
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Show all tips and tours again
+                        Use the CoPilot for instant help with any feature
                     </p>
-                </button>
-            </div>
-
-            {/* Available Tours */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <PlayCircle className="w-5 h-5 text-blue-600" />
-                        Interactive Tours
-                    </h3>
-                </div>
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {Object.values(tours).map(tour => (
-                        <button
-                            key={tour.id}
-                            onClick={() => handleRestartTour(tour.id)}
-                            className="flex items-center gap-4 p-4 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group"
-                        >
-                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                                <PlayCircle className="w-5 h-5 text-blue-600 group-hover:text-white transition-colors" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-gray-900 dark:text-white">
-                                    {tour.name}
-                                </h4>
-                                <p className="text-sm text-gray-500">
-                                    {tour.steps.length} steps
-                                </p>
-                            </div>
-                        </button>
-                    ))}
                 </div>
             </div>
 
@@ -454,7 +388,6 @@ export const HelpCenterTab: React.FC = () => {
                                 <ul>
                                     <li>Use the AI CoPilot to ask questions</li>
                                     <li>Contact support for personalized help</li>
-                                    <li>Take an interactive tour of the feature</li>
                                 </ul>
                             </div>
                         </div>

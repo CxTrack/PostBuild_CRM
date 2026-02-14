@@ -151,11 +151,6 @@ export const Dashboard: React.FC = () => {
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'overdue' | 'completed'>('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'call' | 'email' | 'sms'>('all');
   const [revenueStats, setRevenueStats] = useState<RevenueStats | null>(null);
-  const [localStorageStats, setLocalStorageStats] = useState({
-    pipelineValue: 0,
-    weightedPipeline: 0,
-    openDealsCount: 0,
-  });
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -422,61 +417,7 @@ export const Dashboard: React.FC = () => {
         .catch(() => { /* Error handled silently */ });
     }
 
-    loadStatsFromLocalStorage();
   }, [currentOrganization?.id]);
-
-  useEffect(() => {
-    loadStatsFromLocalStorage();
-  }, [quotes, invoices]);
-
-  const loadStatsFromLocalStorage = () => {
-    try {
-      const invoicesJSON = localStorage.getItem('cxtrack_demo_invoices');
-      const quotesJSON = localStorage.getItem('cxtrack_demo_quotes');
-
-      let totalPipeline = 0;
-      let weightedPipeline = 0;
-      let openDealsCount = 0;
-
-      if (invoicesJSON) {
-        const invoices = JSON.parse(invoicesJSON);
-        invoices.forEach((invoice: any) => {
-          if (['sent', 'viewed', 'draft', 'paid'].includes(invoice.status)) {
-            const amount = invoice.total_amount || 0;
-            totalPipeline += amount;
-            openDealsCount++;
-
-            if (invoice.status === 'paid') {
-              weightedPipeline += amount * 1.0;
-            } else {
-              weightedPipeline += amount * 0.75;
-            }
-          }
-        });
-      }
-
-      if (quotesJSON) {
-        const quotes = JSON.parse(quotesJSON);
-        quotes.forEach((quote: any) => {
-          if (['sent', 'viewed', 'draft'].includes(quote.status)) {
-            const amount = quote.total_amount || 0;
-            totalPipeline += amount;
-            weightedPipeline += amount * 0.5;
-            openDealsCount++;
-          }
-        });
-      }
-
-
-      setLocalStorageStats({
-        pipelineValue: totalPipeline,
-        weightedPipeline: Math.round(weightedPipeline),
-        openDealsCount,
-      });
-    } catch (error) {
-      // Error handled silently
-    }
-  };
 
   const totalCustomers = customers.length;
   const activeCustomers = customers.filter(c => c.status === 'Active').length;
@@ -685,11 +626,11 @@ export const Dashboard: React.FC = () => {
                   <TrendingUp size={18} className={theme === 'soft-modern' ? 'icon-primary' : 'text-pink-600 dark:text-white'} />
                 </div>
                 <span className={theme === 'soft-modern' ? 'text-xs text-tertiary font-medium' : 'text-xs text-gray-600 dark:text-gray-400 font-medium'}>
-                  {pipelineStats?.open_deals_count || localStorageStats.openDealsCount} deals
+                  {pipelineStats?.open_deals_count || 0} deals
                 </span>
               </div>
               <p className={theme === 'soft-modern' ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-gray-900 dark:text-white'}>
-                ${pipelineStats ? ((pipelineStats.total_pipeline / 1000).toFixed(1)) : ((localStorageStats.pipelineValue / 1000).toFixed(1))}k
+                ${((pipelineStats?.total_pipeline || 0) / 1000).toFixed(1)}k
               </p>
               <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>Pipeline</p>
             </div>
@@ -1108,11 +1049,11 @@ export const Dashboard: React.FC = () => {
                   {pipelineLabels.stats?.total || 'Pipeline Value'}
                 </p>
                 <p className={theme === 'soft-modern' ? "text-h1 text-primary" : "text-3xl font-bold text-gray-900 dark:text-white"}>
-                  ${localStorageStats.pipelineValue.toLocaleString()}
+                  ${(pipelineStats?.total_pipeline || 0).toLocaleString()}
                 </p>
                 <div className="mt-4">
                   <div className={theme === 'soft-modern' ? "text-body-sm text-tertiary mb-2" : "text-sm mb-2 text-gray-500 dark:text-gray-400"}>
-                    ${localStorageStats.weightedPipeline.toLocaleString()} weighted
+                    ${(pipelineStats?.weighted_pipeline || 0).toLocaleString()} weighted
                   </div>
                   <Link to="/pipeline" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Pipeline
