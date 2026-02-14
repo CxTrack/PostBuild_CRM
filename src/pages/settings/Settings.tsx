@@ -23,7 +23,7 @@ import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 
 export default function Settings() {
-  const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations } = useOrganizationStore();
+  const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
   const { theme, setTheme } = useThemeStore();
   const { preferences, saveMobileNavItems } = usePreferencesStore();
   const { logout } = useAuthContext();
@@ -280,7 +280,8 @@ export default function Settings() {
     return templates[name] || templates['Modern Blue'];
   };
 
-  if (loading) {
+  // Show loading while hydration is in progress or settings are loading
+  if (!_hasHydrated || loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

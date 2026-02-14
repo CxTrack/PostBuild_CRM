@@ -29,7 +29,7 @@ type TabType = 'all' | 'my-calls' | 'team' | 'ai-agents' | 'live';
 
 export default function Calls() {
   const { theme } = useThemeStore();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, _hasHydrated } = useOrganizationStore();
   const {
     calls,
     stats,
@@ -121,8 +121,8 @@ export default function Calls() {
     }
   };
 
-  // Show loading while waiting for organization or fetching calls
-  if (!currentOrganization || (loading && calls.length === 0)) {
+  // Show loading while waiting for hydration, organization, or fetching calls
+  if (!_hasHydrated || !currentOrganization || (loading && calls.length === 0)) {
     return (
       <PageContainer className="items-center justify-center">
         <div className="text-center">

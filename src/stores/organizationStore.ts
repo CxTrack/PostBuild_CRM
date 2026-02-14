@@ -11,6 +11,7 @@ interface OrganizationState {
   teamMembers: Array<UserProfile & { role: string; color: string }>;
   loading: boolean;
   demoMode: boolean;
+  _hasHydrated: boolean;
   fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
   fetchTeamMembers: () => Promise<void>;
@@ -19,6 +20,7 @@ interface OrganizationState {
   inviteMember: (email: string, role: string) => Promise<void>;
   getOrganizationId: () => string;
   clearCache: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 // Generate a color for each team member
@@ -45,6 +47,11 @@ export const useOrganizationStore = create<OrganizationState>()(
       teamMembers: [],
       loading: false,
       demoMode: false,
+      _hasHydrated: false,
+
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
+      },
 
       getOrganizationId: () => {
         const { currentOrganization } = get();
@@ -243,6 +250,10 @@ export const useOrganizationStore = create<OrganizationState>()(
         currentOrganization: state.currentOrganization,
         currentMembership: state.currentMembership,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Called when hydration completes (with or without errors)
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

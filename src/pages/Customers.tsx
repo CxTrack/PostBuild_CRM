@@ -31,7 +31,7 @@ export const Customers: React.FC = () => {
   const [showImporter, setShowImporter] = useState(false);
   const [showCustomFields, setShowCustomFields] = useState(false);
 
-  const { currentOrganization, currentMembership } = useOrganizationStore();
+  const { currentOrganization, currentMembership, _hasHydrated } = useOrganizationStore();
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
@@ -226,7 +226,7 @@ export const Customers: React.FC = () => {
       </Card>
 
       <div className="flex-1 overflow-y-auto">
-        {loading ? (
+        {(!_hasHydrated || loading) ? (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <Skeleton className="h-8 w-48" />
