@@ -4,6 +4,9 @@ import { useSupplierStore } from '@/stores/supplierStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { Card, Button } from '@/components/theme/ThemeComponents';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
+import { validateEmail, validatePhone } from '@/utils/validation';
 import type { Supplier } from '@/types/app.types';
 import toast from 'react-hot-toast';
 
@@ -40,6 +43,7 @@ const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, supplier
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (supplier) {
@@ -74,14 +78,32 @@ const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, supplier
         e.preventDefault();
         if (!currentOrganization?.id) return;
 
+        // Validate fields
+        const newErrors: Record<string, string> = {};
+        const emailResult = validateEmail(formData.email);
+        if (!emailResult.isValid) newErrors.email = emailResult.error!;
+        const phoneResult = validatePhone(formData.phone);
+        if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+        setErrors({});
+
         setIsSubmitting(true);
         try {
+            const dataToSave = {
+                ...formData,
+                phone: formatPhoneForStorage(formData.phone),
+            };
+
             if (supplier?.id) {
-                await updateSupplier(supplier.id, formData);
+                await updateSupplier(supplier.id, dataToSave);
                 toast.success('Supplier updated successfully');
             } else {
                 await createSupplier({
-                    ...formData as any,
+                    ...dataToSave as any,
                     organization_id: currentOrganization.id,
                 });
                 toast.success('Supplier created successfully');
@@ -168,20 +190,27 @@ const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, supplier
                                     <input
                                         type="email"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white"
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, email: e.target.value });
+                                            if (errors.email) setErrors({ ...errors, email: '' });
+                                        }}
+                                        className={`w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border ${errors.email ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white`}
                                     />
+                                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Phone
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white"
+                                    <PhoneInput
+                                        value={formData.phone || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, phone: e.target.value });
+                                            if (errors.phone) setErrors({ ...errors, phone: '' });
+                                        }}
+                                        className={`rounded-xl bg-gray-50 dark:bg-gray-900/50 ${errors.phone ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all`}
                                     />
+                                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                                 </div>
                             </div>
                         </div>
@@ -228,7 +257,7 @@ const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, supplier
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            ZIP
+                                            Postal Code
                                         </label>
                                         <input
                                             type="text"

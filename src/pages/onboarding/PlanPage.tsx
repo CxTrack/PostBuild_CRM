@@ -90,12 +90,60 @@ const pricingTiers = [
     },
 ];
 
+const COUNTRY_OPTIONS = [
+    { code: 'CA', name: 'Canada', currency: 'CAD', currencySymbol: '$' },
+    { code: 'US', name: 'United States', currency: 'USD', currencySymbol: '$' },
+    { code: 'GB', name: 'United Kingdom', currency: 'GBP', currencySymbol: '£' },
+    { code: 'AU', name: 'Australia', currency: 'AUD', currencySymbol: '$' },
+    { code: 'DE', name: 'Germany', currency: 'EUR', currencySymbol: '€' },
+    { code: 'FR', name: 'France', currency: 'EUR', currencySymbol: '€' },
+    { code: 'IN', name: 'India', currency: 'INR', currencySymbol: '₹' },
+    { code: 'JP', name: 'Japan', currency: 'JPY', currencySymbol: '¥' },
+    { code: 'BR', name: 'Brazil', currency: 'BRL', currencySymbol: 'R$' },
+    { code: 'MX', name: 'Mexico', currency: 'MXN', currencySymbol: '$' },
+    { code: 'NZ', name: 'New Zealand', currency: 'NZD', currencySymbol: '$' },
+    { code: 'SG', name: 'Singapore', currency: 'SGD', currencySymbol: '$' },
+    { code: 'AE', name: 'United Arab Emirates', currency: 'AED', currencySymbol: 'د.إ' },
+    { code: 'ZA', name: 'South Africa', currency: 'ZAR', currencySymbol: 'R' },
+    { code: 'NG', name: 'Nigeria', currency: 'NGN', currencySymbol: '₦' },
+    { code: 'PH', name: 'Philippines', currency: 'PHP', currencySymbol: '₱' },
+    { code: 'IE', name: 'Ireland', currency: 'EUR', currencySymbol: '€' },
+    { code: 'NL', name: 'Netherlands', currency: 'EUR', currencySymbol: '€' },
+    { code: 'IT', name: 'Italy', currency: 'EUR', currencySymbol: '€' },
+    { code: 'ES', name: 'Spain', currency: 'EUR', currencySymbol: '€' },
+];
+
+function detectCountryFromLocale(): string {
+    try {
+        const locale = navigator.language || navigator.languages?.[0] || '';
+        // Extract country code from locale like "en-CA", "en-US", "fr-FR"
+        const parts = locale.split('-');
+        if (parts.length >= 2) {
+            const countryCode = parts[parts.length - 1].toUpperCase();
+            const match = COUNTRY_OPTIONS.find(c => c.code === countryCode);
+            if (match) return match.code;
+        }
+        // Try timezone-based detection as fallback
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (tz.startsWith('America/Toronto') || tz.startsWith('America/Vancouver') || tz.startsWith('America/Montreal') || tz.startsWith('America/Edmonton') || tz.startsWith('America/Winnipeg') || tz.startsWith('America/Halifax')) return 'CA';
+        if (tz.startsWith('America/New_York') || tz.startsWith('America/Chicago') || tz.startsWith('America/Denver') || tz.startsWith('America/Los_Angeles') || tz.startsWith('America/Phoenix')) return 'US';
+        if (tz.startsWith('Europe/London')) return 'GB';
+        if (tz.startsWith('Australia/')) return 'AU';
+    } catch {
+        // Fallback
+    }
+    return 'US'; // Default fallback
+}
+
 export default function PlanPage() {
     const navigate = useNavigate();
     const [selectedIndustry, setSelectedIndustry] = useState<string>('general_business');
     const [selectedPlan, setSelectedPlan] = useState<string>('elite_premium');
+    const [selectedCountry, setSelectedCountry] = useState<string>(() => detectCountryFromLocale());
     const [isProcessing, setIsProcessing] = useState(false);
     const [lead, setLead] = useState<any>(null);
+
+    const countryInfo = COUNTRY_OPTIONS.find(c => c.code === selectedCountry) || COUNTRY_OPTIONS[0];
 
     useEffect(() => {
         const leadData = sessionStorage.getItem('onboarding_lead');
@@ -192,6 +240,8 @@ export default function PlanPage() {
                             body: JSON.stringify({
                                 industry_template: selectedIndustry,
                                 subscription_tier: selectedPlan,
+                                business_country: selectedCountry,
+                                business_currency: countryInfo.currency,
                             }),
                         }
                     );
@@ -231,6 +281,24 @@ export default function PlanPage() {
                     const orgId = await rpcRes.json();
                     updatedLead.organizationId = orgId;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+
+                    // Update org with country/currency (RPC may not accept these params)
+                    await fetch(
+                        `${supabaseUrl}/rest/v1/organizations?id=eq.${orgId}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': supabaseAnonKey,
+                                'Authorization': `Bearer ${token}`,
+                                'Prefer': 'return=minimal',
+                            },
+                            body: JSON.stringify({
+                                business_country: selectedCountry,
+                                business_currency: countryInfo.currency,
+                            }),
+                        }
+                    );
                 }
             }
 
@@ -295,6 +363,35 @@ export default function PlanPage() {
                     </div>
                 </section>
 
+                {/* Country / Locale Selection */}
+                <section>
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 italic tracking-tight">
+                            Where is your <span className="text-[#FFD700]">Business</span> located?
+                        </h2>
+                        <p className="text-white/40 text-sm uppercase tracking-widest font-bold">
+                            We'll set your currency and locale preferences.
+                        </p>
+                    </div>
+
+                    <div className="max-w-md mx-auto">
+                        <select
+                            value={selectedCountry}
+                            onChange={(e) => setSelectedCountry(e.target.value)}
+                            className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all text-center text-lg font-medium appearance-none cursor-pointer"
+                        >
+                            {COUNTRY_OPTIONS.map(c => (
+                                <option key={c.code} value={c.code} className="bg-gray-900 text-white">
+                                    {c.name} ({c.currency})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-center text-white/30 text-xs mt-2">
+                            Auto-detected from your browser. You can change this anytime in settings.
+                        </p>
+                    </div>
+                </section>
+
                 {/* Plan Selection */}
                 <section>
                     <div className="text-center mb-12">
@@ -302,7 +399,7 @@ export default function PlanPage() {
                             Choose your <span className="text-[#FFD700]">Scaling Tier</span>
                         </h2>
                         <p className="text-white/40 text-sm uppercase tracking-widest font-bold">
-                            Pricing in CAD. Upgrade or downgrade anytime.
+                            Pricing in {countryInfo.currency}. Upgrade or downgrade anytime.
                         </p>
                     </div>
 

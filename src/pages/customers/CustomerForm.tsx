@@ -4,6 +4,8 @@ import { ArrowLeft, Save, User, Building, Mail, Phone, MapPin, Globe, Calendar, 
 import { useCustomerStore } from '@/stores/customerStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
+import { validateEmail, validatePhone } from '@/utils/validation';
 import toast from 'react-hot-toast';
 
 export default function CustomerForm() {
@@ -103,11 +105,26 @@ export default function CustomerForm() {
       return;
     }
 
+    // Validate email
+    const emailResult = validateEmail(formData.email);
+    if (!emailResult.isValid) {
+      toast.error(emailResult.error || 'Invalid email address');
+      return;
+    }
+
+    // Validate phone (if provided)
+    const phoneResult = validatePhone(formData.phone);
+    if (!phoneResult.isValid) {
+      toast.error(phoneResult.error || 'Invalid phone number');
+      return;
+    }
+
     setSaving(true);
 
     try {
       const customerData = {
         ...formData,
+        phone: formatPhoneForStorage(formData.phone),
         hours_per_week: formData.hours_per_week ? parseInt(formData.hours_per_week) : null,
       };
 

@@ -4,6 +4,9 @@ import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemp
 import { Building2, Mail, Phone, MapPin, Globe, CreditCard, FileText, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
+import { validateEmail, validatePhone } from '@/utils/validation';
 import toast from 'react-hot-toast';
 
 export default function BusinessSettings() {
@@ -59,9 +62,24 @@ export default function BusinessSettings() {
     e.preventDefault();
     if (!currentOrganization || !settings) return;
 
+    // Validate
+    const emailResult = validateEmail(settings.business_email);
+    if (!emailResult.isValid) {
+      toast.error(emailResult.error || 'Invalid email');
+      return;
+    }
+    const phoneResult = validatePhone(settings.business_phone);
+    if (!phoneResult.isValid) {
+      toast.error(phoneResult.error || 'Invalid phone');
+      return;
+    }
+
     try {
       setSaving(true);
-      await settingsService.updateBusinessSettings(currentOrganization.id, settings);
+      await settingsService.updateBusinessSettings(currentOrganization.id, {
+        ...settings,
+        business_phone: formatPhoneForStorage(settings.business_phone),
+      });
       toast.success('Business information updated successfully');
     } catch (error) {
       toast.error('Failed to save settings');
@@ -162,11 +180,9 @@ export default function BusinessSettings() {
                 <Phone className="w-4 h-4 inline mr-2" />
                 Business Phone
               </label>
-              <Input
-                type="tel"
+              <PhoneInput
                 value={settings.business_phone || ''}
                 onChange={(e) => setSettings({ ...settings, business_phone: e.target.value })}
-                placeholder="+1 (555) 123-4567"
               />
             </div>
 

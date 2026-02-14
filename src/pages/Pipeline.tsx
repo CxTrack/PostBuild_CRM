@@ -6,7 +6,7 @@ import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import {
   Plus, Search, FileText, DollarSign, TrendingUp,
-  LayoutGrid, List, Columns, MoreVertical, Send, Mouse
+  LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
@@ -16,6 +16,7 @@ import { useOrganizationStore } from '../stores/organizationStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useMemo } from 'react';
 import { DashboardStatsSkeleton, TableSkeleton } from '@/components/ui/skeletons';
+import QuickAddDealModal from '@/components/pipeline/QuickAddDealModal';
 
 interface PipelineItem {
   id: string;
@@ -87,6 +88,7 @@ const Pipeline: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -491,6 +493,14 @@ const Pipeline: React.FC = () => {
           </div>
 
           <button
+            onClick={() => setShowQuickAdd(true)}
+            className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Quick Add</span>
+          </button>
+
+          <button
             onClick={() => navigate('/dashboard/quotes/builder')}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
@@ -594,17 +604,31 @@ const Pipeline: React.FC = () => {
           <p className={`mb-6 ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
             {labels.emptyStateDescription}
           </p>
-          <button
-            onClick={() => navigate('/dashboard/quotes/builder')}
-            className={theme === 'soft-modern' ? "px-6 py-3 rounded-xl font-medium transition-all" : "px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700"}
-            style={theme === 'soft-modern' ? {
-              background: 'linear-gradient(135deg, #A8C5E8, #90B5D8)',
-              color: 'white',
-              boxShadow: '4px 4px 8px rgba(0,0,0,0.08)'
-            } : undefined}
-          >
-            {labels.emptyStateButton}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => setShowQuickAdd(true)}
+              className={theme === 'soft-modern' ? "px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2" : "px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 flex items-center gap-2"}
+              style={theme === 'soft-modern' ? {
+                background: 'linear-gradient(135deg, #A8C5E8, #90B5D8)',
+                color: 'white',
+                boxShadow: '4px 4px 8px rgba(0,0,0,0.08)'
+              } : undefined}
+            >
+              <Zap size={18} />
+              Quick Add {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
+            </button>
+            <button
+              onClick={() => navigate('/dashboard/quotes/builder')}
+              className={theme === 'soft-modern' ? "px-6 py-3 rounded-xl font-medium transition-all border-2" : "px-6 py-3 border-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 rounded-xl font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"}
+              style={theme === 'soft-modern' ? {
+                borderColor: 'rgba(168, 197, 232, 0.5)',
+                color: '#4A5F80',
+              } : undefined}
+            >
+              <FileText size={18} />
+              {labels.emptyStateButton}
+            </button>
+          </div>
         </Card>
       ) : viewMode === 'table' ? (
         <ResizableTable
@@ -890,6 +914,11 @@ const Pipeline: React.FC = () => {
         </div>
       )}
 
+      {/* Quick Add Deal Modal */}
+      <QuickAddDealModal
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+      />
     </PageContainer>
   );
 };

@@ -3,21 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-
-const formatPhoneNumber = (value: string) => {
-  const cleaned = value.replace(/\D/g, '');
-  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
-  if (match) {
-    let formatted = '';
-    if (match[1]) formatted = `(${match[1]}`;
-    if (match[1]?.length === 3) formatted += ') ';
-    if (match[2]) formatted += match[2];
-    if (match[2]?.length === 3) formatted += '-';
-    if (match[3]) formatted += match[3];
-    return formatted;
-  }
-  return value;
-};
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { formatPhoneForStorage } from '@/utils/phone.utils';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -64,7 +51,7 @@ export const Register: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         company: formData.company,
-        phone: formData.phone,
+        phone: formatPhoneForStorage(formData.phone),
       };
       sessionStorage.setItem('onboarding_lead', JSON.stringify(onboardingLead));
 
@@ -213,13 +200,10 @@ export const Register: React.FC = () => {
               <label className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
                 Phone <span className="text-white/30">(Optional)</span>
               </label>
-              <input
-                type="tel"
-                placeholder="(555) 123-4567"
+              <PhoneInput
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
-                maxLength={14}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="bg-white/[0.05] border-white/[0.1] rounded-xl py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
               />
             </div>
 
