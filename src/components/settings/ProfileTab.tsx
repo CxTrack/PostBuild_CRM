@@ -316,7 +316,7 @@ export const ProfileTab: React.FC = () => {
                             Email Address
                         </label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="email"
                                 value={profile.email}
@@ -332,7 +332,7 @@ export const ProfileTab: React.FC = () => {
                             Phone Number
                         </label>
                         <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="tel"
                                 value={profile.phone}
@@ -348,7 +348,7 @@ export const ProfileTab: React.FC = () => {
                             Job Title
                         </label>
                         <div className="relative">
-                            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="text"
                                 value={profile.title}
@@ -404,7 +404,7 @@ export const ProfileTab: React.FC = () => {
                             Birthday
                         </label>
                         <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="date"
                                 value={profile.birthday}
@@ -445,7 +445,7 @@ export const ProfileTab: React.FC = () => {
                             LinkedIn
                         </label>
                         <div className="relative">
-                            <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="url"
                                 value={profile.linkedin}
@@ -461,7 +461,7 @@ export const ProfileTab: React.FC = () => {
                             Website
                         </label>
                         <div className="relative">
-                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
                             <input
                                 type="url"
                                 value={profile.website}

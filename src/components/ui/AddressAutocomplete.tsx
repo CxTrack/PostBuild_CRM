@@ -271,7 +271,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             <div className="relative">
                 <MapPin
                     size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400"
                 />
 
                 <input
@@ -290,7 +290,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
                 {loading && (
                     <Loader2
                         size={18}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400 animate-spin"
                     />
                 )}
 
