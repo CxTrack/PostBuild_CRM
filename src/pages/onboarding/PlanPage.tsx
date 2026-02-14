@@ -115,6 +115,19 @@ export default function PlanPage() {
         setSelectedPlan(planId);
     };
 
+    // Wait for auth session to be ready (Supabase client may still be initializing)
+    const waitForSession = async (maxAttempts = 10): Promise<string> => {
+        for (let i = 0; i < maxAttempts; i++) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+                return session.access_token;
+            }
+            // Wait 500ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        throw new Error('No active session. Please try logging in again.');
+    };
+
     // Confirm selection and proceed to next step
     const handleConfirmPlan = async () => {
         if (isProcessing || !selectedPlan) return;
@@ -125,67 +138,78 @@ export default function PlanPage() {
             const updatedLead = { ...lead, industry: selectedIndustry, planId: selectedPlan };
             sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
-            // Ensure we have an active session before making DB calls
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (!sessionData.session) {
-                throw new Error('No active session. Please try logging in again.');
-            }
+            // Wait for auth session to fully establish (handles race condition after signup)
+            await waitForSession();
 
-            // Create organization in database
+            // Create organization in database with retry on AbortError
             if (lead?.userId) {
-                // Check if user already has an organization (from previous attempt)
-                const { data: existingMember } = await supabase
-                    .from('organization_members')
-                    .select('organization_id')
-                    .eq('user_id', lead.userId)
-                    .maybeSingle();
+                const createOrg = async (attempt = 1): Promise<void> => {
+                    try {
+                        // Check if user already has an organization (from previous attempt)
+                        const { data: existingMember } = await supabase
+                            .from('organization_members')
+                            .select('organization_id')
+                            .eq('user_id', lead.userId)
+                            .maybeSingle();
 
-                if (existingMember?.organization_id) {
-                    // User already has an org - just update it and continue
-                    await supabase
-                        .from('organizations')
-                        .update({
-                            industry_template: selectedIndustry,
-                            subscription_tier: selectedPlan,
-                        })
-                        .eq('id', existingMember.organization_id);
+                        if (existingMember?.organization_id) {
+                            // User already has an org - just update it and continue
+                            await supabase
+                                .from('organizations')
+                                .update({
+                                    industry_template: selectedIndustry,
+                                    subscription_tier: selectedPlan,
+                                })
+                                .eq('id', existingMember.organization_id);
 
-                    updatedLead.organizationId = existingMember.organization_id;
-                    sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
-                } else {
-                    // Atomic organization + owner creation via SECURITY DEFINER RPC
-                    const slug = lead.company
-                        ?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-                        || `org-${lead.userId.slice(0, 8)}`;
+                            updatedLead.organizationId = existingMember.organization_id;
+                            sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+                        } else {
+                            // Atomic organization + owner creation via SECURITY DEFINER RPC
+                            const slug = lead.company
+                                ?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                                || `org-${lead.userId.slice(0, 8)}`;
 
-                    const { data: orgId, error: rpcError } = await supabase.rpc('create_organization_with_owner', {
-                        p_user_id: lead.userId,
-                        p_user_email: lead.email,
-                        p_user_full_name: `${lead.firstName} ${lead.lastName}`,
-                        p_org_name: lead.company || `${lead.firstName}'s Business`,
-                        p_org_slug: slug,
-                        p_industry_template: selectedIndustry,
-                        p_subscription_tier: selectedPlan,
-                        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        p_enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
-                        p_max_users: selectedPlan === 'free' ? 1 : selectedPlan === 'business' ? 5 : selectedPlan === 'elite_premium' ? 10 : 999,
-                        p_metadata: { trial_started_at: new Date().toISOString(), signup_source: 'crm_onboarding' },
-                        p_business_name: lead.company || null,
-                    });
+                            const { data: orgId, error: rpcError } = await supabase.rpc('create_organization_with_owner', {
+                                p_user_id: lead.userId,
+                                p_user_email: lead.email,
+                                p_user_full_name: `${lead.firstName} ${lead.lastName}`,
+                                p_org_name: lead.company || `${lead.firstName}'s Business`,
+                                p_org_slug: slug,
+                                p_industry_template: selectedIndustry,
+                                p_subscription_tier: selectedPlan,
+                                p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                p_enabled_modules: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+                                p_max_users: selectedPlan === 'free' ? 1 : selectedPlan === 'business' ? 5 : selectedPlan === 'elite_premium' ? 10 : 999,
+                                p_metadata: { trial_started_at: new Date().toISOString(), signup_source: 'crm_onboarding' },
+                                p_business_name: lead.company || null,
+                            });
 
-                    if (rpcError) {
-                        console.error('[Onboarding] RPC error:', rpcError);
-                        throw rpcError;
+                            if (rpcError) {
+                                console.error('[Onboarding] RPC error:', rpcError);
+                                throw rpcError;
+                            }
+
+                            updatedLead.organizationId = orgId;
+                            sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+                        }
+                    } catch (err) {
+                        // Retry on AbortError (Supabase client cancels requests during auth state changes)
+                        if (err instanceof Error && err.name === 'AbortError' && attempt < 3) {
+                            console.warn(`[Onboarding] AbortError on attempt ${attempt}, retrying...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            return createOrg(attempt + 1);
+                        }
+                        throw err;
                     }
+                };
 
-                    updatedLead.organizationId = orgId;
-                    sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
-                }
+                await createOrg();
             }
 
             // Navigate to next step
             if (selectedPlan === 'enterprise') {
-                navigate('/onboarding/enterprise');
+                navigate('/onboarding/success?type=enterprise&plan=enterprise');
             } else {
                 navigate(`/onboarding/voice-setup?plan=${selectedPlan}`);
             }

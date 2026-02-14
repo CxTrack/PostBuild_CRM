@@ -19,7 +19,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Maximum time to wait for auth initialization before showing the app
-const AUTH_TIMEOUT_MS = 5000;
+// 10s to handle Supabase free-tier cold starts
+const AUTH_TIMEOUT_MS = 10000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

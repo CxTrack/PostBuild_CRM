@@ -27,13 +27,13 @@ export default function SelectServicePage() {
         navigate('/onboarding/plan');
         break;
       case 'custom':
-        navigate('/onboarding/custom-crm');
+        navigate('/onboarding/success?type=custom_crm');
         break;
       case 'config':
         navigate('/onboarding/custom-config');
         break;
       case 'audit':
-        navigate('/onboarding/audit');
+        navigate('/onboarding/success?type=audit');
         break;
     }
   };

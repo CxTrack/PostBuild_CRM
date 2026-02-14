@@ -37,12 +37,13 @@ export default function SuccessPage() {
   const type = searchParams.get('type');
   const plan = searchParams.get('plan');
 
-  const isRequest = type === 'custom_crm' || type === 'audit' || type === 'config';
+  const isRequest = type === 'custom_crm' || type === 'audit' || type === 'config' || type === 'enterprise';
 
   const getHeadline = () => {
     if (type === 'custom_crm') return "Custom CRM Request Received.";
     if (type === 'config') return "Configuration Request Received.";
     if (type === 'audit') return "AI Audit Request Received.";
+    if (type === 'enterprise') return "Enterprise Request Received.";
     return "You're all set. Welcome to CxTrack.";
   };
 
@@ -55,6 +56,9 @@ export default function SuccessPage() {
     }
     if (type === 'audit') {
       return "We're analyzing your team's operational bottlenecks. Expect your preliminary roadmap in our first session.";
+    }
+    if (type === 'enterprise') {
+      return `Our enterprise team will reach out to ${lead?.email} within 24 hours to discuss your custom deployment.`;
     }
     return `Your ${plan?.toUpperCase() || 'CRM'} environment is being provisioned. Welcome to the future of high-performance business operations.`;
   };
