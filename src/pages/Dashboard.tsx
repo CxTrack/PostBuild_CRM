@@ -129,10 +129,13 @@ export const Dashboard: React.FC = () => {
   const invoicesLabels = usePageLabels('invoices');
   const tasksLabels = usePageLabels('tasks');
   const calendarLabels = usePageLabels('calendar');
+  const productsLabels = usePageLabels('products');
+  const financialsLabels = usePageLabels('financials');
 
   // Get visible modules for this industry to filter quick actions
   const { visibleModules } = useVisibleModules();
-  const enabledModuleIds = visibleModules.map(m => m.id);
+  // Only show quick actions for UNLOCKED modules (not locked/expired trial)
+  const enabledModuleIds = visibleModules.filter(m => !m.isLocked).map(m => m.id);
 
   // For backwards compatibility with existing code
   const quotesLabel = useIndustryLabel('quotes');
@@ -239,7 +242,25 @@ export const Dashboard: React.FC = () => {
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
       iconColor: 'text-primary-600 dark:text-white',
     },
-  ], [crmLabels.newButton, calendarLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton]);
+    {
+      id: 'add-product',
+      moduleId: 'products',
+      label: productsLabels.newButton,
+      icon: Package,
+      onClick: () => navigate('/dashboard/products'),
+      bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+      iconColor: 'text-primary-600 dark:text-white',
+    },
+    {
+      id: 'new-expense',
+      moduleId: 'financials',
+      label: financialsLabels.newButton,
+      icon: DollarSign,
+      onClick: () => navigate('/dashboard/financials'),
+      bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+      iconColor: 'text-primary-600 dark:text-white',
+    },
+  ], [crmLabels.newButton, calendarLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, productsLabels.newButton, financialsLabels.newButton]);
 
   // Filter quick actions based on enabled modules for this industry
   const filteredQuickActions = useMemo(() =>
@@ -294,6 +315,8 @@ export const Dashboard: React.FC = () => {
     'quotes': 'create-quote',
     'invoices': 'new-invoice',
     'tasks': 'create-task',
+    'products': 'add-product',
+    'financials': 'new-expense',
   };
 
   useEffect(() => {
@@ -344,6 +367,24 @@ export const Dashboard: React.FC = () => {
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
           iconColor: 'text-primary-600 dark:text-white',
         },
+        {
+          id: 'add-product',
+          moduleId: 'products',
+          label: productsLabels.newButton,
+          icon: Package,
+          onClick: () => navigate('/dashboard/products'),
+          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+          iconColor: 'text-primary-600 dark:text-white',
+        },
+        {
+          id: 'new-expense',
+          moduleId: 'financials',
+          label: financialsLabels.newButton,
+          icon: DollarSign,
+          onClick: () => navigate('/dashboard/financials'),
+          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+          iconColor: 'text-primary-600 dark:text-white',
+        },
       ];
 
       // Filter to only include actions for enabled modules
@@ -361,7 +402,7 @@ export const Dashboard: React.FC = () => {
       const finalActions = [...orderedActions, ...missingActions].map(({ moduleId, ...action }) => action as QuickAction);
       setQuickActions(finalActions);
     }
-  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, enabledModuleIds]);
+  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, productsLabels.newButton, financialsLabels.newButton, enabledModuleIds]);
 
   useEffect(() => {
     fetchCustomers();

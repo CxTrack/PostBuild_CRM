@@ -190,14 +190,14 @@ export const INDUSTRY_LABELS: Record<string, any> = {
 
 export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
   // Free tier gets all modules during 30-day trial, then restricted
-  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls'],
+  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials'],
   business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products'],
   elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
   enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
 };
 
 // Modules that are only available during free trial (30 days) - will be locked after
-export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls'];
+export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials'];
 
 // Trial duration in days
 export const FREE_TRIAL_DAYS = 30;
@@ -414,6 +414,24 @@ const DEFAULT_PAGE_LABELS: Record<string, PageLabels> = {
     stats: {
       total: 'Total Products',
       active: 'Active',
+    },
+  },
+  financials: {
+    title: 'Financials',
+    subtitle: 'Track revenue, expenses, and financial performance',
+    entitySingular: 'transaction',
+    entityPlural: 'transactions',
+    newButton: 'New Expense',
+    searchPlaceholder: 'Search transactions...',
+    emptyStateTitle: 'No transactions yet',
+    emptyStateDescription: 'Start tracking your revenue and expenses',
+    emptyStateButton: 'Add Your First Transaction',
+    loadingText: 'Loading financials...',
+    columns: {},
+    stats: {
+      total: 'Total Transactions',
+      totalRevenue: 'Revenue',
+      outstanding: 'Expenses',
     },
   },
 };

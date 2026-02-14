@@ -89,6 +89,8 @@ const Pipeline: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
+    let mounted = true;
+
     const loadData = async () => {
       setLoading(true);
 
@@ -157,21 +159,27 @@ const Pipeline: React.FC = () => {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        setItems(pipelineItems);
+        if (mounted) setItems(pipelineItems);
       } catch (error) {
+        if (!mounted) return;
         // Error handled silently
       }
 
       // Only fetch from Supabase if organization is available
       if (currentOrganization?.id) {
-        await Promise.all([
-          fetchQuotes(currentOrganization.id),
-          fetchInvoices(currentOrganization.id),
-          fetchCustomers(),
-          fetchDeals()
-        ]);
+        try {
+          await Promise.all([
+            fetchQuotes(currentOrganization.id),
+            fetchInvoices(currentOrganization.id),
+            fetchCustomers(),
+            fetchDeals()
+          ]);
+        } catch (error) {
+          if (!mounted) return;
+          console.error('[Pipeline] Data fetch error:', error);
+        }
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
     };
 
     // Only load data when organization is available
@@ -179,7 +187,10 @@ const Pipeline: React.FC = () => {
       loadData();
       fetchPipelineStages();
     }
-  }, [fetchPipelineStages, currentOrganization?.id, demoMode, fetchQuotes, fetchInvoices, fetchCustomers, fetchDeals]);
+
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand store functions are stable refs; only re-fetch on org change
+  }, [currentOrganization?.id, demoMode]);
 
   useEffect(() => {
     if (quotes.length > 0 || invoices.length > 0 || deals.length > 0) {

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Users, Calendar, FileText, DollarSign, TrendingUp, Phone,
     CheckCircle, Plus, UserPlus, CalendarPlus, FilePlus, GripVertical,
-    Bot, PhoneIncoming, PhoneOutgoing, Clock
+    Bot, PhoneIncoming, PhoneOutgoing, Clock, Package
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import {
@@ -175,10 +175,13 @@ export const DashboardPage = () => {
     const tasksLabels = usePageLabels('tasks');
     const calendarLabels = usePageLabels('calendar');
     const pipelineLabels = usePageLabels('pipeline');
+    const productsLabels = usePageLabels('products');
+    const financialsLabels = usePageLabels('financials');
 
     // Get visible modules for this industry to filter quick actions
     const { visibleModules } = useVisibleModules();
-    const enabledModuleIds = visibleModules.map(m => m.id);
+    // Only show quick actions for UNLOCKED modules (not locked/expired trial)
+    const enabledModuleIds = visibleModules.filter(m => !m.isLocked).map(m => m.id);
 
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -228,6 +231,24 @@ export const DashboardPage = () => {
             onClick: () => navigate('/dashboard/tasks'),
             bgColor: 'bg-pink-50 text-pink-600',
             iconColor: 'text-pink-600',
+        },
+        {
+            id: 'add-product',
+            moduleId: 'products',
+            label: productsLabels.newButton,
+            icon: Package,
+            onClick: () => navigate('/dashboard/products'),
+            bgColor: 'bg-indigo-50 text-indigo-600',
+            iconColor: 'text-indigo-600',
+        },
+        {
+            id: 'new-expense',
+            moduleId: 'financials',
+            label: financialsLabels.newButton,
+            icon: DollarSign,
+            onClick: () => navigate('/dashboard/financials'),
+            bgColor: 'bg-emerald-50 text-emerald-600',
+            iconColor: 'text-emerald-600',
         },
     ];
 
