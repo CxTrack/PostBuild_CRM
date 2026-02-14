@@ -131,6 +131,8 @@ export const Dashboard: React.FC = () => {
   const calendarLabels = usePageLabels('calendar');
   const productsLabels = usePageLabels('products');
   const financialsLabels = usePageLabels('financials');
+  const callsLabels = usePageLabels('calls');
+  const pipelineLabels = usePageLabels('pipeline');
 
   // Get visible modules for this industry to filter quick actions
   const { visibleModules } = useVisibleModules();
@@ -648,7 +650,7 @@ export const Dashboard: React.FC = () => {
                 <span className={theme === 'soft-modern' ? 'text-xs badge badge-success' : 'text-xs text-green-600 dark:text-white font-medium'}>+{activeCustomers}</span>
               </div>
               <p className={theme === 'soft-modern' ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-gray-900 dark:text-white'}>{totalCustomers}</p>
-              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>Customers</p>
+              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>{crmLabels.entityPlural}</p>
             </div>
 
             <div className={theme === 'soft-modern' ? 'card p-4' : 'bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm'}>
@@ -659,7 +661,7 @@ export const Dashboard: React.FC = () => {
                 <span className={theme === 'soft-modern' ? 'text-xs badge badge-success' : 'text-xs text-green-600 dark:text-white font-medium'}>+{calls.length}</span>
               </div>
               <p className={theme === 'soft-modern' ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-gray-900 dark:text-white'}>{calls.length}</p>
-              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>Total Calls</p>
+              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>{callsLabels.stats?.total || 'Total Calls'}</p>
             </div>
 
             <div className={theme === 'soft-modern' ? 'card p-4' : 'bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm'}>
@@ -674,7 +676,7 @@ export const Dashboard: React.FC = () => {
               <p className={theme === 'soft-modern' ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-gray-900 dark:text-white'}>
                 ${revenueStats ? ((revenueStats.current_month_revenue / 1000).toFixed(1)) : '0'}k
               </p>
-              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>Revenue</p>
+              <p className={theme === 'soft-modern' ? 'text-xs text-tertiary' : 'text-xs text-gray-600 dark:text-gray-400'}>{invoicesLabels.stats?.totalRevenue || 'Revenue'}</p>
             </div>
 
             <div className={theme === 'soft-modern' ? 'card p-4' : 'bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm'}>
@@ -1039,7 +1041,7 @@ export const Dashboard: React.FC = () => {
                   </span>
                 </div>
                 <p className={theme === 'soft-modern' ? "text-body-sm text-secondary mb-1" : "text-sm font-medium mb-1 text-gray-500 dark:text-gray-400"}>
-                  Total Customers
+                  {crmLabels.stats?.total || 'Total Customers'}
                 </p>
                 <p className={theme === 'soft-modern' ? "text-h1 text-primary" : "text-3xl font-bold text-gray-900 dark:text-white"}>{totalCustomers}</p>
                 <div className={theme === 'soft-modern' ? "mt-4 flex items-center text-body-sm" : "mt-4 flex items-center text-sm text-gray-500 dark:text-gray-400"}>
@@ -1080,7 +1082,7 @@ export const Dashboard: React.FC = () => {
                   </span>
                 </div>
                 <p className={theme === 'soft-modern' ? "text-body-sm text-secondary mb-1" : "text-sm font-medium mb-1 text-gray-500 dark:text-gray-400"}>
-                  Monthly Revenue
+                  {invoicesLabels.stats?.totalRevenue || 'Monthly Revenue'}
                 </p>
                 <p className={theme === 'soft-modern' ? "text-h1 text-primary" : "text-3xl font-bold text-gray-900 dark:text-white"}>
                   ${(revenueStats?.current_month_revenue || 0).toLocaleString()}
@@ -1103,7 +1105,7 @@ export const Dashboard: React.FC = () => {
                   </span>
                 </div>
                 <p className={theme === 'soft-modern' ? "text-body-sm text-secondary mb-1" : "text-sm font-medium mb-1 text-gray-500 dark:text-gray-400"}>
-                  Pipeline Value
+                  {pipelineLabels.stats?.total || 'Pipeline Value'}
                 </p>
                 <p className={theme === 'soft-modern' ? "text-h1 text-primary" : "text-3xl font-bold text-gray-900 dark:text-white"}>
                   ${localStorageStats.pipelineValue.toLocaleString()}
@@ -1171,7 +1173,7 @@ export const Dashboard: React.FC = () => {
                     { key: 'appointments', label: calendarLabels.entityPlural },
                     { key: 'quotes', label: quotesLabels.entityPlural },
                     { key: 'invoices', label: invoicesLabels.entityPlural },
-                    { key: 'products', label: 'Products' },
+                    { key: 'products', label: productsLabels.entityPlural },
                     { key: 'customers', label: crmLabels.entityPlural },
                     { key: 'tasks', label: tasksLabels.entityPlural },
                   ].map((filter) => (

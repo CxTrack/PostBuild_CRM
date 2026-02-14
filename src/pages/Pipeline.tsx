@@ -509,7 +509,7 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Items</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.total || 'Total Items'}</p>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">{filteredItems.length}</h3>
           </div>
         </Card>
@@ -521,7 +521,7 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Value</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalRevenue || 'Total Value'}</p>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">${totalValue.toLocaleString()}</h3>
           </div>
         </Card>
@@ -533,7 +533,7 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Weighted Value</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.outstanding || 'Weighted Value'}</p>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">${Math.round(weightedValue).toLocaleString()}</h3>
           </div>
         </Card>
@@ -675,7 +675,7 @@ const Pipeline: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Deal Value</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{labels.columns?.value || 'Value'}</p>
                       <p className="text-3xl font-bold text-slate-900 dark:text-white">
                         ${selectedItem.total_amount.toLocaleString()}
                       </p>

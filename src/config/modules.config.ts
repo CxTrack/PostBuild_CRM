@@ -323,6 +323,7 @@ const DEFAULT_PAGE_LABELS: Record<string, PageLabels> = {
     stats: {
       total: 'Total Deals',
       totalRevenue: 'Pipeline Value',
+      outstanding: 'Weighted Value',
       active: 'Active Deals',
     },
   },
@@ -568,6 +569,7 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       stats: {
         total: 'Total Applications',
         totalRevenue: 'Total Loan Value',
+        outstanding: 'Weighted Value',
         active: 'In Progress',
       },
     },
@@ -627,6 +629,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         customer: 'Client',
         value: 'Price',
         stage: 'Stage',
+      },
+      stats: {
+        total: 'Total Deals',
+        totalRevenue: 'Total Value',
+        outstanding: 'Weighted Value',
       },
     },
     quotes: {
@@ -753,6 +760,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         customer: 'Client',
         value: 'Job Value',
         stage: 'Stage',
+      },
+      stats: {
+        total: 'Total Jobs',
+        totalRevenue: 'Total Job Value',
+        outstanding: 'Weighted Value',
       },
     },
     calls: {
@@ -885,6 +897,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         customer: 'Client',
         value: 'Case Value',
         stage: 'Stage',
+      },
+      stats: {
+        total: 'Total Cases',
+        totalRevenue: 'Total Case Value',
+        outstanding: 'Weighted Value',
       },
     },
     quotes: {
@@ -1066,6 +1083,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         value: 'Contract Value',
         stage: 'Phase',
       },
+      stats: {
+        total: 'Total Projects',
+        totalRevenue: 'Contract Value',
+        outstanding: 'Weighted Value',
+      },
     },
     quotes: {
       title: 'Bids',
@@ -1134,6 +1156,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       emptyStateDescription: 'Add your first prospect to start tracking',
       emptyStateButton: 'Add Your First Prospect',
       loadingText: 'Loading prospects...',
+      stats: {
+        total: 'Total Prospects',
+        totalRevenue: 'Pipeline Value',
+        outstanding: 'Weighted Value',
+      },
     },
     calendar: {
       title: 'Class Schedule',
@@ -1243,6 +1270,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         value: 'Budget',
         stage: 'Phase',
       },
+      stats: {
+        total: 'Total Projects',
+        totalRevenue: 'Total Budget',
+        outstanding: 'Weighted Value',
+      },
     },
     tasks: {
       title: 'Sprints & Tasks',
@@ -1324,6 +1356,11 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
         customer: 'Account',
         value: 'Order Value',
         stage: 'Status',
+      },
+      stats: {
+        total: 'Total Orders',
+        totalRevenue: 'Order Value',
+        outstanding: 'Weighted Value',
       },
     },
     products: {
