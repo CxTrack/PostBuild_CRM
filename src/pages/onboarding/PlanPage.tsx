@@ -115,15 +115,24 @@ export default function PlanPage() {
         setSelectedPlan(planId);
     };
 
-    // Get auth token — polls up to 6 times (3s total) for session to establish after signup
+    // Get auth token — reads directly from localStorage to bypass Supabase JS client's AbortController.
+    // The Supabase client persists session under sb-{ref}-auth-token in localStorage.
     const getAuthToken = async (): Promise<string | null> => {
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 8; i++) {
+            // Try localStorage first (bypasses AbortController entirely)
+            for (const key of Object.keys(localStorage)) {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem(key) || '');
+                        if (stored?.access_token) return stored.access_token;
+                    } catch { /* malformed JSON, skip */ }
+                }
+            }
+            // Fallback: try Supabase client (may work if auth state has settled)
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.access_token) return session.access_token;
-            } catch {
-                // getSession can throw AbortError — ignore and retry
-            }
+            } catch { /* AbortError — ignore */ }
             await new Promise(r => setTimeout(r, 500));
         }
         return null;
