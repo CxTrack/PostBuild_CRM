@@ -250,14 +250,15 @@ export const useOrganizationStore = create<OrganizationState>()(
         currentOrganization: state.currentOrganization,
         currentMembership: state.currentMembership,
       }),
-      onRehydrateStorage: () => (_state, error) => {
-        // CRITICAL: Always set hydrated to true, even if state is undefined (first load) or there's an error
-        // This prevents infinite loading state on pages that depend on _hasHydrated
-        if (error) {
-          console.warn('[OrgStore] Hydration error:', error);
-        }
-        // Use getState() to ensure we always set the flag, even if state param is undefined
-        useOrganizationStore.setState({ _hasHydrated: true });
+      onRehydrateStorage: (_state) => {
+        // Return a function that will be called after hydration completes
+        return () => {
+          // CRITICAL: Always set hydrated to true after hydration completes
+          // Use the store's setHasHydrated method via setTimeout to avoid circular reference
+          setTimeout(() => {
+            useOrganizationStore.getState().setHasHydrated(true);
+          }, 0);
+        };
       },
     }
   )
