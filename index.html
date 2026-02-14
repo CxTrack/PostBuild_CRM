@@ -27,12 +27,12 @@
       }
     </script>
     
-    <!-- Google Places API - Replace YOUR_API_KEY with a valid key or set via .env -->
+    <!-- Google Places API - Set VITE_GOOGLE_MAPS_API_KEY in .env to enable -->
     <script>
       (function() {
-        // Check for API key - can be set via window.GOOGLE_MAPS_API_KEY or environment
-        var apiKey = window.GOOGLE_MAPS_API_KEY || '';
-        if (apiKey) {
+        var apiKey = '%VITE_GOOGLE_MAPS_API_KEY%';
+        // Vite replaces the placeholder at build time; if not set, it stays as the literal string
+        if (apiKey && apiKey.indexOf('VITE_') === -1) {
           var script = document.createElement('script');
           script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
           script.async = true;
