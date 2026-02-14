@@ -27,6 +27,18 @@ export default {
           text: '#2D2D2D',
           'text-secondary': '#6B6B6B',
         },
+        midnight: {
+          gold: '#FFD700',
+          'gold-glow': 'rgba(255, 215, 0, 0.5)',
+          blue: '#1E90FF',
+          green: '#34d399',
+          red: '#FF4444',
+          warning: '#F9AB00',
+          surface: 'rgba(255, 255, 255, 0.03)',
+          'surface-elevated': 'rgba(255, 255, 255, 0.06)',
+          text: '#FFF8E1',
+          'text-secondary': 'rgba(255, 248, 225, 0.7)',
+        },
       },
       boxShadow: {
         'neumorph-raised': '6px 6px 12px rgba(0, 0, 0, 0.08), -6px -6px 12px rgba(255, 255, 255, 0.8)',

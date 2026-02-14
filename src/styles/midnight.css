@@ -1,0 +1,359 @@
+/* ============================================
+   MIDNIGHT THEME — Premium Dark Experience
+   Matches easyaicrm.com marketing site aesthetic
+   ============================================ */
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+
+.midnight {
+  --mn-bg-void: #000000;
+  --mn-bg-surface: rgba(255, 255, 255, 0.03);
+  --mn-bg-elevated: rgba(255, 255, 255, 0.06);
+  --mn-bg-hover: rgba(255, 255, 255, 0.08);
+
+  --mn-text-primary: #FFF8E1;
+  --mn-text-secondary: rgba(255, 248, 225, 0.7);
+  --mn-text-tertiary: rgba(255, 248, 225, 0.4);
+
+  --mn-border-subtle: rgba(255, 255, 255, 0.06);
+  --mn-border-default: rgba(255, 255, 255, 0.08);
+  --mn-border-strong: rgba(255, 255, 255, 0.15);
+
+  --mn-accent-gold: #FFD700;
+  --mn-accent-gold-glow: rgba(255, 215, 0, 0.5);
+  --mn-accent-gold-subtle: rgba(255, 215, 0, 0.15);
+  --mn-accent-blue: #1E90FF;
+  --mn-accent-green: #34d399;
+  --mn-accent-red: #FF4444;
+  --mn-accent-warning: #F9AB00;
+
+  --mn-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --mn-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --mn-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --mn-shadow-glow-gold: 0 0 20px rgba(255, 215, 0, 0.15), 0 0 40px rgba(255, 215, 0, 0.08);
+
+  --mn-transition: 200ms cubic-bezier(0.2, 0, 0, 1);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   BASE OVERRIDES
+   Override dark theme's gray-900 → pure black
+   ============================================ */
+
+.midnight,
+.midnight body {
+  background-color: var(--mn-bg-void) !important;
+  color: var(--mn-text-primary);
+}
+
+/* Page-level backgrounds: bg-gray-50 dark:bg-gray-900 → void black */
+.midnight .bg-gray-50,
+.midnight .dark\:bg-gray-900 {
+  background-color: var(--mn-bg-void) !important;
+}
+
+/* Card/container backgrounds: dark:bg-gray-800 → glass surface */
+.midnight .dark\:bg-gray-800 {
+  background-color: var(--mn-bg-surface) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Elevated surfaces: dark:bg-gray-700 → elevated glass */
+.midnight .dark\:bg-gray-700 {
+  background-color: var(--mn-bg-elevated) !important;
+}
+
+/* ============================================
+   TEXT COLOR OVERRIDES
+   Warm whites instead of cold whites
+   ============================================ */
+
+.midnight .dark\:text-white {
+  color: var(--mn-text-primary) !important;
+}
+
+.midnight .dark\:text-gray-300,
+.midnight .dark\:text-gray-400 {
+  color: var(--mn-text-secondary) !important;
+}
+
+.midnight .dark\:text-gray-500 {
+  color: var(--mn-text-tertiary) !important;
+}
+
+/* ============================================
+   BORDER OVERRIDES
+   Subtle glass borders
+   ============================================ */
+
+.midnight .dark\:border-gray-700 {
+  border-color: var(--mn-border-default) !important;
+}
+
+.midnight .dark\:border-gray-600 {
+  border-color: var(--mn-border-strong) !important;
+}
+
+/* ============================================
+   PRIMARY ACCENT → GOLD
+   Override blue primary with electric gold
+   ============================================ */
+
+.midnight .bg-primary-600,
+.midnight .dark\:bg-primary-500 {
+  background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+  color: #000000 !important;
+}
+
+.midnight .bg-primary-600:hover,
+.midnight .dark\:bg-primary-500:hover,
+.midnight .hover\:bg-primary-700:hover,
+.midnight .dark\:hover\:bg-primary-600:hover {
+  background: linear-gradient(135deg, #FFED4A, #FFD700) !important;
+  box-shadow: var(--mn-shadow-glow-gold);
+}
+
+.midnight .text-primary-600,
+.midnight .dark\:text-primary-400,
+.midnight .text-primary-500 {
+  color: var(--mn-accent-gold) !important;
+}
+
+.midnight .border-primary-600,
+.midnight .border-primary-500 {
+  border-color: var(--mn-accent-gold) !important;
+}
+
+.midnight .bg-primary-50,
+.midnight .dark\:bg-primary-900\/20 {
+  background-color: var(--mn-accent-gold-subtle) !important;
+}
+
+/* Focus rings → gold */
+.midnight .focus\:border-primary-500:focus,
+.midnight .focus\:ring-primary-500:focus {
+  border-color: var(--mn-accent-gold) !important;
+  --tw-ring-color: rgba(255, 215, 0, 0.3) !important;
+}
+
+/* ============================================
+   SIDEBAR & NAVIGATION
+   ============================================ */
+
+/* Sidebar container */
+.midnight aside,
+.midnight [class*="border-r"][class*="dark:bg-gray-800"] {
+  background-color: var(--mn-bg-void) !important;
+  border-color: var(--mn-border-subtle) !important;
+}
+
+/* Active nav item → gold accent */
+.midnight .bg-primary-50.dark\:bg-primary-900\/20,
+.midnight [class*="bg-primary-50"][class*="dark:bg-primary"] {
+  background-color: var(--mn-accent-gold-subtle) !important;
+}
+
+.midnight .text-primary-700.dark\:text-primary-300,
+.midnight [class*="text-primary-700"][class*="dark:text-primary"] {
+  color: var(--mn-accent-gold) !important;
+}
+
+/* Nav hover states */
+.midnight .hover\:bg-gray-100:hover,
+.midnight .dark\:hover\:bg-gray-700:hover {
+  background-color: var(--mn-bg-hover) !important;
+}
+
+/* Mobile nav & header */
+.midnight header,
+.midnight nav[class*="fixed"][class*="bottom-0"] {
+  background-color: var(--mn-bg-void) !important;
+  border-color: var(--mn-border-subtle) !important;
+}
+
+/* ============================================
+   CARDS & CONTAINERS
+   ============================================ */
+
+/* Standard white cards in light mode → glass in midnight */
+.midnight .bg-white.dark\:bg-gray-800 {
+  background-color: var(--mn-bg-surface) !important;
+  border-color: var(--mn-border-default) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Nested cards / gray backgrounds */
+.midnight .bg-gray-50.dark\:bg-gray-700,
+.midnight .bg-gray-100.dark\:bg-gray-700 {
+  background-color: var(--mn-bg-elevated) !important;
+}
+
+/* Card hover effects */
+.midnight .hover\:border-primary-500:hover {
+  border-color: var(--mn-accent-gold) !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+/* Secondary/action buttons → glass */
+.midnight .dark\:bg-gray-700[class*="border"] {
+  background-color: var(--mn-bg-elevated) !important;
+  border-color: var(--mn-border-default) !important;
+}
+
+.midnight .dark\:bg-gray-700[class*="border"]:hover {
+  border-color: var(--mn-border-strong) !important;
+  background-color: var(--mn-bg-hover) !important;
+}
+
+/* ============================================
+   INPUTS & FORMS
+   ============================================ */
+
+.midnight input.dark\:bg-gray-700,
+.midnight select.dark\:bg-gray-700,
+.midnight textarea.dark\:bg-gray-700,
+.midnight .dark\:bg-gray-700 input,
+.midnight .dark\:bg-gray-700 select,
+.midnight .dark\:bg-gray-700 textarea {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--mn-border-default) !important;
+  color: var(--mn-text-primary) !important;
+}
+
+.midnight input:focus,
+.midnight select:focus,
+.midnight textarea:focus {
+  border-color: var(--mn-accent-gold) !important;
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15) !important;
+}
+
+.midnight input::placeholder,
+.midnight textarea::placeholder {
+  color: var(--mn-text-tertiary) !important;
+}
+
+/* ============================================
+   BADGES & STATUS INDICATORS
+   ============================================ */
+
+.midnight .dark\:bg-green-900\/30 { background-color: rgba(52, 211, 153, 0.12) !important; }
+.midnight .dark\:text-green-400 { color: var(--mn-accent-green) !important; }
+
+.midnight .dark\:bg-red-900\/30 { background-color: rgba(255, 68, 68, 0.12) !important; }
+.midnight .dark\:text-red-400 { color: var(--mn-accent-red) !important; }
+
+.midnight .dark\:bg-amber-900\/30 { background-color: rgba(249, 171, 0, 0.12) !important; }
+.midnight .dark\:text-amber-400 { color: var(--mn-accent-warning) !important; }
+
+.midnight .dark\:bg-blue-900\/30 { background-color: rgba(30, 144, 255, 0.12) !important; }
+.midnight .dark\:text-blue-400 { color: var(--mn-accent-blue) !important; }
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.midnight table thead {
+  background-color: var(--mn-bg-elevated) !important;
+}
+
+.midnight table th {
+  color: var(--mn-text-secondary) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+}
+
+.midnight table td {
+  color: var(--mn-text-primary) !important;
+  border-bottom-color: var(--mn-border-subtle) !important;
+}
+
+.midnight table tbody tr:hover {
+  background-color: var(--mn-bg-hover) !important;
+}
+
+/* ============================================
+   MODALS & OVERLAYS
+   ============================================ */
+
+.midnight [class*="bg-black/50"],
+.midnight [class*="bg-black\/50"] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* ============================================
+   SCROLLBAR — Minimal 4px
+   ============================================ */
+
+.midnight ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.midnight ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.midnight ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.midnight ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.midnight * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* ============================================
+   STAT CARDS / GRADIENT ICON BADGES
+   Gold-tinted icon containers
+   ============================================ */
+
+.midnight [class*="bg-gradient-to"] {
+  opacity: 0.9;
+}
+
+/* ============================================
+   SELECTION & HIGHLIGHTS
+   ============================================ */
+
+.midnight ::selection {
+  background-color: rgba(255, 215, 0, 0.3);
+  color: var(--mn-text-primary);
+}
+
+/* ============================================
+   TRANSITIONS — Smooth theme switching
+   ============================================ */
+
+.midnight * {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Disable transition on specific elements that shouldn't animate */
+.midnight canvas,
+.midnight video,
+.midnight img,
+.midnight svg {
+  transition: none !important;
+}

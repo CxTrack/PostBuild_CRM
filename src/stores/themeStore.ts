@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'soft-modern';
+export type Theme = 'light' | 'dark' | 'soft-modern' | 'midnight';
 
 interface ThemeState {
   theme: Theme;
@@ -11,12 +11,14 @@ interface ThemeState {
 
 const applyTheme = (theme: Theme) => {
   const root = document.documentElement;
-  root.classList.remove('light', 'dark', 'soft-modern');
+  root.classList.remove('light', 'dark', 'soft-modern', 'midnight');
 
   if (theme === 'dark') {
     root.classList.add('dark');
   } else if (theme === 'soft-modern') {
     root.classList.add('soft-modern');
+  } else if (theme === 'midnight') {
+    root.classList.add('dark', 'midnight');
   } else {
     root.classList.add('light');
   }
@@ -29,7 +31,7 @@ export const useThemeStore = create<ThemeState>()(
 
       toggleTheme: () => {
         const currentTheme = get().theme;
-        const themeOrder: Theme[] = ['light', 'dark', 'soft-modern'];
+        const themeOrder: Theme[] = ['light', 'dark', 'soft-modern', 'midnight'];
         const currentIndex = themeOrder.indexOf(currentTheme);
         const newTheme = themeOrder[(currentIndex + 1) % themeOrder.length];
         applyTheme(newTheme);

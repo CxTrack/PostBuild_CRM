@@ -10,6 +10,24 @@ export const Card: React.FC<{
 }> = ({ children, className = '', onClick, hover = false }) => {
   const { theme } = useThemeStore();
 
+  if (theme === 'midnight') {
+    return (
+      <div
+        onClick={onClick}
+        className={`
+          rounded-2xl p-6
+          bg-white/[0.03] backdrop-blur-sm
+          border border-white/[0.08]
+          ${hover ? 'hover:border-white/[0.15] hover:shadow-[0_0_20px_rgba(255,215,0,0.08)] transition-all duration-300' : ''}
+          ${onClick ? 'cursor-pointer' : ''}
+          ${className}
+        `}
+      >
+        {children}
+      </div>
+    );
+  }
+
   if (theme === 'soft-modern') {
     return (
       <div
@@ -54,6 +72,24 @@ export const NestedCard: React.FC<{
   onClick?: () => void;
 }> = ({ children, className = '', onClick }) => {
   const { theme } = useThemeStore();
+
+  if (theme === 'midnight') {
+    return (
+      <div
+        onClick={onClick}
+        className={`
+          bg-white/[0.02] rounded-xl p-4
+          border border-white/[0.06]
+          hover:bg-white/[0.04] hover:border-white/[0.1]
+          transition-all duration-200
+          ${onClick ? 'cursor-pointer group' : ''}
+          ${className}
+        `}
+      >
+        {children}
+      </div>
+    );
+  }
 
   if (theme === 'soft-modern') {
     return (
@@ -106,6 +142,51 @@ export const Button: React.FC<{
     md: 'px-4 py-2.5 text-sm',
     lg: 'px-6 py-3 text-base',
   };
+
+  if (theme === 'midnight') {
+    const variants = {
+      primary: `
+        bg-gradient-to-r from-[#FFD700] via-[#FFED4A] to-[#FFA500] text-black font-semibold
+        shadow-[0_0_20px_rgba(255,215,0,0.2)]
+        hover:shadow-[0_0_30px_rgba(255,215,0,0.4)]
+        active:brightness-90
+      `,
+      secondary: `
+        bg-white/[0.05] text-[#FFF8E1] border border-white/[0.1]
+        hover:bg-white/[0.1] hover:border-white/[0.2]
+        active:bg-white/[0.03]
+      `,
+      action: `
+        bg-white/[0.05] text-[#FFF8E1] border border-white/[0.08]
+        hover:bg-white/[0.08] hover:border-white/[0.15]
+        active:bg-white/[0.03]
+      `,
+      danger: `
+        bg-gradient-to-r from-[#FF4444] to-[#CC0000] text-white
+        shadow-[0_0_15px_rgba(255,68,68,0.2)]
+        hover:shadow-[0_0_25px_rgba(255,68,68,0.4)]
+        active:brightness-90
+      `,
+    };
+
+    return (
+      <button
+        type={type}
+        onClick={onClick}
+        disabled={disabled}
+        className={`
+          rounded-xl font-medium
+          transition-all duration-200
+          ${sizeClasses[size]}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          ${variants[variant]}
+          ${className}
+        `}
+      >
+        {children}
+      </button>
+    );
+  }
 
   if (theme === 'soft-modern') {
     const variants = {
@@ -199,7 +280,23 @@ export const Input: React.FC<{
         </label>
       )}
 
-      {theme === 'soft-modern' ? (
+      {theme === 'midnight' ? (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          className="
+            w-full px-4 py-2.5
+            bg-white/[0.04] rounded-xl
+            border-2 border-white/[0.08]
+            focus:border-[#FFD700] focus:shadow-[0_0_0_3px_rgba(255,215,0,0.15)]
+            transition-all
+            text-[#FFF8E1] placeholder:text-white/30
+          "
+        />
+      ) : theme === 'soft-modern' ? (
         <input
           type={type}
           value={value}
@@ -256,7 +353,27 @@ export const Select: React.FC<{
         </label>
       )}
 
-      {theme === 'soft-modern' ? (
+      {theme === 'midnight' ? (
+        <select
+          value={value}
+          onChange={onChange}
+          required={required}
+          className="
+            w-full px-4 py-2.5
+            bg-white/[0.04] rounded-xl
+            border-2 border-white/[0.08]
+            focus:border-[#FFD700] focus:shadow-[0_0_0_3px_rgba(255,215,0,0.15)]
+            transition-all
+            text-[#FFF8E1]
+          "
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value} className="bg-gray-900 text-white">
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : theme === 'soft-modern' ? (
         <select
           value={value}
           onChange={onChange}
@@ -316,6 +433,22 @@ export const IconBadge: React.FC<{
     md: 'w-12 h-12 p-3',
     lg: 'w-16 h-16 p-4',
   };
+
+  if (theme === 'midnight') {
+    return (
+      <div
+        className={`
+          ${sizes[size]} rounded-xl ${gradient}
+          shadow-[0_0_12px_rgba(255,215,0,0.1)]
+          flex items-center justify-center
+          transition-all duration-200 hover:scale-110 hover:shadow-[0_0_20px_rgba(255,215,0,0.2)]
+          ${className}
+        `}
+      >
+        {icon}
+      </div>
+    );
+  }
 
   if (theme === 'soft-modern') {
     return (
@@ -389,6 +522,24 @@ export const Modal: React.FC<{
     '4xl': 'max-w-4xl',
   };
 
+  if (theme === 'midnight') {
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div
+          className={`bg-[#0a0a0a] rounded-2xl border border-white/[0.1] shadow-[0_0_40px_rgba(0,0,0,0.8)] ${maxWidths[maxWidth]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
+        >
+          <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between sticky top-0 bg-[#0a0a0a]">
+            <h2 className="text-xl font-semibold text-[#FFF8E1]">{title}</h2>
+            <button onClick={onClose} className="p-2 hover:bg-white/[0.08] rounded-xl transition-colors">
+              <X size={20} className="text-white/60" />
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        </div>
+      </div>
+    );
+  }
+
   if (theme === 'soft-modern') {
     return (
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -433,6 +584,14 @@ export const PageContainer: React.FC<{
   className?: string;
 }> = ({ children, className = '' }) => {
   const { theme } = useThemeStore();
+
+  if (theme === 'midnight') {
+    return (
+      <div className={`h-full flex flex-col p-6 bg-black ${className}`}>
+        {children}
+      </div>
+    );
+  }
 
   if (theme === 'soft-modern') {
     return (
