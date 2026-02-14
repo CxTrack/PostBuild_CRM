@@ -1,12 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 import { supabase, getUserProfile } from '../lib/supabase';
 import type { UserProfile } from '../types/database.types';
-
-// Module-level variable to track auth subscription (prevents memory leak)
-let authSubscription: { unsubscribe: () => void } | null = null;
 
 interface AuthState {
   user: User | null;
@@ -16,7 +13,6 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
@@ -32,11 +28,14 @@ export const useAuthStore = create<AuthState>()(
 
       /* ----------------------------------------
        * INITIALIZE (run once on app startup)
+       * NO onAuthStateChange subscription here —
+       * AuthContext.tsx is the single auth listener.
+       * This store is only for profile data.
        * ---------------------------------------- */
       initialize: async () => {
         set({ loading: true });
 
-        // 0️⃣ Check for tokens in URL (from marketing site OAuth redirect)
+        // Check for tokens in URL (from marketing site OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
         const accessToken = urlParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token');
@@ -60,52 +59,23 @@ export const useAuthStore = create<AuthState>()(
             const cleanUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, '', cleanUrl);
             return;
-          } else {
           }
         }
 
-        // 1️⃣ Load existing session (Supabase handles refresh automatically)
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          const profile = await getUserProfile(session.user.id);
-          set({
-            user: session.user,
-            profile,
-          });
-        } else {
-          set({
-            user: null,
-            profile: null,
-          });
+        // Load existing session
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const profile = await getUserProfile(session.user.id);
+            set({ user: session.user, profile });
+          } else {
+            set({ user: null, profile: null });
+          }
+        } catch {
+          set({ user: null, profile: null });
         }
 
         set({ initialized: true, loading: false });
-
-        // 2️⃣ Subscribe to auth changes (CRITICAL)
-        // Clean up any existing subscription first to prevent memory leak
-        if (authSubscription) {
-          authSubscription.unsubscribe();
-          authSubscription = null;
-        }
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event: AuthChangeEvent, session: Session | null) => {
-            if (!session || event === 'SIGNED_OUT') {
-              set({ user: null, profile: null });
-              return;
-            }
-
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              const user = session.user;
-              const profile = await getUserProfile(user.id);
-              set({ user, profile });
-            }
-          }
-        );
-
-        // Store subscription for cleanup
-        authSubscription = subscription;
       },
 
       /* ----------------------------------------
@@ -131,55 +101,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /* ----------------------------------------
-       * SIGN UP
-       * ---------------------------------------- */
-      signUp: async (email, password, fullName) => {
-        set({ loading: true });
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-
-
-        if (error) {
-          set({ loading: false });
-          throw error;
-        }
-
-        if (!data.user) {
-          set({ loading: false });
-          return;
-        }
-
-        // Create profile row
-        // const { error: profileError } = await supabase
-        //   .from('user_profiles')
-        //   .insert({
-        //     id: data.user.id,
-        //     email,
-        //     full_name: fullName,
-        //   });
-
-        // if (profileError) {
-        //   set({ loading: false });
-        //   throw profileError;
-        // }
-
-        const profile = await getUserProfile(data.user.id);
-        set({ user: data.user, profile, loading: false });
-      },
-
-      /* ----------------------------------------
-       * SIGN OUT (invalidates refresh token)
+       * SIGN OUT
        * ---------------------------------------- */
       signOut: async () => {
-        // Cleanup auth subscription to prevent memory leak
-        if (authSubscription) {
-          authSubscription.unsubscribe();
-          authSubscription = null;
-        }
         await supabase.auth.signOut();
         set({ user: null, profile: null });
       },
