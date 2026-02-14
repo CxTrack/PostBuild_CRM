@@ -185,7 +185,7 @@ export default function Quotes() {
   const [viewMode, setViewMode] = useState<'compact' | 'table'>('compact');
 
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
-  const { currentOrganization, demoMode, getOrganizationId, currentMembership, loading: orgLoading, _hasHydrated } = useOrganizationStore();
+  const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('quotes');
   const { confirm, DialogComponent } = useConfirmDialog();
@@ -333,11 +333,10 @@ export default function Quotes() {
     }
   };
 
-  // Show loading state while:
-  // 1. Store is still hydrating from localStorage
-  // 2. Organization is loading
-  // 3. Quotes are being fetched for the first time
-  if (!_hasHydrated || (orgLoading || (loading && !hasFetched)) && quotes.length === 0) {
+  // Show loading state while quotes are being fetched for the first time
+  // Note: We don't check orgLoading here because currentOrganization is persisted
+  // and available immediately from cache, even while org refetches in background
+  if (loading && !hasFetched && quotes.length === 0) {
     return (
       <PageContainer className="gap-6">
         <DashboardStatsSkeleton />
