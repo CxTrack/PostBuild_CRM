@@ -105,6 +105,7 @@ export interface Customer {
   occupation?: string | null;
   preferred_contact_method?: 'email' | 'phone' | 'sms' | 'any';
   avatar_url?: string | null;
+  card_image_url?: string;
   last_contact_date?: string | null;
   next_follow_up_date?: string | null;
 }
@@ -388,6 +389,7 @@ export interface CustomerFormData {
   notes?: string;
   tags?: string[];
   custom_fields?: Record<string, any>;
+  card_image_url?: string;
 }
 
 export interface CalendarEventFormData {

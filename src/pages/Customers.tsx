@@ -20,6 +20,7 @@ import CustomFieldsPanel from '@/components/settings/CustomFieldsPanel';
 import CSVImporter from '@/components/import/CSVImporter';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import BusinessCardCapture from '@/components/customers/BusinessCardCapture';
 
 export const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +37,26 @@ export const Customers: React.FC = () => {
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
   const labels = usePageLabels('crm');
+
+  // Business card scanner handler
+  const [prefillData, setPrefillData] = useState<any>(null);
+
+  const handleCardExtracted = (contact: any, imageUrl: string) => {
+    setPrefillData({
+      first_name: contact.first_name || '',
+      last_name: contact.last_name || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      company: contact.company || '',
+      address: contact.address || '',
+      city: contact.city || '',
+      state: contact.state || '',
+      postal_code: contact.postal_code || '',
+      country: contact.country || '',
+      card_image_url: imageUrl,
+    });
+    setShowCustomerModal(true);
+  };
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -465,8 +486,11 @@ export const Customers: React.FC = () => {
 
       <CustomerModal
         isOpen={showCustomerModal}
-        onClose={() => setShowCustomerModal(false)}
-        customer={undefined} // Passing undefined for create mode
+        onClose={() => {
+          setShowCustomerModal(false);
+          setPrefillData(null);
+        }}
+        customer={prefillData || undefined}
       />
 
       <CSVImporter
@@ -485,6 +509,8 @@ export const Customers: React.FC = () => {
         entityType="customer"
       />
       <DialogComponent />
+      {/* Mobile Business Card Scanner FAB */}
+      <BusinessCardCapture onContactExtracted={handleCardExtracted} />
     </PageContainer>
   );
 };
