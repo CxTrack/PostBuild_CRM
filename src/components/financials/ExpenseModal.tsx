@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Receipt, Calendar, DollarSign, FileText, FileImage, ChevronDown, ChevronUp, Sparkles, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { X, Save, Receipt, Calendar, DollarSign, FileText, FileImage, ChevronDown, ChevronUp, Sparkles, CheckCircle, Loader2, AlertCircle, Trash2, Plus } from 'lucide-react';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useSupplierStore } from '@/stores/supplierStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -18,7 +18,7 @@ interface ExpenseModalProps {
 
 const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense }) => {
     const { currentOrganization } = useOrganizationStore();
-    const { categories, fetchCategories, createExpense, updateExpense } = useExpenseStore();
+    const { categories, fetchCategories, createExpense, updateExpense, saveLineItems, fetchLineItems } = useExpenseStore();
     const { suppliers, fetchSuppliers } = useSupplierStore();
 
     const [formData, setFormData] = useState<Partial<Expense>>({
@@ -42,6 +42,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
     const [aiResult, setAiResult] = useState<any>(null);
     const [aiProcessing, setAiProcessing] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [lineItems, setLineItems] = useState<Array<{ description: string; quantity: number; unit_price: number; amount: number }>>([]);
 
     const applyAiData = (result: ReceiptScanResult) => {
         // Find matching category by name
@@ -61,6 +62,16 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
             category_id: matchedCategory?.id || prev.category_id,
             notes: prev.notes || (result.vendor_name ? `AI-scanned receipt from ${result.vendor_name}` : ''),
         }));
+
+        // Populate line items from AI scan
+        if (result.items && result.items.length > 0) {
+            setLineItems(result.items.map(item => ({
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unit_price: item.unit_price || 0,
+                amount: item.amount || 0,
+            })));
+        }
 
         setAccordionOpen(true); // Open accordion so user can review
     };
@@ -97,6 +108,26 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         }
     };
 
+    const updateLineItem = (index: number, field: string, value: string | number) => {
+        setLineItems(prev => prev.map((item, i) => {
+            if (i !== index) return item;
+            const updated = { ...item, [field]: value };
+            // Auto-calculate amount when quantity or unit_price changes
+            if (field === 'quantity' || field === 'unit_price') {
+                updated.amount = Number(updated.quantity) * Number(updated.unit_price);
+            }
+            return updated;
+        }));
+    };
+
+    const removeLineItem = (index: number) => {
+        setLineItems(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const addLineItem = () => {
+        setLineItems(prev => [...prev, { description: '', quantity: 1, unit_price: 0, amount: 0 }]);
+    };
+
     useEffect(() => {
         if (isOpen) {
             fetchCategories(currentOrganization?.id);
@@ -118,6 +149,18 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                     notes: '',
                     receipt_url: '',
                 });
+                setLineItems([]);
+            }
+            if (expense) {
+                // Load existing line items
+                fetchLineItems(expense.id).then(items => {
+                    setLineItems(items.map(li => ({
+                        description: li.description,
+                        quantity: Number(li.quantity),
+                        unit_price: Number(li.unit_price),
+                        amount: Number(li.amount),
+                    })));
+                });
             }
             // Reset AI state
             setAiResult(null);
@@ -135,6 +178,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         }
     }, [formData.amount, formData.tax_amount]);
 
+    useEffect(() => {
+        if (lineItems.length > 0) {
+            const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
+            if (subtotal !== formData.amount) {
+                setFormData(prev => ({ ...prev, amount: subtotal }));
+            }
+        }
+    }, [lineItems]);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -145,13 +197,19 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         try {
             if (expense?.id) {
                 await updateExpense(expense.id, { ...formData, ai_processed: !!aiResult });
+                // Save line items (even if empty to handle deletions)
+                await saveLineItems(expense.id, lineItems);
                 toast.success('Expense updated successfully');
             } else {
-                await createExpense({
+                const newExpense = await createExpense({
                     ...formData as any,
                     organization_id: currentOrganization.id,
                     ai_processed: !!aiResult,
                 });
+                // Save line items if any
+                if (newExpense?.id && lineItems.length > 0) {
+                    await saveLineItems(newExpense.id, lineItems);
+                }
                 toast.success('Expense recorded successfully');
             }
             onClose();
@@ -433,12 +491,111 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Line Items Table */}
+                                {lineItems.length > 0 && (
+                                    <div className="mt-8">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Itemized Expenses ({lineItems.length} items)
+                                        </label>
+                                        <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                            {/* Header */}
+                                            <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+                                                <div className="col-span-5">Item</div>
+                                                <div className="col-span-2 text-right">Qty</div>
+                                                <div className="col-span-2 text-right">Price</div>
+                                                <div className="col-span-2 text-right">Amount</div>
+                                                <div className="col-span-1"></div>
+                                            </div>
+                                            {/* Rows */}
+                                            {lineItems.map((item, idx) => (
+                                                <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-700/50 items-center">
+                                                    <div className="col-span-5">
+                                                        <input
+                                                            type="text"
+                                                            value={item.description}
+                                                            onChange={(e) => updateLineItem(idx, 'description', e.target.value)}
+                                                            className="w-full px-2 py-1 text-sm rounded-lg bg-transparent border border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-rose-500 focus:border-transparent dark:text-white"
+                                                            placeholder="Item name"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <input
+                                                            type="number"
+                                                            step="1"
+                                                            min="1"
+                                                            value={item.quantity}
+                                                            onChange={(e) => updateLineItem(idx, 'quantity', parseFloat(e.target.value || '1'))}
+                                                            className="w-full px-2 py-1 text-sm text-right rounded-lg bg-transparent border border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-rose-500 focus:border-transparent dark:text-white"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.unit_price}
+                                                            onChange={(e) => updateLineItem(idx, 'unit_price', parseFloat(e.target.value || '0'))}
+                                                            className="w-full px-2 py-1 text-sm text-right rounded-lg bg-transparent border border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-rose-500 focus:border-transparent dark:text-white"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-sm font-medium text-gray-900 dark:text-white py-1">
+                                                        ${item.amount.toFixed(2)}
+                                                    </div>
+                                                    <div className="col-span-1 flex justify-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeLineItem(idx)}
+                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {/* Subtotal */}
+                                            <div className="grid grid-cols-12 gap-2 px-3 py-2 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                                                <div className="col-span-9 text-right text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                    Subtotal:
+                                                </div>
+                                                <div className="col-span-2 text-right text-sm font-bold text-rose-600 dark:text-rose-400">
+                                                    ${lineItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
+                                                </div>
+                                                <div className="col-span-1"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Add Item Button */}
+                                {lineItems.length === 0 ? (
+                                    <div className="mt-4 flex justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={addLineItem}
+                                            className="flex items-center space-x-2 text-sm text-gray-500 hover:text-rose-600 transition-colors py-2 px-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl hover:border-rose-300"
+                                        >
+                                            <Plus size={16} />
+                                            <span>Add Itemized Details (Optional)</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 flex justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={addLineItem}
+                                            className="flex items-center space-x-1 text-xs text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                                        >
+                                            <Plus size={14} />
+                                            <span>Add Another Item</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
 
                     {/* SECTION 4: Action Buttons — Always Visible */}
-                    <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 dark:border-gray-800 mt-auto">
                         <Button variant="secondary" onClick={onClose} type="button">
                             Cancel
                         </Button>
