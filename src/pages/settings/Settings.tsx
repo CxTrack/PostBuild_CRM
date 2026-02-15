@@ -4,7 +4,7 @@ import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Plus, Edit, Trash2, Eye, Download, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles } from 'lucide-react';
+import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -22,9 +22,10 @@ import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
 
 export default function Settings() {
-  const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
+  const { currentOrganization, teamMembers, updateMember, updateOrganization, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
   const { theme, setTheme } = useThemeStore();
   const { preferences, saveMobileNavItems } = usePreferencesStore();
   const { logout, user } = useAuthContext();
@@ -35,9 +36,12 @@ export default function Settings() {
   const [settings, setSettings] = useState<BusinessSettingsType | null>(null);
   const [quoteTemplates, setQuoteTemplates] = useState<DocumentTemplate[]>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<DocumentTemplate[]>([]);
-  const [devOrgId, setDevOrgId] = useState<string | null>(null);
-  const [devOrgName, setDevOrgName] = useState<string>('');
+  const [devOrgId] = useState<string | null>(null);
+  const [devOrgName] = useState<string>('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const bookingUrl = currentOrganization?.slug
+    ? `https://crm.easyaicrm.com/book/${currentOrganization.slug}`
+    : '';
   const navigate = useNavigate();
 
   // Industry-specific labels
@@ -79,31 +83,6 @@ export default function Settings() {
     } catch (error) {
       toast.error('Failed to update member role');
     }
-  };
-
-  const updateSharingSettings = async (key: string, value: boolean) => {
-    if (!currentOrganization) return;
-
-    // Use metadata to store sharing toggles
-    const currentSharing = currentOrganization.metadata?.sharing || {};
-    const newMetadata = {
-      ...currentOrganization.metadata,
-      sharing: {
-        ...currentSharing,
-        [key]: value
-      }
-    };
-
-    try {
-      await useOrganizationStore.getState().updateOrganization({ metadata: newMetadata });
-      toast.success('Sharing setting updated');
-    } catch (error) {
-      toast.error('Failed to update sharing setting');
-    }
-  };
-
-  const isModuleShared = (key: string) => {
-    return currentOrganization?.metadata?.sharing?.[key] ?? true;
   };
 
   useEffect(() => {
@@ -1151,7 +1130,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Shared Resources */}
+            {/* Shared Resources — Dynamic per industry */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1163,109 +1142,76 @@ export default function Settings() {
               </div>
 
               <div className="p-6 space-y-4">
-                {/* Customers Sharing */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                      <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        Customer Database
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        All team members can view and edit customer records
-                      </p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={isModuleShared('customers')}
-                      onChange={(e) => updateSharingSettings('customers', e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+                {(() => {
+                  const industry = currentOrganization?.industry_template || 'general_business';
+                  const industryModules = INDUSTRY_TEMPLATES[industry] || INDUSTRY_TEMPLATES.general_business;
+                  const shareableModules = industryModules.filter((m: string) => m !== 'dashboard');
 
-                {/* Calendar Sharing */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-                      <CalendarIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        Shared Calendar
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Team can see all appointments and meetings
-                      </p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={isModuleShared('calendar')}
-                      onChange={(e) => updateSharingSettings('calendar', e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+                  const moduleIcons: Record<string, React.ReactNode> = {
+                    crm: <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
+                    calendar: <CalendarIcon className="w-6 h-6 text-green-600 dark:text-green-400" />,
+                    pipeline: <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />,
+                    tasks: <CheckCircle className="w-6 h-6 text-orange-600 dark:text-orange-400" />,
+                    quotes: <FileText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+                    invoices: <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+                    calls: <Phone className="w-6 h-6 text-red-600 dark:text-red-400" />,
+                    products: <Package className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+                    inventory: <LayoutGrid className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />,
+                    suppliers: <Building2 className="w-6 h-6 text-gray-600 dark:text-gray-400" />,
+                    financials: <DollarSign className="w-6 h-6 text-teal-600 dark:text-teal-400" />,
+                  };
 
-                {/* Pipeline Sharing */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        Sales Pipeline
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Collaborative deal tracking and revenue visibility
-                      </p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={isModuleShared('pipeline')}
-                      onChange={(e) => updateSharingSettings('pipeline', e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+                  const moduleDescriptions: Record<string, string> = {
+                    crm: 'Share customer/contact database with team',
+                    calendar: 'Collaborative calendar and scheduling',
+                    pipeline: 'Collaborative deal tracking and revenue visibility',
+                    tasks: 'Assign and track tasks across the team',
+                    quotes: 'Share quote/proposal access with team',
+                    invoices: 'Share invoice management with team',
+                    calls: 'Share call logs and recordings',
+                    products: 'Share product catalog with team',
+                    inventory: 'Share inventory tracking with team',
+                    suppliers: 'Share supplier information with team',
+                    financials: 'Share financial data and reports',
+                  };
 
-                {/* Tasks Sharing */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        Task Management
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Assign and track tasks across the team
-                      </p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={isModuleShared('tasks')}
-                      onChange={(e) => updateSharingSettings('tasks', e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+                  return shareableModules.map((moduleId: string) => {
+                    const label = INDUSTRY_LABELS[industry]?.[moduleId]?.name || AVAILABLE_MODULES[moduleId]?.name || moduleId;
+                    const description = moduleDescriptions[moduleId] || `Share ${label} with team`;
+                    const icon = moduleIcons[moduleId] || <LayoutGrid className="w-6 h-6 text-gray-600 dark:text-gray-400" />;
+                    const isShared = currentOrganization?.metadata?.sharing?.[moduleId] ?? true;
+
+                    return (
+                      <div key={moduleId} className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white mb-1">{label}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isShared}
+                            onChange={async (e) => {
+                              const currentSharing = currentOrganization?.metadata?.sharing || {};
+                              const newMetadata = {
+                                ...currentOrganization?.metadata,
+                                sharing: { ...currentSharing, [moduleId]: e.target.checked }
+                              };
+                              await updateOrganization({ metadata: newMetadata });
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -1297,21 +1243,39 @@ export default function Settings() {
                         </p>
                       </div>
                     </div>
-                    <button className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium transition-colors">
-                      Generate Link
+                    <button
+                      onClick={async () => {
+                        try {
+                          const currentSharing = currentOrganization?.metadata?.sharing || {};
+                          await updateOrganization({
+                            metadata: {
+                              ...currentOrganization?.metadata,
+                              sharing: { ...currentSharing, booking_link_enabled: true }
+                            }
+                          });
+                          toast.success('Booking link activated!');
+                        } catch (err) {
+                          toast.error('Failed to activate booking link');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                    >
+                      {currentOrganization?.metadata?.sharing?.booking_link_enabled ? 'Active' : 'Generate Link'}
                     </button>
                   </div>
                   <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                     <input
                       type="text"
-                      value="https://cxtrack.com/book/manik-sharma"
+                      value={bookingUrl}
                       readOnly
                       className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white outline-none"
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText("https://cxtrack.com/book/manik-sharma");
-                        toast.success("Link copied to clipboard");
+                        if (bookingUrl) {
+                          navigator.clipboard.writeText(bookingUrl);
+                          toast.success('Link copied to clipboard');
+                        }
                       }}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >

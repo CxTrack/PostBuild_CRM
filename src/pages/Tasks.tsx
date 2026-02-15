@@ -13,7 +13,10 @@ import {
   Trash2,
   AlertCircle,
   Archive,
+  Lock,
 } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PageContainer } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
 import TaskModal from '@/components/tasks/TaskModal';
 import TaskDetailModal from '@/components/tasks/TaskDetailModal';
@@ -67,7 +70,10 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const { currentOrganization } = useOrganizationStore();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('tasks');
+
+  const hasAccess = canAccessSharedModule('tasks');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -255,6 +261,23 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const cardClass = embedded
     ? ''
     : theme === 'soft-modern' ? 'card p-8 mb-6' : 'bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 border-2 border-gray-200 dark:border-gray-700 mb-6';
+
+  if (!hasAccess && !embedded) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <>

@@ -287,9 +287,77 @@ export const useOrganizationStore = create<OrganizationState>()(
         const { currentOrganization } = get();
         if (!currentOrganization) throw new Error('No organization selected');
 
-        // TODO: Implement real invitation logic via Supabase Edge Function
-        // For now, just simulate the invite
-        await new Promise(resolve => setTimeout(resolve, 800));
+        const token = getAuthToken();
+        if (!token) throw new Error('Not authenticated');
+
+        // Get current user ID from localStorage
+        let userId = '';
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try {
+              const stored = JSON.parse(localStorage.getItem(key) || '');
+              if (stored?.user?.id) userId = stored.user.id;
+            } catch { /* skip */ }
+          }
+        }
+
+        // Insert invitation record
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/team_invitations`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify({
+              organization_id: currentOrganization.id,
+              email: email.toLowerCase().trim(),
+              role,
+              invited_by: userId,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          if (errBody.includes('duplicate')) {
+            throw new Error('This email has already been invited');
+          }
+          throw new Error(`Invitation failed: ${errBody}`);
+        }
+
+        const [invitation] = await res.json();
+
+        // Call Edge Function to send email (fire-and-forget, don't block on email)
+        try {
+          const currentUser = JSON.parse(localStorage.getItem(
+            Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token')) || '{}'
+          ) || '{}');
+
+          await fetch(
+            `${supabaseUrl}/functions/v1/send-invitation`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: email.toLowerCase().trim(),
+                role,
+                organization_id: currentOrganization.id,
+                invitation_token: invitation.token,
+                inviter_name: currentUser?.user?.user_metadata?.full_name || 'A team member',
+                org_name: currentOrganization.name,
+              }),
+            }
+          );
+        } catch (emailErr) {
+          console.warn('Email delivery failed, but invitation was created:', emailErr);
+        }
       },
     }),
     {

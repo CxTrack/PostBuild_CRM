@@ -5,7 +5,7 @@ import {
   Search, Plus, Filter, FileText, DollarSign, Download,
   Clock, MoreVertical, List, Grid,
   Archive, CheckCircle2, Trash2,
-  ArrowRight, Target, Zap, Home, TrendingUp, Users, Send,
+  ArrowRight, Target, Zap, Home, TrendingUp, Send,
   Sparkles, BarChart3, MapPin
 } from 'lucide-react';
 import { useQuoteStore } from '../stores/quoteStore';
@@ -19,6 +19,8 @@ import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable'
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Lock } from 'lucide-react';
 import type { QuoteStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
 import type { PageLabels } from '../config/modules.config';
@@ -102,11 +104,10 @@ function EmptyState({ labels, searchTerm, filterStatus, industryTemplate }: Empt
     <div className="flex flex-col items-center justify-center py-12 px-4">
       {/* Hero Section */}
       <div className="text-center max-w-2xl mb-10">
-        <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${
-          isRealEstate
-            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
-            : 'bg-gradient-to-br from-blue-500 to-indigo-600'
-        }`}>
+        <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${isRealEstate
+          ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+          : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+          }`}>
           {isRealEstate ? (
             <Home size={40} className="text-white" />
           ) : (
@@ -128,11 +129,10 @@ function EmptyState({ labels, searchTerm, filterStatus, industryTemplate }: Empt
             key={index}
             className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
           >
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-              isRealEstate
-                ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                : 'bg-blue-100 dark:bg-blue-900/30'
-            }`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${isRealEstate
+              ? 'bg-emerald-100 dark:bg-emerald-900/30'
+              : 'bg-blue-100 dark:bg-blue-900/30'
+              }`}>
               <feature.icon size={20} className={
                 isRealEstate
                   ? 'text-emerald-600 dark:text-emerald-400'
@@ -152,11 +152,10 @@ function EmptyState({ labels, searchTerm, filterStatus, industryTemplate }: Empt
       {/* CTA Button */}
       <Link
         to="/quotes/builder"
-        className={`flex items-center px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all hover:scale-105 active:scale-95 ${
-          isRealEstate
-            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'
-            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25'
-        }`}
+        className={`flex items-center px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all hover:scale-105 active:scale-95 ${isRealEstate
+          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'
+          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25'
+          }`}
       >
         <Plus size={20} className="mr-2" />
         {labels.emptyStateButton}
@@ -187,9 +186,12 @@ export default function Quotes() {
   const { quotes, loading, fetchQuotes, deleteQuote } = useQuoteStore();
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('quotes');
   const { confirm, DialogComponent } = useConfirmDialog();
   const [hasFetched, setHasFetched] = useState(false);
+
+  const hasAccess = canAccessSharedModule('quotes');
 
   // Fetch quotes when organization is available
   useEffect(() => {
@@ -351,6 +353,23 @@ export default function Quotes() {
       <PageContainer className="gap-6">
         <DashboardStatsSkeleton />
         <TableSkeleton rows={8} />
+      </PageContainer>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
       </PageContainer>
     );
   }

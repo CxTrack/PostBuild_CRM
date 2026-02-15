@@ -15,7 +15,9 @@ import {
   Bot,
   MoreVertical,
   Users,
+  Lock,
 } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useCallStore } from '@/stores/callStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -31,7 +33,10 @@ type TabType = 'all' | 'my-calls' | 'team' | 'ai-agents' | 'live';
 export default function Calls() {
   const { theme } = useThemeStore();
   const { currentOrganization, _hasHydrated } = useOrganizationStore();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('calls');
+
+  const hasAccess = canAccessSharedModule('calls');
   const {
     calls,
     stats,
@@ -146,6 +151,23 @@ export default function Calls() {
     );
   }
 
+  if (!hasAccess) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer className="gap-6">
       {/* Header */}
@@ -231,27 +253,30 @@ export default function Calls() {
             { id: 'my-calls', label: 'My Calls', icon: User },
             { id: 'team', label: 'Team', icon: Users },
             { id: 'ai-agents', label: 'AI Agents', icon: Bot },
-            { id: 'live', label: 'Live', icon: null } // Handle icon specially
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id as TabType)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${tab.id === 'ai-agents' ? aiAgentTabStyles : ''
-                } ${activeTab === tab.id
-                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
-            >
-              {tab.id === 'live' ? (
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              ) : tab.id === 'ai-agents' ? (
-                <tab.icon className="w-3 h-3 text-purple-500" />
-              ) : (
-                tab.icon && <tab.icon className="w-3 h-3" />
-              )}
-              {tab.label}
-            </button>
-          ))}
+            { id: 'live', label: 'Live', icon: null }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id as TabType)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${tab.id === 'ai-agents' ? aiAgentTabStyles : ''
+                  } ${activeTab === tab.id
+                    ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+              >
+                {tab.id === 'live' ? (
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                ) : tab.id === 'ai-agents' ? (
+                  Icon && <Icon className="w-3 h-3 text-purple-500" />
+                ) : (
+                  Icon && <Icon className="w-3 h-3" />
+                )}
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">

@@ -46,11 +46,21 @@ export const usePermissions = () => {
     return ['owner', 'admin', 'manager'].includes(currentMembership.role);
   };
 
+  const canAccessSharedModule = (moduleKey: string): boolean => {
+    if (!currentMembership) return false;
+    // Owner and admin always have access regardless of toggles
+    if (['owner', 'admin'].includes(currentMembership.role)) return true;
+    // Check the sharing toggle from org metadata
+    const { currentOrganization } = useOrganizationStore.getState();
+    return currentOrganization?.metadata?.sharing?.[moduleKey] ?? true;
+  };
+
   return {
     hasPermission,
     canViewTeamCalendars,
     canViewUserCalendar,
     canEditUserCalendar,
+    canAccessSharedModule,
     role: currentMembership?.role,
   };
 };

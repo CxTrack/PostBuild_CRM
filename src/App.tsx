@@ -145,6 +145,9 @@ export default function App() {
           <Route path="/invoices/builder" element={<RequireAuth><InvoiceBuilder /></RequireAuth>} />
           <Route path="/invoices/builder/:id" element={<RequireAuth><InvoiceBuilder /></RequireAuth>} />
 
+          {/* Pop-out Chat Window - standalone, no sidebar */}
+          <Route path="/chat-window" element={<RequireAuth><ChatPage isPopup={true} /></RequireAuth>} />
+
           {/* Admin Routes - Require Authentication */}
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
 

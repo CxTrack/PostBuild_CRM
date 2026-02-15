@@ -1,12 +1,13 @@
-﻿/**
- * AddressAutocomplete - Google Places API address input with autocomplete
- * Provides suggestions as user types, auto-fills city, state, postal code, country
+/**
+ * AddressAutocomplete - Google Places API (New) address input with autocomplete
+ * Uses AutocompleteSuggestion.fetchAutocompleteSuggestions() + Place.fetchFields()
+ * Migrated from deprecated AutocompleteService (March 2025)
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, Loader2, X } from 'lucide-react';
 
-// Types for address components
+// Types for address components — exported for consumers
 export interface AddressComponents {
     address: string;
     city: string;
@@ -24,22 +25,43 @@ interface AddressAutocompleteProps {
     label?: string;
     disabled?: boolean;
     /** Google Places search types - defaults to ['address'] for street-level.
-     *  Use ['(cities)'] for city-level search, ['geocode'] for all geocodable results */
+     *  Use ['(cities)'] for city-level search (mapped to 'locality' internally) */
     searchTypes?: string[];
 }
 
-// Google Places API prediction type
+// Internal prediction type matching new API shape
 interface PlacePrediction {
-    place_id: string;
-    description: string;
-    structured_formatting: {
-        main_text: string;
-        secondary_text: string;
-    };
+    placeId: string;
+    text: string;
+    mainText: string;
+    secondaryText: string;
+    // Keep raw reference so we can call toPlace()
+    _raw?: any;
 }
 
 // Simple cache for API responses
 const predictionCache = new Map<string, PlacePrediction[]>();
+
+// Map legacy searchTypes to new API includedPrimaryTypes
+function mapSearchTypes(searchTypes: string[]): string[] | undefined {
+    const mapped: string[] = [];
+    for (const t of searchTypes) {
+        switch (t) {
+            case '(cities)':
+                mapped.push('locality');
+                break;
+            case 'geocode':
+                mapped.push('geocode');
+                break;
+            case 'address':
+                mapped.push('address');
+                break;
+            default:
+                mapped.push(t);
+        }
+    }
+    return mapped.length > 0 ? mapped : undefined;
+}
 
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     value,
@@ -58,13 +80,31 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const sessionTokenRef = useRef<any>(null);
 
-    // Check if Google Places API is loaded
+    // Check if Google Places API (New) is loaded
     const isGoogleLoaded = useCallback(() => {
-        return !!(window as any).google?.maps?.places;
+        return !!(window as any).google?.maps?.places?.AutocompleteSuggestion;
     }, []);
 
-    // Fetch predictions from Google Places API
+    // Get or create a session token for billing optimization
+    const getSessionToken = useCallback(() => {
+        if (!sessionTokenRef.current && isGoogleLoaded()) {
+            try {
+                sessionTokenRef.current = new (window as any).google.maps.places.AutocompleteSessionToken();
+            } catch {
+                // Silently fail if token creation fails
+            }
+        }
+        return sessionTokenRef.current;
+    }, [isGoogleLoaded]);
+
+    // Reset session token after a place is selected (starts new billing session)
+    const resetSessionToken = useCallback(() => {
+        sessionTokenRef.current = null;
+    }, []);
+
+    // Fetch predictions from Google Places API (New)
     const fetchPredictions = useCallback(async (input: string) => {
         if (!input || input.length < 3) {
             setPredictions([]);
@@ -87,56 +127,59 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         setLoading(true);
 
         try {
-            const service = new (window as any).google.maps.places.AutocompleteService();
+            const { AutocompleteSuggestion } = (window as any).google.maps.places;
 
-            const response = await new Promise<PlacePrediction[]>((resolve, reject) => {
-                service.getPlacePredictions(
-                    {
-                        input,
-                        types: searchTypes,
-                        componentRestrictions: { country: ['ca', 'us'] }, // Canada and US
-                    },
-                    (results: PlacePrediction[] | null, status: string) => {
-                        if (status === 'OK' && results) {
-                            resolve(results);
-                        } else if (status === 'ZERO_RESULTS') {
-                            resolve([]);
-                        } else {
-                            reject(new Error(status));
-                        }
-                    }
-                );
-            });
+            const request: any = {
+                input,
+                includedRegionCodes: ['ca', 'us'],
+                sessionToken: getSessionToken(),
+            };
 
-            predictionCache.set(cacheKey, response);
-            setPredictions(response);
-            setShowDropdown(response.length > 0);
+            // Map searchTypes to includedPrimaryTypes
+            const primaryTypes = mapSearchTypes(searchTypes);
+            if (primaryTypes) {
+                request.includedPrimaryTypes = primaryTypes;
+            }
+
+            const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+
+            const mapped: PlacePrediction[] = (response.suggestions || [])
+                .filter((s: any) => s.placePrediction)
+                .map((s: any) => {
+                    const p = s.placePrediction;
+                    return {
+                        placeId: p.placeId,
+                        text: p.text?.text || '',
+                        mainText: p.mainText?.text || '',
+                        secondaryText: p.secondaryText?.text || '',
+                        _raw: p,
+                    };
+                });
+
+            predictionCache.set(cacheKey, mapped);
+            setPredictions(mapped);
+            setShowDropdown(mapped.length > 0);
         } catch (error) {
+            console.warn('Places autocomplete error:', error);
             setPredictions([]);
         } finally {
             setLoading(false);
         }
-    }, [isGoogleLoaded, searchTypes]);
+    }, [isGoogleLoaded, searchTypes, getSessionToken]);
 
-    // Get place details and parse address components
-    const getPlaceDetails = useCallback(async (placeId: string, description: string) => {
-        if (!isGoogleLoaded()) {
-            onChange(description);
+    // Get place details using the new Place.fetchFields() API
+    const getPlaceDetails = useCallback(async (prediction: PlacePrediction) => {
+        if (!isGoogleLoaded() || !prediction._raw) {
+            onChange(prediction.text || prediction.mainText);
             setShowDropdown(false);
             return;
         }
 
         try {
-            const geocoder = new (window as any).google.maps.Geocoder();
-
-            const result = await new Promise<any>((resolve, reject) => {
-                geocoder.geocode({ placeId }, (results: any[], status: string) => {
-                    if (status === 'OK' && results[0]) {
-                        resolve(results[0]);
-                    } else {
-                        reject(new Error(status));
-                    }
-                });
+            // Convert prediction to Place and fetch address fields
+            const place = prediction._raw.toPlace();
+            await place.fetchFields({
+                fields: ['addressComponents', 'formattedAddress', 'displayName'],
             });
 
             // Parse address components
@@ -151,28 +194,30 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             let streetNumber = '';
             let route = '';
 
-            result.address_components?.forEach((component: any) => {
-                const types = component.types;
+            if (place.addressComponents) {
+                for (const component of place.addressComponents) {
+                    const types = component.types || [];
 
-                if (types.includes('street_number')) {
-                    streetNumber = component.long_name;
+                    if (types.includes('street_number')) {
+                        streetNumber = component.longText || component.long_name || '';
+                    }
+                    if (types.includes('route')) {
+                        route = component.longText || component.long_name || '';
+                    }
+                    if (types.includes('locality') || types.includes('sublocality')) {
+                        components.city = component.longText || component.long_name || '';
+                    }
+                    if (types.includes('administrative_area_level_1')) {
+                        components.state = component.shortText || component.short_name || '';
+                    }
+                    if (types.includes('postal_code')) {
+                        components.postal_code = component.longText || component.long_name || '';
+                    }
+                    if (types.includes('country')) {
+                        components.country = component.longText || component.long_name || '';
+                    }
                 }
-                if (types.includes('route')) {
-                    route = component.long_name;
-                }
-                if (types.includes('locality') || types.includes('sublocality')) {
-                    components.city = component.long_name;
-                }
-                if (types.includes('administrative_area_level_1')) {
-                    components.state = component.short_name;
-                }
-                if (types.includes('postal_code')) {
-                    components.postal_code = component.long_name;
-                }
-                if (types.includes('country')) {
-                    components.country = component.long_name;
-                }
-            });
+            }
 
             // Construct street address
             components.address = streetNumber ? `${streetNumber} ${route}` : route;
@@ -182,13 +227,16 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             onAddressSelect?.(components);
 
         } catch (error) {
+            console.warn('Place details fetch error:', error);
             // Fallback to just setting the description
-            onChange(description);
+            onChange(prediction.text || prediction.mainText);
         }
 
+        // Reset session token after selection (new billing session on next search)
+        resetSessionToken();
         setShowDropdown(false);
         setPredictions([]);
-    }, [isGoogleLoaded, onChange, onAddressSelect]);
+    }, [isGoogleLoaded, onChange, onAddressSelect, resetSessionToken]);
 
     // Handle input change with debounce
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,8 +270,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             case 'Enter':
                 e.preventDefault();
                 if (selectedIndex >= 0) {
-                    const prediction = predictions[selectedIndex];
-                    getPlaceDetails(prediction.place_id, prediction.description);
+                    getPlaceDetails(predictions[selectedIndex]);
                 }
                 break;
             case 'Escape':
@@ -235,7 +282,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
     // Handle prediction selection
     const handleSelect = (prediction: PlacePrediction) => {
-        getPlaceDetails(prediction.place_id, prediction.description);
+        getPlaceDetails(prediction);
     };
 
     // Close dropdown on outside click
@@ -321,7 +368,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
                 >
                     {predictions.map((prediction, index) => (
                         <button
-                            key={prediction.place_id}
+                            key={prediction.placeId}
                             type="button"
                             onClick={() => handleSelect(prediction)}
                             className={`w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${index === selectedIndex ? 'bg-gray-50 dark:bg-gray-700' : ''
@@ -331,10 +378,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
                             <MapPin size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
                             <div className="min-w-0">
                                 <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                                    {prediction.structured_formatting.main_text}
+                                    {prediction.mainText}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                    {prediction.structured_formatting.secondary_text}
+                                    {prediction.secondaryText}
                                 </p>
                             </div>
                         </button>

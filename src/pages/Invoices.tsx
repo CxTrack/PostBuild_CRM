@@ -17,6 +17,8 @@ import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable'
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Lock } from 'lucide-react';
 import type { InvoiceStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
 
@@ -35,7 +37,10 @@ export default function Invoices() {
   const { currentOrganization, demoMode, getOrganizationId, currentMembership } = useOrganizationStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('invoices');
+
+  const hasAccess = canAccessSharedModule('invoices');
 
   useEffect(() => {
     try {
@@ -260,6 +265,23 @@ export default function Invoices() {
     );
   }
 
+  if (!hasAccess) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer className="gap-6">
       <div className="flex items-center justify-between">
@@ -272,7 +294,7 @@ export default function Invoices() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportButton onExport={(_format) => {}} />
+          <ExportButton onExport={(_format) => { }} />
           <button
             onClick={() => setShowReportModal(true)}
             className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
@@ -675,6 +697,7 @@ export default function Invoices() {
                               <ActionsDropdown
                                 invoice={invoice}
                                 onClose={() => setActiveDropdown(null)}
+                                entityLabels={labels}
                               />
                             )}
                           </div>

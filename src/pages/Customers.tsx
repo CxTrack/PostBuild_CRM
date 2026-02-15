@@ -21,6 +21,8 @@ import CSVImporter from '@/components/import/CSVImporter';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import BusinessCardCapture from '@/components/customers/BusinessCardCapture';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Lock } from 'lucide-react';
 
 export const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +38,10 @@ export const Customers: React.FC = () => {
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('crm');
+
+  const hasAccess = canAccessSharedModule('crm');
 
   // Business card scanner handler
   const [prefillData, setPrefillData] = useState<any>(null);
@@ -104,6 +109,23 @@ export const Customers: React.FC = () => {
       }
     }
   };
+
+  if (!hasAccess) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

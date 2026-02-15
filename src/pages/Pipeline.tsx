@@ -17,6 +17,8 @@ import { usePageLabels } from '@/hooks/usePageLabels';
 import { useMemo } from 'react';
 import { DashboardStatsSkeleton, TableSkeleton } from '@/components/ui/skeletons';
 import QuickAddDealModal from '@/components/pipeline/QuickAddDealModal';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Lock } from 'lucide-react';
 
 interface PipelineItem {
   id: string;
@@ -46,8 +48,11 @@ const Pipeline: React.FC = () => {
   const { deals, fetchDeals } = useDealStore();
   const { currentOrganization, loading: orgLoading, demoMode, _hasHydrated } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
+  const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('pipeline');
   const quotesLabels = usePageLabels('quotes');
+
+  const hasAccess = canAccessSharedModule('pipeline');
 
   // Helper to display stage label instead of raw key
   const getStageLabel = (stageKey: string): string => {
@@ -373,6 +378,23 @@ const Pipeline: React.FC = () => {
       ),
     },
   ];
+
+  if (!hasAccess) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <Lock size={40} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Locked</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Your administrator has disabled sharing for this module.
+            Only owners and administrators can access it while sharing is disabled.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer className="gap-6">

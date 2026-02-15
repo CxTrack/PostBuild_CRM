@@ -34,7 +34,7 @@
         // Vite replaces the placeholder at build time; if not set, it stays as the literal string
         if (apiKey && apiKey.indexOf('VITE_') === -1) {
           var script = document.createElement('script');
-          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
+          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places&loading=async';
           script.async = true;
           document.head.appendChild(script);
         }

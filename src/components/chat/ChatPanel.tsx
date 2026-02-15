@@ -39,14 +39,16 @@ export const ChatPanel = () => {
     useEffect(() => {
         if (user) {
             fetchConversations();
-            // subscribeToConversations();
+            const channel = subscribeToConversations();
+            return () => { supabase.removeChannel(channel); };
         }
     }, [user]);
 
     useEffect(() => {
         if (activeConversation) {
             loadMessages(activeConversation.id);
-            // subscribeToMessages(activeConversation.id);
+            const channel = subscribeToMessages(activeConversation.id);
+            return () => { supabase.removeChannel(channel); };
         }
     }, [activeConversation]);
 
@@ -56,6 +58,29 @@ export const ChatPanel = () => {
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const subscribeToConversations = () => {
+        const channel = supabase.channel('panel-conversations-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+                fetchConversations();
+            })
+            .subscribe();
+        return channel;
+    };
+
+    const subscribeToMessages = (conversationId: string) => {
+        const channel = supabase.channel(`panel-messages-${conversationId}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `conversation_id=eq.${conversationId}`
+            }, (payload: any) => {
+                setMessages(prev => [...prev, payload.new as Message]);
+            })
+            .subscribe();
+        return channel;
     };
 
     const fetchConversations = async () => {
