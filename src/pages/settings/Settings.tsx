@@ -19,6 +19,7 @@ import SecurityTab from '@/components/settings/SecurityTab';
 import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import toast from 'react-hot-toast';
+import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 
@@ -26,7 +27,7 @@ export default function Settings() {
   const { currentOrganization, teamMembers, updateMember, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
   const { theme, setTheme } = useThemeStore();
   const { preferences, saveMobileNavItems } = usePreferencesStore();
-  const { logout } = useAuthContext();
+  const { logout, user } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -148,6 +149,9 @@ export default function Settings() {
         default_payment_terms: 'Net 30',
         default_quote_template_id: null,
         default_invoice_template_id: null,
+        business_tax_id: null,
+        default_tax_rate: 0,
+        tax_label: 'Tax',
       });
 
       if (quoteTemps.length === 0 && invoiceTemps.length === 0) {
@@ -181,23 +185,19 @@ export default function Settings() {
 
     try {
       setSaving(true);
-
       await settingsService.updateBusinessSettings(orgId, settings);
 
-      const { data: afterUpdate } = await supabase
-        .from('organizations')
-        .select('business_city, business_state')
-        .eq('id', orgId)
-        .single();
-
       localStorage.removeItem('organization-storage');
-      await fetchUserOrganizations();
+      if (user?.id) {
+        await fetchUserOrganizations(user.id);
+      }
 
       setSaved(true);
       toast.success('Settings saved successfully');
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      toast.error('Failed to save settings');
+      console.error('[Settings] Save error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -640,14 +640,21 @@ export default function Settings() {
 
               <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Street Address
-                  </label>
-                  <Input
-                    type="text"
+                  <AddressAutocomplete
+                    label="Street Address"
                     value={settings.business_address || ''}
-                    onChange={(e) => setSettings({ ...settings, business_address: e.target.value })}
-                    placeholder="123 Main Street"
+                    onChange={(value) => setSettings({ ...settings, business_address: value })}
+                    onAddressSelect={(components: AddressComponents) => {
+                      setSettings({
+                        ...settings,
+                        business_address: components.address,
+                        business_city: components.city,
+                        business_state: components.state,
+                        business_postal_code: components.postal_code,
+                        business_country: components.country,
+                      });
+                    }}
+                    placeholder="Start typing an address..."
                   />
                 </div>
 

@@ -58,33 +58,38 @@ export interface OrganizationPDFInfo {
 
 export const settingsService = {
   async getBusinessSettings(organizationId: string): Promise<BusinessSettings | null> {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select(`
-        business_email,
-        business_phone,
-        business_address,
-        business_city,
-        business_state,
-        business_postal_code,
-        business_country,
-        business_website,
-        logo_url,
-        primary_color,
-        quote_prefix,
-        invoice_prefix,
-        default_payment_terms,
-        default_quote_template_id,
-        default_invoice_template_id,
-        business_tax_id,
-        default_tax_rate,
-        tax_label
-      `)
-      .eq('id', organizationId)
-      .maybeSingle();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const storageKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
+    const stored = localStorage.getItem(storageKey);
+    const token = stored ? JSON.parse(stored)?.access_token : null;
 
-    if (error) throw error;
-    return data;
+    if (!token) throw new Error('Not authenticated');
+
+    const fields = [
+      'business_email', 'business_phone', 'business_address', 'business_city',
+      'business_state', 'business_postal_code', 'business_country', 'business_website',
+      'logo_url', 'primary_color', 'quote_prefix', 'invoice_prefix',
+      'default_payment_terms', 'default_quote_template_id', 'default_invoice_template_id',
+      'business_tax_id', 'default_tax_rate', 'tax_label'
+    ].join(',');
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/organizations?id=eq.${organizationId}&select=${fields}`,
+      {
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.pgrst.object+json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to load settings (${response.status})`);
+    }
+
+    return response.json();
   },
 
   async getOrganizationForPDF(organizationId: string): Promise<OrganizationPDFInfo> {
@@ -131,12 +136,32 @@ export const settingsService = {
     organizationId: string,
     settings: Partial<BusinessSettings>
   ): Promise<void> {
-    const { error } = await supabase
-      .from('organizations')
-      .update(settings)
-      .eq('id', organizationId);
+    // Use direct fetch to avoid Supabase JS AbortController bug
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const storageKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
+    const stored = localStorage.getItem(storageKey);
+    const token = stored ? JSON.parse(stored)?.access_token : null;
 
-    if (error) throw error;
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/organizations?id=eq.${organizationId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(settings),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to save settings (${response.status})`);
+    }
   },
 
   async getTemplates(

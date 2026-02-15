@@ -8,6 +8,7 @@ import { PhoneInput } from '@/components/ui/PhoneInput';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
 import { validateEmail, validatePhone } from '@/utils/validation';
 import toast from 'react-hot-toast';
+import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 
 export default function BusinessSettings() {
   const { currentOrganization } = useOrganizationStore();
@@ -82,7 +83,8 @@ export default function BusinessSettings() {
       });
       toast.success('Business information updated successfully');
     } catch (error) {
-      toast.error('Failed to save settings');
+      console.error('[BusinessSettings] Save error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -126,33 +128,30 @@ export default function BusinessSettings() {
       <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('business')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'business'
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === 'business'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-          }`}
+            }`}
         >
           <Building2 className="w-4 h-4 inline mr-2" />
           Business Info
         </button>
         <button
           onClick={() => setActiveTab('templates')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'templates'
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === 'templates'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-          }`}
+            }`}
         >
           <FileText className="w-4 h-4 inline mr-2" />
           Templates
         </button>
         <button
           onClick={() => setActiveTab('payment')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'payment'
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === 'payment'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-          }`}
+            }`}
         >
           <CreditCard className="w-4 h-4 inline mr-2" />
           Payment Settings
@@ -191,11 +190,20 @@ export default function BusinessSettings() {
                 <MapPin className="w-4 h-4 inline mr-2" />
                 Street Address
               </label>
-              <Input
-                type="text"
+              <AddressAutocomplete
                 value={settings.business_address || ''}
-                onChange={(e) => setSettings({ ...settings, business_address: e.target.value })}
-                placeholder="123 Business Street"
+                onChange={(value) => setSettings({ ...settings, business_address: value })}
+                onAddressSelect={(components: AddressComponents) => {
+                  setSettings({
+                    ...settings,
+                    business_address: components.address,
+                    business_city: components.city,
+                    business_state: components.state,
+                    business_postal_code: components.postal_code,
+                    business_country: components.country,
+                  });
+                }}
+                placeholder="Start typing an address..."
               />
             </div>
 
@@ -408,11 +416,10 @@ export default function BusinessSettings() {
               {quoteTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 cursor-pointer transition-all ${
-                    settings.default_quote_template_id === template.id
+                  className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 cursor-pointer transition-all ${settings.default_quote_template_id === template.id
                       ? 'ring-2 ring-blue-600'
                       : 'hover:shadow-md'
-                  }`}
+                    }`}
                   onClick={() => handleSelectTemplate(template.id, 'quote')}
                 >
                   <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-lg mb-3 flex items-center justify-center relative">
@@ -436,11 +443,10 @@ export default function BusinessSettings() {
               {invoiceTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 cursor-pointer transition-all ${
-                    settings.default_invoice_template_id === template.id
+                  className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 cursor-pointer transition-all ${settings.default_invoice_template_id === template.id
                       ? 'ring-2 ring-blue-600'
                       : 'hover:shadow-md'
-                  }`}
+                    }`}
                   onClick={() => handleSelectTemplate(template.id, 'invoice')}
                 >
                   <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-lg mb-3 flex items-center justify-center relative">
