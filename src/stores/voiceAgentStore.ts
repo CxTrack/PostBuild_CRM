@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
+import { retellService, type ProvisionVoiceAgentParams } from '@/services/retell.service';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
 export type FallbackBehavior = 'transfer_to_voicemail' | 'take_message' | 'schedule_callback' | 'transfer_to_human';
+export type ProvisioningStatus = 'not_started' | 'in_progress' | 'completed' | 'failed';
 
 export interface VoiceAgentConfig {
     id: string;
@@ -26,6 +28,12 @@ export interface VoiceAgentConfig {
     is_active: boolean;
     setup_completed: boolean;
     setup_step: number;
+    retell_agent_id?: string;
+    retell_phone_number?: string;
+    provisioning_status?: ProvisioningStatus;
+    provisioning_error?: string;
+    broker_phone?: string;
+    broker_name?: string;
     created_at: string;
     updated_at: string;
 }
@@ -45,6 +53,7 @@ interface VoiceAgentStore {
     config: VoiceAgentConfig | null;
     usage: VoiceUsage | null;
     loading: boolean;
+    provisioning: boolean;
     error: string | null;
     fetchConfig: () => Promise<void>;
     saveConfig: (data: Partial<VoiceAgentConfig>) => Promise<VoiceAgentConfig>;
@@ -54,6 +63,10 @@ interface VoiceAgentStore {
     fetchUsage: () => Promise<void>;
     getSetupProgress: () => number;
     isSetupComplete: () => boolean;
+    isProvisioned: () => boolean;
+    getPhoneNumber: () => string | null;
+    provisionAgent: (params: Omit<ProvisionVoiceAgentParams, 'organizationId'>) => Promise<{ success: boolean; phoneNumber?: string; error?: string }>;
+    updateRetellAgent: (params: { agentName?: string; businessName?: string; brokerPhone?: string; brokerName?: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 const DEFAULT_CONFIG: Omit<VoiceAgentConfig, 'id' | 'organization_id' | 'created_at' | 'updated_at'> = {
@@ -97,6 +110,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     config: null,
     usage: null,
     loading: false,
+    provisioning: false,
     error: null,
 
     fetchConfig: async () => {
@@ -212,5 +226,74 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     isSetupComplete: () => {
         const config = get().config;
         return config?.setup_completed ?? false;
+    },
+
+    isProvisioned: () => {
+        const config = get().config;
+        return config?.provisioning_status === 'completed' && !!config?.retell_agent_id;
+    },
+
+    getPhoneNumber: () => {
+        const config = get().config;
+        return config?.retell_phone_number || null;
+    },
+
+    provisionAgent: async (params) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        set({ provisioning: true, error: null });
+        try {
+            const result = await retellService.provisionVoiceAgent({
+                ...params,
+                organizationId,
+            });
+
+            if (result.success) {
+                // Refresh config to get updated provisioning status
+                await get().fetchConfig();
+            }
+
+            return {
+                success: result.success,
+                phoneNumber: result.phoneNumberPretty || result.phoneNumber,
+                error: result.error,
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Provisioning failed';
+            set({ error: message });
+            return { success: false, error: message };
+        } finally {
+            set({ provisioning: false });
+        }
+    },
+
+    updateRetellAgent: async (params) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        set({ loading: true, error: null });
+        try {
+            const result = await retellService.updateAgent({
+                organizationId,
+                ...params,
+            });
+
+            if (result.success) {
+                await get().fetchConfig();
+            }
+
+            return result;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Update failed';
+            set({ error: message });
+            return { success: false, error: message };
+        } finally {
+            set({ loading: false });
+        }
     },
 }));

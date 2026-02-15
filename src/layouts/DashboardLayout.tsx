@@ -25,6 +25,8 @@ import {
   Lock,
   Clock,
   Sparkles,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -79,6 +81,9 @@ export const DashboardLayout = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('cxtrack_sidebar_collapsed') === 'true'; } catch { return false; }
+  });
   const { visibleModules } = useVisibleModules();
 
 
@@ -93,6 +98,14 @@ export const DashboardLayout = () => {
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences } = usePreferencesStore();
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('cxtrack_sidebar_collapsed', String(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -235,23 +248,36 @@ export const DashboardLayout = () => {
       <BroadcastBanner />
       {/* Desktop Sidebar - Hidden on Mobile */}
       <aside
-        className={`hidden md:flex md:flex-col md:w-64 transition-all duration-300 ${theme === 'soft-modern'
+        className={`hidden md:flex md:flex-col ${sidebarCollapsed ? 'md:w-[68px]' : 'md:w-64'} transition-all duration-300 ${theme === 'soft-modern'
           ? 'bg-white border-r border-gray-200/60'
           : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
           } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
       >
-        {/* Logo */}
-        <div className={theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} data-tour="sidebar">
-          <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
-          {currentOrganization?.industry_template && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
-              {currentOrganization.industry_template.replace(/_/g, ' ')}
-            </p>
+        {/* Logo + Collapse Toggle */}
+        <div className={`${theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`} data-tour="sidebar">
+          {!sidebarCollapsed ? (
+            <div>
+              <h1 className={theme === 'soft-modern' ? "text-xl font-semibold text-primary" : "text-xl font-bold text-gray-900 dark:text-white"}>CxTrack</h1>
+              {currentOrganization?.industry_template && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-widest mt-1">
+                  {currentOrganization.industry_template.replace(/_/g, ' ')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Cx</h1>
           )}
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className={theme === 'soft-modern' ? "flex-1 overflow-y-auto p-4 space-y-2" : "flex-1 overflow-y-auto p-4 space-y-1"}>
+        <nav className={theme === 'soft-modern' ? "flex-1 overflow-y-auto p-4 space-y-2" : `flex-1 overflow-y-auto ${sidebarCollapsed ? 'p-2 space-y-1' : 'p-4 space-y-1'}`}>
           <Link
             to={HOME_ITEM.path}
             onClick={(e) => {
@@ -260,14 +286,15 @@ export const DashboardLayout = () => {
             className={
               theme === 'soft-modern'
                 ? `nav-item flex items-center px-4 py-3 ${isActive(HOME_ITEM.path) ? 'active' : ''}`
-                : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(HOME_ITEM.path)
+                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(HOME_ITEM.path)
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
             }
+            title={sidebarCollapsed ? HOME_ITEM.label : undefined}
           >
-            <HOME_ITEM.icon size={20} className="mr-3" />
-            <span className="font-medium">{HOME_ITEM.label}</span>
+            <HOME_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+            {!sidebarCollapsed && <span className="font-medium">{HOME_ITEM.label}</span>}
           </Link>
 
           {visibleNavItems.map((item) => (
@@ -277,17 +304,17 @@ export const DashboardLayout = () => {
               className={
                 theme === 'soft-modern'
                   ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
-                  : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(item.path)
+                  : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(item.path)
                     ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   } ${item.isLocked ? 'opacity-60' : ''}`
               }
-              title={item.isTrialFeature ? `🎁 Premium feature free for ${item.trialDaysRemaining} days! Upgrade to keep access forever.` : undefined}
+              title={sidebarCollapsed ? item.label : (item.isTrialFeature ? `🎁 Premium feature free for ${item.trialDaysRemaining} days! Upgrade to keep access forever.` : undefined)}
             >
-              <item.icon size={20} className="mr-3" />
-              <span className="font-medium">{item.label}</span>
-              {item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
-              {item.isTrialFeature && !item.isLocked && (
+              <item.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+              {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
+              {!sidebarCollapsed && item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
+              {!sidebarCollapsed && item.isTrialFeature && !item.isLocked && (
                 <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded" title={`Premium feature - ${item.trialDaysRemaining} days left in trial`}>
                   <Sparkles size={10} />
                   {item.trialDaysRemaining}d
@@ -301,45 +328,48 @@ export const DashboardLayout = () => {
             className={
               theme === 'soft-modern'
                 ? `nav-item flex items-center px-4 py-3 ${isActive(SETTINGS_ITEM.path) ? 'active' : ''}`
-                : `flex items-center px-3 py-2 rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
+                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
             }
+            title={sidebarCollapsed ? SETTINGS_ITEM.label : undefined}
           >
-            <SETTINGS_ITEM.icon size={20} className="mr-3" />
-            <span className="font-medium">{SETTINGS_ITEM.label}</span>
+            <SETTINGS_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+            {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
           </Link>
 
           {/* Upgrade Button - Only show for free tier */}
           {currentOrganization?.subscription_tier === 'free' && (
             <Link
               to="/dashboard/upgrade"
-              className="flex items-center justify-center gap-2 mx-1 mt-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-[1.02]"
+              className={`flex items-center justify-center gap-2 ${sidebarCollapsed ? 'mx-0 mt-2 p-2.5' : 'mx-1 mt-3 px-4 py-3'} bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-[1.02]`}
+              title={sidebarCollapsed ? 'Upgrade Plan' : undefined}
             >
               <Sparkles size={16} />
-              Upgrade Plan
+              {!sidebarCollapsed && 'Upgrade Plan'}
             </Link>
           )}
 
         </nav>
 
         {/* Pinned Chat Section */}
-        <div className={theme === 'soft-modern' ? "px-4 py-2" : "px-4 py-2 border-t border-gray-200 dark:border-gray-700"}>
+        <div className={theme === 'soft-modern' ? "px-4 py-2" : `${sidebarCollapsed ? 'px-2' : 'px-4'} py-2 border-t border-gray-200 dark:border-gray-700`}>
           <Link
             to={CHAT_ITEM.path}
             className={
               theme === 'soft-modern'
                 ? `nav-item flex items-center justify-between px-4 py-3 ${isActive(CHAT_ITEM.path) ? 'active' : ''}`
-                : `flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${isActive(CHAT_ITEM.path)
+                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'} rounded-lg transition-colors ${isActive(CHAT_ITEM.path)
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
             }
+            title={sidebarCollapsed ? 'Team Chat' : undefined}
           >
             <div className="flex items-center">
-              <MessageCircle size={20} className="mr-3" />
-              <span className="font-medium">Team Chat</span>
+              <MessageCircle size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+              {!sidebarCollapsed && <span className="font-medium">Team Chat</span>}
             </div>
           </Link>
 
@@ -349,19 +379,20 @@ export const DashboardLayout = () => {
             className={
               theme === 'soft-modern'
                 ? `nav-item flex items-center px-4 py-3 mt-1 ${isActive('/dashboard/reports') ? 'active' : ''}`
-                : `flex items-center px-3 py-2 mt-1 rounded-lg transition-colors ${isActive('/dashboard/reports')
+                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} mt-1 rounded-lg transition-colors ${isActive('/dashboard/reports')
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
             }
+            title={sidebarCollapsed ? 'Reports' : undefined}
           >
-            <BarChart3 size={20} className="mr-3" />
-            <span className="font-medium">Reports</span>
+            <BarChart3 size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+            {!sidebarCollapsed && <span className="font-medium">Reports</span>}
           </Link>
         </div>
 
         {/* User Profile */}
-        <div className={theme === 'soft-modern' ? "p-4 border-t border-default" : "p-4 border-t border-gray-200 dark:border-gray-700"}>
+        <div className={theme === 'soft-modern' ? "p-4 border-t border-default" : `${sidebarCollapsed ? 'p-2' : 'p-4'} border-t border-gray-200 dark:border-gray-700`}>
           <button
             onClick={() => {
               if (isSuperAdmin) {
@@ -370,10 +401,11 @@ export const DashboardLayout = () => {
                 navigate('/dashboard/settings');
               }
             }}
-            className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${theme === 'soft-modern'
+            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center p-2' : 'justify-between p-3'} rounded-2xl transition-all ${theme === 'soft-modern'
               ? 'hover:bg-slate-100 dark:hover:bg-slate-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
+            title={sidebarCollapsed ? (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User') : undefined}
           >
             <div className="flex items-center">
               <div
@@ -381,25 +413,28 @@ export const DashboardLayout = () => {
               >
                 {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
               </div>
-              <div className="ml-3 text-left">
-                <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
-                  {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-                </p>
-                {isSuperAdmin && (
-                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
-                )}
-              </div>
+              {!sidebarCollapsed && (
+                <div className="ml-3 text-left">
+                  <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                  </p>
+                  {isSuperAdmin && (
+                    <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
+                  )}
+                </div>
+              )}
             </div>
-            {isSuperAdmin && (
+            {!sidebarCollapsed && isSuperAdmin && (
               <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400 stroke-[2.5px]" />
             )}
           </button>
 
-          <div className="mt-2 flex items-center justify-between px-3">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest transition-colors">Theme</span>
+          <div className={`mt-2 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between px-3'}`}>
+            {!sidebarCollapsed && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest transition-colors">Theme</span>}
             <button
               onClick={toggleTheme}
               className={theme === 'soft-modern' ? "p-1.5 rounded-lg transition-all btn-ghost" : "p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"}
+              title={sidebarCollapsed ? 'Toggle theme' : undefined}
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>

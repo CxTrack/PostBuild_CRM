@@ -29,6 +29,7 @@ import Products from './pages/Products';
 import ProductForm from './pages/products/ProductForm';
 import Pipeline from './pages/Pipeline';
 import Calls from './pages/calls/Calls';
+import { CallDetail } from './pages/calls/CallDetail';
 import Tasks from './pages/Tasks';
 import Settings from './pages/settings/Settings';
 import { ChatPage } from './pages/ChatPage';
@@ -132,6 +133,7 @@ export default function App() {
             <Route path="pipeline" element={<Pipeline />} />
             <Route path="pipeline/new" element={<NewDealPage />} />
             <Route path="calls" element={<Calls />} />
+            <Route path="calls/:callId" element={<CallDetail />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="upgrade" element={<UpgradePage />} />
             <Route path="settings" element={<Settings />} />

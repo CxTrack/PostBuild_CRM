@@ -1,11 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, MailSearch, ShieldCheck, Zap, CalendarDays, Loader2 } from 'lucide-react';
+import { CheckCircle2, MailSearch, ShieldCheck, Zap, CalendarDays, Loader2, Phone, Bot } from 'lucide-react';
+import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
+import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
+import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
+import { retellService } from '@/services/retell.service';
+
+type ProvisioningStep = 'idle' | 'reserving_number' | 'creating_agent' | 'configuring' | 'done' | 'error';
+
+const PROVISIONING_MESSAGES: Record<ProvisioningStep, string> = {
+  idle: '',
+  reserving_number: 'Reserving your phone number...',
+  creating_agent: 'Creating your AI agent...',
+  configuring: 'Configuring call handling...',
+  done: 'Your AI phone agent is ready!',
+  error: 'Something went wrong.',
+};
 
 export default function SuccessPage() {
   const [searchParams] = useSearchParams();
   const [lead, setLead] = useState<any>(null);
+
+  // Voice agent provisioning state
+  const [provisioningStep, setProvisioningStep] = useState<ProvisioningStep>('idle');
+  const [provisionedNumber, setProvisionedNumber] = useState<string | null>(null);
+  const [provisionedNumberPretty, setProvisionedNumberPretty] = useState<string | null>(null);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   useEffect(() => {
     const leadData = sessionStorage.getItem('onboarding_lead');
@@ -18,7 +39,6 @@ export default function SuccessPage() {
   }, []);
 
   const triggerConfetti = () => {
-    // Dynamic import of canvas-confetti (if available) or use CSS animation fallback
     import('canvas-confetti')
       .then((confetti) => {
         confetti.default({
@@ -29,15 +49,68 @@ export default function SuccessPage() {
         });
       })
       .catch(() => {
-        // Fallback: confetti library not installed, use CSS animation
         console.log('Confetti animation triggered (library not installed)');
       });
   };
 
   const type = searchParams.get('type');
   const plan = searchParams.get('plan');
+  const skipped = searchParams.get('skipped');
 
   const isRequest = type === 'custom_crm' || type === 'audit' || type === 'config' || type === 'enterprise';
+  const hasVoiceConfig = lead?.voiceConfig && skipped !== 'voice';
+  const isMortgageBroker = lead?.industry === 'mortgage_broker';
+  const showVoiceProvisioning = hasVoiceConfig && (isMortgageBroker || lead?.voiceConfig?.agentName);
+
+  const handleProvisionAgent = async () => {
+    if (!lead?.organizationId || !lead?.voiceConfig) {
+      toast.error('Missing configuration data. Please try again.');
+      return;
+    }
+
+    setProvisionError(null);
+    setProvisioningStep('reserving_number');
+
+    // Simulate step progression while the actual API call runs
+    const stepTimer1 = setTimeout(() => setProvisioningStep('creating_agent'), 2000);
+    const stepTimer2 = setTimeout(() => setProvisioningStep('configuring'), 5000);
+
+    try {
+      const result = await retellService.provisionVoiceAgent({
+        organizationId: lead.organizationId,
+        agentName: lead.voiceConfig.agentName || 'AI Assistant',
+        businessName: lead.company || lead.businessName || 'My Business',
+        brokerPhone: lead.phone || '',
+        brokerName: lead.name || lead.firstName || '',
+        agentInstructions: lead.voiceConfig.agentInstructions || '',
+        countryCode: lead.country === 'CA' ? 'CA' : 'US',
+      });
+
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+
+      if (result.success && result.phoneNumber) {
+        setProvisionedNumber(result.phoneNumber);
+        setProvisionedNumberPretty(result.phoneNumberPretty || result.phoneNumber);
+        setProvisioningStep('done');
+
+        // Extra confetti for the reveal
+        triggerConfetti();
+        toast.success('Your AI phone agent is live!');
+      } else {
+        setProvisioningStep('error');
+        setProvisionError(result.error || 'Failed to provision agent. Please try again or contact support.');
+        toast.error('Provisioning failed. You can try again or set this up later in Settings.');
+      }
+    } catch (err) {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      setProvisioningStep('error');
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setProvisionError(message);
+      toast.error('Provisioning failed.');
+    }
+  };
 
   const getHeadline = () => {
     if (type === 'custom_crm') return "Custom CRM Request Received.";
@@ -163,6 +236,119 @@ export default function SuccessPage() {
             ))}
           </div>
         </div>
+
+        {/* Voice Agent Provisioning Section */}
+        {showVoiceProvisioning && !isRequest && (
+          <div className="pt-8 space-y-8">
+            <div className="h-px bg-gradient-to-r from-transparent via-[#FFD700]/20 to-transparent" />
+
+            {provisioningStep === 'idle' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Bot className="text-[#FFD700]" size={24} />
+                  <h2 className="text-2xl font-black text-white italic">
+                    One More Thing...
+                  </h2>
+                </div>
+                <p className="text-white/50 max-w-lg mx-auto">
+                  Your AI phone agent <span className="text-[#FFD700] font-bold">{lead?.voiceConfig?.agentName}</span> is ready to go live.
+                  Click below to get your dedicated phone number.
+                </p>
+                <button
+                  onClick={handleProvisionAgent}
+                  className="group relative px-12 py-6 bg-gradient-to-r from-[#FFD700] to-yellow-500 text-black font-black rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm shadow-[0_20px_40px_rgba(255,215,0,0.3)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <Phone size={20} />
+                    <span>Activate AI Phone Agent</span>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {(provisioningStep === 'reserving_number' || provisioningStep === 'creating_agent' || provisioningStep === 'configuring') && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="text-[#FFD700] animate-spin" size={24} />
+                  <h2 className="text-2xl font-black text-white italic">
+                    Setting Up Your Agent...
+                  </h2>
+                </div>
+
+                <div className="max-w-md mx-auto space-y-4">
+                  {(['reserving_number', 'creating_agent', 'configuring'] as ProvisioningStep[]).map((step) => {
+                    const isActive = provisioningStep === step;
+                    const isPast = ['reserving_number', 'creating_agent', 'configuring'].indexOf(provisioningStep) >
+                      ['reserving_number', 'creating_agent', 'configuring'].indexOf(step);
+
+                    return (
+                      <div
+                        key={step}
+                        className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 ${
+                          isActive ? 'bg-[#FFD700]/10 border border-[#FFD700]/20' :
+                          isPast ? 'bg-white/[0.02] border border-white/5' :
+                          'bg-white/[0.01] border border-white/5 opacity-40'
+                        }`}
+                      >
+                        {isPast ? (
+                          <CheckCircle2 size={20} className="text-green-400 shrink-0" />
+                        ) : isActive ? (
+                          <Loader2 size={20} className="text-[#FFD700] animate-spin shrink-0" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border border-white/20 shrink-0" />
+                        )}
+                        <span className={`text-sm font-bold ${isActive ? 'text-[#FFD700]' : isPast ? 'text-white/60' : 'text-white/30'}`}>
+                          {PROVISIONING_MESSAGES[step]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {provisioningStep === 'done' && provisionedNumber && (
+              <div className="space-y-8 animate-in fade-in duration-700">
+                <div className="flex items-center justify-center gap-3">
+                  <CheckCircle2 className="text-green-400" size={24} />
+                  <h2 className="text-2xl font-black text-white italic">
+                    Your Agent is <span className="text-green-400">Live!</span>
+                  </h2>
+                </div>
+
+                <PhoneNumberReveal
+                  phoneNumber={provisionedNumber}
+                  phoneNumberPretty={provisionedNumberPretty || undefined}
+                />
+
+                <CallForwardingInstructions phoneNumber={provisionedNumber} />
+              </div>
+            )}
+
+            {provisioningStep === 'error' && (
+              <div className="space-y-6">
+                <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20">
+                  <p className="text-red-400 font-bold text-sm mb-2">Provisioning Failed</p>
+                  <p className="text-white/50 text-sm">{provisionError}</p>
+                </div>
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={handleProvisionAgent}
+                    className="px-8 py-3 bg-[#FFD700] text-black font-black rounded-xl text-sm uppercase tracking-widest hover:bg-yellow-400 transition-all"
+                  >
+                    Try Again
+                  </button>
+                  <Link
+                    to="/dashboard"
+                    className="px-8 py-3 bg-white/5 text-white font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
+                  >
+                    Skip &mdash; Set Up Later
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 pt-12">

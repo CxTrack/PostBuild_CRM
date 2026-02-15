@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '@/stores/themeStore';
 import { useQuoteStore } from '@/stores/quoteStore';
@@ -6,7 +6,8 @@ import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import {
   Plus, Search, FileText, DollarSign, TrendingUp,
-  LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap
+  LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
@@ -94,6 +95,34 @@ const Pipeline: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+
+  // Stage tab scroll
+  const stageTabsRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScrollability = useCallback(() => {
+    const el = stageTabsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = stageTabsRef.current;
+    if (!el) return;
+    checkScrollability();
+    el.addEventListener('scroll', checkScrollability, { passive: true });
+    const ro = new ResizeObserver(checkScrollability);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', checkScrollability); ro.disconnect(); };
+  }, [checkScrollability, STAGES]);
+
+  const scrollStages = (direction: 'left' | 'right') => {
+    const el = stageTabsRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -502,28 +531,51 @@ const Pipeline: React.FC = () => {
 
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
-        <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => setSelectedStage('all')}
-            className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === 'all'
-              ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-          >
-            All Stages
-          </button>
-          {STAGES.map(stage => (
+        <div className="relative flex items-center max-w-full min-w-0">
+          {canScrollLeft && (
             <button
-              key={stage.id}
-              onClick={() => setSelectedStage(stage.id)}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === stage.id
+              onClick={() => scrollStages('left')}
+              className="absolute left-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-slate-200 dark:border-gray-600 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -ml-1"
+              aria-label="Scroll stages left"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
+          <div
+            ref={stageTabsRef}
+            className={`flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide ${canScrollLeft ? 'ml-6' : ''} ${canScrollRight ? 'mr-6' : ''}`}
+          >
+            <button
+              onClick={() => setSelectedStage('all')}
+              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === 'all'
                 ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
-              {stage.name}
+              All Stages
             </button>
-          ))}
+            {STAGES.map(stage => (
+              <button
+                key={stage.id}
+                onClick={() => setSelectedStage(stage.id)}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === stage.id
+                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+              >
+                {stage.name}
+              </button>
+            ))}
+          </div>
+          {canScrollRight && (
+            <button
+              onClick={() => scrollStages('right')}
+              className="absolute right-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-slate-200 dark:border-gray-600 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -mr-1"
+              aria-label="Scroll stages right"
+            >
+              <ChevronRight size={16} />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">

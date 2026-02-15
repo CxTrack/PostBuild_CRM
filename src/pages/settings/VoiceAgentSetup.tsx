@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import {
     Mic, Volume2, MessageSquare, Building2, Users, Settings2,
     ChevronRight, ChevronLeft, Check, Save, RefreshCw, Zap,
-    Clock, AlertCircle, Play, Pause, CheckCircle
+    Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
+import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
+import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import toast from 'react-hot-toast';
 
 const STEPS = [
@@ -19,12 +21,17 @@ export const VoiceAgentSetup = () => {
         config,
         usage,
         loading,
+        provisioning,
         fetchConfig,
         saveConfig,
         updateSetupStep,
         activateAgent,
         deactivateAgent,
         fetchUsage,
+        isProvisioned,
+        getPhoneNumber,
+        provisionAgent,
+        updateRetellAgent,
     } = useVoiceAgentStore();
 
     const [currentStep, setCurrentStep] = useState(0);
@@ -40,6 +47,8 @@ export const VoiceAgentSetup = () => {
         common_call_reasons: [] as string[],
         handling_preference: 'handle_automatically' as HandlingPreference,
         fallback_behavior: 'take_message' as FallbackBehavior,
+        broker_phone: '',
+        broker_name: '',
     });
     const [newReason, setNewReason] = useState('');
 
@@ -62,6 +71,8 @@ export const VoiceAgentSetup = () => {
                 common_call_reasons: config.common_call_reasons || [],
                 handling_preference: config.handling_preference || 'handle_automatically',
                 fallback_behavior: config.fallback_behavior || 'take_message',
+                broker_phone: config.broker_phone || '',
+                broker_name: config.broker_name || '',
             });
             setCurrentStep(config.setup_step || 0);
         }
@@ -100,10 +111,65 @@ export const VoiceAgentSetup = () => {
     const handleActivate = async () => {
         setSaving(true);
         try {
-            await saveConfig({ ...formData, setup_completed: true, is_active: true });
-            toast.success('Voice Agent activated! 🎉');
+            // Save config first
+            await saveConfig({
+                ...formData,
+                industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+                setup_completed: true,
+            });
+
+            // If not yet provisioned with Retell, trigger provisioning
+            if (!config?.retell_agent_id) {
+                const result = await provisionAgent({
+                    agentName: formData.agent_name || 'AI Assistant',
+                    businessName: formData.business_name || 'My Business',
+                    brokerPhone: formData.broker_phone,
+                    brokerName: formData.broker_name || formData.agent_name,
+                    agentInstructions: formData.business_description,
+                });
+
+                if (result.success) {
+                    toast.success(`Voice Agent activated! Your number: ${result.phoneNumber}`);
+                } else {
+                    toast.error(result.error || 'Provisioning failed. Try again or contact support.');
+                }
+            } else {
+                await activateAgent();
+                toast.success('Voice Agent activated!');
+            }
         } catch {
             toast.error('Failed to activate');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        setSaving(true);
+        try {
+            // Save to local DB
+            await saveConfig({
+                ...formData,
+                industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+            });
+
+            // If provisioned, also sync changes to Retell API
+            if (isProvisioned()) {
+                const result = await updateRetellAgent({
+                    agentName: formData.agent_name,
+                    businessName: formData.business_name,
+                    brokerPhone: formData.broker_phone,
+                    brokerName: formData.broker_name,
+                });
+                if (!result.success) {
+                    toast.error(`Saved locally but Retell sync failed: ${result.error}`);
+                    return;
+                }
+            }
+
+            toast.success('Settings saved');
+        } catch {
+            toast.error('Failed to save');
         } finally {
             setSaving(false);
         }
@@ -323,6 +389,41 @@ export const VoiceAgentSetup = () => {
                                         placeholder="Describe your business, services, and what makes you unique. This helps the AI represent your brand accurately."
                                     />
                                 </div>
+
+                                {/* Broker Contact Info */}
+                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                                        SMS Call Summary Notifications
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Your Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.broker_name}
+                                                onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                placeholder="e.g., John Smith"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Used in SMS call summary greetings</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Your Phone Number
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                value={formData.broker_phone}
+                                                onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                placeholder="+1 (555) 123-4567"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">You'll receive SMS summaries after each AI call</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -519,59 +620,135 @@ export const VoiceAgentSetup = () => {
 
             {/* Post-Setup: Quick Settings */}
             {isSetupComplete && (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick Settings</h3>
+                <div className="space-y-6">
+                    {/* Phone Number & Call Forwarding */}
+                    {isProvisioned() && getPhoneNumber() && (
+                        <div className="space-y-4">
+                            <PhoneNumberReveal
+                                phoneNumber={getPhoneNumber()!}
+                                phoneNumberPretty={getPhoneNumber()!}
+                            />
+                            <CallForwardingInstructions phoneNumber={getPhoneNumber()!} />
+                        </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-6">
+                    {/* Provisioning Status (if not yet provisioned) */}
+                    {!isProvisioned() && config?.provisioning_status !== 'completed' && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-2xl p-6">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">Phone Agent Not Provisioned</h4>
+                                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                                        {config?.provisioning_status === 'failed'
+                                            ? `Provisioning failed: ${config.provisioning_error || 'Unknown error'}. Click below to retry.`
+                                            : 'Your AI phone agent has not been set up yet. Click below to provision a phone number and activate your agent.'
+                                        }
+                                    </p>
+                                    <button
+                                        onClick={handleActivate}
+                                        disabled={saving || provisioning}
+                                        className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded-xl hover:bg-yellow-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {provisioning ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin" />Provisioning...</>
+                                        ) : (
+                                            <><Zap className="w-4 h-4" />Provision Phone Agent</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Quick Settings Form */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick Settings</h3>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Agent Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.agent_name}
+                                    onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Agent Tone
+                                </label>
+                                <select
+                                    value={formData.agent_tone}
+                                    onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option value="professional">Professional</option>
+                                    <option value="friendly">Friendly</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="formal">Formal</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Agent Name
+                                Greeting Script
                             </label>
-                            <input
-                                type="text"
-                                value={formData.agent_name}
-                                onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                            <textarea
+                                value={formData.greeting_script}
+                                onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
+                                rows={3}
+                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Agent Tone
-                            </label>
-                            <select
-                                value={formData.agent_tone}
-                                onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
-                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                            >
-                                <option value="professional">Professional</option>
-                                <option value="friendly">Friendly</option>
-                                <option value="casual">Casual</option>
-                                <option value="formal">Formal</option>
-                            </select>
+
+                        {/* Broker Contact Info */}
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                                SMS Call Summary Notifications
+                            </p>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Your Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.broker_name}
+                                        onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        placeholder="e.g., John Smith"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Your Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={formData.broker_phone}
+                                        onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        placeholder="+1 (555) 123-4567"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Greeting Script
-                        </label>
-                        <textarea
-                            value={formData.greeting_script}
-                            onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
-                            rows={3}
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                        />
-                    </div>
-
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleSaveStep}
-                            disabled={saving}
-                            className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                        >
-                            <Save className="w-4 h-4" />
-                            {saving ? 'Saving...' : 'Save Changes'}
-                        </button>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={handleSaveSettings}
+                                disabled={saving}
+                                className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                            >
+                                <Save className="w-4 h-4" />
+                                {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

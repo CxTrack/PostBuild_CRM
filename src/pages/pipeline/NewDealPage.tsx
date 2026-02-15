@@ -12,6 +12,8 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { useLenderStore } from '@/stores/lenderStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { Card, Button } from '@/components/theme/ThemeComponents';
+import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
+import { UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NewDealPage() {
@@ -32,6 +34,7 @@ export default function NewDealPage() {
     const [newLenderCommission, setNewLenderCommission] = useState('');
     const [newLenderVolumeCommission, setNewLenderVolumeCommission] = useState('');
     const [addingLender, setAddingLender] = useState(false);
+    const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -303,6 +306,14 @@ export default function NewDealPage() {
                                                 </option>
                                             ))}
                                         </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQuickAddCustomer(true)}
+                                            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1"
+                                            title={`Add new ${labels.columns?.customer || 'Customer'}`}
+                                        >
+                                            <UserPlus size={16} />
+                                        </button>
                                     </div>
                                 </div>
 
@@ -744,6 +755,17 @@ export default function NewDealPage() {
                     </div>
                 </form>
             </main>
+
+            {/* Quick Add Customer Modal */}
+            <QuickAddCustomerModal
+                isOpen={showQuickAddCustomer}
+                onClose={() => setShowQuickAddCustomer(false)}
+                onCustomerCreated={(customer) => {
+                    setFormData(prev => ({ ...prev, customer_id: customer.id }));
+                    setShowQuickAddCustomer(false);
+                    fetchCustomers();
+                }}
+            />
         </div>
     );
 }

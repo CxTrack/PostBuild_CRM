@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { Call } from '@/types/database.types';
+import { Call, CallSummary } from '@/types/database.types';
 import { useOrganizationStore } from './organizationStore';
 
 interface CallFilters {
@@ -31,6 +31,7 @@ interface CallStats {
 interface CallStore {
   calls: Call[];
   currentCall: Call | null;
+  currentCallSummary: CallSummary | null;
   loading: boolean;
   error: string | null;
   filters: CallFilters;
@@ -39,6 +40,7 @@ interface CallStore {
   fetchCalls: () => Promise<void>;
   fetchCallsByCustomer: (customerId: string) => Promise<void>;
   fetchCallById: (id: string) => Promise<void>;
+  fetchCallSummary: (callId: string) => Promise<void>;
   fetchCallStats: () => Promise<void>;
   createCall: (call: Partial<Call>) => Promise<Call | null>;
   updateCall: (id: string, updates: Partial<Call>) => Promise<void>;
@@ -50,6 +52,7 @@ interface CallStore {
 const initialCallState = {
   calls: [] as Call[],
   currentCall: null as Call | null,
+  currentCallSummary: null as CallSummary | null,
   loading: false,
   error: null as string | null,
   filters: {} as CallFilters,
@@ -174,6 +177,22 @@ export const useCallStore = create<CallStore>((set, get) => ({
       set({ error: message });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchCallSummary: async (callId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('call_summaries')
+        .select('*')
+        .eq('call_id', callId)
+        .maybeSingle();
+
+      if (error) throw error;
+      set({ currentCallSummary: data });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
     }
   },
 

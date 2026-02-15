@@ -171,19 +171,49 @@ export interface Call {
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
-  // Extended fields used in the app
+  // Extended fields from retell_twilio_integration migration
   call_type?: 'human' | 'ai_agent';
   agent_id?: string | null;
-  agent_type?: string | null;
+  agent_type?: 'retell' | 'vapi' | 'bland' | 'internal' | null;
   agent_name?: string | null;
-  outcome?: string | null;
+  outcome?: 'positive' | 'neutral' | 'negative' | 'callback' | 'no_answer' | null;
+  sentiment?: 'positive' | 'neutral' | 'negative' | null;
+  summary?: string | null;
   customer_phone?: string | null;
+  ai_insights?: Record<string, any>;
+  notes?: string | null;
+  tags?: string[];
+  linked_deal_id?: string | null;
+  linked_task_id?: string | null;
+  twilio_call_sid?: string | null;
   customers?: {
     first_name?: string | null;
     last_name?: string | null;
     name?: string | null;
     company?: string | null;
   } | null;
+}
+
+export interface CallSummary {
+  id: string;
+  call_id: string;
+  organization_id: string;
+  retell_call_id?: string | null;
+  summary_text?: string | null;
+  transcript?: string | null;
+  transcript_object?: Array<{ role: string; content: string; timestamp?: number }> | null;
+  sentiment?: string | null;
+  sentiment_score?: number | null;
+  key_topics?: string[] | null;
+  action_items?: Array<{ description: string; completed?: boolean }> | null;
+  caller_phone?: string | null;
+  agent_id?: string | null;
+  duration_ms?: number | null;
+  recording_url?: string | null;
+  broker_notified?: boolean;
+  sms_sent_at?: string | null;
+  raw_webhook_payload?: Record<string, any>;
+  created_at: string;
 }
 
 export interface CustomerContact {
