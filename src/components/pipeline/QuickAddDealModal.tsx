@@ -3,7 +3,6 @@ import { X, Save, Plus, Zap } from 'lucide-react';
 import { useDealStore } from '@/stores/dealStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { usePipelineConfigStore } from '@/stores/pipelineConfigStore';
-import { useThemeStore } from '@/stores/themeStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
@@ -18,7 +17,6 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
   const { createDeal } = useDealStore();
   const { customers } = useCustomerStore();
   const { stages } = usePipelineConfigStore();
-  const { theme } = useThemeStore();
   const labels = usePageLabels('pipeline');
 
   const [formData, setFormData] = useState({
@@ -30,6 +28,7 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
     notes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const availableStages = useMemo(() => {
     if (stages.length > 0) {
@@ -117,25 +116,51 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Title */}
-          <div>
+          {/* Title with Suggestions */}
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               className={inputClasses}
-              placeholder={`e.g. "New website project"`}
+              placeholder={labels.titlePlaceholder || `e.g. "New ${labels.entitySingular}"`}
               autoFocus
+              autoComplete="off"
             />
+            {showSuggestions && labels.titleSuggestions && labels.titleSuggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                {labels.titleSuggestions
+                  .filter(s => !formData.title || s.toLowerCase().includes(formData.title.toLowerCase()))
+                  .map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setFormData({ ...formData, title: suggestion });
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
 
           {/* Customer */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Customer <span className="text-red-500">*</span>
+              {labels.columns?.customer || 'Customer'} <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <select
@@ -143,7 +168,7 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
                 onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
                 className={`flex-1 ${inputClasses}`}
               >
-                <option value="">Select a customer...</option>
+                <option value="">Select a {labels.entitySingular}...</option>
                 {customers.map(customer => (
                   <option key={customer.id} value={customer.id}>
                     {customer.name || `${customer.first_name} ${customer.last_name}`}

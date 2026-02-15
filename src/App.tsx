@@ -49,6 +49,9 @@ import CheckoutPage from './pages/onboarding/CheckoutPage';
 import SuccessPage from './pages/onboarding/SuccessPage';
 import CustomConfigPage from './pages/onboarding/CustomConfigPage';
 
+// Pipeline Pages
+import NewDealPage from './pages/pipeline/NewDealPage';
+
 
 // Diagnostic component to track route changes
 const RouteChangeTracker = () => {
@@ -120,6 +123,7 @@ export default function App() {
             <Route path="invoices" element={<Invoices />} />
             <Route path="products" element={<Products />} />
             <Route path="pipeline" element={<Pipeline />} />
+            <Route path="pipeline/new" element={<NewDealPage />} />
             <Route path="calls" element={<Calls />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="upgrade" element={<UpgradePage />} />
