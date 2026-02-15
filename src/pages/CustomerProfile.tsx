@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Mail, Phone, Calendar,
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
-  Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2
+  Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
+  TrendingUp, Upload, Download, File, Image, FileSpreadsheet
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -11,6 +12,8 @@ import { useQuoteStore } from '@/stores/quoteStore';
 import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { useTaskStore } from '@/stores/taskStore';
+import { useDocumentStore, type CustomerDocument } from '@/stores/documentStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { formatPhoneDisplay } from '@/utils/phone.utils';
 import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
@@ -335,6 +338,9 @@ function OverviewTab({
   quotesLabels: any;
   invoicesLabels: any;
 }) {
+  const navigate = useNavigate();
+  const { currentOrganization } = useOrganizationStore();
+  const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
 
   return (
@@ -548,6 +554,40 @@ function OverviewTab({
             Quick Actions
           </h3>
           <div className="space-y-2">
+            {/* New Application — mortgage_broker only */}
+            {isMortgage && enabledModuleIds.includes('pipeline') && (
+              <button
+                onClick={() => navigate(`/dashboard/pipeline/new?customer=${customer.id}`)}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <TrendingUp size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">New Application</span>
+              </button>
+            )}
+
+            {/* Send Email — mortgage_broker only */}
+            {isMortgage && customer.email && (
+              <button
+                onClick={() => window.open(`mailto:${customer.email}`, '_blank')}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <Mail size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">Send Email</span>
+              </button>
+            )}
+
+            {/* Send SMS — mortgage_broker only */}
+            {isMortgage && customer.phone && (
+              <button
+                onClick={() => window.open(`sms:${customer.phone}`, '_blank')}
+                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+              >
+                <MessageSquare size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-white">Send SMS</span>
+              </button>
+            )}
+
+            {/* Schedule Meeting — all industries */}
             {enabledModuleIds.includes('calendar') && (
               <button
                 onClick={onScheduleMeeting}
@@ -557,7 +597,9 @@ function OverviewTab({
                 <span className="text-sm text-gray-900 dark:text-white">Schedule Meeting</span>
               </button>
             )}
-            {enabledModuleIds.includes('quotes') && (
+
+            {/* New Quote — non-mortgage industries only */}
+            {!isMortgage && enabledModuleIds.includes('quotes') && (
               <button
                 onClick={onCreateQuote}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
@@ -566,7 +608,9 @@ function OverviewTab({
                 <span className="text-sm text-gray-900 dark:text-white">{quotesLabels.newButton}</span>
               </button>
             )}
-            {enabledModuleIds.includes('invoices') && (
+
+            {/* New Invoice/Commission — non-mortgage industries only */}
+            {!isMortgage && enabledModuleIds.includes('invoices') && (
               <button
                 onClick={onCreateInvoice}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
@@ -575,13 +619,15 @@ function OverviewTab({
                 <span className="text-sm text-gray-900 dark:text-white">{invoicesLabels.newButton}</span>
               </button>
             )}
+
+            {/* Add Task / Add Follow-up — all industries */}
             {enabledModuleIds.includes('tasks') && (
               <button
                 onClick={onAddTask}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
               >
                 <CheckSquare size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm text-gray-900 dark:text-white">Add Task</span>
+                <span className="text-sm text-gray-900 dark:text-white">{isMortgage ? 'Add Follow-up' : 'Add Task'}</span>
               </button>
             )}
           </div>
@@ -683,26 +729,142 @@ function CommunicationsTab({ customer: _customer }: { customer: Customer }) {
   );
 }
 
-function DocumentsTab({ customer: _customer }: { customer: Customer }) {
+function DocumentsTab({ customer }: { customer: Customer }) {
+  const { documents, loading, fetchDocuments, uploadDocument, deleteDocument, getDownloadUrl } = useDocumentStore();
+  const [uploading, setUploading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('general');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const categories = [
+    { value: 'general', label: 'General' },
+    { value: 'purchase_agreement', label: 'Purchase Agreement' },
+    { value: 'pre_approval', label: 'Pre-Approval' },
+    { value: 'income_verification', label: 'Income Verification' },
+    { value: 'identity', label: 'ID / Identity' },
+    { value: 'appraisal', label: 'Appraisal' },
+    { value: 'closing', label: 'Closing Documents' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  useEffect(() => {
+    fetchDocuments(customer.id);
+  }, [customer.id, fetchDocuments]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await uploadDocument(customer.id, file, selectedCategory);
+      }
+    } catch (error) {
+      toast.error('Failed to upload document');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownload = async (doc: CustomerDocument) => {
+    const url = await getDownloadUrl(doc.file_path);
+    if (url) window.open(url, '_blank');
+  };
+
+  const handleDelete = async (doc: CustomerDocument) => {
+    if (confirm(`Delete "${doc.file_name}"?`)) {
+      await deleteDocument(doc.id, doc.file_path);
+    }
+  };
+
+  const getFileIcon = (mimeType: string | null) => {
+    if (mimeType?.startsWith('image/')) return <Image size={20} className="text-blue-500" />;
+    if (mimeType?.includes('spreadsheet') || mimeType?.includes('excel')) return <FileSpreadsheet size={20} className="text-green-500" />;
+    if (mimeType?.includes('pdf')) return <FileText size={20} className="text-red-500" />;
+    return <File size={20} className="text-gray-500" />;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Documents
-          </h2>
-          <button className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            <Plus size={16} className="mr-2" />
-            Upload Document
-          </button>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Documents</h2>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+            >
+              {categories.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleUpload}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt,.csv"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Upload size={16} className="mr-2" />
+              {uploading ? 'Uploading...' : 'Upload'}
+            </button>
+          </div>
         </div>
 
-        <div className="text-center py-12">
-          <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">
-            No documents uploaded yet
-          </p>
-        </div>
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">Loading documents...</div>
+        ) : documents.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">No documents uploaded yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Upload purchase agreements, pre-approvals, and other files</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {documents.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  {getFileIcon(doc.mime_type)}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.file_name}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatFileSize(doc.file_size)} · {categories.find(c => c.value === doc.category)?.label || doc.category} · {new Date(doc.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => handleDownload(doc)}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Download"
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(doc)}
+                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

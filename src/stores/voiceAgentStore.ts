@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
-import { retellService, type ProvisionVoiceAgentParams } from '@/services/retell.service';
+import { retellService, type ProvisionVoiceAgentParams, type UpdateAgentParams, type KnowledgeBase, type ManageKBParams } from '@/services/retell.service';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
@@ -66,7 +66,16 @@ interface VoiceAgentStore {
     isProvisioned: () => boolean;
     getPhoneNumber: () => string | null;
     provisionAgent: (params: Omit<ProvisionVoiceAgentParams, 'organizationId'>) => Promise<{ success: boolean; phoneNumber?: string; error?: string }>;
-    updateRetellAgent: (params: { agentName?: string; businessName?: string; brokerPhone?: string; brokerName?: string }) => Promise<{ success: boolean; error?: string }>;
+    updateRetellAgent: (params: Omit<UpdateAgentParams, 'organizationId'>) => Promise<{ success: boolean; error?: string }>;
+    // Knowledge base actions
+    knowledgeBases: KnowledgeBase[];
+    kbLoading: boolean;
+    fetchKnowledgeBases: () => Promise<void>;
+    createKnowledgeBase: (name: string, texts?: Array<{ title: string; text: string }>, urls?: string[]) => Promise<{ success: boolean; knowledgeBaseId?: string; error?: string }>;
+    addTextToKB: (knowledgeBaseId: string, title: string, text: string) => Promise<{ success: boolean; error?: string }>;
+    addUrlToKB: (knowledgeBaseId: string, url: string) => Promise<{ success: boolean; error?: string }>;
+    deleteKnowledgeBase: (knowledgeBaseId: string) => Promise<{ success: boolean; error?: string }>;
+    attachKBsToAgent: (knowledgeBaseIds: string[]) => Promise<{ success: boolean; error?: string }>;
 }
 
 const DEFAULT_CONFIG: Omit<VoiceAgentConfig, 'id' | 'organization_id' | 'created_at' | 'updated_at'> = {
@@ -112,6 +121,8 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     loading: false,
     provisioning: false,
     error: null,
+    knowledgeBases: [],
+    kbLoading: false,
 
     fetchConfig: async () => {
         const organizationId = useOrganizationStore.getState().currentOrganization?.id;

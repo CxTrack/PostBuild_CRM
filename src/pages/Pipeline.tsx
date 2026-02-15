@@ -7,9 +7,10 @@ import { useCustomerStore } from '@/stores/customerStore';
 import {
   Plus, Search, FileText, DollarSign, TrendingUp,
   LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Trash2, ArrowRightCircle
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
 import { usePipelineConfigStore } from '../stores/pipelineConfigStore';
 import { useDealStore } from '../stores/dealStore';
@@ -25,6 +26,7 @@ interface PipelineItem {
   id: string;
   type: 'quote' | 'invoice' | 'deal';
   number: string;
+  customer_id?: string;
   customer_name: string;
   customer_email: string;
   total_amount: number;
@@ -46,7 +48,7 @@ const Pipeline: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { customers, fetchCustomers } = useCustomerStore();
-  const { deals, fetchDeals } = useDealStore();
+  const { deals, fetchDeals, deleteDeal, moveDealToStage } = useDealStore();
   const { currentOrganization, loading: orgLoading, demoMode, _hasHydrated } = useOrganizationStore();
   const { stages: configStages, fetchPipelineStages, getStageColor: getStageColorFromStore, getStageByKey } = usePipelineConfigStore();
   const { canAccessSharedModule } = usePermissions();
@@ -95,6 +97,9 @@ const Pipeline: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showItemMenu, setShowItemMenu] = useState(false);
+  const [filterDateRange, setFilterDateRange] = useState('all');
+  const [filterValueMin, setFilterValueMin] = useState('');
 
   // Stage tab scroll
   const stageTabsRef = useRef<HTMLDivElement>(null);
@@ -168,6 +173,7 @@ const Pipeline: React.FC = () => {
           id: deal.id,
           type: 'deal',
           number: deal.title || 'Untitled Deal',
+          customer_id: deal.customer_id,
           customer_name: customer?.name || deal.customers?.name || 'Unknown',
           customer_email: customer?.email || deal.customers?.email || '',
           total_amount: Number(deal.value || 0),
@@ -243,7 +249,45 @@ const Pipeline: React.FC = () => {
 
     const matchesStage = selectedStage === 'all' || item.stage === selectedStage;
 
-    return matchesSearch && matchesStage;
+    // Date range filter
+    let matchesDate = true;
+    if (filterDateRange !== 'all') {
+      const itemDate = new Date(item.created_at);
+      const now = new Date();
+      switch (filterDateRange) {
+        case 'today':
+          matchesDate = itemDate.toDateString() === now.toDateString();
+          break;
+        case '7d':
+          matchesDate = itemDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          matchesDate = itemDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          matchesDate = itemDate >= new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case 'ytd':
+          matchesDate = itemDate >= new Date(now.getFullYear(), 0, 1);
+          break;
+      }
+    }
+
+    // Value range filter
+    let matchesValue = true;
+    if (filterValueMin && filterValueMin !== 'all') {
+      const amount = item.total_amount;
+      switch (filterValueMin) {
+        case 'under_1k': matchesValue = amount < 1000; break;
+        case '1k_10k': matchesValue = amount >= 1000 && amount < 10000; break;
+        case '10k_50k': matchesValue = amount >= 10000 && amount < 50000; break;
+        case '50k_100k': matchesValue = amount >= 50000 && amount < 100000; break;
+        case '100k_500k': matchesValue = amount >= 100000 && amount < 500000; break;
+        case 'over_500k': matchesValue = amount >= 500000; break;
+      }
+    }
+
+    return matchesSearch && matchesStage && matchesDate && matchesValue;
   });
 
   const handleSort = (field: SortField) => {
@@ -592,6 +636,34 @@ const Pipeline: React.FC = () => {
         </div>
       </div>
 
+      {/* Filters */}
+      <FilterBar
+        dateRange={{
+          value: filterDateRange,
+          onChange: setFilterDateRange,
+        }}
+        filters={[
+          {
+            id: 'value_range',
+            label: 'Value Range',
+            options: [
+              { value: 'under_1k', label: 'Under $1,000' },
+              { value: '1k_10k', label: '$1,000 - $10,000' },
+              { value: '10k_50k', label: '$10,000 - $50,000' },
+              { value: '50k_100k', label: '$50,000 - $100,000' },
+              { value: '100k_500k', label: '$100,000 - $500,000' },
+              { value: 'over_500k', label: 'Over $500,000' },
+            ],
+            value: filterValueMin,
+            onChange: setFilterValueMin,
+          },
+        ]}
+        onClearAll={() => {
+          setFilterDateRange('all');
+          setFilterValueMin('');
+        }}
+      />
+
       {/* Views */}
       {(!_hasHydrated || loading || orgLoading || (!currentOrganization && !demoMode)) ? (
         <div className="space-y-6">
@@ -602,10 +674,14 @@ const Pipeline: React.FC = () => {
         <Card className="p-12 text-center">
           <FileText className={`w-16 h-16 mx-auto mb-4 ${theme === 'soft-modern' ? '' : 'text-gray-400 dark:text-gray-500'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined} />
           <h3 className={`text-xl font-semibold mb-2 ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
-            {labels.emptyStateTitle}
+            {selectedStage !== 'all'
+              ? `No ${labels.entityPlural} in ${getStageLabel(selectedStage)}`
+              : labels.emptyStateTitle}
           </h3>
           <p className={`mb-6 ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
-            {labels.emptyStateDescription}
+            {selectedStage !== 'all'
+              ? `There are no ${labels.entityPlural} currently in the ${getStageLabel(selectedStage)} stage`
+              : labels.emptyStateDescription}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
@@ -793,20 +869,73 @@ const Pipeline: React.FC = () => {
 
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => navigate(`/${selectedItem.type === 'quote' ? 'quotes' : 'invoices'}/${selectedItem.id}`)}
+                      onClick={() => {
+                        if (selectedItem.type === 'deal' && selectedItem.customer_id) {
+                          navigate(`/dashboard/customers/${selectedItem.customer_id}`);
+                        } else if (selectedItem.type === 'quote') {
+                          navigate(`/quotes/${selectedItem.id}`);
+                        } else {
+                          navigate(`/invoices/${selectedItem.id}`);
+                        }
+                      }}
                       className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                     >
                       View Details
                     </button>
                     <button
-                      onClick={() => navigate(`/${selectedItem.type === 'quote' ? 'quotes' : 'invoices'}/builder/${selectedItem.id}`)}
+                      onClick={() => {
+                        if (selectedItem.type === 'deal') {
+                          navigate(`/dashboard/pipeline/new?edit=${selectedItem.id}`);
+                        } else if (selectedItem.type === 'quote') {
+                          navigate(`/quotes/builder/${selectedItem.id}`);
+                        } else {
+                          navigate(`/invoices/builder/${selectedItem.id}`);
+                        }
+                      }}
                       className="px-6 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-900 dark:text-white"
                     >
                       Edit
                     </button>
-                    <button className="p-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                      <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowItemMenu(!showItemMenu)}
+                        className="p-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                      </button>
+                      {showItemMenu && (
+                        <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                          {selectedItem.type === 'deal' && STAGES.filter(s => s.id !== selectedItem.stage).slice(0, 4).map(stage => (
+                            <button
+                              key={stage.id}
+                              onClick={() => {
+                                moveDealToStage(selectedItem.id, stage.id as any);
+                                setShowItemMenu(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                            >
+                              <ArrowRightCircle size={14} />
+                              Move to {stage.name}
+                            </button>
+                          ))}
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Delete this ${labels.entitySingular}?`)) {
+                                if (selectedItem.type === 'deal') {
+                                  await deleteDeal(selectedItem.id);
+                                }
+                                setSelectedItem(null);
+                                setShowItemMenu(false);
+                              }
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

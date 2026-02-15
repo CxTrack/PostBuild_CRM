@@ -1,32 +1,35 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Receipt, DollarSign, TrendingUp, TrendingDown,
-    Plus, Calendar, PieChart, ArrowUpRight, ArrowDownRight,
+    Plus, PieChart,
     Trash2, Edit, Lock
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useInvoiceStore } from '@/stores/invoiceStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useDealStore } from '@/stores/dealStore';
+import { useNavigate } from 'react-router-dom';
 import { PageContainer, Card, IconBadge, Button } from '@/components/theme/ThemeComponents';
 import ExpenseModal from '@/components/financials/ExpenseModal';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { usePageLabels } from '@/hooks/usePageLabels';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export const Financials: React.FC = () => {
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<any>(undefined);
-    const [dateRange] = useState({
-        start: startOfMonth(new Date()),
-        end: endOfMonth(new Date())
-    });
+    const [filterDateRange, setFilterDateRange] = useState('all');
 
     const { expenses, fetchExpenses, categories, fetchCategories, deleteExpense } = useExpenseStore();
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { currentOrganization } = useOrganizationStore();
+    const { deals, fetchDeals } = useDealStore();
     const { canAccessSharedModule } = usePermissions();
     const labels = usePageLabels('financials');
+    const navigate = useNavigate();
+    const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
 
     const hasAccess = canAccessSharedModule('financials');
 
@@ -35,11 +38,28 @@ export const Financials: React.FC = () => {
             fetchExpenses(currentOrganization.id);
             fetchInvoices(currentOrganization.id);
             fetchCategories(currentOrganization.id);
+            if (isMortgage) {
+                fetchDeals();
+            }
         }
     }, [currentOrganization?.id]);
 
     const stats = useMemo(() => {
-        const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.total_amount), 0);
+        // Filter expenses by date range
+        const filteredExpenses = filterDateRange === 'all' ? expenses : expenses.filter(e => {
+            const expDate = new Date(e.expense_date);
+            const now = new Date();
+            switch (filterDateRange) {
+                case 'today': return expDate.toDateString() === now.toDateString();
+                case '7d': return expDate >= new Date(now.getTime() - 7 * 86400000);
+                case '30d': return expDate >= new Date(now.getTime() - 30 * 86400000);
+                case '90d': return expDate >= new Date(now.getTime() - 90 * 86400000);
+                case 'ytd': return expDate >= new Date(now.getFullYear(), 0, 1);
+                default: return true;
+            }
+        });
+
+        const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0);
         const totalRevenue = invoices
             .filter(inv => inv.status === 'paid')
             .reduce((sum, inv) => sum + Number(inv.total_amount), 0);
@@ -48,10 +68,16 @@ export const Financials: React.FC = () => {
             .filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled')
             .reduce((sum, inv) => sum + Number(inv.amount_due), 0);
 
-        const netProfit = totalRevenue - totalExpenses;
+        const commissionIncome = isMortgage
+            ? deals
+                .filter((d: any) => d.stage === 'funded' || d.final_status === 'Sale')
+                .reduce((sum: number, d: any) => sum + Number(d.commission_amount || 0) + Number(d.volume_commission_amount || 0), 0)
+            : 0;
 
-        return { totalExpenses, totalRevenue, pendingRevenue, netProfit };
-    }, [expenses, invoices]);
+        const netProfit = (isMortgage ? commissionIncome : totalRevenue) - totalExpenses;
+
+        return { totalExpenses, totalRevenue, pendingRevenue, netProfit, commissionIncome };
+    }, [expenses, invoices, deals, isMortgage, filterDateRange]);
 
     const handleDeleteExpense = async (id: string) => {
         if (confirm('Are you sure you want to delete this expense?')) {
@@ -63,6 +89,22 @@ export const Financials: React.FC = () => {
             }
         }
     };
+
+    const filteredExpensesList = useMemo(() => {
+        if (filterDateRange === 'all') return expenses;
+        return expenses.filter(e => {
+            const expDate = new Date(e.expense_date);
+            const now = new Date();
+            switch (filterDateRange) {
+                case 'today': return expDate.toDateString() === now.toDateString();
+                case '7d': return expDate >= new Date(now.getTime() - 7 * 86400000);
+                case '30d': return expDate >= new Date(now.getTime() - 30 * 86400000);
+                case '90d': return expDate >= new Date(now.getTime() - 90 * 86400000);
+                case 'ytd': return expDate >= new Date(now.getFullYear(), 0, 1);
+                default: return true;
+            }
+        });
+    }, [expenses, filterDateRange]);
 
     if (!hasAccess) {
         return (
@@ -91,10 +133,14 @@ export const Financials: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <Button variant="secondary" className="flex items-center">
-                        <Calendar size={18} className="mr-2" />
-                        {format(dateRange.start, 'MMM d')} - {format(dateRange.end, 'MMM d')}
-                    </Button>
+                    <FilterBar
+                        dateRange={{
+                            value: filterDateRange,
+                            onChange: setFilterDateRange,
+                        }}
+                        filters={[]}
+                        onClearAll={() => setFilterDateRange('all')}
+                    />
                     <Button variant="danger" onClick={() => setShowExpenseModal(true)} className="flex items-center">
                         <Plus size={18} className="mr-2" />
                         {labels.newButton}
@@ -106,15 +152,12 @@ export const Financials: React.FC = () => {
                 <Card className="relative overflow-hidden group">
                     <div className="flex items-center justify-between mb-4">
                         <IconBadge icon={<TrendingUp size={24} className="text-emerald-600" />} gradient="bg-emerald-50" />
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex items-center">
-                            <ArrowUpRight size={12} className="mr-1" /> +12%
-                        </span>
                     </div>
-                    <p className="text-sm font-bold text-gray-500 uppercase">Total Revenue</p>
+                    <p className="text-sm font-bold text-gray-500 uppercase">{isMortgage ? 'Commission Income' : 'Total Revenue'}</p>
                     <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-1">
-                        ${stats.totalRevenue.toLocaleString()}
+                        ${isMortgage ? stats.commissionIncome.toLocaleString() : stats.totalRevenue.toLocaleString()}
                     </h3>
-                    <p className="text-xs text-emerald-600 mt-2 font-medium">Realized from paid invoices</p>
+                    <p className="text-xs text-emerald-600 mt-2 font-medium">{isMortgage ? 'From funded applications' : 'Realized from paid invoices'}</p>
                     <div className="absolute bottom-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <DollarSign size={80} />
                     </div>
@@ -123,9 +166,6 @@ export const Financials: React.FC = () => {
                 <Card className="relative overflow-hidden group">
                     <div className="flex items-center justify-between mb-4">
                         <IconBadge icon={<TrendingDown size={24} className="text-rose-600" />} gradient="bg-rose-50" />
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-full flex items-center">
-                            <ArrowDownRight size={12} className="mr-1" /> -5%
-                        </span>
                     </div>
                     <p className="text-sm font-bold text-gray-500 uppercase">Total Expenses</p>
                     <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-1">
@@ -166,13 +206,13 @@ export const Financials: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {expenses.length === 0 ? (
+                            {filteredExpensesList.length === 0 ? (
                                 <div className="text-center py-20">
                                     <Receipt size={48} className="mx-auto text-gray-300 mb-4" />
                                     <p className="text-gray-500">No expenses recorded yet.</p>
                                 </div>
                             ) : (
-                                expenses.slice(0, 10).map((expense) => {
+                                filteredExpensesList.slice(0, 10).map((expense) => {
                                     const category = categories.find(c => c.id === expense.category_id);
                                     return (
                                         <div
@@ -272,7 +312,7 @@ export const Financials: React.FC = () => {
                     <Card>
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Expense Categories</h2>
                         <div className="space-y-4">
-                            {categories.slice(0, 5).map(cat => {
+                            {categories.filter((cat, index, arr) => arr.findIndex(c => c.name === cat.name) === index).slice(0, 5).map(cat => {
                                 const catExpenses = expenses.filter(e => e.category_id === cat.id);
                                 const total = catExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0);
                                 const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
@@ -290,7 +330,7 @@ export const Financials: React.FC = () => {
                                     </div>
                                 );
                             })}
-                            <Button variant="secondary" size="sm" className="w-full mt-4">Manage Categories</Button>
+                            <Button variant="secondary" size="sm" className="w-full mt-4" onClick={() => navigate('/dashboard/settings')}>Manage Categories</Button>
                         </div>
                     </Card>
                 </div>

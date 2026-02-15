@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
-  Search, Plus, Filter, Users, Building2, Mail, Phone,
+  Search, Plus, Users, Building2, Mail, Phone,
   Eye, Edit, Trash2
 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -12,6 +12,7 @@ import CustomerModal from '@/components/customers/CustomerModal';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { formatPhoneDisplay } from '@/utils/phone.utils';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CustomerTableSkeleton } from '@/components/ui/TableSkeleton';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -29,7 +30,7 @@ export const Customers: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterType, setFilterType] = useState<'all' | 'personal' | 'business'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterDateRange, setFilterDateRange] = useState('all');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [showCustomFields, setShowCustomFields] = useState(false);
@@ -84,9 +85,22 @@ export const Customers: React.FC = () => {
       const matchesType = filterType === 'all' || customer.customer_type === filterType;
       const matchesStatus = filterStatus === 'all' || customer.status === filterStatus;
 
-      return matchesSearch && matchesType && matchesStatus;
+      let matchesDate = true;
+      if (filterDateRange !== 'all') {
+        const custDate = new Date(customer.created_at);
+        const now = new Date();
+        switch (filterDateRange) {
+          case 'today': matchesDate = custDate.toDateString() === now.toDateString(); break;
+          case '7d': matchesDate = custDate >= new Date(now.getTime() - 7 * 86400000); break;
+          case '30d': matchesDate = custDate >= new Date(now.getTime() - 30 * 86400000); break;
+          case '90d': matchesDate = custDate >= new Date(now.getTime() - 90 * 86400000); break;
+          case 'ytd': matchesDate = custDate >= new Date(now.getFullYear(), 0, 1); break;
+        }
+      }
+
+      return matchesSearch && matchesType && matchesStatus && matchesDate;
     });
-  }, [customers, debouncedSearchTerm, filterType, filterStatus]);
+  }, [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange]);
 
   const handleDelete = async (id: string) => {
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
@@ -172,18 +186,6 @@ export const Customers: React.FC = () => {
           </div>
 
           <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            className={
-              showFilters
-                ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400'
-                : ''
-            }
-          >
-            <Filter size={20} />
-          </Button>
-
-          <Button
             variant="primary"
             onClick={() => setShowCustomerModal(true)}
             className="md:hidden p-2"
@@ -192,57 +194,39 @@ export const Customers: React.FC = () => {
           </Button>
         </div>
 
-        {showFilters && (
-          <div
-            className={
-              theme === 'soft-modern'
-                ? 'mt-4 p-4 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.04),-2px_-2px_6px_rgba(255,255,255,0.9)]'
-                : 'mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600'
-            }
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Type
-                </label>
-                <div className="flex space-x-2">
-                  {(['all', 'personal', 'business'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setFilterType(type)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterType === type
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                        }`}
-                    >
-                      {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Status
-                </label>
-                <div className="flex space-x-2">
-                  {(['all', 'Active', 'Inactive'] as const).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setFilterStatus(status)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === status
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                        }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <FilterBar
+          dateRange={{
+            value: filterDateRange,
+            onChange: setFilterDateRange,
+          }}
+          filters={[
+            {
+              id: 'type',
+              label: 'Type',
+              options: [
+                { value: 'personal', label: 'Personal' },
+                { value: 'business', label: 'Business' },
+              ],
+              value: filterType,
+              onChange: (v) => setFilterType(v as any),
+            },
+            {
+              id: 'status',
+              label: 'Status',
+              options: [
+                { value: 'Active', label: 'Active' },
+                { value: 'Inactive', label: 'Inactive' },
+              ],
+              value: filterStatus,
+              onChange: (v) => setFilterStatus(v as any),
+            },
+          ]}
+          onClearAll={() => {
+            setFilterType('all');
+            setFilterStatus('all');
+            setFilterDateRange('all');
+          }}
+        />
       </Card>
 
       <Card className="mb-6 p-4">

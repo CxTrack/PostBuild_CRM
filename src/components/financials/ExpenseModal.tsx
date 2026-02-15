@@ -7,6 +7,7 @@ import { Card, Button } from '@/components/theme/ThemeComponents';
 import type { Expense, PaymentMethod, ExpensePaymentStatus } from '@/types/app.types';
 import toast from 'react-hot-toast';
 import { ReceiptUpload } from '@/components/ui/ReceiptUpload';
+import { supabase } from '@/lib/supabase';
 import type { ReceiptScanResult } from '@/types/app.types';
 
 interface ExpenseModalProps {
@@ -80,11 +81,10 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         setAiError(null);
 
         try {
-            // Use direct fetch instead of supabase.functions.invoke to avoid AbortController bug
+            // Use direct fetch with fresh session token to avoid AbortController bug
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const storageKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
-            const stored = localStorage.getItem(storageKey);
-            const token = stored ? JSON.parse(stored)?.access_token : null;
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
             if (!token) throw new Error('Not authenticated. Please refresh and try again.');
 
             const response = await fetch(`${supabaseUrl}/functions/v1/receipt-scan`, {

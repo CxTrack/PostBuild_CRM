@@ -5,6 +5,7 @@ import {
     Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import toast from 'react-hot-toast';
@@ -17,6 +18,7 @@ const STEPS = [
 ];
 
 export const VoiceAgentSetup = () => {
+    const { currentOrganization } = useOrganizationStore();
     const {
         config,
         usage,
@@ -123,8 +125,9 @@ export const VoiceAgentSetup = () => {
                 const result = await provisionAgent({
                     agentName: formData.agent_name || 'AI Assistant',
                     businessName: formData.business_name || 'My Business',
-                    brokerPhone: formData.broker_phone,
-                    brokerName: formData.broker_name || formData.agent_name,
+                    industry: currentOrganization?.industry_template || undefined,
+                    ownerPhone: formData.broker_phone,
+                    ownerName: formData.broker_name || formData.agent_name,
                     agentInstructions: formData.business_description,
                 });
 

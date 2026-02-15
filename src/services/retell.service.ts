@@ -4,12 +4,16 @@ export interface ProvisionVoiceAgentParams {
   organizationId: string;
   agentName: string;
   businessName: string;
+  industry?: string;
   greetingScript?: string;
   areaCode?: number;
   countryCode?: string;
-  brokerPhone: string;
-  brokerName: string;
+  ownerPhone: string;
+  ownerName: string;
   agentInstructions?: string;
+  // Legacy aliases (edge function accepts both)
+  brokerPhone?: string;
+  brokerName?: string;
 }
 
 export interface ProvisionResult {
@@ -23,11 +27,69 @@ export interface ProvisionResult {
 
 export interface UpdateAgentParams {
   organizationId: string;
+  // Agent-level settings (synced to Retell Agent API)
   agentName?: string;
   businessName?: string;
+  voiceId?: string;
+  voiceSpeed?: number;
+  voiceTemperature?: number;
+  responsiveness?: number;
+  interruptionSensitivity?: number;
+  enableBackchannel?: boolean;
+  ambientSound?: string | null;
+  language?: string;
+  maxCallDurationMs?: number;
+  endCallAfterSilenceMs?: number;
+  enableVoicemailDetection?: boolean;
+  voicemailMessage?: string;
+  // LLM-level settings (synced to Retell LLM API)
+  generalPrompt?: string;
+  beginMessage?: string;
+  model?: string;
+  modelTemperature?: number;
+  knowledgeBaseIds?: string[];
+  // DB-only settings
   brokerPhone?: string;
   brokerName?: string;
   isActive?: boolean;
+  agentTone?: string;
+  greetingScript?: string;
+  handlingPreference?: string;
+  fallbackBehavior?: string;
+  commonCallReasons?: string[];
+  businessDescription?: string;
+}
+
+// Knowledge Base types
+export type KBAction = 'create' | 'add_text' | 'add_url' | 'list' | 'delete' | 'attach_to_agent';
+
+export interface KnowledgeBase {
+  knowledge_base_id: string;
+  knowledge_base_name: string;
+  status: 'in_progress' | 'complete' | 'error' | 'refreshing_in_progress';
+  knowledge_base_sources?: Array<{
+    type: 'document' | 'text' | 'url';
+    source_id?: string;
+    title?: string;
+    url?: string;
+    status?: string;
+  }>;
+  enable_auto_refresh?: boolean;
+  last_refreshed_timestamp?: number;
+}
+
+export interface ManageKBParams {
+  organizationId: string;
+  action: KBAction;
+  knowledgeBaseName?: string;
+  texts?: Array<{ title: string; text: string }>;
+  urls?: string[];
+  enableAutoRefresh?: boolean;
+  knowledgeBaseId?: string;
+  title?: string;
+  text?: string;
+  url?: string;
+  knowledgeBaseIds?: string[];
 }
 
 export const retellService = {
@@ -69,6 +131,35 @@ export const retellService = {
       }
 
       return response.data as { success: boolean; error?: string };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      return { success: false, error: message };
+    }
+  },
+
+  async manageKnowledgeBase(params: ManageKBParams): Promise<{
+    success: boolean;
+    knowledgeBaseId?: string;
+    knowledgeBaseName?: string;
+    knowledgeBases?: KnowledgeBase[];
+    status?: string;
+    error?: string;
+  }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const response = await supabase.functions.invoke('manage-knowledge-base', {
+        body: params,
+      });
+
+      if (response.error) {
+        return { success: false, error: response.error.message };
+      }
+
+      return response.data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       return { success: false, error: message };

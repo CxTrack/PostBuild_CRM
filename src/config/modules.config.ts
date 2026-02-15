@@ -126,7 +126,7 @@ export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
   general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
   // New templates
   software_development: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes'],
-  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'invoices', 'calls', 'products', 'financials'],
+  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'products', 'financials'],
   construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
 };
 

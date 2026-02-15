@@ -2,7 +2,7 @@
 import { useDebounce } from '@/hooks/useDebounce';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search, Plus, Filter, FileText,
+  Search, Plus, FileText,
   AlertCircle, Clock, MoreVertical, List, Grid,
   Download, Eye, Edit, Send, Trash2, Archive, CheckCircle2,
   ArrowRight, Wallet, CreditCard
@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { usePermissions } from '@/hooks/usePermissions';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { Lock } from 'lucide-react';
 import type { InvoiceStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
@@ -27,6 +28,8 @@ export default function Invoices() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<'all' | InvoiceStatus>('all');
+  const [filterDateRange, setFilterDateRange] = useState('all');
+  const [filterAmountRange, setFilterAmountRange] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
@@ -80,8 +83,39 @@ export default function Invoices() {
       );
     }
 
+    // Date range filter
+    if (filterDateRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(inv => {
+        const invDate = new Date(inv.created_at || inv.invoice_date);
+        switch (filterDateRange) {
+          case 'today': return invDate.toDateString() === now.toDateString();
+          case '7d': return invDate >= new Date(now.getTime() - 7 * 86400000);
+          case '30d': return invDate >= new Date(now.getTime() - 30 * 86400000);
+          case '90d': return invDate >= new Date(now.getTime() - 90 * 86400000);
+          case 'ytd': return invDate >= new Date(now.getFullYear(), 0, 1);
+          default: return true;
+        }
+      });
+    }
+
+    // Amount range filter
+    if (filterAmountRange && filterAmountRange !== 'all') {
+      filtered = filtered.filter(inv => {
+        const amount = inv.total_amount;
+        switch (filterAmountRange) {
+          case 'under_500': return amount < 500;
+          case '500_1k': return amount >= 500 && amount < 1000;
+          case '1k_5k': return amount >= 1000 && amount < 5000;
+          case '5k_10k': return amount >= 5000 && amount < 10000;
+          case 'over_10k': return amount >= 10000;
+          default: return true;
+        }
+      });
+    }
+
     return filtered;
-  }, [invoices, filterStatus, debouncedSearchTerm]);
+  }, [invoices, filterStatus, debouncedSearchTerm, filterDateRange, filterAmountRange]);
 
   const stats = useMemo(() => {
     const totalValue = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
@@ -411,11 +445,35 @@ export default function Invoices() {
             </button>
           </div>
 
-          <button className="p-2 bg-slate-100 dark:bg-gray-700 rounded-lg text-slate-500 hover:text-slate-700 transition-all">
-            <Filter size={18} />
-          </button>
         </div>
       </div>
+
+      {/* Filters */}
+      <FilterBar
+        dateRange={{
+          value: filterDateRange,
+          onChange: setFilterDateRange,
+        }}
+        filters={[
+          {
+            id: 'amount_range',
+            label: 'Amount Range',
+            options: [
+              { value: 'under_500', label: 'Under $500' },
+              { value: '500_1k', label: '$500 - $1,000' },
+              { value: '1k_5k', label: '$1,000 - $5,000' },
+              { value: '5k_10k', label: '$5,000 - $10,000' },
+              { value: 'over_10k', label: 'Over $10,000' },
+            ],
+            value: filterAmountRange,
+            onChange: setFilterAmountRange,
+          },
+        ]}
+        onClearAll={() => {
+          setFilterDateRange('all');
+          setFilterAmountRange('');
+        }}
+      />
 
       <div className="flex-1 overflow-y-auto">
         {filteredInvoices.length === 0 ? (

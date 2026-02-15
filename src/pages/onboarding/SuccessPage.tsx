@@ -59,8 +59,8 @@ export default function SuccessPage() {
 
   const isRequest = type === 'custom_crm' || type === 'audit' || type === 'config' || type === 'enterprise';
   const hasVoiceConfig = lead?.voiceConfig && skipped !== 'voice';
-  const isMortgageBroker = lead?.industry === 'mortgage_broker';
-  const showVoiceProvisioning = hasVoiceConfig && (isMortgageBroker || lead?.voiceConfig?.agentName);
+  // Show voice provisioning for ANY industry that completed voice setup during onboarding
+  const showVoiceProvisioning = hasVoiceConfig && !!lead?.voiceConfig?.agentName;
 
   const handleProvisionAgent = async () => {
     if (!lead?.organizationId || !lead?.voiceConfig) {
@@ -80,8 +80,9 @@ export default function SuccessPage() {
         organizationId: lead.organizationId,
         agentName: lead.voiceConfig.agentName || 'AI Assistant',
         businessName: lead.company || lead.businessName || 'My Business',
-        brokerPhone: lead.phone || '',
-        brokerName: lead.name || lead.firstName || '',
+        industry: lead.industry || 'general_business',
+        ownerPhone: lead.phone || '',
+        ownerName: lead.name || lead.firstName || '',
         agentInstructions: lead.voiceConfig.agentInstructions || '',
         countryCode: lead.country === 'CA' ? 'CA' : 'US',
       });
