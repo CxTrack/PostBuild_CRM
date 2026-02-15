@@ -45,6 +45,8 @@ export interface Conversation {
     organization_id?: string;
     name?: string;
     is_group?: boolean;
+    channel_type?: 'direct' | 'group' | 'channel';
+    description?: string;
     created_by?: string;
     created_at?: string;
     updated_at: string;
