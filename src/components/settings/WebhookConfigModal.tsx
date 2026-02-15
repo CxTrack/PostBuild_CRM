@@ -16,12 +16,12 @@ interface WebhookConfigModalProps {
 const AVAILABLE_EVENTS = [
     { id: 'customer.created', label: 'Customer Created' },
     { id: 'customer.updated', label: 'Customer Updated' },
-    { id: 'deal.created', label: 'Deal Created' },
-    { id: 'deal.updated', label: 'Deal Updated' },
     { id: 'invoice.created', label: 'Invoice Created' },
     { id: 'invoice.paid', label: 'Invoice Paid' },
     { id: 'quote.created', label: 'Quote Created' },
-    { id: 'quote.accepted', label: 'Quote Accepted' },
+    { id: 'appointment.booked', label: 'Appointment Booked' },
+    { id: 'deal.stage_changed', label: 'Deal Stage Changed' },
+    { id: 'task.completed', label: 'Task Completed' },
 ];
 
 export const WebhookConfigModal = ({ isOpen, onClose, organizationId, webhook, onSaved }: WebhookConfigModalProps) => {

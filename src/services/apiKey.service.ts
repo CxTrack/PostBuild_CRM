@@ -5,8 +5,16 @@ export interface ApiKey {
     organization_id: string;
     name: string;
     key_prefix: string;
+    key_hash?: string;
     created_at: string;
     last_used_at: string | null;
+}
+
+async function hashKey(key: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(key);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export const apiKeyService = {
@@ -22,26 +30,29 @@ export const apiKeyService = {
     },
 
     async createApiKey(organizationId: string, name: string): Promise<{ key: string; apiKey: ApiKey }> {
-        const prefix = 'ct_';
+        const prefix = 'cxtrack_live_';
         const secretPart = Array.from(crypto.getRandomValues(new Uint8Array(24)))
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
         const fullKey = `${prefix}${secretPart}`;
 
-        // In a real app, you'd store a hash of the key, not the key itself
+        // Hash the key before storing — full key is only shown once to the user
+        const keyHash = await hashKey(fullKey);
+
         const { data, error } = await supabase
             .from('api_keys')
             .insert({
                 organization_id: organizationId,
                 name,
                 key_prefix: prefix + secretPart.substring(0, 4) + '...',
-                // key_hash: hash(fullKey), 
+                key_hash: keyHash,
             })
             .select()
             .single();
 
         if (error) throw error;
 
+        // Return the full key ONCE — it cannot be retrieved again after this
         return { key: fullKey, apiKey: data };
     },
 
