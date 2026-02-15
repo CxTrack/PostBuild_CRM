@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -92,6 +92,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [attachedFile, setAttachedFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const [createType, setCreateType] = useState<'group' | 'channel'>('group');
     const [chatSettings, setChatSettings] = useState<ChatSettings>(() => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
@@ -214,6 +215,23 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 console.error('Error sending message:', error);
                 // Optionally, revert the message or show an error to the user
             }
+        }
+
+        // AI Response Logic
+        if (activeConversation.id === 'ai-agent' || activeConversation.name === 'Sparky AI') {
+            setIsTyping(true);
+            setTimeout(async () => {
+                const aiMsg: Message = {
+                    id: `ai-${Date.now()}`,
+                    content: `Hi! I'm Sparky, your CxTrack AI Assistant. I can help you manage your CRM, check deal statuses, or even draft emails. You just said: "${messageContent}". How else can I help?`,
+                    sender_id: 'sparky-ai',
+                    created_at: new Date().toISOString(),
+                    sender: { full_name: 'Sparky AI' },
+                    reactions: [],
+                };
+                setMessages(prev => [...prev, aiMsg]);
+                setIsTyping(false);
+            }, 1500);
         }
     };
 
@@ -394,6 +412,48 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             return (
                                 <>
                                     {/* Channels Section */}
+                                    {/* AI Assistant Section */}
+                                    <div className="mb-6">
+                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 block flex items-center gap-2">
+                                            <Sparkles size={12} className="text-blue-500" /> AI Assistant
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                const aiConv: any = {
+                                                    id: 'ai-agent',
+                                                    name: 'Sparky AI',
+                                                    channel_type: 'direct',
+                                                    participants: [{ user: { full_name: 'Sparky AI' } }]
+                                                };
+                                                setActiveConversation(aiConv);
+                                                setMessages([
+                                                    {
+                                                        id: 'ai-welcome',
+                                                        content: "Hello! I'm Sparky, your AI business assistant. How can I help you today?",
+                                                        sender_id: 'sparky-ai',
+                                                        created_at: new Date().toISOString(),
+                                                        sender: { full_name: 'Sparky AI' },
+                                                        reactions: []
+                                                    }
+                                                ]);
+                                            }}
+                                            className={`
+                          w-full p-3 rounded-2xl mb-1
+                          flex items-center gap-3
+                          transition-all duration-200
+                          ${activeConversation?.id === 'ai-agent' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border border-blue-100 dark:border-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800'}
+                        `}
+                                        >
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 animate-pulse ${activeConversation?.id === 'ai-agent' ? 'bg-white/20' : 'bg-gradient-to-br from-blue-600 to-purple-600'}`}>
+                                                <Sparkles size={24} />
+                                            </div>
+                                            <div className="flex-1 text-left overflow-hidden">
+                                                <p className={`font-bold truncate ${activeConversation?.id === 'ai-agent' ? 'text-white' : 'text-gray-900 dark:text-white'}`}>Sparky AI</p>
+                                                <p className={`text-[10px] truncate ${activeConversation?.id === 'ai-agent' ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400 font-medium'}`}>Online • AI Assistant</p>
+                                            </div>
+                                        </button>
+                                    </div>
+
                                     {channels.length > 0 && (
                                         <div className="mb-4">
                                             <div className="flex items-center justify-between px-3 py-2">
@@ -516,20 +576,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
 
                             {/* Messages Area */}
                             <div className={`flex-1 overflow-y-auto p-6 ${chatSettings.compact_mode ? 'space-y-2' : 'space-y-4'}`}>
-                                {messages.map((msg) => {
-                                    const isOwn = msg.sender_id === (user?.id || 'user-me');
-                                    return (
-                                        <MessageBubble
-                                            key={msg.id}
-                                            msg={msg}
-                                            isOwn={isOwn}
-                                            currentUserId={user?.id || 'user-me'}
-                                            onAddReaction={handleAddReaction}
-                                            onRemoveReaction={handleRemoveReaction}
-                                            compact={chatSettings.compact_mode}
-                                        />
-                                    );
-                                })}
+                                {messages.map((msg) => (
+                                    <MessageBubble
+                                        key={msg.id}
+                                        msg={msg}
+                                        isOwn={msg.sender_id === (user?.id || 'user-me')}
+                                        currentUserId={user?.id || 'user-me'}
+                                        onAddReaction={handleAddReaction}
+                                        onRemoveReaction={handleRemoveReaction}
+                                        compact={chatSettings.compact_mode}
+                                    />
+                                ))}
+                                {isTyping && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-gray-100 dark:bg-gray-800 px-5 py-3 rounded-2xl rounded-bl-sm">
+                                            <div className="flex gap-1">
+                                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div ref={messagesEndRef} />
                             </div>
 

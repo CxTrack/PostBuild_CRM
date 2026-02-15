@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Save, Zap, Calendar,
     Tag as TagIcon, Info, Target, TrendingUp,
-    Clock, Repeat
+    Clock, Repeat, Building2, DollarSign
 } from 'lucide-react';
 import { useDealStore } from '@/stores/dealStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { usePipelineConfigStore } from '@/stores/pipelineConfigStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useLenderStore } from '@/stores/lenderStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
@@ -19,11 +20,18 @@ export default function NewDealPage() {
     const { customers, fetchCustomers } = useCustomerStore();
     const { stages } = usePipelineConfigStore();
     const { currentOrganization } = useOrganizationStore();
+    const { lenders, fetchLenders, createLender } = useLenderStore();
     const labels = usePageLabels('pipeline');
+    const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [tagInput, setTagInput] = useState('');
+    const [showQuickAddLender, setShowQuickAddLender] = useState(false);
+    const [newLenderName, setNewLenderName] = useState('');
+    const [newLenderCommission, setNewLenderCommission] = useState('');
+    const [newLenderVolumeCommission, setNewLenderVolumeCommission] = useState('');
+    const [addingLender, setAddingLender] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -38,11 +46,15 @@ export default function NewDealPage() {
         recurring_interval: 'monthly' as 'monthly' | 'quarterly' | 'annual',
         description: '',
         tags: [] as string[],
+        lender_id: '',
+        commission_percentage: '',
+        volume_commission_percentage: '',
     });
 
     useEffect(() => {
         fetchCustomers();
-    }, [fetchCustomers]);
+        if (isMortgage) fetchLenders();
+    }, [fetchCustomers, isMortgage, fetchLenders]);
 
     const availableStages = useMemo(() => {
         if (stages.length > 0) {
@@ -100,6 +112,37 @@ export default function NewDealPage() {
         }));
     };
 
+    const handleLenderChange = (lenderId: string) => {
+        const lender = lenders.find(l => l.id === lenderId);
+        setFormData(prev => ({
+            ...prev,
+            lender_id: lenderId,
+            commission_percentage: lender?.default_commission_pct?.toString() || prev.commission_percentage,
+            volume_commission_percentage: lender?.default_volume_commission_pct?.toString() || prev.volume_commission_percentage,
+        }));
+    };
+
+    const handleQuickAddLender = async () => {
+        if (!newLenderName.trim()) return;
+        setAddingLender(true);
+        try {
+            const lender = await createLender({
+                name: newLenderName.trim(),
+                default_commission_pct: parseFloat(newLenderCommission) || 0,
+                default_volume_commission_pct: parseFloat(newLenderVolumeCommission) || 0,
+            });
+            handleLenderChange(lender.id);
+            setShowQuickAddLender(false);
+            setNewLenderName('');
+            setNewLenderCommission('');
+            setNewLenderVolumeCommission('');
+        } catch {
+            // Error handled in store
+        } finally {
+            setAddingLender(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -125,6 +168,9 @@ export default function NewDealPage() {
                 probability: parseFloat(formData.probability) || 0,
                 expected_close_date: formData.expected_close_date || undefined,
                 description: formData.description || undefined,
+                lender_id: formData.lender_id || undefined,
+                commission_percentage: parseFloat(formData.commission_percentage) || 0,
+                volume_commission_percentage: parseFloat(formData.volume_commission_percentage) || 0,
             });
 
             navigate('/dashboard/pipeline');

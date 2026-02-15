@@ -44,11 +44,17 @@ export interface Deal {
   products?: DealProduct[];
   tags?: string[];
   metadata?: Record<string, any>;
+  lender_id?: string;
+  commission_percentage?: number;
+  volume_commission_percentage?: number;
+  commission_amount?: number;
+  volume_commission_amount?: number;
   created_by?: string;
   created_at: string;
   updated_at: string;
   customers?: DealCustomer;
   user_profiles?: DealUserProfile;
+  lenders?: { id: string; name: string; default_commission_pct: number; default_volume_commission_pct: number } | null;
 }
 
 export interface PipelineStats {
@@ -120,6 +126,12 @@ export const useDealStore = create<DealStore>((set, get) => ({
             full_name,
             email,
             avatar_url
+          ),
+          lenders:lender_id (
+            id,
+            name,
+            default_commission_pct,
+            default_volume_commission_pct
           )
         `)
         .eq('organization_id', currentOrg.id)
@@ -220,6 +232,15 @@ export const useDealStore = create<DealStore>((set, get) => ({
         tags: dealData.tags || [],
         metadata: dealData.metadata || {},
         quote_id: dealData.quote_id,
+        lender_id: dealData.lender_id || null,
+        commission_percentage: dealData.commission_percentage || 0,
+        volume_commission_percentage: dealData.volume_commission_percentage || 0,
+        commission_amount: dealData.commission_percentage
+          ? (dealData.value || 0) * (dealData.commission_percentage / 100)
+          : 0,
+        volume_commission_amount: dealData.volume_commission_percentage
+          ? (dealData.value || 0) * (dealData.volume_commission_percentage / 100)
+          : 0,
       };
 
       const { data, error } = await supabase

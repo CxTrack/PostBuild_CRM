@@ -374,10 +374,40 @@ export interface Expense {
   payment_status: ExpensePaymentStatus;
   reference_number?: string;
   receipt_url?: string;
+  ai_processed?: boolean;
   notes?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ExpenseLineItem {
+  id: string;
+  expense_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  created_at: string;
+}
+
+export interface ReceiptScanResult {
+  vendor_name: string;
+  description: string;
+  amount: number;
+  tax_amount: number;
+  total_amount: number;
+  expense_date: string;
+  payment_method: string;
+  category_suggestion: string;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    amount: number;
+  }>;
+  ai_description: string;
+  confidence: number;
 }
 
 // Import types from database

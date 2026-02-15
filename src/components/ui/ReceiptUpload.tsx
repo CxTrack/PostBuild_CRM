@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 interface ReceiptUploadProps {
     value?: string;
     onChange: (url: string | null) => void;
+    onFileUploaded?: (filePath: string) => void;
     organizationId: string;
     disabled?: boolean;
 }
@@ -22,6 +23,7 @@ const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pd
 export const ReceiptUpload: React.FC<ReceiptUploadProps> = ({
     value,
     onChange,
+    onFileUploaded,
     organizationId,
     disabled = false,
 }) => {
@@ -105,6 +107,9 @@ export const ReceiptUpload: React.FC<ReceiptUploadProps> = ({
 
             // Return the storage path (not the signed URL) for persistence
             onChange(path);
+
+            // Notify parent that file was uploaded (for AI processing)
+            onFileUploaded?.(path);
         } catch (err: any) {
             setError(err.message || 'Failed to upload receipt');
         } finally {

@@ -50,6 +50,7 @@ import CheckoutPage from './pages/onboarding/CheckoutPage';
 import SuccessPage from './pages/onboarding/SuccessPage';
 import CustomConfigPage from './pages/onboarding/CustomConfigPage';
 import { BookingPage } from './pages/public/BookingPage';
+import { SharedDocumentViewer } from './pages/public/SharedDocumentViewer';
 
 // Pipeline Pages
 import NewDealPage from './pages/pipeline/NewDealPage';
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="/onboarding/success" element={<SuccessPage />} />
           <Route path="/onboarding/custom-config" element={<CustomConfigPage />} />
           <Route path="/book/:slug" element={<BookingPage />} />
+          <Route path="/share/:type/:token" element={<SharedDocumentViewer />} />
 
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}

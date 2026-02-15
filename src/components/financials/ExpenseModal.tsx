@@ -7,6 +7,8 @@ import { Card, Button } from '@/components/theme/ThemeComponents';
 import type { Expense, PaymentMethod, ExpensePaymentStatus } from '@/types/app.types';
 import toast from 'react-hot-toast';
 import { ReceiptUpload } from '@/components/ui/ReceiptUpload';
+import { supabase } from '@/lib/supabase';
+import type { ReceiptScanResult } from '@/types/app.types';
 
 interface ExpenseModalProps {
     isOpen: boolean;
@@ -40,6 +42,60 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
     const [aiResult, setAiResult] = useState<any>(null);
     const [aiProcessing, setAiProcessing] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+
+    const applyAiData = (result: ReceiptScanResult) => {
+        // Find matching category by name
+        const matchedCategory = categories.find(
+            c => c.name.toLowerCase() === result.category_suggestion?.toLowerCase()
+        );
+
+        setFormData(prev => ({
+            ...prev,
+            description: result.ai_description || result.description || prev.description,
+            amount: result.amount || prev.amount,
+            tax_amount: result.tax_amount ?? prev.tax_amount,
+            total_amount: result.total_amount || prev.total_amount,
+            expense_date: result.expense_date || prev.expense_date,
+            vendor_name: result.vendor_name || prev.vendor_name,
+            payment_method: (result.payment_method as PaymentMethod) || prev.payment_method,
+            category_id: matchedCategory?.id || prev.category_id,
+            notes: prev.notes || (result.vendor_name ? `AI-scanned receipt from ${result.vendor_name}` : ''),
+        }));
+
+        setAccordionOpen(true); // Open accordion so user can review
+    };
+
+    const processReceipt = async (filePath: string) => {
+        setAiProcessing(true);
+        setAiError(null);
+
+        try {
+            const { data, error } = await supabase.functions.invoke('receipt-scan', {
+                body: { file_path: filePath, bucket: 'receipts' },
+            });
+
+            if (error) throw new Error(error.message || 'Failed to scan receipt');
+            if (!data?.success) throw new Error(data?.error || 'Scan failed');
+
+            const result: ReceiptScanResult = data.data;
+            setAiResult(result);
+
+            // Auto-apply if confidence is high enough
+            if (result.confidence >= 0.7) {
+                applyAiData(result);
+                toast.success('Receipt scanned! Review the extracted data below.');
+            } else {
+                toast('Receipt scanned with low confidence. Please review manually.', { icon: '⚠️' });
+                setAccordionOpen(true);
+            }
+        } catch (err: any) {
+            setAiError(err.message || 'Failed to process receipt');
+            toast.error('Receipt scan failed. Please enter details manually.');
+            setAccordionOpen(true); // Open form so user can enter manually
+        } finally {
+            setAiProcessing(false);
+        }
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -88,12 +144,13 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         setIsSubmitting(true);
         try {
             if (expense?.id) {
-                await updateExpense(expense.id, formData);
+                await updateExpense(expense.id, { ...formData, ai_processed: !!aiResult });
                 toast.success('Expense updated successfully');
             } else {
                 await createExpense({
                     ...formData as any,
                     organization_id: currentOrganization.id,
+                    ai_processed: !!aiResult,
                 });
                 toast.success('Expense recorded successfully');
             }
@@ -125,6 +182,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                         <ReceiptUpload
                             value={formData.receipt_url || ''}
                             onChange={(url) => setFormData({ ...formData, receipt_url: url || '' })}
+                            onFileUploaded={processReceipt}
                             organizationId={currentOrganization?.id || ''}
                             disabled={isSubmitting || aiProcessing}
                         />
@@ -368,8 +426,9 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                             <ReceiptUpload
                                                 value={formData.receipt_url || ''}
                                                 onChange={(url) => setFormData({ ...formData, receipt_url: url || '' })}
+                                                onFileUploaded={processReceipt}
                                                 organizationId={currentOrganization?.id || ''}
-                                                disabled={isSubmitting}
+                                                disabled={isSubmitting || aiProcessing}
                                             />
                                         </div>
                                     )}
