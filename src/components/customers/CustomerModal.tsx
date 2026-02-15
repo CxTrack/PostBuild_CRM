@@ -35,6 +35,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
     state: customer?.state || '',
     postal_code: customer?.postal_code || '',
     country: customer?.country || '',
+    card_image_url: customer?.card_image_url || '',
   });
 
   const [showAddress, setShowAddress] = useState(
@@ -57,6 +58,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
         state: customer.state || '',
         postal_code: customer.postal_code || '',
         country: customer.country || '',
+        card_image_url: customer.card_image_url || '',
       });
       setShowAddress(Boolean(customer.address || customer.city || customer.state || customer.postal_code));
     }
@@ -150,6 +152,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           state: '',
           postal_code: '',
           country: '',
+          card_image_url: '',
         });
 
         onClose();
@@ -183,6 +186,17 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
             <X size={20} className="text-gray-600 dark:text-gray-400" />
           </button>
         </div>
+
+        {formData.card_image_url && (
+          <div className="mx-6 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Business Card Reference:</p>
+            <img
+              src={formData.card_image_url}
+              alt="Business card"
+              className="w-full max-h-32 object-contain rounded"
+            />
+          </div>
+        )}
 
         {error && (
           <div className="mx-6 mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
