@@ -4,7 +4,7 @@ import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles } from 'lucide-react';
+import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, X, Settings as SettingsIcon, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -23,6 +23,11 @@ import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressA
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
+import { webhookService, Webhook } from '@/services/webhook.service';
+import { apiKeyService } from '@/services/apiKey.service';
+import { WebhookConfigModal } from '@/components/settings/WebhookConfigModal';
+import { ApiKeyModal } from '@/components/settings/ApiKeyModal';
+import { ZapierIntegrationModal } from '@/components/settings/ZapierIntegrationModal';
 
 export default function Settings() {
   const { currentOrganization, teamMembers, updateMember, updateOrganization, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
@@ -39,6 +44,14 @@ export default function Settings() {
   const [devOrgId] = useState<string | null>(null);
   const [devOrgName] = useState<string>('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showZapierModal, setShowZapierModal] = useState(false);
+  const [selectedWebhook, setSelectedWebhook] = useState<Webhook | undefined>();
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [loadingWebhooks, setLoadingWebhooks] = useState(false);
+  const [loadingApiKeys, setLoadingApiKeys] = useState(false);
   const bookingUrl = currentOrganization?.slug
     ? `https://crm.easyaicrm.com/book/${currentOrganization.slug}`
     : '';
@@ -85,10 +98,18 @@ export default function Settings() {
     }
   };
 
+  const testWebhook = async (_webhookId: string): Promise<{ success: boolean; message: string }> => {
+    // In a real app, this would trigger a test event from the backend
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true, message: 'Test event sent successfully' };
+  };
+
   useEffect(() => {
     const initSettings = async () => {
       if (currentOrganization) {
         loadSettings();
+        loadWebhooks();
+        loadApiKeys();
       } else {
         // No currentOrganization - wait for it to load or show empty state
         setLoading(false);
@@ -196,6 +217,54 @@ export default function Settings() {
       toast.success(`Default ${type} template updated`);
     } catch (error) {
       toast.error('Failed to update template');
+    }
+  };
+
+  const loadWebhooks = async () => {
+    if (!currentOrganization) return;
+    try {
+      setLoadingWebhooks(true);
+      const data = await webhookService.getWebhooks(currentOrganization.id);
+      setWebhooks(data);
+    } catch (error) {
+      console.error('Failed to load webhooks:', error);
+    } finally {
+      setLoadingWebhooks(false);
+    }
+  };
+
+  const loadApiKeys = async () => {
+    if (!currentOrganization) return;
+    try {
+      setLoadingApiKeys(true);
+      const data = await apiKeyService.getApiKeys(currentOrganization.id);
+      setApiKeys(data);
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+    } finally {
+      setLoadingApiKeys(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this webhook?')) return;
+    try {
+      await webhookService.deleteWebhook(id);
+      toast.success('Webhook deleted');
+      loadWebhooks();
+    } catch (error) {
+      toast.error('Failed to delete webhook');
+    }
+  };
+
+  const handleDeleteApiKey = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this API key?')) return;
+    try {
+      await apiKeyService.deleteApiKey(id);
+      toast.success('API key deleted');
+      loadApiKeys();
+    } catch (error) {
+      toast.error('Failed to delete API key');
     }
   };
 
@@ -1285,50 +1354,96 @@ export default function Settings() {
                 </div>
 
                 {/* Zapier Integration */}
-                <div className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-                      <Zap className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                <div className="p-4 border-2 border-orange-200 dark:border-orange-900/30 rounded-xl bg-orange-50/30 dark:bg-orange-900/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                          Zapier Integration
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Connect to 6,000+ apps
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                        Zapier Integration
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Connect CxTrack to 5,000+ apps
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => setShowZapierModal(true)}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium text-sm transition-colors shadow-sm shadow-orange-200 dark:shadow-none"
+                    >
+                      Connect
+                    </button>
                   </div>
-                  <button className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium text-sm transition-colors">
-                    Connect
-                  </button>
                 </div>
-
                 {/* Webhook URL */}
                 <div className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                         <Code className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                          Webhook URL
+                          Webhooks
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Receive real-time CRM events
                         </p>
                       </div>
                     </div>
-                    <button className="px-3 py-1.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors">
-                      Configure
+                    <button
+                      onClick={() => {
+                        setSelectedWebhook(undefined);
+                        setShowWebhookModal(true);
+                      }}
+                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium transition-colors"
+                    >
+                      Add Webhook
                     </button>
                   </div>
+
+                  {loadingWebhooks ? (
+                    <div className="flex justify-center p-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    </div>
+                  ) : webhooks.length > 0 ? (
+                    <div className="space-y-2">
+                      {webhooks.map(webhook => (
+                        <div key={webhook.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{webhook.url}</p>
+                            <p className="text-[10px] text-gray-500">{webhook.events.join(', ')}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedWebhook(webhook);
+                                setShowWebhookModal(true);
+                              }}
+                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-500"
+                            >
+                              <SettingsIcon size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWebhook(webhook.id)}
+                              className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-red-500"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-2 italic">No webhooks configured</p>
+                  )}
                 </div>
 
                 {/* API Access */}
                 <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50/30 dark:bg-gray-900/10">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border border-gray-200 dark:border-gray-600">
                         <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -1338,14 +1453,47 @@ export default function Settings() {
                           API Keys
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Generate API keys for custom integrations
+                          Manage access keys for custom integrations
                         </p>
                       </div>
                     </div>
-                    <button className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 font-medium text-sm transition-colors">
-                      Manage Keys
+                    <button
+                      onClick={() => setShowApiKeyModal(true)}
+                      className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 font-medium text-sm transition-colors"
+                    >
+                      New Key
                     </button>
                   </div>
+
+                  {loadingApiKeys ? (
+                    <div className="flex justify-center p-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+                    </div>
+                  ) : apiKeys.length > 0 ? (
+                    <div className="space-y-2">
+                      {apiKeys.map(apiKey => (
+                        <div key={apiKey.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{apiKey.name}</p>
+                            <p className="text-[10px] font-mono text-gray-500">Prefix: {apiKey.key_prefix}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-gray-400 italic">
+                              Used: {apiKey.last_used_at ? new Date(apiKey.last_used_at).toLocaleDateString() : 'Never'}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteApiKey(apiKey.id)}
+                              className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-red-500"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-2 italic">No active API keys</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1419,6 +1567,24 @@ export default function Settings() {
       <InviteMemberModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
+      />
+      <WebhookConfigModal
+        isOpen={showWebhookModal}
+        onClose={() => setShowWebhookModal(false)}
+        organizationId={currentOrganization.id}
+        webhook={selectedWebhook}
+        onSaved={loadWebhooks}
+      />
+      <ApiKeyModal
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+        organizationId={currentOrganization.id}
+        onCreated={loadApiKeys}
+      />
+      <ZapierIntegrationModal
+        isOpen={showZapierModal}
+        onClose={() => setShowZapierModal(false)}
+        organizationId={currentOrganization.id}
       />
     </div>
   );

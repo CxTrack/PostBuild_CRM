@@ -103,14 +103,26 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
 
-      const insertData = {
+      // Map lowercase priorities from UI to title-case DB CHECK constraint values
+      const priorityMap: Record<string, string> = {
+        low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent',
+      };
+      const dbPriority = priorityMap[(data.priority || 'medium').toLowerCase()] || 'Medium';
+
+      const insertData: Record<string, any> = {
         title: data.title || 'Untitled Task',
-        description: data.description,
+        description: data.description || null,
         category: data.type || 'other',
-        priority: data.priority || 'medium',
-        status: 'todo',
+        type: data.type || 'other',
+        priority: dbPriority,
+        status: 'pending',
         due_date: data.due_date || new Date().toISOString().split('T')[0],
-        due_time: data.start_time,
+        due_time: data.start_time || null,
+        start_time: data.start_time || null,
+        end_time: data.end_time || null,
+        duration: data.duration || 30,
+        show_on_calendar: data.show_on_calendar || false,
+        outcome: data.outcome || null,
         customer_id: data.customer_id,
         assigned_to: data.assigned_to || userId,
         organization_id: organizationId,
@@ -127,9 +139,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       const newTask: Task = {
         ...taskData,
-        type: taskData.category as TaskType,
-        status: taskData.status === 'todo' ? 'pending' : taskData.status as TaskStatus,
-        show_on_calendar: false,
+        type: (taskData.type || taskData.category) as TaskType,
+        status: taskData.status as TaskStatus,
+        show_on_calendar: taskData.show_on_calendar || false,
         customer_name: taskData.customer?.name || '',
       };
 
@@ -151,21 +163,39 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
+      const priorityMap: Record<string, string> = {
+        low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent',
+      };
+
       const updateData: Record<string, any> = {};
-      if (data.title) updateData.title = data.title;
-      if (data.description) updateData.description = data.description;
-      if (data.type) updateData.category = data.type;
-      if (data.priority) updateData.priority = data.priority;
-      if (data.status) {
-        updateData.status = data.status === 'pending' ? 'todo' : data.status;
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.type !== undefined) {
+        updateData.category = data.type;
+        updateData.type = data.type;
+      }
+      if (data.priority !== undefined) {
+        updateData.priority = priorityMap[data.priority.toLowerCase()] || data.priority;
+      }
+      if (data.status !== undefined) {
+        updateData.status = data.status;
         if (data.status === 'completed') {
           updateData.completed_at = new Date().toISOString();
         }
       }
-      if (data.due_date) updateData.due_date = data.due_date;
-      if (data.start_time) updateData.due_time = data.start_time;
-      if (data.assigned_to) updateData.assigned_to = data.assigned_to;
-      if (data.outcome) updateData.notes = data.outcome;
+      if (data.due_date !== undefined) updateData.due_date = data.due_date;
+      if (data.start_time !== undefined) {
+        updateData.start_time = data.start_time;
+        updateData.due_time = data.start_time;
+      }
+      if (data.end_time !== undefined) updateData.end_time = data.end_time;
+      if (data.duration !== undefined) updateData.duration = data.duration;
+      if (data.show_on_calendar !== undefined) updateData.show_on_calendar = data.show_on_calendar;
+      if (data.assigned_to !== undefined) updateData.assigned_to = data.assigned_to;
+      if (data.outcome !== undefined) {
+        updateData.outcome = data.outcome;
+        updateData.notes = data.outcome;
+      }
 
       const { data: taskData, error } = await supabase
         .from('tasks')
@@ -178,9 +208,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       const updatedTask: Task = {
         ...taskData,
-        type: taskData.category as TaskType,
-        status: taskData.status === 'todo' ? 'pending' : taskData.status as TaskStatus,
-        show_on_calendar: false,
+        type: (taskData.type || taskData.category) as TaskType,
+        status: taskData.status as TaskStatus,
+        show_on_calendar: taskData.show_on_calendar || false,
         customer_name: taskData.customer?.name || '',
       };
 

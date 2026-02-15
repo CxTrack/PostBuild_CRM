@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Paperclip } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -8,6 +8,8 @@ import { EmojiPicker } from '@/components/chat/EmojiPicker';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
 import { FileAttachmentButton, FilePreview } from '@/components/chat/FileAttachment';
+import { CreateGroupModal } from '@/components/chat/CreateGroupModal';
+
 
 interface ChatPageProps {
     isPopup?: boolean;
@@ -68,7 +70,8 @@ const ConversationItem = React.memo<{
         </div>
         <div className="flex-1 text-left overflow-hidden">
             <p className="font-semibold text-gray-900 dark:text-white truncate">
-                {conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
+                {conv.channel_type === 'channel' ? `# ${conv.name || 'channel'}` :
+                    conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
             </p>
             <p className="text-xs text-gray-500 truncate">Click to view message</p>
         </div>
@@ -87,6 +90,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [attachedFile, setAttachedFile] = useState<File | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+    const [createType, setCreateType] = useState<'group' | 'channel'>('group');
     const [chatSettings, setChatSettings] = useState<ChatSettings>(() => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
         return saved ? JSON.parse(saved) : DEFAULT_CHAT_SETTINGS;
@@ -99,10 +105,26 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     }, [user]);
 
     useEffect(() => {
-        if (activeConversation) {
+        if (activeConversation && !activeConversation.id.startsWith('new-')) {
             loadMessages(activeConversation.id);
+
+            const channel = supabase.channel(`page-chat-${activeConversation.id}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=eq.${activeConversation.id}`
+                }, (payload: any) => {
+                    const newMsg = payload.new;
+                    if (newMsg.sender_id !== user?.id) {
+                        setMessages(prev => [...prev, newMsg as Message]);
+                    }
+                })
+                .subscribe();
+
+            return () => { supabase.removeChannel(channel); };
         }
-    }, [activeConversation]);
+    }, [activeConversation?.id]);
 
     useEffect(() => {
         scrollToBottom();
@@ -115,7 +137,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const fetchConversations = async () => {
         if (!user) return;
 
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
             .from('conversations')
             .select(`
         *,
@@ -125,28 +147,38 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
       `)
             .order('updated_at', { ascending: false });
 
+        if (fetchError) {
+            console.error('Error fetching conversations:', fetchError);
+            return;
+        }
+
         if (data) {
             setConversations(data);
         }
     };
 
     const loadMessages = async (conversationId: string) => {
+        try {
+            const { data, error: fetchError } = await supabase
+                .from('messages')
+                .select(`
+                *,
+                sender:user_profiles(full_name),
+                reactions:message_reactions(id, emoji, user_id)
+            `)
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true });
 
+            if (fetchError) throw fetchError;
 
-        const { data, error } = await supabase
-            .from('messages')
-            .select(`
-        *,
-        sender:user_profiles(full_name),
-        reactions:message_reactions(id, emoji, user_id)
-      `)
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
-
-        if ((!data || data.length === 0) && !error && conversationId.startsWith('new-mock-')) {
-            setMessages([]);
-        } else if (data) {
-            setMessages(data);
+            if ((!data || data.length === 0) && conversationId.startsWith('new-mock-')) {
+                setMessages([]);
+            } else if (data) {
+                setMessages(data);
+            }
+        } catch (error) {
+            console.error("Error loading messages:", error);
+            setMessages([]); // Clear messages on error
         }
     };
 
@@ -169,7 +201,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         setMessages(prev => [...prev, newMsg]);
 
         // If it's a real conversation, try to save to DB
-        if (!activeConversation.id.startsWith('conv-') && !activeConversation.id.startsWith('new-mock-') && user) {
+        if (activeConversation && !activeConversation.id.startsWith('new-') && user) {
             const { error } = await supabase
                 .from('messages')
                 .insert({
@@ -179,6 +211,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 });
 
             if (error) {
+                console.error('Error sending message:', error);
+                // Optionally, revert the message or show an error to the user
             }
         }
     };
@@ -220,10 +254,46 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         inputRef.current?.focus();
     };
 
-    const handleStartNewConversation = (member: any) => {
-        const newConv: Conversation = {
-            id: `new-temp-${Date.now()}`,
-            updated_at: new Date().toISOString(),
+    const handleStartNewConversation = async (member: any) => {
+        if (!user) return;
+
+        // Check if a direct conversation already exists with this member
+        const existing = conversations.find(c =>
+            (!c.channel_type || c.channel_type === 'direct') &&
+            c.participants?.some(p => p.user?.full_name === member.full_name)
+        );
+
+        if (existing) {
+            setActiveConversation(existing);
+            setShowNewMessageModal(false);
+            return;
+        }
+
+        // Create new direct conversation
+        const { data: conv, error } = await supabase
+            .from('conversations')
+            .insert({
+                organization_id: useOrganizationStore.getState().currentOrganization?.id,
+                channel_type: 'direct',
+                is_group: false,
+                created_by: user.id,
+            })
+            .select()
+            .single();
+
+        if (error || !conv) {
+            console.error('Failed to create conversation:', error);
+            return;
+        }
+
+        // Add both participants
+        await supabase.from('conversation_participants').insert([
+            { conversation_id: conv.id, user_id: user.id, role: 'member' },
+            { conversation_id: conv.id, user_id: member.id, role: 'member' },
+        ]);
+
+        const newConv = {
+            ...conv,
             participants: [{ user: { full_name: member.full_name } }],
         };
 
@@ -301,27 +371,95 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <input
                                 className="bg-transparent w-full outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500"
                                 placeholder="Search conversations..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
                     </div>
 
                     {/* List */}
                     <div className="flex-1 overflow-y-auto px-2">
-                        {conversations.map(conv => (
-                            <ConversationItem
-                                key={conv.id}
-                                conv={conv}
-                                isActive={activeConversation?.id === conv.id}
-                                onClick={() => setActiveConversation(conv)}
-                            />
-                        ))}
+                        {(() => {
+                            const filteredConversations = conversations.filter(conv => {
+                                if (!searchQuery.trim()) return true;
+                                const query = searchQuery.toLowerCase();
+                                const name = (conv.name || conv.participants?.[0]?.user?.full_name || '').toLowerCase();
+                                return name.includes(query);
+                            });
 
-                        {conversations.length === 0 && (
-                            <div className="text-center py-10 text-gray-400">
-                                <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                                <p>No conversations yet</p>
-                            </div>
-                        )}
+                            const channels = filteredConversations.filter(c => c.channel_type === 'channel');
+                            const groups = filteredConversations.filter(c => c.channel_type === 'group');
+                            const directMessages = filteredConversations.filter(c => !c.channel_type || c.channel_type === 'direct');
+
+                            return (
+                                <>
+                                    {/* Channels Section */}
+                                    {channels.length > 0 && (
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between px-3 py-2">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Hash size={12} />
+                                                    Channels
+                                                </span>
+                                                <button
+                                                    onClick={() => { setCreateType('channel'); setShowCreateGroupModal(true); }}
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600"
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
+                                            </div>
+                                            {channels.map(conv => (
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Groups Section */}
+                                    {groups.length > 0 && (
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between px-3 py-2">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <UsersIcon size={12} />
+                                                    Groups
+                                                </span>
+                                                <button
+                                                    onClick={() => { setCreateType('group'); setShowCreateGroupModal(true); }}
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600"
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
+                                            </div>
+                                            {groups.map(conv => (
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Direct Messages Section */}
+                                    <div className="mb-8">
+                                        <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Direct Messages</span>
+                                            <button
+                                                onClick={() => setShowNewMessageModal(true)}
+                                                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600"
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        </div>
+                                        {directMessages.map(conv => (
+                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                        ))}
+                                    </div>
+
+                                    {filteredConversations.length === 0 && (
+                                        <div className="text-center py-10 text-gray-400">
+                                            <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                                            <p>{searchQuery ? 'No results found' : 'No conversations yet'}</p>
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* New Msg Btn */}
@@ -365,7 +503,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white">
-                                            {activeConversation.name || activeConversation.participants?.[0]?.user?.full_name || 'Chat'}
+                                            {activeConversation.channel_type === 'channel' ? `# ${activeConversation.name || 'channel'}` :
+                                                activeConversation.name || activeConversation.participants?.[0]?.user?.full_name || 'Chat'}
                                         </h3>
                                         <div className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -474,11 +613,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             className="w-full p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl flex items-center gap-3 transition-colors text-left"
                                         >
                                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                                                {u.full_name.charAt(0)}
+                                                {u.full_name?.charAt(0) || 'U'}
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-semibold text-gray-900 dark:text-white">{u.full_name}</p>
-                                                <p className="text-xs text-gray-500">{u.status}</p>
+                                                <p className="text-xs text-gray-500">Team Member</p>
                                             </div>
                                         </button>
                                     ))}
@@ -486,6 +625,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Create Group Modal */}
+                {showCreateGroupModal && (
+                    <CreateGroupModal
+                        isOpen={showCreateGroupModal}
+                        onClose={() => setShowCreateGroupModal(false)}
+                        type={createType}
+                        onCreated={(conv) => {
+                            setConversations(prev => [conv, ...prev]);
+                            setActiveConversation(conv);
+                            setShowCreateGroupModal(false);
+                        }}
+                    />
                 )}
             </div>
 

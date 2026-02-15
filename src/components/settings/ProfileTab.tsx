@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import toast from 'react-hot-toast';
 
 // Get comprehensive timezone list from browser
@@ -359,16 +360,11 @@ export const ProfileTab: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Phone Number
                         </label>
-                        <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-400" />
-                            <input
-                                type="tel"
-                                value={profile.phone}
-                                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                                placeholder="+1 (555) 123-4567"
-                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            />
-                        </div>
+                        <PhoneInput
+                            value={profile.phone}
+                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                            className="py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
                     </div>
 
                     <div>

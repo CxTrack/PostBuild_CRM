@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   Calendar, Video, ExternalLink, RefreshCw, Palette
 } from 'lucide-react';
@@ -28,7 +28,9 @@ export default function CalendarSettings() {
       call: '#f59e0b',
       task: '#8b5cf6',
       reminder: '#ec4899'
-    }
+    },
+    booking_provider: 'native' as 'native' | 'calcom',
+    booking_slug: ''
   });
 
   useEffect(() => {
@@ -52,6 +54,15 @@ export default function CalendarSettings() {
           calcom_connected: !!data.api_key,
           auto_sync: data.auto_sync,
           sync_interval: data.sync_interval,
+        }));
+      }
+
+      // Load organization booking settings
+      if (currentOrganization?.metadata) {
+        setSettings(prev => ({
+          ...prev,
+          booking_provider: (currentOrganization.metadata as any).booking_provider || 'native',
+          booking_slug: currentOrganization.slug || ''
         }));
       }
     } catch (error) {
@@ -100,6 +111,16 @@ export default function CalendarSettings() {
         auto_sync: settings.auto_sync,
         sync_interval: settings.sync_interval,
       });
+
+      // Update organization metadata and slug
+      await useOrganizationStore.getState().updateOrganization({
+        slug: settings.booking_slug,
+        metadata: {
+          ...currentOrganization.metadata as any,
+          booking_provider: settings.booking_provider
+        }
+      });
+
       toast.success('Settings saved successfully');
     } catch (error) {
       toast.error('Failed to save settings');
@@ -108,6 +129,73 @@ export default function CalendarSettings() {
 
   return (
     <div className="space-y-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
+          <Calendar size={20} className="mr-2 text-blue-600 dark:text-blue-400" />
+          Booking Integration
+        </h2>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Booking Provider
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSettings({ ...settings, booking_provider: 'native' })}
+                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2 ${settings.booking_provider === 'native'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                    : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500'
+                    }`}
+                >
+                  <Calendar size={20} />
+                  <span>CxTrack Native</span>
+                </button>
+                <button
+                  onClick={() => setSettings({ ...settings, booking_provider: 'calcom' })}
+                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2 ${settings.booking_provider === 'calcom'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                    : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500'
+                    }`}
+                >
+                  <Video size={20} />
+                  <span>Cal.com</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Public Booking Slug
+              </label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">
+                  easyaicrm.com/book/
+                </span>
+                <input
+                  type="text"
+                  value={settings.booking_slug}
+                  onChange={(e) => setSettings({ ...settings, booking_slug: e.target.value })}
+                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-r-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="my-business"
+                />
+              </div>
+              {settings.booking_slug && (
+                <a
+                  href={`/book/${settings.booking_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  View public booking page <ExternalLink size={10} />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -120,11 +208,10 @@ export default function CalendarSettings() {
             </p>
           </div>
 
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            settings.calcom_connected
-              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${settings.calcom_connected
+            ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}>
             {settings.calcom_connected ? 'Connected' : 'Not Connected'}
           </span>
         </div>
