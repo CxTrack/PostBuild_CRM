@@ -126,7 +126,7 @@ export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
   general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
   // New templates
   software_development: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes'],
-  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'invoices'],
+  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'invoices', 'calls', 'products', 'financials'],
   construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
 };
 
@@ -177,7 +177,10 @@ export const INDUSTRY_LABELS: Record<string, any> = {
     pipeline: { name: 'Applications' },
     tasks: { name: 'Follow-ups' },
     invoices: { name: 'Commissions' },
-    calendar: { name: 'Appointments' }
+    calendar: { name: 'Appointments' },
+    calls: { name: 'Call Log' },
+    products: { name: 'Loan Products' },
+    financials: { name: 'Earnings' }
   },
   construction: {
     crm: { name: 'Clients' },
@@ -596,6 +599,65 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       emptyStateDescription: 'Schedule your first appointment',
       emptyStateButton: 'Schedule Appointment',
       loadingText: 'Loading appointments...',
+    },
+    calls: {
+      title: 'Call Log',
+      subtitle: 'Track borrower calls, AI agent conversations, and lender communications',
+      entitySingular: 'call',
+      entityPlural: 'calls',
+      newButton: 'Log Call',
+      searchPlaceholder: 'Search calls by borrower or phone...',
+      emptyStateTitle: 'No calls logged yet',
+      emptyStateDescription: 'Start logging borrower calls and AI agent conversations to track all communications',
+      emptyStateButton: 'Log Your First Call',
+      loadingText: 'Loading call log...',
+      columns: {
+        name: 'Agent / Broker',
+        customer: 'Borrower',
+      },
+      stats: {
+        total: 'Total Calls',
+        active: 'This Week',
+      },
+    },
+    products: {
+      title: 'Loan Products',
+      subtitle: 'Manage mortgage programs — conventional, FHA, VA, USDA, variable rate, HELOC, and more',
+      entitySingular: 'loan product',
+      entityPlural: 'loan products',
+      newButton: 'New Loan Product',
+      searchPlaceholder: 'Search loan products by name or code...',
+      emptyStateTitle: 'No loan products configured',
+      emptyStateDescription: 'Add your mortgage loan products (fixed rate, variable, FHA, VA, HELOC) to reference them in applications and proposals',
+      emptyStateButton: 'Add Your First Loan Product',
+      loadingText: 'Loading loan products...',
+      columns: {
+        name: 'Loan Product',
+        amount: 'Rate',
+        status: 'Status',
+      },
+      stats: {
+        total: 'Total Products',
+        active: 'Available',
+      },
+    },
+    financials: {
+      title: 'Commission Earnings',
+      subtitle: 'Track commission income, expenses, and profitability trends',
+      entitySingular: 'transaction',
+      entityPlural: 'transactions',
+      newButton: 'New Transaction',
+      searchPlaceholder: 'Search transactions...',
+      emptyStateTitle: 'No earnings data yet',
+      emptyStateDescription: 'Start tracking your commission income and business expenses to see profitability trends',
+      emptyStateButton: 'Add Your First Transaction',
+      loadingText: 'Loading earnings...',
+      columns: {},
+      stats: {
+        total: 'Total Transactions',
+        totalRevenue: 'Commission Income',
+        outstanding: 'Expenses',
+      },
     },
   },
 

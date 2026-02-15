@@ -37,6 +37,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import CustomerModal from '@/components/customers/CustomerModal';
 import EventModal from '@/components/calendar/EventModal';
 import TaskModal from '@/components/tasks/TaskModal';
+import LogCallModal from '@/components/calls/LogCallModal';
 import { useTaskStore, Task } from '@/stores/taskStore';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
@@ -146,6 +147,7 @@ export const Dashboard: React.FC = () => {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showLogCallModal, setShowLogCallModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'overdue' | 'completed'>('all');
@@ -167,6 +169,11 @@ export const Dashboard: React.FC = () => {
   const handleCreateTask = () => {
     setSelectedTask(null);
     setShowTaskModal(true);
+  };
+
+  const handleLogCall = async (callData: any) => {
+    await useCallStore.getState().createCall(callData);
+    fetchCalls();
   };
 
   const handleTaskClick = (task: Task) => {
@@ -257,7 +264,16 @@ export const Dashboard: React.FC = () => {
       bgColor: 'bg-primary-100 dark:bg-primary-500/20',
       iconColor: 'text-primary-600 dark:text-white',
     },
-  ], [crmLabels.newButton, calendarLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, productsLabels.newButton, financialsLabels.newButton]);
+    {
+      id: 'log-call',
+      moduleId: 'calls',
+      label: callsLabels.newButton,
+      icon: Phone,
+      onClick: () => setShowLogCallModal(true),
+      bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+      iconColor: 'text-primary-600 dark:text-white',
+    },
+  ], [crmLabels.newButton, calendarLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, productsLabels.newButton, financialsLabels.newButton, callsLabels.newButton]);
 
   // Filter quick actions based on enabled modules for this industry
   const filteredQuickActions = useMemo(() =>
@@ -314,6 +330,7 @@ export const Dashboard: React.FC = () => {
     'tasks': 'create-task',
     'products': 'add-product',
     'financials': 'new-expense',
+    'calls': 'log-call',
   };
 
   useEffect(() => {
@@ -382,6 +399,15 @@ export const Dashboard: React.FC = () => {
           bgColor: 'bg-primary-100 dark:bg-primary-500/20',
           iconColor: 'text-primary-600 dark:text-white',
         },
+        {
+          id: 'log-call',
+          moduleId: 'calls',
+          label: callsLabels.newButton,
+          icon: Phone,
+          onClick: () => setShowLogCallModal(true),
+          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+          iconColor: 'text-primary-600 dark:text-white',
+        },
       ];
 
       // Filter to only include actions for enabled modules
@@ -399,7 +425,7 @@ export const Dashboard: React.FC = () => {
       const finalActions = [...orderedActions, ...missingActions].map(({ moduleId, ...action }) => action as QuickAction);
       setQuickActions(finalActions);
     }
-  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, productsLabels.newButton, financialsLabels.newButton, enabledModuleIds]);
+  }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, productsLabels.newButton, financialsLabels.newButton, callsLabels.newButton, enabledModuleIds]);
 
   useEffect(() => {
     fetchCustomers();
@@ -701,6 +727,19 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">{tasksLabels.newButton}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Create {tasksLabels.entitySingular}</p>
+              </button>
+            )}
+
+            {enabledModuleIds.includes('calls') && (
+              <button
+                onClick={() => setShowLogCallModal(true)}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+              >
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
+                  <Phone size={24} className="text-emerald-600 dark:text-white" />
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">{callsLabels.newButton}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Log {callsLabels.entitySingular}</p>
               </button>
             )}
           </div>
@@ -1415,6 +1454,17 @@ export const Dashboard: React.FC = () => {
             fetchTasks();
           }}
           task={selectedTask}
+        />
+      )}
+
+      {showLogCallModal && (
+        <LogCallModal
+          isOpen={showLogCallModal}
+          onClose={() => {
+            setShowLogCallModal(false);
+            fetchCalls();
+          }}
+          onSubmit={handleLogCall}
         />
       )}
     </div>
