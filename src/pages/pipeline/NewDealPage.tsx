@@ -143,6 +143,12 @@ export default function NewDealPage() {
         }
     };
 
+    const selectedLender = lenders.find(l => l.id === formData.lender_id);
+    const isCommissionFromLender = selectedLender &&
+        formData.commission_percentage === selectedLender.default_commission_pct?.toString();
+    const isVolumeFromLender = selectedLender &&
+        formData.volume_commission_percentage === selectedLender.default_volume_commission_pct?.toString();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -162,12 +168,18 @@ export default function NewDealPage() {
         setIsSubmitting(true);
         try {
             await createDeal({
-                ...formData,
                 title: formData.title.trim(),
+                customer_id: formData.customer_id,
                 value: parseFloat(formData.value),
+                currency: formData.currency,
+                stage: formData.stage,
                 probability: parseFloat(formData.probability) || 0,
                 expected_close_date: formData.expected_close_date || undefined,
+                source: formData.source,
+                revenue_type: formData.revenue_type,
+                recurring_interval: formData.revenue_type === 'recurring' ? formData.recurring_interval : undefined,
                 description: formData.description || undefined,
+                tags: formData.tags,
                 lender_id: formData.lender_id || undefined,
                 commission_percentage: parseFloat(formData.commission_percentage) || 0,
                 volume_commission_percentage: parseFloat(formData.volume_commission_percentage) || 0,
@@ -391,6 +403,11 @@ export default function NewDealPage() {
                                                 + New
                                             </button>
                                         </div>
+                                        {selectedLender && (
+                                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                Commission rates auto-filled from {selectedLender.name} defaults
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Quick Add Lender Inline */}
@@ -467,7 +484,7 @@ export default function NewDealPage() {
                                                     max="100"
                                                     value={formData.commission_percentage}
                                                     onChange={(e) => setFormData({ ...formData, commission_percentage: e.target.value })}
-                                                    className={inputClasses}
+                                                    className={`${inputClasses} ${isCommissionFromLender ? 'text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/20' : ''}`}
                                                     placeholder="0.875"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
@@ -486,7 +503,7 @@ export default function NewDealPage() {
                                                     max="100"
                                                     value={formData.volume_commission_percentage}
                                                     onChange={(e) => setFormData({ ...formData, volume_commission_percentage: e.target.value })}
-                                                    className={inputClasses}
+                                                    className={`${inputClasses} ${isVolumeFromLender ? 'text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/20' : ''}`}
                                                     placeholder="0.25"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
@@ -695,6 +712,33 @@ export default function NewDealPage() {
                                         ${((parseFloat(formData.value || '0') * (parseFloat(formData.probability || '0') / 100)) || 0).toLocaleString()}
                                     </span>
                                 </div>
+                                {isMortgage && parseFloat(formData.commission_percentage) > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-end border-t border-white/20 pt-3">
+                                            <span className="text-xs opacity-80">Projected Commission ({formData.commission_percentage}%)</span>
+                                            <span className="text-lg font-semibold text-green-300">
+                                                ${((parseFloat(formData.value || '0') * (parseFloat(formData.commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        {parseFloat(formData.volume_commission_percentage) > 0 && (
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-xs opacity-80">Volume Bonus ({formData.volume_commission_percentage}%)</span>
+                                                <span className="text-sm font-medium text-blue-300">
+                                                    +${((parseFloat(formData.value || '0') * (parseFloat(formData.volume_commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-end border-t border-white/20 pt-3">
+                                            <span className="text-xs font-bold opacity-90">Total Earnings</span>
+                                            <span className="text-xl font-bold text-green-200">
+                                                ${(
+                                                    ((parseFloat(formData.value || '0') * (parseFloat(formData.commission_percentage) || 0) / 100)) +
+                                                    ((parseFloat(formData.value || '0') * (parseFloat(formData.volume_commission_percentage) || 0) / 100))
+                                                ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
