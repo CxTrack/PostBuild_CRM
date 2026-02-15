@@ -358,6 +358,167 @@ export default function NewDealPage() {
                             </div>
                         </Card>
 
+                        {/* Lender & Commission (Mortgage Broker only) */}
+                        {isMortgage && (
+                            <Card className="p-6 border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                    <Building2 className="text-primary-500" size={18} />
+                                    Lender & Commission
+                                </h3>
+
+                                <div className="space-y-6">
+                                    {/* Lender Selector */}
+                                    <div>
+                                        <label className={labelClasses}>Lender</label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={formData.lender_id}
+                                                onChange={(e) => handleLenderChange(e.target.value)}
+                                                className={`flex-1 ${inputClasses}`}
+                                            >
+                                                <option value="">Select a lender...</option>
+                                                {lenders.map(lender => (
+                                                    <option key={lender.id} value={lender.id}>
+                                                        {lender.name}{lender.is_preferred ? ' \u2605' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowQuickAddLender(!showQuickAddLender)}
+                                                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-600 dark:text-gray-400"
+                                            >
+                                                + New
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Add Lender Inline */}
+                                    {showQuickAddLender && (
+                                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
+                                            <input
+                                                type="text"
+                                                value={newLenderName}
+                                                onChange={(e) => setNewLenderName(e.target.value)}
+                                                className={inputClasses}
+                                                placeholder="Lender name"
+                                                autoFocus
+                                            />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Default Commission %</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.001"
+                                                        min="0"
+                                                        max="100"
+                                                        value={newLenderCommission}
+                                                        onChange={(e) => setNewLenderCommission(e.target.value)}
+                                                        className={inputClasses}
+                                                        placeholder="0.875"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Volume Commission %</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.001"
+                                                        min="0"
+                                                        max="100"
+                                                        value={newLenderVolumeCommission}
+                                                        onChange={(e) => setNewLenderVolumeCommission(e.target.value)}
+                                                        className={inputClasses}
+                                                        placeholder="0.25"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleQuickAddLender}
+                                                    disabled={addingLender || !newLenderName.trim()}
+                                                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                                >
+                                                    {addingLender ? 'Adding...' : 'Add Lender'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowQuickAddLender(false)}
+                                                    className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Commission Percentages */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClasses}>
+                                                <DollarSign size={14} className="mr-1 text-green-500" />
+                                                Commission %
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    min="0"
+                                                    max="100"
+                                                    value={formData.commission_percentage}
+                                                    onChange={(e) => setFormData({ ...formData, commission_percentage: e.target.value })}
+                                                    className={inputClasses}
+                                                    placeholder="0.875"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={labelClasses}>
+                                                <DollarSign size={14} className="mr-1 text-blue-500" />
+                                                Volume Bonus %
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    min="0"
+                                                    max="100"
+                                                    value={formData.volume_commission_percentage}
+                                                    onChange={(e) => setFormData({ ...formData, volume_commission_percentage: e.target.value })}
+                                                    className={inputClasses}
+                                                    placeholder="0.25"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Commission Amount Preview */}
+                                    {formData.value && (parseFloat(formData.commission_percentage) > 0 || parseFloat(formData.volume_commission_percentage) > 0) && (
+                                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                            {parseFloat(formData.commission_percentage) > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-green-700 dark:text-green-400">Commission:</span>
+                                                    <span className="font-semibold text-green-800 dark:text-green-300">
+                                                        ${((parseFloat(formData.value) || 0) * (parseFloat(formData.commission_percentage) || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {parseFloat(formData.volume_commission_percentage) > 0 && (
+                                                <div className="flex justify-between text-sm mt-1">
+                                                    <span className="text-blue-700 dark:text-blue-400">Volume Bonus:</span>
+                                                    <span className="font-semibold text-blue-800 dark:text-blue-300">
+                                                        ${((parseFloat(formData.value) || 0) * (parseFloat(formData.volume_commission_percentage) || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        )}
+
                         {/* Tags */}
                         <Card className="p-6 border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
                             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">

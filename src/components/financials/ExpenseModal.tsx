@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Receipt, Calendar, DollarSign, FileText, FileImage, ChevronDown, ChevronUp, Camera, Upload, Sparkles, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { X, Save, Receipt, Calendar, DollarSign, FileText, FileImage, ChevronDown, ChevronUp, Sparkles, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useSupplierStore } from '@/stores/supplierStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
