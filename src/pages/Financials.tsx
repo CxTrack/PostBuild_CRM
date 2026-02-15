@@ -74,7 +74,7 @@ export const Financials: React.FC = () => {
                         <Calendar size={18} className="mr-2" />
                         {format(dateRange.start, 'MMM d')} - {format(dateRange.end, 'MMM d')}
                     </Button>
-                    <Button variant="primary" onClick={() => setShowExpenseModal(true)} className="flex items-center">
+                    <Button variant="danger" onClick={() => setShowExpenseModal(true)} className="flex items-center">
                         <Plus size={18} className="mr-2" />
                         {labels.newButton}
                     </Button>

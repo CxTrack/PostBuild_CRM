@@ -26,6 +26,7 @@ import Calendar from './pages/calendar/Calendar';
 import Quotes from './pages/Quotes';
 import Invoices from './pages/Invoices';
 import Products from './pages/Products';
+import ProductForm from './pages/products/ProductForm';
 import Pipeline from './pages/Pipeline';
 import Calls from './pages/calls/Calls';
 import Tasks from './pages/Tasks';
@@ -122,6 +123,8 @@ export default function App() {
             <Route path="quotes" element={<Quotes />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="products" element={<Products />} />
+            <Route path="products/new" element={<ProductForm />} />
+            <Route path="products/:id/edit" element={<ProductForm />} />
             <Route path="pipeline" element={<Pipeline />} />
             <Route path="pipeline/new" element={<NewDealPage />} />
             <Route path="calls" element={<Calls />} />

@@ -96,7 +96,7 @@ export default function Products() {
         )}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
           <Link
-            to={`/products/${product.id}`}
+            to={`products/${product.id}`}
             className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:scale-110 transition-transform shadow-sm"
           >
             <Eye size={18} className="text-gray-900 dark:text-white" />
@@ -213,7 +213,7 @@ export default function Products() {
           </p>
         </div>
         <Link
-          to="/products/new"
+          to="products/new"
           className="flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
         >
           <Plus size={18} className="mr-2" />
@@ -338,7 +338,7 @@ export default function Products() {
             </p>
             {!searchTerm && filterType === 'all' && (
               <Link
-                to="/products/new"
+                to="products/new"
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
@@ -360,7 +360,7 @@ export default function Products() {
             <ResizableTable
               storageKey="products"
               data={filteredProducts}
-              onRowClick={(product) => window.location.href = `/products/${product.id}`}
+              onRowClick={(product) => window.location.href = `products/${product.id}`}
               columns={[
                 {
                   id: 'product',
@@ -374,7 +374,7 @@ export default function Products() {
                       </div>
                       <div className="min-w-0">
                         <Link
-                          to={`/products/${product.id}`}
+                          to={`products/${product.id}`}
                           className="font-medium text-gray-900 dark:text-white text-sm truncate block hover:text-blue-600 dark:hover:text-blue-400"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -457,7 +457,7 @@ export default function Products() {
                   align: 'right',
                   render: (product) => (
                     <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-                      <Link to={`/products/${product.id}`} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded opacity-60 hover:opacity-100">
+                      <Link to={`products/${product.id}`} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded opacity-60 hover:opacity-100">
                         <Eye className="w-3.5 h-3.5 text-gray-500" />
                       </Link>
                       {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
@@ -615,7 +615,7 @@ export default function Products() {
 
                   <div className="flex items-center gap-2">
                     <Link
-                      to={`/products/${product.id}`}
+                      to={`products/${product.id}`}
                       className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-center text-xs font-bold"
                     >
                       View Details

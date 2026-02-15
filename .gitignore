@@ -25,7 +25,9 @@ dist-ssr
 # Local Netlify folder
 .netlify
 deploy_crm
+.env
 .env.production
+.env.local
 
 # Supabase temp files
 supabase/.temp/

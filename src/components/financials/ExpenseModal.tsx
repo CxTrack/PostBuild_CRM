@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Receipt, Calendar, DollarSign, FileText } from 'lucide-react';
+import { X, Save, Receipt, Calendar, DollarSign, FileText, FileImage } from 'lucide-react';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useSupplierStore } from '@/stores/supplierStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import type { Expense, PaymentMethod, ExpensePaymentStatus } from '@/types/app.types';
 import toast from 'react-hot-toast';
+import { ReceiptUpload } from '@/components/ui/ReceiptUpload';
 
 interface ExpenseModalProps {
     isOpen: boolean;
@@ -31,6 +32,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
         payment_method: 'credit_card',
         payment_status: 'paid',
         notes: '',
+        receipt_url: '',
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +56,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                     payment_method: 'credit_card',
                     payment_status: 'paid',
                     notes: '',
+                    receipt_url: '',
                 });
             }
         }
@@ -265,6 +268,20 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                 className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all dark:text-white"
                                 placeholder="Reference number, receipt details, etc."
+                            />
+                        </div>
+
+                        {/* Receipt Upload */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center">
+                                <FileImage size={14} className="mr-1" />
+                                Receipt / Attachment
+                            </label>
+                            <ReceiptUpload
+                                value={formData.receipt_url || ''}
+                                onChange={(url) => setFormData({ ...formData, receipt_url: url || '' })}
+                                organizationId={currentOrganization?.id || ''}
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>

@@ -23,6 +23,9 @@ interface AddressAutocompleteProps {
     className?: string;
     label?: string;
     disabled?: boolean;
+    /** Google Places search types - defaults to ['address'] for street-level.
+     *  Use ['(cities)'] for city-level search, ['geocode'] for all geocodable results */
+    searchTypes?: string[];
 }
 
 // Google Places API prediction type
@@ -46,6 +49,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     className = '',
     label,
     disabled = false,
+    searchTypes = ['address'],
 }) => {
     const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -89,7 +93,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
                 service.getPlacePredictions(
                     {
                         input,
-                        types: ['address'],
+                        types: searchTypes,
                         componentRestrictions: { country: ['ca', 'us'] }, // Canada and US
                     },
                     (results: PlacePrediction[] | null, status: string) => {
@@ -112,7 +116,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [isGoogleLoaded]);
+    }, [isGoogleLoaded, searchTypes]);
 
     // Get place details and parse address components
     const getPlaceDetails = useCallback(async (placeId: string, description: string) => {
@@ -342,7 +346,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             {showDropdown && predictions.length === 0 && value.length >= 3 && !loading && !isGoogleLoaded() && (
                 <div className="absolute z-50 w-full mt-1 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                        ðŸ’¡ Address autocomplete requires Google Places API. Add your API key to enable this feature.
+                        💡 Address autocomplete requires Google Places API. Add your API key to enable this feature.
                     </p>
                 </div>
             )}

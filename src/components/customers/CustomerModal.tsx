@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, User, Mail, Building, Save, AlertCircle } from 'lucide-react';
+import { X, User, Mail, Building, Save, AlertCircle, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
@@ -29,7 +30,16 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
     phone: customer?.phone || '',
     company: customer?.company || '',
     status: customer?.status || 'Active',
+    address: customer?.address || '',
+    city: customer?.city || '',
+    state: customer?.state || '',
+    postal_code: customer?.postal_code || '',
+    country: customer?.country || '',
   });
+
+  const [showAddress, setShowAddress] = useState(
+    Boolean(customer?.address || customer?.city || customer?.state || customer?.postal_code)
+  );
 
   useEffect(() => {
     if (customer) {
@@ -42,7 +52,13 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
         phone: customer.phone || '',
         company: customer.company || '',
         status: customer.status || 'Active',
+        address: customer.address || '',
+        city: customer.city || '',
+        state: customer.state || '',
+        postal_code: customer.postal_code || '',
+        country: customer.country || '',
       });
+      setShowAddress(Boolean(customer.address || customer.city || customer.state || customer.postal_code));
     }
   }, [customer]);
 
@@ -129,6 +145,11 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           phone: '',
           company: '',
           status: 'Active',
+          address: '',
+          city: '',
+          state: '',
+          postal_code: '',
+          country: '',
         });
 
         onClose();
@@ -150,7 +171,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {customer ? 'Edit Customer' : 'New Customer'}
@@ -179,7 +200,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Type
@@ -350,9 +371,99 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
             </select>
           </div>
 
+          {/* Address Section - Collapsible */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowAddress(!showAddress)}
+              className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+            >
+              <MapPin size={14} className="mr-1" />
+              {showAddress ? 'Hide Address' : 'Add Address'}
+              {showAddress ? <ChevronUp size={14} className="ml-1" /> : <ChevronDown size={14} className="ml-1" />}
+            </button>
+
+            {showAddress && (
+              <div className="mt-3 space-y-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Street Address
+                  </label>
+                  <AddressAutocomplete
+                    value={formData.address}
+                    onChange={(value) => setFormData({ ...formData, address: value })}
+                    onAddressSelect={(components: AddressComponents) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        address: components.address,
+                        city: components.city,
+                        state: components.state,
+                        postal_code: components.postal_code,
+                        country: components.country,
+                      }));
+                    }}
+                    placeholder="Start typing an address..."
+                    className=""
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="City"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      State / Province
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="State"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Postal / ZIP Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.postal_code}
+                      onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                      placeholder="Postal code"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.country}
+                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                      placeholder="Country"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="pt-2 pb-1">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-              <span className="mr-1">ðŸ’¡</span>
+              <span className="mr-1">{'\u{1F4A1}'}</span>
               You can add more details (address, notes, etc.) from the customer profile page
             </p>
           </div>

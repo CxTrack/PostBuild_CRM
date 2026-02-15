@@ -12,7 +12,7 @@ import {
     Brain, Lightbulb, Sparkles, Save
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
-import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
+import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import toast from 'react-hot-toast';
 
 // Get comprehensive timezone list from browser
@@ -407,7 +407,13 @@ export const ProfileTab: React.FC = () => {
                         <AddressAutocomplete
                             value={profile.location}
                             onChange={(value) => setProfile({ ...profile, location: value })}
+                            onAddressSelect={(components: AddressComponents) => {
+                                // Format as "City, State, Country" for profile location
+                                const parts = [components.city, components.state, components.country].filter(Boolean);
+                                setProfile({ ...profile, location: parts.join(', ') });
+                            }}
                             placeholder="Start typing your city..."
+                            searchTypes={['(cities)']}
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                     </div>

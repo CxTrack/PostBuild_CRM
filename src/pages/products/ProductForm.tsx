@@ -760,19 +760,19 @@ export default function ProductForm() {
         actions={[
           {
             label: 'Back to Catalog',
-            path: '/products',
+            path: '/dashboard/products',
             icon: <ArrowLeft className="w-4 h-4" />,
             variant: 'primary'
           },
           {
             label: `View ${formData.product_type === 'service' ? 'Service' : 'Product'} Details`,
-            path: `/products/${createdProduct?.id}`,
+            path: `/dashboard/products/${createdProduct?.id}`,
             icon: <Package className="w-4 h-4" />,
             variant: 'secondary'
           },
           {
             label: 'Add Another',
-            path: '/products/new',
+            path: '/dashboard/products/new',
             icon: <Plus className="w-4 h-4" />,
             variant: 'secondary'
           }
