@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
-import { getQuoteFieldLabels } from '@/config/modules.config';
+import { getQuoteFieldLabels, getInvoiceFieldLabels } from '@/config/modules.config';
 
 export default function QuoteBuilder() {
   const { id } = useParams();
@@ -70,6 +70,7 @@ export default function QuoteBuilder() {
 
   // Get industry-specific field labels for the Quote Details section
   const fieldLabels = getQuoteFieldLabels(currentOrganization?.industry_template || 'general_business');
+  const customerFieldLabels = getInvoiceFieldLabels(currentOrganization?.industry_template || 'general_business');
 
   // Helper to update real estate property fields
   const updatePropertyField = <K extends keyof RealEstateProposalFields>(
@@ -501,7 +502,7 @@ export default function QuoteBuilder() {
               {id ? `Edit ${labels.entitySingular}` : labels.newButton}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Build a professional {labels.entitySingular} for your customer
+              Build a professional {labels.entitySingular} for your {customerFieldLabels.customerLabel.toLowerCase()}
             </p>
           </div>
           <div className="flex gap-3">
@@ -550,7 +551,7 @@ export default function QuoteBuilder() {
             {/* Seller/Customer Selection */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                {isRealEstate ? 'Seller' : 'Customer'}
+                {customerFieldLabels.customerLabel}
               </h2>
               <div className="flex gap-2">
                 <select
@@ -558,7 +559,7 @@ export default function QuoteBuilder() {
                   onChange={(e) => handleCustomerChange(e.target.value)}
                   className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 >
-                  <option value="">{isRealEstate ? 'Select seller...' : 'Select customer...'}</option>
+                  <option value="">{customerFieldLabels.customerPlaceholder}</option>
                   {customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {getCustomerFullName(customer)}
@@ -1097,7 +1098,7 @@ export default function QuoteBuilder() {
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     rows={3}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                    placeholder="Internal notes (not visible to customer)..."
+                    placeholder={customerFieldLabels.notesPlaceholder}
                   />
                 </div>
                 <div>

@@ -21,6 +21,7 @@ import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { getInvoiceFieldLabels } from '@/config/modules.config';
 
 export default function InvoiceBuilder() {
   const { id } = useParams();
@@ -28,6 +29,7 @@ export default function InvoiceBuilder() {
   const [searchParams] = useSearchParams();
   const { currentOrganization, demoMode, getOrganizationId } = useOrganizationStore();
   const labels = usePageLabels('invoices');
+  const fieldLabels = getInvoiceFieldLabels(currentOrganization?.industry_template || 'general_business');
   const { customers, fetchCustomers } = useCustomerStore();
   const { products, fetchProducts, createProduct } = useProductStore();
   const { updateInvoice: updateInvoiceStore, getInvoiceById } = useInvoiceStore();
@@ -495,7 +497,7 @@ export default function InvoiceBuilder() {
               {id ? `Edit ${labels.entitySingular}` : labels.newButton}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Build a professional {labels.entitySingular} for your customer
+              Build a professional {labels.entitySingular} for your {fieldLabels.customerLabel.toLowerCase()}
             </p>
           </div>
           <div className="flex gap-3">
@@ -542,14 +544,14 @@ export default function InvoiceBuilder() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Customer</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.customerLabel}</h2>
               <div className="flex gap-2">
                 <select
                   value={formData.customer_id}
                   onChange={(e) => handleCustomerChange(e.target.value)}
                   className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 >
-                  <option value="">Select customer...</option>
+                  <option value="">{fieldLabels.customerPlaceholder}</option>
                   {customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {getCustomerFullName(customer)}
@@ -831,7 +833,7 @@ export default function InvoiceBuilder() {
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     rows={3}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                    placeholder="Internal notes (not visible to customer)..."
+                    placeholder={fieldLabels.notesPlaceholder}
                   />
                 </div>
                 <div>
@@ -852,11 +854,11 @@ export default function InvoiceBuilder() {
 
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invoice Details</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.sectionTitle}</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Invoice Date
+                    {fieldLabels.dateLabel}
                   </label>
                   <Input
                     type="date"

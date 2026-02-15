@@ -1663,6 +1663,102 @@ export const getQuoteFieldLabels = (industryTemplate: string): QuoteFieldLabels 
   return QUOTE_FIELD_LABELS[industryTemplate] || QUOTE_FIELD_LABELS.general_business;
 };
 
+/**
+ * Invoice/Commission builder field labels by industry
+ * Controls section headers, field labels, and placeholder text
+ */
+interface InvoiceFieldLabels {
+  sectionTitle: string;
+  dateLabel: string;
+  customerLabel: string;
+  customerPlaceholder: string;
+  notesPlaceholder: string;
+}
+
+export const INVOICE_FIELD_LABELS: Record<string, InvoiceFieldLabels> = {
+  mortgage_broker: {
+    sectionTitle: 'Commission Details',
+    dateLabel: 'Commission Date',
+    customerLabel: 'Borrower',
+    customerPlaceholder: 'Select borrower...',
+    notesPlaceholder: 'Internal notes (not visible to borrower)...',
+  },
+  real_estate: {
+    sectionTitle: 'Commission Details',
+    dateLabel: 'Commission Date',
+    customerLabel: 'Contact',
+    customerPlaceholder: 'Select contact...',
+    notesPlaceholder: 'Internal notes (not visible to contact)...',
+  },
+  tax_accounting: {
+    sectionTitle: 'Billing Details',
+    dateLabel: 'Bill Date',
+    customerLabel: 'Client',
+    customerPlaceholder: 'Select client...',
+    notesPlaceholder: 'Internal notes (not visible to client)...',
+  },
+  healthcare: {
+    sectionTitle: 'Billing Details',
+    dateLabel: 'Service Date',
+    customerLabel: 'Patient',
+    customerPlaceholder: 'Select patient...',
+    notesPlaceholder: 'Internal notes (not visible to patient)...',
+  },
+  legal_services: {
+    sectionTitle: 'Billing Details',
+    dateLabel: 'Billing Date',
+    customerLabel: 'Client',
+    customerPlaceholder: 'Select client...',
+    notesPlaceholder: 'Internal notes (not visible to client)...',
+  },
+  contractors_home_services: {
+    sectionTitle: 'Invoice Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Client',
+    customerPlaceholder: 'Select client...',
+    notesPlaceholder: 'Internal notes (not visible to client)...',
+  },
+  gyms_fitness: {
+    sectionTitle: 'Invoice Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Member',
+    customerPlaceholder: 'Select member...',
+    notesPlaceholder: 'Internal notes (not visible to member)...',
+  },
+  construction: {
+    sectionTitle: 'Invoice Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Client',
+    customerPlaceholder: 'Select client...',
+    notesPlaceholder: 'Internal notes (not visible to client)...',
+  },
+  distribution_logistics: {
+    sectionTitle: 'Invoice Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Account',
+    customerPlaceholder: 'Select account...',
+    notesPlaceholder: 'Internal notes (not visible to account)...',
+  },
+  software_development: {
+    sectionTitle: 'Billing Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Client',
+    customerPlaceholder: 'Select client...',
+    notesPlaceholder: 'Internal notes (not visible to client)...',
+  },
+  general_business: {
+    sectionTitle: 'Invoice Details',
+    dateLabel: 'Invoice Date',
+    customerLabel: 'Customer',
+    customerPlaceholder: 'Select customer...',
+    notesPlaceholder: 'Internal notes (not visible to customer)...',
+  },
+};
+
+export const getInvoiceFieldLabels = (industryTemplate: string): InvoiceFieldLabels => {
+  return INVOICE_FIELD_LABELS[industryTemplate] || INVOICE_FIELD_LABELS.general_business;
+};
+
 export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
   owner: [
     'customers.read',
