@@ -192,6 +192,26 @@ export const DashboardLayout = () => {
     useSensor(KeyboardSensor)
   );
 
+  // Sharing filter — must be defined before handleDragEnd which depends on visibleNavItems
+  const isModuleShared = (path: string) => {
+    if (!currentOrganization?.metadata?.sharing) return true;
+
+    const pathMap: Record<string, string> = {
+      '/dashboard/customers': 'customers',
+      '/dashboard/calendar': 'calendar',
+      '/dashboard/pipeline': 'pipeline',
+      '/dashboard/tasks': 'tasks',
+      // Default to shared if not explicitly in the map or metadata
+    };
+
+    const key = pathMap[path];
+    if (!key) return true;
+
+    return currentOrganization.metadata.sharing[key] ?? true;
+  };
+
+  const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -338,25 +358,6 @@ export const DashboardLayout = () => {
       state.fetchUserOrganizations(user.id);
     }
   }, [user?.id]);
-
-  const isModuleShared = (path: string) => {
-    if (!currentOrganization?.metadata?.sharing) return true;
-
-    const pathMap: Record<string, string> = {
-      '/dashboard/customers': 'customers',
-      '/dashboard/calendar': 'calendar',
-      '/dashboard/pipeline': 'pipeline',
-      '/dashboard/tasks': 'tasks',
-      // Default to shared if not explicitly in the map or metadata
-    };
-
-    const key = pathMap[path];
-    if (!key) return true;
-
-    return currentOrganization.metadata.sharing[key] ?? true;
-  };
-
-  const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
 
   // Mobile navigation logic: show Home, 3 custom items + "More"
   // Mobile navigation - use first 3 items from template
