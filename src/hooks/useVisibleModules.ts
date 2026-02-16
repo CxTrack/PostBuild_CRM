@@ -46,7 +46,9 @@ export const useVisibleModules = () => {
         let isTrialExpired = false;
 
         if (planTier === 'free') {
-            const trialStartedAt = currentOrganization?.metadata?.trial_started_at;
+            // Use trial_started_at from metadata, fall back to org created_at
+            const trialStartedAt = currentOrganization?.metadata?.trial_started_at
+                || currentOrganization?.created_at;
             if (trialStartedAt) {
                 const trialStart = new Date(trialStartedAt);
                 const now = new Date();
@@ -54,7 +56,7 @@ export const useVisibleModules = () => {
                 trialDaysRemaining = Math.max(0, FREE_TRIAL_DAYS - daysSinceStart);
                 isTrialExpired = trialDaysRemaining <= 0;
             } else {
-                // If no trial_started_at, assume trial just started (full days remaining)
+                // Absolute fallback: no dates available at all, assume trial just started
                 trialDaysRemaining = FREE_TRIAL_DAYS;
                 isTrialExpired = false;
             }
@@ -97,7 +99,7 @@ export const useVisibleModules = () => {
             trialDaysRemaining,
             isTrialExpired
         };
-    }, [currentOrganization?.subscription_tier, currentOrganization?.industry_template, currentOrganization?.metadata?.trial_started_at]);
+    }, [currentOrganization?.subscription_tier, currentOrganization?.industry_template, currentOrganization?.metadata?.trial_started_at, currentOrganization?.created_at]);
 
     return result;
 };

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Search, ArrowRight, Check } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import OnboardingPageWrapper, { staggerContainer, staggerItem } from '@/components/onboarding/OnboardingPageWrapper';
-import { industries, COUNTRY_OPTIONS, detectCountryFromLocale } from '@/constants/onboarding';
+import { industries, COUNTRY_OPTIONS, detectCountryFromLocale, detectCountryFromIP } from '@/constants/onboarding';
 
 export default function IndustryPage() {
     const navigate = useNavigate();
@@ -35,6 +35,21 @@ export default function IndustryPage() {
         if (parsed.industry) setSelectedIndustry(parsed.industry);
         if (parsed.country) setSelectedCountry(parsed.country);
     }, [navigate]);
+
+    // IP-based country detection — overrides locale guess with actual location
+    // Skipped if user already has a saved country selection in sessionStorage
+    useEffect(() => {
+        const leadData = sessionStorage.getItem('onboarding_lead');
+        if (leadData) {
+            const parsed = JSON.parse(leadData);
+            if (parsed.country) return; // User already selected a country, don't override
+        }
+        let cancelled = false;
+        detectCountryFromIP().then(code => {
+            if (!cancelled) setSelectedCountry(code);
+        });
+        return () => { cancelled = true; };
+    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {

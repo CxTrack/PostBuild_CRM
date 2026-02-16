@@ -127,3 +127,27 @@ export function detectCountryFromLocale(): string {
     }
     return 'CA'; // Default to Canada
 }
+
+/**
+ * Detect country from user's IP address using ipapi.co free API.
+ * Falls back to locale-based detection if the API is unavailable.
+ * Returns a country code matching COUNTRY_OPTIONS.
+ */
+export async function detectCountryFromIP(): Promise<string> {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('IP geolocation API error');
+        const data = await res.json();
+        const code = data.country_code; // ISO 3166-1 alpha-2
+        if (code) {
+            const match = COUNTRY_OPTIONS.find(c => c.code === code.toUpperCase());
+            if (match) return match.code;
+        }
+    } catch {
+        // API unavailable, blocked by ad blocker, or timeout — fall back to locale
+    }
+    return detectCountryFromLocale();
+}

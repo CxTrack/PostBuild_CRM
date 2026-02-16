@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, Zap, Calendar,
     Tag as TagIcon, Info, Target, TrendingUp,
@@ -20,7 +20,10 @@ import type { Product } from '@/types/app.types';
 
 export default function NewDealPage() {
     const navigate = useNavigate();
-    const { createDeal } = useDealStore();
+    const [searchParams] = useSearchParams();
+    const editId = searchParams.get('edit');
+    const isEditMode = !!editId;
+    const { createDeal, updateDeal, fetchDealById } = useDealStore();
     const { customers, fetchCustomers } = useCustomerStore();
     const { stages } = usePipelineConfigStore();
     const { currentOrganization } = useOrganizationStore();
@@ -35,6 +38,7 @@ export default function NewDealPage() {
         return products.filter(p => p.is_active && p.loan_type);
     }, [isMortgage, products]);
 
+    const [isLoadingDeal, setIsLoadingDeal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [tagInput, setTagInput] = useState('');
@@ -71,6 +75,37 @@ export default function NewDealPage() {
             fetchProducts(currentOrganization?.id);
         }
     }, [fetchCustomers, isMortgage, fetchLenders, fetchProducts, currentOrganization?.id]);
+
+    // Load existing deal when editing
+    useEffect(() => {
+        if (!editId) return;
+        setIsLoadingDeal(true);
+        fetchDealById(editId).then(deal => {
+            if (deal) {
+                setFormData({
+                    title: deal.title || '',
+                    customer_id: deal.customer_id || '',
+                    value: deal.value?.toString() || '',
+                    currency: deal.currency || currentOrganization?.metadata?.currency || 'USD',
+                    stage: deal.stage || '',
+                    probability: deal.probability != null ? (deal.probability > 1 ? deal.probability.toString() : (deal.probability * 100).toString()) : '',
+                    expected_close_date: deal.expected_close_date ? deal.expected_close_date.split('T')[0] : '',
+                    source: deal.source || 'other',
+                    revenue_type: deal.revenue_type || 'one_time',
+                    recurring_interval: deal.recurring_interval || 'monthly',
+                    description: deal.description || '',
+                    tags: deal.tags || [],
+                    product_id: deal.product_id || '',
+                    lender_id: deal.lender_id || '',
+                    commission_percentage: deal.commission_percentage?.toString() || '',
+                    volume_commission_percentage: deal.volume_commission_percentage?.toString() || '',
+                });
+            } else {
+                toast.error('Deal not found');
+                navigate('/dashboard/pipeline');
+            }
+        }).finally(() => setIsLoadingDeal(false));
+    }, [editId]);
 
     const availableStages = useMemo(() => {
         if (stages.length > 0) {
@@ -194,26 +229,31 @@ export default function NewDealPage() {
         }
 
         setIsSubmitting(true);
+        const dealData = {
+            title: formData.title.trim(),
+            customer_id: formData.customer_id,
+            value: parseFloat(formData.value),
+            currency: formData.currency,
+            stage: formData.stage,
+            probability: parseFloat(formData.probability) || 0,
+            expected_close_date: formData.expected_close_date || undefined,
+            source: formData.source,
+            revenue_type: formData.revenue_type,
+            recurring_interval: formData.revenue_type === 'recurring' ? formData.recurring_interval : undefined,
+            description: formData.description || undefined,
+            tags: formData.tags,
+            product_id: formData.product_id || undefined,
+            lender_id: formData.lender_id || undefined,
+            commission_percentage: parseFloat(formData.commission_percentage) || 0,
+            volume_commission_percentage: parseFloat(formData.volume_commission_percentage) || 0,
+        };
         try {
-            await createDeal({
-                title: formData.title.trim(),
-                customer_id: formData.customer_id,
-                value: parseFloat(formData.value),
-                currency: formData.currency,
-                stage: formData.stage,
-                probability: parseFloat(formData.probability) || 0,
-                expected_close_date: formData.expected_close_date || undefined,
-                source: formData.source,
-                revenue_type: formData.revenue_type,
-                recurring_interval: formData.revenue_type === 'recurring' ? formData.recurring_interval : undefined,
-                description: formData.description || undefined,
-                tags: formData.tags,
-                product_id: formData.product_id || undefined,
-                lender_id: formData.lender_id || undefined,
-                commission_percentage: parseFloat(formData.commission_percentage) || 0,
-                volume_commission_percentage: parseFloat(formData.volume_commission_percentage) || 0,
-            });
-
+            if (isEditMode && editId) {
+                await updateDeal(editId, dealData);
+                toast.success(`${labels.entitySingular} updated`);
+            } else {
+                await createDeal(dealData);
+            }
             navigate('/dashboard/pipeline');
         } catch {
             // Error handled in store
@@ -240,10 +280,10 @@ export default function NewDealPage() {
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <Zap className="text-primary-500" size={24} />
-                                Create New {labels.entitySingular}
+                                {isEditMode ? `Edit ${labels.entitySingular}` : `Create New ${labels.entitySingular}`}
                             </h1>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Fill in the details to add this {labels.entitySingular} to your pipeline
+                                {isEditMode ? `Update the details of this ${labels.entitySingular}` : `Fill in the details to add this ${labels.entitySingular} to your pipeline`}
                             </p>
                         </div>
                     </div>
@@ -258,13 +298,18 @@ export default function NewDealPage() {
                             className="px-6 flex items-center gap-2 shadow-lg shadow-primary-500/20"
                         >
                             <Save size={18} />
-                            {isSubmitting ? 'Creating...' : `Create ${labels.entitySingular}`}
+                            {isSubmitting ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? `Save ${labels.entitySingular}` : `Create ${labels.entitySingular}`)}
                         </Button>
                     </div>
                 </div>
             </div>
 
             <main className="max-w-5xl mx-auto px-6 pt-8">
+                {isLoadingDeal ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : (
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
@@ -892,6 +937,7 @@ export default function NewDealPage() {
                         </div>
                     </div>
                 </form>
+                )}
             </main>
 
             {/* Quick Add Customer Modal */}
