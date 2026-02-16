@@ -9,6 +9,11 @@ import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
 import { FileAttachmentButton, FilePreview } from '@/components/chat/FileAttachment';
 import { CreateGroupModal } from '@/components/chat/CreateGroupModal';
+import ActionCard from '@/components/copilot/ActionCard';
+import { parseActionProposal } from '@/utils/parseActionProposal';
+import { executeAction, checkActionPermission } from '@/utils/executeAction';
+import type { ActionStatus } from '@/types/copilot-actions.types';
+import toast from 'react-hot-toast';
 
 
 interface ChatPageProps {
@@ -23,8 +28,10 @@ const MessageBubble = React.memo<{
     onAddReaction: (messageId: string, emoji: string) => void;
     onRemoveReaction: (messageId: string, reactionId: string) => void;
     compact: boolean;
-}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact }) => (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
+    onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
+    onCancelAction?: (messageId: string) => void;
+}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact, onConfirmAction, onCancelAction }) => (
+    <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} group`}>
         <div className={`
       max-w-[70%] ${compact ? 'px-3 py-2' : 'px-5 py-3'} rounded-2xl
       ${isOwn
@@ -46,6 +53,17 @@ const MessageBubble = React.memo<{
                 />
             )}
         </div>
+        {msg.action && onConfirmAction && onCancelAction && (
+            <div className="max-w-[70%] w-full">
+                <ActionCard
+                    action={msg.action}
+                    status={msg.actionStatus || 'proposed'}
+                    result={msg.actionResult}
+                    onConfirm={(editedFields) => onConfirmAction(msg.id, editedFields)}
+                    onCancel={() => onCancelAction(msg.id)}
+                />
+            </div>
+        )}
     </div>
 ));
 MessageBubble.displayName = 'MessageBubble';

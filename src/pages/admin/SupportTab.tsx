@@ -98,7 +98,7 @@ export const SupportTab = () => {
     return (
         <div className="space-y-6">
             {/* Header with Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-gray-100 dark:border-gray-800 p-4">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Open</span>
@@ -390,7 +390,7 @@ const KanbanBoard = ({
     };
 
     return (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {columns.map((column) => (
                 <div
                     key={column.status}

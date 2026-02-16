@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useCoPilot } from '@/contexts/CoPilotContext';
 import { useThemeStore } from '@/stores/themeStore';
+import ActionCard from '@/components/copilot/ActionCard';
 import {
   X,
   ChevronLeft,
@@ -29,6 +30,8 @@ const CoPilotPanel: React.FC = () => {
     setPanelSide,
     sendMessage,
     clearMessages,
+    confirmAction,
+    cancelAction,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
@@ -151,7 +154,12 @@ const CoPilotPanel: React.FC = () => {
           <EmptyState />
         ) : (
           messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble
+              key={message.id}
+              message={message}
+              onConfirmAction={confirmAction}
+              onCancelAction={cancelAction}
+            />
           ))
         )}
 
@@ -345,11 +353,15 @@ const SuggestedPrompt: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-const MessageBubble: React.FC<{ message: any }> = ({ message }) => {
+const MessageBubble: React.FC<{
+  message: any;
+  onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
+  onCancelAction?: (messageId: string) => void;
+}> = ({ message, onConfirmAction, onCancelAction }) => {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
       <div
         className={`
           max-w-[85%] px-4 py-3 rounded-2xl
@@ -369,6 +381,17 @@ const MessageBubble: React.FC<{ message: any }> = ({ message }) => {
           {new Date(message.timestamp).toLocaleTimeString()}
         </p>
       </div>
+      {message.action && onConfirmAction && onCancelAction && (
+        <div className="max-w-[85%] w-full">
+          <ActionCard
+            action={message.action}
+            status={message.actionStatus || 'proposed'}
+            result={message.actionResult}
+            onConfirm={(fields) => onConfirmAction(message.id, fields)}
+            onCancel={() => onCancelAction(message.id)}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -3,12 +3,18 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
+import { parseActionProposal } from '@/utils/parseActionProposal';
+import { executeAction, checkActionPermission } from '@/utils/executeAction';
 
-interface Message {
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  action?: ActionProposal;
+  actionStatus?: ActionStatus;
+  actionResult?: ActionResult;
 }
 
 interface ContextData {
@@ -44,6 +50,8 @@ interface CoPilotContextType {
   clearMessages: () => void;
   setContext: (context: ContextData) => void;
   setConfig: (config: CoPilotConfig) => void;
+  confirmAction: (messageId: string, editedFields: Record<string, any>) => Promise<void>;
+  cancelAction: (messageId: string) => void;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -79,6 +87,39 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const { customers, addNote, fetchCustomers } = useCustomerStore();
+
+  // Confirm an action proposed by the AI
+  const confirmAction = useCallback(async (messageId: string, editedFields: Record<string, any>) => {
+    // Set status to executing
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, actionStatus: 'executing' as ActionStatus } : m
+    ));
+
+    const message = messages.find(m => m.id === messageId);
+    if (!message?.action) return;
+
+    const result = await executeAction(message.action, editedFields);
+
+    // Update the message with the result
+    setMessages(prev => prev.map(m =>
+      m.id === messageId
+        ? { ...m, actionStatus: (result.success ? 'completed' : 'failed') as ActionStatus, actionResult: result }
+        : m
+    ));
+
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
+  }, [messages]);
+
+  // Cancel an action proposed by the AI
+  const cancelAction = useCallback((messageId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, actionStatus: 'cancelled' as ActionStatus } : m
+    ));
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
     const userMessage: Message = {
@@ -148,10 +189,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // AI RESPONSE: Call the Edge Function
       // Read auth token directly from localStorage to avoid Supabase AbortController issue
-      // (supabase.auth.getSession() can return stale/null during auth state transitions)
       let accessToken: string | null = null;
       try {
-        // Derive storage key dynamically from SUPABASE_URL (pattern: sb-{ref}-auth-token)
         const ref = SUPABASE_URL.split('//')[1]?.split('.')[0];
         const storageKey = ref ? `sb-${ref}-auth-token` : null;
         const stored = storageKey ? localStorage.getItem(storageKey) : null;
@@ -159,7 +198,6 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const parsed = JSON.parse(stored);
           accessToken = parsed?.access_token || null;
         }
-        // Fallback: search for any Supabase auth token key
         if (!accessToken) {
           const fallbackKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
           if (fallbackKey) {
@@ -168,7 +206,6 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
       } catch {
-        // Last resort: use supabase client
         const { data: { session } } = await supabase.auth.getSession();
         accessToken = session?.access_token || null;
       }
@@ -184,15 +221,16 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Build conversation history for context
       const conversationHistory = messages.slice(-10).map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
 
-      // Get organization context
       const org = useOrganizationStore.getState().currentOrganization;
       const membership = useOrganizationStore.getState().currentMembership;
+
+      const isAdminPage = currentContext?.page?.startsWith('Admin') ||
+        window.location.pathname.startsWith('/admin');
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
@@ -208,6 +246,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             industry: org?.industry_template || 'general_business',
             orgName: org?.name || 'Your Organization',
             userRole: membership?.role || 'user',
+            ...(isAdminPage && { isAdmin: true }),
           },
         }),
       });
@@ -215,7 +254,6 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle token limit reached
         if (data.error === 'token_limit_reached') {
           setTokenUsage({
             tokensUsed: data.tokensUsed || 0,
@@ -245,11 +283,24 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
 
+      // Parse the AI response for action proposals
+      const parsed = parseActionProposal(data.response);
+
+      // Permission gate: strip action if user doesn't have permission
+      let actionToShow = parsed.action;
+      let displayContent = parsed.textContent;
+      if (actionToShow && !checkActionPermission(actionToShow.actionType)) {
+        actionToShow = undefined;
+        displayContent += "\n\n⚠️ You don't have permission to perform this action. Contact your admin.";
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: displayContent,
         timestamp: new Date(),
+        action: actionToShow || undefined,
+        actionStatus: actionToShow ? 'proposed' : undefined,
       };
       setMessages(prev => [...prev, assistantMessage]);
 
@@ -284,6 +335,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearMessages,
         setContext,
         setConfig,
+        confirmAction,
+        cancelAction,
       }}
     >
       {children}

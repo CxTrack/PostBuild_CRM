@@ -1,11 +1,26 @@
-﻿import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect, useCallback } from 'react';
 import {
-    Send, Clock, Eye, X,
-    Copy, Archive, RefreshCw, FileText, Plus,
-    Calendar, Search
+    Send, Clock, X,
+    RefreshCw, FileText, Plus,
+    Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Direct fetch helper (AbortController workaround)
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* ignore */ }
+    }
+  }
+  return null;
+};
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 interface Broadcast {
     id: string;
@@ -13,19 +28,10 @@ interface Broadcast {
     message: string;
     priority: 'low' | 'normal' | 'high' | 'urgent';
     type: string;
-    status: 'active' | 'expired' | 'scheduled';
+    is_dismissible: boolean;
     created_at: string;
     expires_at: string;
-    views: number;
-    dismissals: number;
 }
-
-const MOCK_HISTORY: Broadcast[] = [
-    { id: '1', title: 'Scheduled Maintenance', message: 'System will be down for updates', priority: 'high', type: 'site_wide', status: 'active', created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), expires_at: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(), views: 1243, dismissals: 89 },
-    { id: '2', title: 'New Feature Release', message: 'Check out our new AI-powered copilot', priority: 'normal', type: 'site_wide', status: 'active', created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), views: 856, dismissals: 234 },
-    { id: '3', title: 'Holiday Hours', message: 'Office closed Dec 25-26', priority: 'low', type: 'site_wide', status: 'expired', created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), views: 2431, dismissals: 1892 },
-    { id: '4', title: 'Security Update', message: 'Please update your password', priority: 'urgent', type: 'site_wide', status: 'expired', created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), expires_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), views: 3521, dismissals: 3100 },
-];
 
 const TEMPLATES = [
     { id: 't1', name: 'Maintenance Notice', title: 'Scheduled Maintenance', message: 'We will be performing scheduled maintenance on [DATE] from [TIME] to [TIME]. During this period, the service may be temporarily unavailable.', priority: 'high' as const },
@@ -43,8 +49,38 @@ export const BroadcastPanel = () => {
     const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'templates'>('compose');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [, setShowScheduleModal] = useState(false);
-    const [broadcasts,] = useState<Broadcast[]>(MOCK_HISTORY);
+    const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [sending, setSending] = useState(false);
+
+    const loadBroadcasts = useCallback(async () => {
+        setLoadingHistory(true);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/broadcasts?order=created_at.desc&limit=50`,
+                {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+            if (res.ok) {
+                const data = await res.json();
+                setBroadcasts(data || []);
+            }
+        } catch {
+            // Silently fail
+        } finally {
+            setLoadingHistory(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadBroadcasts();
+    }, [loadBroadcasts]);
 
     const sendBroadcast = async () => {
         if (!title.trim() || !message.trim()) {
@@ -52,31 +88,44 @@ export const BroadcastPanel = () => {
             return;
         }
 
+        setSending(true);
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + expiresIn);
 
         try {
-            const { error } = await supabase
-                .from('broadcasts')
-                .insert({
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/broadcasts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${token}`,
+                    'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({
                     title,
                     message,
                     priority,
                     type: broadcastType,
                     expires_at: expiresAt.toISOString(),
                     is_dismissible: true,
-                    created_at: new Date().toISOString(),
-                });
+                }),
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Insert failed');
 
             toast.success('Broadcast sent successfully');
             setTitle('');
             setMessage('');
             setPriority('normal');
             setBroadcastType('site_wide');
-        } catch (error) {
+            loadBroadcasts();
+        } catch {
             toast.error('Failed to send broadcast');
+        } finally {
+            setSending(false);
         }
     };
 
@@ -97,9 +146,14 @@ export const BroadcastPanel = () => {
         return `${days}d ago`;
     };
 
+    const getBroadcastStatus = (b: Broadcast): 'active' | 'expired' => {
+        return new Date(b.expires_at) > new Date() ? 'active' : 'expired';
+    };
+
     const filteredBroadcasts = broadcasts.filter(b => {
         const matchesSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+        const status = getBroadcastStatus(b);
+        const matchesStatus = statusFilter === 'all' || status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -134,9 +188,9 @@ export const BroadcastPanel = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
-                {/* Left Panel - Compose/Templates */}
-                <div className="col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                {/* Left Panel */}
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                     {activeTab === 'compose' && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-3 mb-4">
@@ -149,60 +203,40 @@ export const BroadcastPanel = () => {
                                 </div>
                             </div>
 
-                            {/* Title */}
                             <input
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Broadcast title..."
-                                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-sm 
-                  text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-blue-500/50"
+                                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-blue-500/50"
                             />
 
-                            {/* Message */}
                             <textarea
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 placeholder="Your message..."
                                 rows={3}
-                                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-sm 
-                  text-gray-900 dark:text-white placeholder-gray-500 outline-none resize-none focus:ring-2 focus:ring-blue-500/50"
+                                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 outline-none resize-none focus:ring-2 focus:ring-blue-500/50"
                             />
 
-                            {/* Compact Options Row */}
                             <div className="flex items-center gap-2 flex-wrap">
-                                {/* Audience */}
-                                <select
-                                    value={broadcastType}
-                                    onChange={(e) => setBroadcastType(e.target.value)}
-                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-800 rounded-lg
-                    text-gray-700 dark:text-gray-300 border-0"
-                                >
+                                <select value={broadcastType} onChange={(e) => setBroadcastType(e.target.value)}
+                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 border-0">
                                     <option value="site_wide">Everyone</option>
                                     <option value="organization">Organization</option>
                                     <option value="user_specific">Specific User</option>
                                 </select>
 
-                                {/* Priority */}
-                                <select
-                                    value={priority}
-                                    onChange={(e) => setPriority(e.target.value as typeof priority)}
-                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-800 rounded-lg
-                    text-gray-700 dark:text-gray-300 border-0"
-                                >
+                                <select value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)}
+                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 border-0">
                                     <option value="low">Low</option>
                                     <option value="normal">Normal</option>
                                     <option value="high">High</option>
                                     <option value="urgent">Urgent</option>
                                 </select>
 
-                                {/* Expiry */}
-                                <select
-                                    value={expiresIn}
-                                    onChange={(e) => setExpiresIn(parseInt(e.target.value))}
-                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-800 rounded-lg
-                    text-gray-700 dark:text-gray-300 border-0"
-                                >
+                                <select value={expiresIn} onChange={(e) => setExpiresIn(parseInt(e.target.value))}
+                                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 border-0">
                                     <option value="1">1 hour</option>
                                     <option value="6">6 hours</option>
                                     <option value="24">24 hours</option>
@@ -211,24 +245,11 @@ export const BroadcastPanel = () => {
                                 </select>
                             </div>
 
-                            {/* Action Buttons */}
                             <div className="flex items-center gap-2 pt-2">
-                                <button
-                                    onClick={sendBroadcast}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 
-                    text-white text-sm font-semibold rounded-lg transition-colors"
-                                >
+                                <button onClick={sendBroadcast} disabled={sending}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50">
                                     <Send className="w-4 h-4" />
-                                    Send Now
-                                </button>
-                                <button
-                                    onClick={() => setShowScheduleModal(true)}
-                                    className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 
-                    text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg 
-                    hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <Calendar className="w-4 h-4" />
-                                    Schedule
+                                    {sending ? 'Sending...' : 'Send Now'}
                                 </button>
                             </div>
                         </div>
@@ -241,8 +262,7 @@ export const BroadcastPanel = () => {
                                 <button
                                     key={template.id}
                                     onClick={() => applyTemplate(template)}
-                                    className="w-full text-left p-3 bg-gray-50 dark:bg-gray-800 rounded-lg 
-                    hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                                    className="w-full text-left p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-sm font-medium text-gray-900 dark:text-white">{template.name}</span>
@@ -255,72 +275,79 @@ export const BroadcastPanel = () => {
                             ))}
                         </div>
                     )}
+
+                    {activeTab === 'history' && (
+                        <div className="lg:hidden text-center py-4">
+                            <p className="text-sm text-gray-500">Scroll down for broadcast history.</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Panel - History */}
-                <div className="col-span-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search broadcasts..."
-                                    className="w-full pl-9 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 
-                    border-0 rounded-lg text-gray-900 dark:text-white placeholder-gray-500"
-                                />
+                                    className="w-full pl-9 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-gray-900 dark:text-white placeholder-gray-500" />
                             </div>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded-lg
-                  text-gray-700 dark:text-gray-300 border-0"
-                            >
+                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 border-0">
                                 <option value="all">All Status</option>
                                 <option value="active">Active</option>
                                 <option value="expired">Expired</option>
-                                <option value="scheduled">Scheduled</option>
                             </select>
+                            <button onClick={loadBroadcasts} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Refresh">
+                                <RefreshCw className={`w-4 h-4 text-gray-400 ${loadingHistory ? 'animate-spin' : ''}`} />
+                            </button>
                         </div>
                     </div>
 
-                    <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
-                        {filteredBroadcasts.map(broadcast => (
-                            <div key={broadcast.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                <div className="flex items-start gap-3">
-                                    <div className={`w-2 h-2 rounded-full mt-2 ${broadcast.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{broadcast.title}</h4>
-                                            <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${priorityColors[broadcast.priority]}`}>
-                                                {broadcast.priority}
-                                            </span>
+                    <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[500px] overflow-y-auto">
+                        {loadingHistory && broadcasts.length === 0 && (
+                            <div className="px-4 py-8 text-center text-gray-400">
+                                <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin opacity-30" />
+                                <p className="text-sm">Loading broadcasts...</p>
+                            </div>
+                        )}
+
+                        {filteredBroadcasts.map(broadcast => {
+                            const status = getBroadcastStatus(broadcast);
+                            return (
+                                <div key={broadcast.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-2 h-2 rounded-full mt-2 ${status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{broadcast.title}</h4>
+                                                <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${priorityColors[broadcast.priority]}`}>
+                                                    {broadcast.priority}
+                                                </span>
+                                                <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                                                    status === 'active'
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                                                }`}>
+                                                    {status}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 line-clamp-1 mb-2">{broadcast.message}</p>
+                                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    {getTimeAgo(broadcast.created_at)}
+                                                </span>
+                                                <span>Expires: {new Date(broadcast.expires_at).toLocaleDateString()}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-gray-500 line-clamp-1 mb-2">{broadcast.message}</p>
-                                        <div className="flex items-center gap-4 text-xs text-gray-400">
-                                            <span>{getTimeAgo(broadcast.created_at)}</span>
-                                            <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{broadcast.views.toLocaleString()}</span>
-                                            <span className="flex items-center gap-1"><X className="w-3 h-3" />{broadcast.dismissals}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Duplicate">
-                                            <Copy className="w-3.5 h-3.5 text-gray-400" />
-                                        </button>
-                                        <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Resend">
-                                            <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
-                                        </button>
-                                        <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Archive">
-                                            <Archive className="w-3.5 h-3.5 text-gray-400" />
-                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
-                        {filteredBroadcasts.length === 0 && (
+                        {!loadingHistory && filteredBroadcasts.length === 0 && (
                             <div className="px-4 py-8 text-center text-gray-400">
                                 <Send className="w-8 h-8 mx-auto mb-2 opacity-30" />
                                 <p className="text-sm">No broadcasts found</p>
@@ -332,6 +359,3 @@ export const BroadcastPanel = () => {
         </div>
     );
 };
-
-// Export legacy name for backwards compatibility
-export const AppleBroadcastPanel = BroadcastPanel;

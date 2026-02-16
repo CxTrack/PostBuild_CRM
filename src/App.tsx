@@ -20,6 +20,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { UpgradePage } from './pages/UpgradePage';
 import { AdminPage } from './pages/admin/AdminPage';
+import { RequireAdmin } from './components/admin/RequireAdmin';
 
 // Pages - Default exports
 import Calendar from './pages/calendar/Calendar';
@@ -157,8 +158,8 @@ export default function App() {
           {/* Pop-out Chat Window - standalone, no sidebar */}
           <Route path="/chat-window" element={<RequireAuth><ChatPage isPopup={true} /></RequireAuth>} />
 
-          {/* Admin Routes - Require Authentication */}
-          <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+          {/* Admin Routes - Require Authentication + Admin Check */}
+          <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -41,6 +41,7 @@ export interface UserProfile {
   phone: string | null;
   default_org_id: string | null;
   preferences: Record<string, any>;
+  profile_metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

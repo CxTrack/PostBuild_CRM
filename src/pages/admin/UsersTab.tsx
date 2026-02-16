@@ -1,169 +1,315 @@
-﻿import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Search, UserPlus, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Users, Building2, TrendingUp } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useAdminStore } from '../../stores/adminStore';
+
+// Direct fetch helper (AbortController workaround)
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* ignore */ }
+    }
+  }
+  return null;
+};
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const INDUSTRY_COLORS: Record<string, string> = {
+  tax_accounting: '#8b5cf6',
+  distribution_logistics: '#3b82f6',
+  gyms_fitness: '#10b981',
+  contractors_home_services: '#f59e0b',
+  healthcare: '#ef4444',
+  real_estate: '#ec4899',
+  legal_services: '#6366f1',
+  general_business: '#64748b',
+  agency: '#14b8a6',
+  mortgage_broker: '#f97316',
+  construction: '#84cc16',
+};
+
+const INDUSTRY_LABELS: Record<string, string> = {
+  tax_accounting: 'Tax & Accounting',
+  distribution_logistics: 'Distribution',
+  gyms_fitness: 'Gyms & Fitness',
+  contractors_home_services: 'Contractors',
+  healthcare: 'Healthcare',
+  real_estate: 'Real Estate',
+  legal_services: 'Legal',
+  general_business: 'General',
+  agency: 'Agency',
+  mortgage_broker: 'Mortgage',
+  construction: 'Construction',
+};
+
+const TIER_COLORS: Record<string, string> = {
+  free: '#64748b',
+  business: '#3b82f6',
+  elite: '#8b5cf6',
+  enterprise: '#f59e0b',
+};
 
 export const UsersTab = () => {
-    const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all');
+  const { kpis, userGrowth, orgBreakdown, loading, fetchUserGrowth, fetchOrgBreakdown } = useAdminStore();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        loadUsers();
+  useEffect(() => {
+    fetchUserGrowth();
+    fetchOrgBreakdown();
+    loadUsers();
+  }, []);
 
-        // Real-time subscription
-        const subscription = supabase
-            .channel('users_changes')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'user_profiles' },
-                () => loadUsers()
-            )
-            .subscribe();
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
-
-    const loadUsers = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('user_profiles')
-                .select(`
-          *,
-          organizations (name, plan, status)
-        `)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setUsers(data || []);
-        } catch (error) {
-            // Error handled silently
-        } finally {
-            setLoading(false);
+  const loadUsers = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_profiles?select=*,organizations(name,plan,status)&order=created_at.desc&limit=100`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
         }
-    };
-
-    const filteredUsers = users.filter(user => {
-        const matchesSearch = user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-        return matchesSearch && matchesRole;
-    });
-
-    if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
-        );
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data || []);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingUsers(false);
     }
+  };
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Users Management</h2>
-                    <p className="text-gray-600 dark:text-gray-400">Manage all users across organizations</p>
-                </div>
-                <button className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center gap-2">
-                    <UserPlus className="w-4 h-4" />
-                    Add User
-                </button>
-            </div>
+  const filteredUsers = users.filter(user => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return user.full_name?.toLowerCase().includes(q) ||
+      user.email?.toLowerCase().includes(q) ||
+      user.organizations?.name?.toLowerCase().includes(q);
+  });
 
-            {/* Filters */}
-            <div className="flex gap-4">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                    />
-                </div>
-                <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                >
-                    <option value="all">All Roles</option>
-                    <option value="super_admin">Super Admin</option>
-                    <option value="owner">Owner</option>
-                    <option value="admin">Admin</option>
-                    <option value="member">Member</option>
-                </select>
-            </div>
+  // Industry pie chart data
+  const industryData = Object.entries(
+    orgBreakdown.reduce((acc, item) => {
+      acc[item.industry_template] = (acc[item.industry_template] || 0) + Number(item.org_count);
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([key, value]) => ({
+    name: INDUSTRY_LABELS[key] || key,
+    value,
+    color: INDUSTRY_COLORS[key] || '#94a3b8',
+  }));
 
-            {/* Users Table */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">User</th>
-                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Organization</th>
-                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Role</th>
-                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Status</th>
-                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Last Seen</th>
-                            <th className="text-right px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {filteredUsers.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                                            {user.full_name?.charAt(0) || 'U'}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">{user.full_name}</p>
-                                            <p className="text-sm text-gray-500">{user.email}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <p className="text-gray-900 dark:text-white">{user.organizations?.name}</p>
-                                    <p className="text-sm text-gray-500 capitalize">{user.organizations?.plan}</p>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'super_admin' ? 'bg-purple-100 text-purple-700' :
-                                        user.role === 'owner' ? 'bg-blue-100 text-blue-700' :
-                                            user.role === 'admin' ? 'bg-green-100 text-green-700' :
-                                                'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        {user.role}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.is_active
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-red-100 text-red-700'
-                                        }`}>
-                                        {user.is_active ? 'Active' : 'Inactive'}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                    {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : 'Never'}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-600">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+  // Tier distribution
+  const tierData = Object.entries(
+    orgBreakdown.reduce((acc, item) => {
+      acc[item.subscription_tier] = (acc[item.subscription_tier] || 0) + Number(item.org_count);
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([key, value]) => ({
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    value,
+    color: TIER_COLORS[key] || '#94a3b8',
+  }));
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Total Users" value={kpis?.total_users || users.length} icon={Users} color="purple" />
+        <StatCard label="Organizations" value={kpis?.total_orgs || 0} icon={Building2} color="blue" />
+        <StatCard label="New (7d)" value={kpis?.new_users_7d || 0} icon={TrendingUp} color="green" />
+        <StatCard label="New (30d)" value={kpis?.new_users_30d || 0} icon={TrendingUp} color="orange" />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* User Growth Chart */}
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">User Growth</h3>
+          {userGrowth.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={userGrowth}>
+                <defs>
+                  <linearGradient id="userGrowthGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="period" stroke="#6b7280" tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString('en', { month: 'short' })} />
+                <YAxis stroke="#6b7280" tick={{ fontSize: 10 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#fff', fontSize: 12, borderRadius: 8 }} />
+                <Area type="monotone" dataKey="cumulative_users" fill="url(#userGrowthGrad)" stroke="#8b5cf6" strokeWidth={2} name="Total Users" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-sm text-gray-400">
+              {loading.userGrowth ? 'Loading...' : 'No data'}
             </div>
+          )}
         </div>
-    );
+
+        {/* Industry Distribution */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">By Industry</h3>
+          {industryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={industryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} strokeWidth={2} stroke="#fff">
+                  {industryData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#fff', fontSize: 12, borderRadius: 8 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-sm text-gray-400">
+              {loading.orgBreakdown ? 'Loading...' : 'No data'}
+            </div>
+          )}
+        </div>
+
+        {/* Tier Distribution */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">By Subscription Tier</h3>
+          {tierData.length > 0 ? (
+            <div className="space-y-3 mt-4">
+              {tierData.map((t) => {
+                const total = tierData.reduce((s, d) => s + d.value, 0);
+                const pct = total > 0 ? Math.round((t.value / total) * 100) : 0;
+                return (
+                  <div key={t.name}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{t.name}</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">{t.value} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: t.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-sm text-gray-400">
+              {loading.orgBreakdown ? 'Loading...' : 'No data'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search users by name, email, org..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 outline-none"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Organization</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Plan</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">Last Seen</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {loadingUsers ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">Loading users...</td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">No users found</td>
+                </tr>
+              ) : filteredUsers.map(user => (
+                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {user.full_name?.charAt(0) || 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.full_name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 hidden md:table-cell">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">{user.organizations?.name || '\u2014'}</p>
+                  </td>
+                  <td className="px-4 py-2.5 hidden md:table-cell">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      user.organizations?.plan === 'elite' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                      user.organizations?.plan === 'business' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                      user.organizations?.plan === 'enterprise' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                    }`}>
+                      {user.organizations?.plan || 'free'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
+                    {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : 'Never'}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      user.is_active !== false
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                      {user.is_active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 };
+
+const statColors: Record<string, string> = {
+  purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600',
+  blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
+  green: 'bg-green-100 dark:bg-green-900/30 text-green-600',
+  orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600',
+};
+
+const StatCard = ({ label, value, icon: Icon, color }: {
+  label: string; value: number; icon: any; color: string;
+}) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${statColors[color] || statColors.purple}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+    </div>
+    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+    <p className="text-2xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
+  </div>
+);

@@ -177,7 +177,7 @@ export const DashboardLayout = () => {
 
   const { theme, toggleTheme } = useThemeStore();
   const { preferences } = usePreferencesStore();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, teamMembers } = useOrganizationStore();
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -251,7 +251,7 @@ export const DashboardLayout = () => {
     }
   }, [currentOrganization, fetchPipelineStages]);
 
-  const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com'];
+  const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com', 'info@cxtrack.com'];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   useEffect(() => {
@@ -537,11 +537,17 @@ export const DashboardLayout = () => {
             title={sidebarCollapsed ? (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User') : undefined}
           >
             <div className="flex items-center">
-              <div
-                className={theme === 'soft-modern' ? "w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-gradient-to-br from-purple-600 to-blue-600 shadow-sm" : "w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm"}
-              >
-                {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
-              </div>
+              {(() => {
+                const currentUserAvatar = teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                const initial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
+                return currentUserAvatar ? (
+                  <img src={currentUserAvatar} alt="" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+                ) : (
+                  <div className={theme === 'soft-modern' ? "w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-gradient-to-br from-purple-600 to-blue-600 shadow-sm" : "w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm"}>
+                    {initial}
+                  </div>
+                );
+              })()}
               {!sidebarCollapsed && (
                 <div className="ml-3 text-left">
                   <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>

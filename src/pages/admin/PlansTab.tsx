@@ -326,7 +326,7 @@ const PlanModal = ({
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan Name *</label>
                             <input
@@ -361,7 +361,7 @@ const PlanModal = ({
                     </div>
 
                     {/* Pricing */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monthly Price ($)</label>
                             <input
@@ -387,7 +387,7 @@ const PlanModal = ({
                     </div>
 
                     {/* Minutes & Overage */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Included Minutes</label>
                             <input
@@ -425,7 +425,7 @@ Full CRM Access
                     </div>
 
                     {/* Stripe IDs */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stripe Monthly Price ID</label>
                             <input

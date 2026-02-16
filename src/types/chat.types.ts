@@ -1,4 +1,5 @@
 // Chat System Types
+import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
 
 export interface Message {
     id: string;
@@ -16,6 +17,9 @@ export interface Message {
     };
     reactions?: MessageReaction[];
     attachments?: MessageAttachment[];
+    action?: ActionProposal;
+    actionStatus?: ActionStatus;
+    actionResult?: ActionResult;
 }
 
 export interface MessageReaction {
