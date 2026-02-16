@@ -24,7 +24,7 @@ export default function SelectServicePage() {
 
     switch (selectedService) {
       case 'crm':
-        navigate('/onboarding/plan');
+        navigate('/onboarding/industry');
         break;
       case 'custom':
         navigate('/onboarding/success?type=custom_crm');

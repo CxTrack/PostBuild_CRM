@@ -101,6 +101,18 @@
   animation: fade-in 0.2s ease-out forwards;
 }
 
+/* Gold shimmer effect for CTA buttons */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.btn-shimmer {
+  background: linear-gradient(90deg, #FFD700 0%, #FFF8DC 50%, #FFD700 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
 /* ========================================
    APPLE-STYLE MINIMAL SCROLLBAR
    Nearly invisible until hover

@@ -1,149 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
-import IndustryCard from '@/components/onboarding/IndustryCard';
+import OnboardingPageWrapper, { staggerContainer, staggerItem } from '@/components/onboarding/OnboardingPageWrapper';
 import PricingTierCard from '@/components/onboarding/PricingTierCard';
+import { pricingTiers, COUNTRY_OPTIONS } from '@/constants/onboarding';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-
-const industries = [
-    { id: 'tax_accounting', label: 'Tax & Accounting', icon: 'calculate', description: 'Client intake, document collection, deadline tracking' },
-    { id: 'distribution_logistics', label: 'Distribution & Logistics', icon: 'local_shipping', description: 'Inventory, supplier tracking, order processing' },
-    { id: 'gyms_fitness', label: 'Gyms & Fitness', icon: 'fitness_center', description: 'Member management, class scheduling, payments' },
-    { id: 'contractors_home_services', label: 'Contractors & Home Services', icon: 'construction', description: 'Job estimation, scheduling, invoicing' },
-    { id: 'healthcare', label: 'Healthcare', icon: 'medical_services', description: 'Patient intake, appointments, HIPAA workflows' },
-    { id: 'real_estate', label: 'Real Estate', icon: 'home_work', description: 'Lead nurturing, listings, transaction tracking' },
-    { id: 'legal_services', label: 'Legal Services', icon: 'gavel', description: 'Client intake, case management, billing' },
-    { id: 'software_development', label: 'Software Development', icon: 'code', description: 'Sprint management, bug tracking, releases' },
-    { id: 'mortgage_broker', label: 'Mortgage Broker', icon: 'account_balance', description: 'Loan pipeline, lender management, rate tracking' },
-    { id: 'construction', label: 'Construction', icon: 'engineering', description: 'Project bids, punch lists, scheduling, invoicing' },
-    { id: 'general_business', label: 'General Business', icon: 'business', description: 'Standard CRM pipelines, lead management' },
-];
-
-const pricingTiers = [
-    {
-        id: 'free',
-        name: 'FREE',
-        price: 0,
-        priceDisplay: '$0/month',
-        badge: 'TRY IT',
-        bestFor: 'Wanting to try CxTrack',
-        features: [
-            '1 CRM User (single seat only)',
-            'Basic invoices & quotes',
-            '10 invoices/quotes per month',
-            'Voice AI Agent (60 min) - FIRST MONTH ONLY',
-        ],
-        cta: 'Start Free',
-        skipPayment: true,
-    },
-    {
-        id: 'business',
-        name: 'BUSINESS',
-        price: 50,
-        priceDisplay: '$50/mo → $150/mo',
-        badge: null,
-        bestFor: 'Growing SMEs + Basic AI',
-        features: [
-            'Up to 5 CRM Users',
-            '100 customer records',
-            '50 invoices & quotes/month',
-            'Voice AI Agent (100 min/month)',
-            'Inventory & pipeline access',
-        ],
-        pricingNote: '$50/mo for first 3 months, then $150/mo',
-        cta: 'Select Business',
-    },
-    {
-        id: 'elite_premium',
-        name: 'ELITE PREMIUM',
-        price: 350,
-        priceDisplay: '$350/mo',
-        badge: 'MOST POPULAR',
-        badgeColor: 'gold',
-        bestFor: 'Scaling businesses',
-        features: [
-            '10 CRM Users',
-            'Unlimited customers',
-            'Unlimited invoices & quotes',
-            'Voice AI Agent (500 min/month)',
-            'Full suite of automations',
-        ],
-        cta: 'Select Elite Premium',
-        highlighted: true,
-    },
-    {
-        id: 'enterprise',
-        name: 'ENTERPRISE',
-        price: 1299,
-        priceDisplay: '$1,299/mo+',
-        badge: 'FULL AGENCY SUITE',
-        bestFor: 'Agencies & Multi-location',
-        features: [
-            'Unlimited users & customers',
-            'Multiple Voice Agents',
-            'Advanced automations',
-            'Dedicated account manager',
-            'Skool community access',
-        ],
-        cta: 'Select Enterprise',
-    },
-];
-
-const COUNTRY_OPTIONS = [
-    { code: 'CA', name: 'Canada', currency: 'CAD', currencySymbol: '$' },
-    { code: 'US', name: 'United States', currency: 'USD', currencySymbol: '$' },
-    { code: 'GB', name: 'United Kingdom', currency: 'GBP', currencySymbol: '£' },
-    { code: 'AU', name: 'Australia', currency: 'AUD', currencySymbol: '$' },
-    { code: 'DE', name: 'Germany', currency: 'EUR', currencySymbol: '€' },
-    { code: 'FR', name: 'France', currency: 'EUR', currencySymbol: '€' },
-    { code: 'IN', name: 'India', currency: 'INR', currencySymbol: '₹' },
-    { code: 'JP', name: 'Japan', currency: 'JPY', currencySymbol: '¥' },
-    { code: 'BR', name: 'Brazil', currency: 'BRL', currencySymbol: 'R$' },
-    { code: 'MX', name: 'Mexico', currency: 'MXN', currencySymbol: '$' },
-    { code: 'NZ', name: 'New Zealand', currency: 'NZD', currencySymbol: '$' },
-    { code: 'SG', name: 'Singapore', currency: 'SGD', currencySymbol: '$' },
-    { code: 'AE', name: 'United Arab Emirates', currency: 'AED', currencySymbol: 'د.إ' },
-    { code: 'ZA', name: 'South Africa', currency: 'ZAR', currencySymbol: 'R' },
-    { code: 'NG', name: 'Nigeria', currency: 'NGN', currencySymbol: '₦' },
-    { code: 'PH', name: 'Philippines', currency: 'PHP', currencySymbol: '₱' },
-    { code: 'IE', name: 'Ireland', currency: 'EUR', currencySymbol: '€' },
-    { code: 'NL', name: 'Netherlands', currency: 'EUR', currencySymbol: '€' },
-    { code: 'IT', name: 'Italy', currency: 'EUR', currencySymbol: '€' },
-    { code: 'ES', name: 'Spain', currency: 'EUR', currencySymbol: '€' },
-];
-
-function detectCountryFromLocale(): string {
-    try {
-        const locale = navigator.language || navigator.languages?.[0] || '';
-        // Extract country code from locale like "en-CA", "en-US", "fr-FR"
-        const parts = locale.split('-');
-        if (parts.length >= 2) {
-            const countryCode = parts[parts.length - 1].toUpperCase();
-            const match = COUNTRY_OPTIONS.find(c => c.code === countryCode);
-            if (match) return match.code;
-        }
-        // Try timezone-based detection as fallback
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-        if (tz.startsWith('America/Toronto') || tz.startsWith('America/Vancouver') || tz.startsWith('America/Montreal') || tz.startsWith('America/Edmonton') || tz.startsWith('America/Winnipeg') || tz.startsWith('America/Halifax')) return 'CA';
-        if (tz.startsWith('America/New_York') || tz.startsWith('America/Chicago') || tz.startsWith('America/Denver') || tz.startsWith('America/Los_Angeles') || tz.startsWith('America/Phoenix')) return 'US';
-        if (tz.startsWith('Europe/London')) return 'GB';
-        if (tz.startsWith('Australia/')) return 'AU';
-    } catch {
-        // Fallback
-    }
-    return 'US'; // Default fallback
-}
 
 export default function PlanPage() {
     const navigate = useNavigate();
-    const [selectedIndustry, setSelectedIndustry] = useState<string>('general_business');
     const [selectedPlan, setSelectedPlan] = useState<string>('elite_premium');
-    const [selectedCountry, setSelectedCountry] = useState<string>(() => detectCountryFromLocale());
     const [isProcessing, setIsProcessing] = useState(false);
     const [lead, setLead] = useState<any>(null);
 
-    const countryInfo = COUNTRY_OPTIONS.find(c => c.code === selectedCountry) || COUNTRY_OPTIONS[0];
+    const countryInfo = COUNTRY_OPTIONS.find(c => c.code === lead?.country) || COUNTRY_OPTIONS[0];
 
     useEffect(() => {
         const leadData = sessionStorage.getItem('onboarding_lead');
@@ -153,22 +24,24 @@ export default function PlanPage() {
         }
         const parsed = JSON.parse(leadData);
         setLead(parsed);
-        if (parsed.industry) {
-            setSelectedIndustry(parsed.industry);
+
+        // Guard: if industry/country not set, send back
+        if (!parsed.industry || !parsed.country) {
+            navigate('/onboarding/industry');
+            return;
         }
+
+        if (parsed.planId) setSelectedPlan(parsed.planId);
     }, [navigate]);
 
-    // Just visually select a plan (no navigation)
     const handleSelectPlan = (planId: string) => {
         if (isProcessing) return;
         setSelectedPlan(planId);
     };
 
     // Get auth token — reads directly from localStorage to bypass Supabase JS client's AbortController.
-    // The Supabase client persists session under sb-{ref}-auth-token in localStorage.
     const getAuthToken = async (): Promise<string | null> => {
         for (let i = 0; i < 8; i++) {
-            // Try localStorage first (bypasses AbortController entirely)
             for (const key of Object.keys(localStorage)) {
                 if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
                     try {
@@ -177,43 +50,47 @@ export default function PlanPage() {
                     } catch { /* malformed JSON, skip */ }
                 }
             }
-            // Fallback: try Supabase client (may work if auth state has settled)
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.access_token) return session.access_token;
             } catch { /* AbortError — ignore */ }
             await new Promise(r => setTimeout(r, 500));
         }
+        // Last resort: try refreshing session
+        try {
+            const { data: refreshData } = await supabase.auth.refreshSession();
+            if (refreshData?.session?.access_token) return refreshData.session.access_token;
+        } catch { /* ignore */ }
         return null;
     };
 
-    // Confirm selection and proceed to next step
     const handleConfirmPlan = async () => {
-        if (isProcessing || !selectedPlan) return;
+        if (isProcessing || !selectedPlan || !lead) return;
         setIsProcessing(true);
 
+        const selectedIndustry = lead.industry || 'general_business';
+        const selectedCountry = lead.country || 'CA';
+        const currencyInfo = COUNTRY_OPTIONS.find(c => c.code === selectedCountry) || COUNTRY_OPTIONS[0];
+
         try {
-            // Update session storage
-            const updatedLead = { ...lead, industry: selectedIndustry, planId: selectedPlan };
+            const updatedLead = { ...lead, planId: selectedPlan };
             sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
-            // Get auth token
             const token = await getAuthToken();
             if (!token) {
                 toast.error('Session expired. Please log in again.');
-                navigate('/login');
+                navigate('/login?redirect=/onboarding/plan');
                 return;
             }
 
-            // Create organization via direct fetch() to Supabase REST API
-            // This bypasses the Supabase JS client's internal AbortController
-            // which aborts in-flight requests during auth state transitions
             if (lead?.userId) {
-                const slug = lead.company
+                // Generate slug with timestamp suffix to avoid collisions
+                const baseSlug = lead.company
                     ?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
                     || `org-${lead.userId.slice(0, 8)}`;
+                const slug = `${baseSlug}-${Date.now().toString(36)}`;
 
-                // First check if org already exists (from a previous attempt)
+                // Check if org already exists (from a previous attempt)
                 const checkRes = await fetch(
                     `${supabaseUrl}/rest/v1/organization_members?user_id=eq.${lead.userId}&select=organization_id&limit=1`,
                     {
@@ -241,7 +118,7 @@ export default function PlanPage() {
                                 industry_template: selectedIndustry,
                                 subscription_tier: selectedPlan,
                                 business_country: selectedCountry,
-                                business_currency: countryInfo.currency,
+                                business_currency: currencyInfo.currency,
                             }),
                         }
                     );
@@ -275,6 +152,9 @@ export default function PlanPage() {
                     if (!rpcRes.ok) {
                         const errBody = await rpcRes.text();
                         console.error('[Onboarding] RPC error:', rpcRes.status, errBody);
+                        if (errBody.includes('unique') || errBody.includes('duplicate') || errBody.includes('slug')) {
+                            throw new Error('slug_collision');
+                        }
                         throw new Error(`Organization creation failed (${rpcRes.status})`);
                     }
 
@@ -282,7 +162,7 @@ export default function PlanPage() {
                     updatedLead.organizationId = orgId;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
-                    // Update org with country/currency (RPC may not accept these params)
+                    // Update org with country/currency
                     await fetch(
                         `${supabaseUrl}/rest/v1/organizations?id=eq.${orgId}`,
                         {
@@ -295,7 +175,7 @@ export default function PlanPage() {
                             },
                             body: JSON.stringify({
                                 business_country: selectedCountry,
-                                business_currency: countryInfo.currency,
+                                business_currency: currencyInfo.currency,
                             }),
                         }
                     );
@@ -310,119 +190,104 @@ export default function PlanPage() {
             }
         } catch (error) {
             console.error('[Onboarding] Error selecting plan:', error);
-            toast.error('Setup failed. Please try again.');
+            const message = error instanceof Error ? error.message : String(error);
+
+            if (message === 'slug_collision') {
+                toast.error('Name conflict detected. Retrying...');
+                setIsProcessing(false);
+                // Auto-retry once — the timestamp slug will be different
+                setTimeout(() => handleConfirmPlan(), 500);
+                return;
+            } else if (message.includes('403') || message.includes('forbidden')) {
+                toast.error('Permission error. Please try signing out and back in.');
+            } else if (message.includes('network') || message.includes('fetch') || message.includes('Failed to fetch')) {
+                toast.error('Network error. Check your connection and try again.');
+            } else {
+                toast.error(`Setup failed: ${message}`);
+            }
         } finally {
             setIsProcessing(false);
         }
     };
 
+    // Reorder pricing tiers for mobile: elite_premium first
+    const mobileTiers = [...pricingTiers].sort((a, b) => {
+        if (a.highlighted) return -1;
+        if (b.highlighted) return 1;
+        return 0;
+    });
+
     return (
-        <main className="min-h-screen bg-black pt-32 pb-20 px-6">
+        <main className="min-h-screen bg-black pt-28 md:pt-32 pb-20 px-4 md:px-6">
             <OnboardingHeader />
 
-            {/* Add Material Icons */}
-            <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-
-            <div className="max-w-7xl mx-auto space-y-16">
-                {/* Header */}
-                <div className="flex flex-col items-center text-center space-y-4">
-                    <button
-                        onClick={() => navigate('/onboarding/select-service')}
-                        className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-4"
-                    >
-                        <span>&larr;</span> Back
-                    </button>
-                    <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight italic">
-                        Choose Your <span className="text-[#FFD700]">Operations Kit</span>
-                    </h1>
-                    <p className="text-white/60 text-lg max-w-2xl mx-auto">
-                        Select an industry and a plan that fits your current team size and growth goals.
-                    </p>
-                </div>
-
-                {/* Industry Selection */}
-                <section>
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 italic tracking-tight">
-                            What <span className="text-[#FFD700]">Industry</span> are we building for?
-                        </h2>
-                        <p className="text-white/40 text-sm uppercase tracking-widest font-bold">
-                            We'll tailor your CRM templates and AI logic based on your choice.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {industries.map((ind) => (
-                            <IndustryCard
-                                key={ind.id}
-                                {...ind}
-                                selected={selectedIndustry === ind.id}
-                                onClick={() => setSelectedIndustry(ind.id)}
-                            />
-                        ))}
-                    </div>
-                </section>
-
-                {/* Country / Locale Selection */}
-                <section>
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 italic tracking-tight">
-                            Where is your <span className="text-[#FFD700]">Business</span> located?
-                        </h2>
-                        <p className="text-white/40 text-sm uppercase tracking-widest font-bold">
-                            We'll set your currency and locale preferences.
-                        </p>
-                    </div>
-
-                    <div className="max-w-md mx-auto">
-                        <select
-                            value={selectedCountry}
-                            onChange={(e) => setSelectedCountry(e.target.value)}
-                            className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all text-center text-lg font-medium appearance-none cursor-pointer"
+            <OnboardingPageWrapper>
+                <div className="max-w-7xl mx-auto space-y-12 md:space-y-16">
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <button
+                            onClick={() => navigate('/onboarding/industry')}
+                            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-2 md:mb-4 min-h-[48px]"
                         >
-                            {COUNTRY_OPTIONS.map(c => (
-                                <option key={c.code} value={c.code} className="bg-gray-900 text-white">
-                                    {c.name} ({c.currency})
-                                </option>
-                            ))}
-                        </select>
-                        <p className="text-center text-white/30 text-xs mt-2">
-                            Auto-detected from your browser. You can change this anytime in settings.
-                        </p>
-                    </div>
-                </section>
-
-                {/* Plan Selection */}
-                <section>
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 italic tracking-tight">
+                            <span>&larr;</span> Back
+                        </button>
+                        <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight italic">
                             Choose your <span className="text-[#FFD700]">Scaling Tier</span>
-                        </h2>
-                        <p className="text-white/40 text-sm uppercase tracking-widest font-bold">
+                        </h1>
+                        <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto">
+                            Select a plan that fits your current team size and growth goals.
+                        </p>
+                        <p className="text-white/40 text-xs md:text-sm uppercase tracking-widest font-bold">
                             Pricing in {countryInfo.currency}. Upgrade or downgrade anytime.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Desktop: Plan Selection Grid */}
+                    <motion.div
+                        className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-6"
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                    >
                         {pricingTiers.map((tier) => (
-                            <PricingTierCard
-                                key={tier.id}
-                                tier={tier}
-                                selected={selectedPlan === tier.id}
-                                onClick={() => handleSelectPlan(tier.id)}
-                                onConfirm={handleConfirmPlan}
-                            />
+                            <motion.div key={tier.id} variants={staggerItem}>
+                                <PricingTierCard
+                                    tier={tier}
+                                    selected={selectedPlan === tier.id}
+                                    onClick={() => handleSelectPlan(tier.id)}
+                                    onConfirm={handleConfirmPlan}
+                                />
+                            </motion.div>
                         ))}
-                    </div>
-                </section>
+                    </motion.div>
 
-                {/* Footer */}
-                <div className="text-center">
-                    <p className="text-white/20 text-[10px] uppercase font-black tracking-widest">
-                        {isProcessing ? 'PROCESSING...' : 'SELECT A PLAN ABOVE TO CONTINUE'}
-                    </p>
+                    {/* Mobile: Stacked full-width, Elite Premium first */}
+                    <motion.div
+                        className="md:hidden space-y-4"
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        {mobileTiers.map((tier) => (
+                            <motion.div key={tier.id} variants={staggerItem}>
+                                <PricingTierCard
+                                    tier={tier}
+                                    selected={selectedPlan === tier.id}
+                                    onClick={() => handleSelectPlan(tier.id)}
+                                    onConfirm={handleConfirmPlan}
+                                />
+                            </motion.div>
+                        ))}
+                    </motion.div>
+
+                    {/* Footer */}
+                    <div className="text-center">
+                        <p className="text-white/20 text-[10px] uppercase font-black tracking-widest">
+                            {isProcessing ? 'PROCESSING...' : 'SELECT A PLAN ABOVE TO CONTINUE'}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </OnboardingPageWrapper>
         </main>
     );
 }

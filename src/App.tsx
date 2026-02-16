@@ -45,6 +45,7 @@ import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 
 // Onboarding Pages
 import SelectServicePage from './pages/onboarding/SelectServicePage';
+import IndustryPage from './pages/onboarding/IndustryPage';
 import PlanPage from './pages/onboarding/PlanPage';
 import VoiceSetupPage from './pages/onboarding/VoiceSetupPage';
 import CheckoutPage from './pages/onboarding/CheckoutPage';
@@ -110,6 +111,7 @@ export default function App() {
 
           {/* Onboarding Routes (Public - user creates account during onboarding) */}
           <Route path="/onboarding/select-service" element={<SelectServicePage />} />
+          <Route path="/onboarding/industry" element={<IndustryPage />} />
           <Route path="/onboarding/plan" element={<PlanPage />} />
           <Route path="/onboarding/voice-setup" element={<VoiceSetupPage />} />
           <Route path="/onboarding/checkout" element={<CheckoutPage />} />
