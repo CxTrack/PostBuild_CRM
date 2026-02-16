@@ -17,6 +17,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useCallStore } from '@/stores/callStore';
 import { useDealStore } from '@/stores/dealStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { PageContainer, Card } from '@/components/theme/ThemeComponents';
 import { supabase } from '@/lib/supabase';
 import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -423,6 +424,20 @@ export const ReportsPage = () => {
         { id: 'team', label: 'Team', icon: Activity },
     ];
 
+    // Theme-aware helper classes
+    const isMidnight = theme === 'midnight';
+    const isSoftModern = theme === 'soft-modern';
+
+    const textPrimary = isMidnight ? 'text-white' : isSoftModern ? 'text-gray-800' : 'text-gray-900 dark:text-white';
+    const textSecondary = isMidnight ? 'text-gray-400' : isSoftModern ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400';
+    const textMuted = isMidnight ? 'text-gray-500' : isSoftModern ? 'text-gray-400' : 'text-gray-400 dark:text-gray-500';
+    const borderColor = isMidnight ? 'border-white/[0.08]' : isSoftModern ? 'border-gray-200' : 'border-gray-200 dark:border-gray-700';
+    const hoverBg = isMidnight ? 'hover:bg-white/[0.05]' : isSoftModern ? 'hover:bg-gray-100' : 'hover:bg-gray-100 dark:hover:bg-gray-700';
+    const subtleBg = isMidnight ? 'bg-white/[0.03]' : isSoftModern ? 'bg-white' : 'bg-gray-50 dark:bg-gray-800';
+    const chartGridColor = isMidnight ? '#333' : isDark ? '#374151' : '#E5E7EB';
+    const chartAxisColor = isMidnight ? '#666' : isDark ? '#9CA3AF' : '#6B7280';
+    const tooltipBg = isMidnight ? '#1a1a1a' : isDark ? '#1F2937' : '#FFF';
+
     // Chart card component
     const ChartCard = ({ title, children, onExport, expandable = true }: {
         title: string;
@@ -430,14 +445,14 @@ export const ReportsPage = () => {
         onExport?: () => void;
         expandable?: boolean;
     }) => (
-        <div className={`rounded-2xl p-5 ${isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
+        <Card className="!p-5">
             <div className="flex items-center justify-between mb-4">
-                <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{title}</h3>
                 <div className="flex items-center gap-2">
                     {onExport && (
                         <button
                             onClick={onExport}
-                            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                            className={`p-1.5 rounded-lg transition-colors ${textMuted} ${hoverBg}`}
                         >
                             <Download className="w-4 h-4" />
                         </button>
@@ -445,7 +460,7 @@ export const ReportsPage = () => {
                     {expandable && (
                         <button
                             onClick={() => setExpandedChart(expandedChart === title ? null : title)}
-                            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                            className={`p-1.5 rounded-lg transition-colors ${textMuted} ${hoverBg}`}
                         >
                             {expandedChart === title ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </button>
@@ -453,12 +468,17 @@ export const ReportsPage = () => {
                 </div>
             </div>
             {children}
-        </div>
+        </Card>
     );
 
     // Stat card component
     const StatCard = ({ stat }: { stat: typeof summaryStats[0] }) => {
-        const colorClasses: Record<string, string> = {
+        const colorClasses: Record<string, string> = isMidnight ? {
+            blue: 'bg-blue-500/10 text-blue-400',
+            green: 'bg-green-500/10 text-green-400',
+            purple: 'bg-purple-500/10 text-purple-400',
+            amber: 'bg-amber-500/10 text-amber-400',
+        } : {
             blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
             green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
             purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
@@ -466,12 +486,12 @@ export const ReportsPage = () => {
         };
 
         return (
-            <div className={`rounded-2xl p-5 ${isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
+            <Card className="!p-5">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{stat.label}</p>
-                        <p className={`text-2xl font-bold mt-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
-                        <div className={`flex items-center gap-1 mt-2 text-sm ${stat.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-sm ${textSecondary}`}>{stat.label}</p>
+                        <p className={`text-2xl font-bold mt-1 ${textPrimary}`}>{stat.value}</p>
+                        <div className={`flex items-center gap-1 mt-2 text-sm ${stat.isPositive ? 'text-green-500' : 'text-red-500'}`}>
                             {stat.isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                             {stat.change} vs last period
                         </div>
@@ -480,19 +500,31 @@ export const ReportsPage = () => {
                         <stat.icon className="w-5 h-5" />
                     </div>
                 </div>
-            </div>
+            </Card>
         );
     };
 
+    // Tab nav theme classes
+    const tabContainerBg = isMidnight ? 'bg-white/[0.03] border border-white/[0.08]' : isSoftModern ? 'bg-[#E8E4DC]' : 'bg-gray-100 dark:bg-gray-800';
+    const tabActiveBg = isMidnight ? 'bg-white/[0.08] text-white shadow-sm' : isSoftModern ? 'bg-white text-blue-600 shadow-sm' : 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm';
+    const tabInactiveTxt = isMidnight ? 'text-gray-500 hover:text-gray-300' : isSoftModern ? 'text-gray-500 hover:text-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+    const dropdownBg = isMidnight ? 'bg-gray-900 border-white/[0.1]' : isSoftModern ? 'bg-white border-gray-200' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+    const dropdownItemHover = isMidnight ? 'hover:bg-white/[0.05]' : isSoftModern ? 'hover:bg-gray-100' : 'hover:bg-gray-100 dark:hover:bg-gray-700';
+    const btnSecondaryClasses = isMidnight
+        ? 'bg-white/[0.05] border border-white/[0.1] text-gray-300 hover:bg-white/[0.08]'
+        : isSoftModern
+            ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
+
     return (
-        <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-950' : 'bg-gray-50'}`}>
-            <div className="max-w-[1800px] mx-auto">
+        <PageContainer>
+            <div className="max-w-[1800px] mx-auto w-full flex-1">
 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Reports & Analytics</h1>
-                        <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <h1 className={`text-2xl font-bold ${textPrimary}`}>Reports & Analytics</h1>
+                        <p className={`text-sm mt-1 ${textSecondary}`}>
                             Comprehensive insights across your business
                         </p>
                     </div>
@@ -502,7 +534,7 @@ export const ReportsPage = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-colors ${btnSecondaryClasses}`}
                             >
                                 <Calendar className="w-4 h-4" />
                                 {datePreset}
@@ -512,12 +544,15 @@ export const ReportsPage = () => {
                             {showFilters && (
                                 <>
                                     <div className="fixed inset-0 z-10" onClick={() => setShowFilters(false)} />
-                                    <div className={`absolute right-0 top-full mt-2 z-20 rounded-xl shadow-lg border py-2 min-w-[180px] ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                                    <div className={`absolute right-0 top-full mt-2 z-20 rounded-xl shadow-lg border py-2 min-w-[180px] ${dropdownBg}`}>
                                         {DATE_PRESETS.map(preset => (
                                             <button
                                                 key={preset.label}
                                                 onClick={() => { handlePresetChange(preset); setShowFilters(false); }}
-                                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${datePreset === preset.label ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+                                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${datePreset === preset.label
+                                                    ? (isMidnight ? 'bg-white/[0.08] text-blue-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600')
+                                                    : `${dropdownItemHover} ${isMidnight ? 'text-gray-400' : isSoftModern ? 'text-gray-700' : 'text-gray-700 dark:text-gray-300'}`
+                                                    }`}
                                             >
                                                 {preset.label}
                                             </button>
@@ -548,14 +583,14 @@ export const ReportsPage = () => {
                 </div>
 
                 {/* Section Navigation */}
-                <div className={`flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                <div className={`flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto ${tabContainerBg}`}>
                     {sections.map(section => (
                         <button
                             key={section.id}
                             onClick={() => setActiveSection(section.id as ReportSection)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeSection === section.id
-                                ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
-                                : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+                                ? tabActiveBg
+                                : tabInactiveTxt
                                 }`}
                         >
                             <section.icon className="w-4 h-4" />
@@ -590,11 +625,11 @@ export const ReportsPage = () => {
                                                     <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                            <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                            <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                                            <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                            <XAxis dataKey="month" stroke={chartAxisColor} fontSize={12} />
+                                            <YAxis stroke={chartAxisColor} fontSize={12} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                                             <Tooltip
-                                                contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }}
+                                                contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }}
                                                 formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
                                             />
                                             <Area type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={2} fill="url(#colorRevenue)" />
@@ -611,10 +646,10 @@ export const ReportsPage = () => {
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={customerGrowthData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                            <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                            <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                            <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} />
+                                            <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                            <XAxis dataKey="month" stroke={chartAxisColor} fontSize={12} />
+                                            <YAxis stroke={chartAxisColor} fontSize={12} />
+                                            <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} />
                                             <Bar dataKey="new" name="New Customers" fill="#10B981" radius={[4, 4, 0, 0]} />
                                             <Bar dataKey="total" name="Total" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                                         </BarChart>
@@ -643,7 +678,7 @@ export const ReportsPage = () => {
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} />
+                                            <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} />
                                             <Legend />
                                         </PieChart>
                                     </ResponsiveContainer>
@@ -657,7 +692,7 @@ export const ReportsPage = () => {
                             >
                                 <div className="h-64 grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>By Type</p>
+                                        <p className={`text-xs font-medium mb-2 ${textSecondary}`}>By Type</p>
                                         <ResponsiveContainer width="100%" height="90%">
                                             <PieChart>
                                                 <Pie data={callData.byType} cx="50%" cy="50%" outerRadius={50} dataKey="value">
@@ -670,7 +705,7 @@ export const ReportsPage = () => {
                                         </ResponsiveContainer>
                                     </div>
                                     <div>
-                                        <p className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>By Sentiment</p>
+                                        <p className={`text-xs font-medium mb-2 ${textSecondary}`}>By Sentiment</p>
                                         <ResponsiveContainer width="100%" height="90%">
                                             <PieChart>
                                                 <Pie data={callData.bySentiment} cx="50%" cy="50%" outerRadius={50} dataKey="value">
@@ -702,10 +737,10 @@ export const ReportsPage = () => {
                             <div className="h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={revenueData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                        <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} />
-                                        <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                                        <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                        <XAxis dataKey="month" stroke={chartAxisColor} />
+                                        <YAxis stroke={chartAxisColor} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                                        <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
                                         <Legend />
                                         <Bar dataKey="paid" name="Paid" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
                                         <Bar dataKey="pending" name="Pending" fill="#F59E0B" stackId="a" radius={[4, 4, 0, 0]} />
@@ -719,21 +754,26 @@ export const ReportsPage = () => {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className={`border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-                                            <th className={`text-left py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Invoice</th>
-                                            <th className={`text-left py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Customer</th>
-                                            <th className={`text-right py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Amount</th>
-                                            <th className={`text-center py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
+                                        <tr className={`border-b ${borderColor}`}>
+                                            <th className={`text-left py-3 px-2 font-medium ${textSecondary}`}>Invoice</th>
+                                            <th className={`text-left py-3 px-2 font-medium ${textSecondary}`}>Customer</th>
+                                            <th className={`text-right py-3 px-2 font-medium ${textSecondary}`}>Amount</th>
+                                            <th className={`text-center py-3 px-2 font-medium ${textSecondary}`}>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {invoices.slice(0, 5).map((invoice) => (
-                                            <tr key={invoice.id} className={`border-b last:border-b-0 ${isDark ? 'border-gray-800' : 'border-gray-100'} hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer`} onClick={() => navigate(`/invoices/${invoice.id}`)}>
-                                                <td className={`py-3 px-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>#{invoice.id?.slice(-6)}</td>
-                                                <td className={`py-3 px-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{invoice.customer_name || 'Unknown'}</td>
-                                                <td className={`py-3 px-2 text-right font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>${(invoice.total_amount || 0).toLocaleString()}</td>
+                                            <tr key={invoice.id} className={`border-b last:border-b-0 ${borderColor} ${hoverBg} cursor-pointer`} onClick={() => navigate(`/invoices/${invoice.id}`)}>
+                                                <td className={`py-3 px-2 font-medium ${textPrimary}`}>#{invoice.id?.slice(-6)}</td>
+                                                <td className={`py-3 px-2 ${textSecondary}`}>{invoice.customer_name || 'Unknown'}</td>
+                                                <td className={`py-3 px-2 text-right font-medium ${textPrimary}`}>${(invoice.total_amount || 0).toLocaleString()}</td>
                                                 <td className="py-3 px-2 text-center">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.status === 'paid' ? 'bg-green-100 text-green-700' : invoice.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.status === 'paid'
+                                                        ? (isMidnight ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400')
+                                                        : invoice.status === 'overdue'
+                                                            ? (isMidnight ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')
+                                                            : (isMidnight ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400')
+                                                        }`}>
                                                         {invoice.status}
                                                     </span>
                                                 </td>
@@ -804,11 +844,11 @@ export const ReportsPage = () => {
                                                             <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                                         </linearGradient>
                                                     </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                                    <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                                    <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} tickFormatter={(v) => `$${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`} />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                                    <XAxis dataKey="month" stroke={chartAxisColor} fontSize={12} />
+                                                    <YAxis stroke={chartAxisColor} fontSize={12} tickFormatter={(v) => `$${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`} />
                                                     <Tooltip
-                                                        contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }}
+                                                        contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }}
                                                         formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'MRR']}
                                                     />
                                                     <Area type="monotone" dataKey="mrr" stroke="#10B981" strokeWidth={2} fill="url(#colorMRR)" />
@@ -822,10 +862,10 @@ export const ReportsPage = () => {
                                         <div className="h-72">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={mrrTrendData}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                                    <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                                    <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                                                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                                    <XAxis dataKey="month" stroke={chartAxisColor} fontSize={12} />
+                                                    <YAxis stroke={chartAxisColor} fontSize={12} />
+                                                    <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} />
                                                     <Legend />
                                                     <Bar dataKey="new" name="New Subscriptions" fill="#10B981" radius={[4, 4, 0, 0]} />
                                                     <Bar dataKey="churned" name="Churned" fill="#EF4444" radius={[4, 4, 0, 0]} />
@@ -838,19 +878,24 @@ export const ReportsPage = () => {
                                 {/* Churn Health Indicator */}
                                 <ChartCard title="Subscription Health" expandable={false}>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                        <div className={`p-4 rounded-xl ${subtleBg}`}>
                                             <div className="flex items-center gap-3 mb-3">
-                                                <div className={`p-2 rounded-lg ${subscriptionMetrics.churnRate < 3 ? 'bg-green-100 text-green-600' : subscriptionMetrics.churnRate < 7 ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>
+                                                <div className={`p-2 rounded-lg ${subscriptionMetrics.churnRate < 3
+                                                    ? (isMidnight ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400')
+                                                    : subscriptionMetrics.churnRate < 7
+                                                        ? (isMidnight ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400')
+                                                        : (isMidnight ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400')
+                                                    }`}>
                                                     {subscriptionMetrics.churnRate < 3 ? <CheckCircle className="w-5 h-5" /> : subscriptionMetrics.churnRate < 7 ? <AlertTriangle className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                                                 </div>
                                                 <div>
-                                                    <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Churn Health</p>
-                                                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                    <p className={`text-sm font-medium ${textPrimary}`}>Churn Health</p>
+                                                    <p className={`text-xs ${textSecondary}`}>
                                                         {subscriptionMetrics.churnRate < 3 ? 'Excellent' : subscriptionMetrics.churnRate < 7 ? 'Moderate' : 'Needs Attention'}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className={`w-full h-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                                            <div className={`w-full h-2 rounded-full ${isMidnight ? 'bg-white/[0.06]' : 'bg-gray-200 dark:bg-gray-700'}`}>
                                                 <div
                                                     className={`h-2 rounded-full ${subscriptionMetrics.churnRate < 3 ? 'bg-green-500' : subscriptionMetrics.churnRate < 7 ? 'bg-amber-500' : 'bg-red-500'}`}
                                                     style={{ width: `${Math.min(subscriptionMetrics.churnRate * 10, 100)}%` }}
@@ -858,33 +903,33 @@ export const ReportsPage = () => {
                                             </div>
                                         </div>
 
-                                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                        <div className={`p-4 rounded-xl ${subtleBg}`}>
                                             <div className="flex items-center gap-3 mb-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                                                <div className={`p-2 rounded-lg ${isMidnight ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
                                                     <Activity className="w-5 h-5" />
                                                 </div>
                                                 <div>
-                                                    <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Net Growth</p>
-                                                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>This Month</p>
+                                                    <p className={`text-sm font-medium ${textPrimary}`}>Net Growth</p>
+                                                    <p className={`text-xs ${textSecondary}`}>This Month</p>
                                                 </div>
                                             </div>
-                                            <p className={`text-2xl font-bold ${subscriptionMetrics.newThisMonth - subscriptionMetrics.churnedThisMonth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            <p className={`text-2xl font-bold ${subscriptionMetrics.newThisMonth - subscriptionMetrics.churnedThisMonth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                 {subscriptionMetrics.newThisMonth - subscriptionMetrics.churnedThisMonth >= 0 ? '+' : ''}
                                                 {subscriptionMetrics.newThisMonth - subscriptionMetrics.churnedThisMonth}
                                             </p>
                                         </div>
 
-                                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                        <div className={`p-4 rounded-xl ${subtleBg}`}>
                                             <div className="flex items-center gap-3 mb-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+                                                <div className={`p-2 rounded-lg ${isMidnight ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'}`}>
                                                     <Target className="w-5 h-5" />
                                                 </div>
                                                 <div>
-                                                    <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Avg Revenue/Sub</p>
-                                                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>ARPU</p>
+                                                    <p className={`text-sm font-medium ${textPrimary}`}>Avg Revenue/Sub</p>
+                                                    <p className={`text-xs ${textSecondary}`}>ARPU</p>
                                                 </div>
                                             </div>
-                                            <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            <p className={`text-2xl font-bold ${textPrimary}`}>
                                                 ${subscriptionMetrics.activeCount > 0 ? (subscriptionMetrics.mrr / subscriptionMetrics.activeCount).toFixed(0) : 0}
                                             </p>
                                         </div>
@@ -902,16 +947,16 @@ export const ReportsPage = () => {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className={`border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-                                            <th className={`text-left py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Team Member</th>
-                                            <th className={`text-center py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Tasks</th>
-                                            <th className={`text-center py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Calls</th>
-                                            <th className={`text-right py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Revenue</th>
-                                            <th className={`text-center py-3 px-2 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        <tr className={`border-b ${borderColor}`}>
+                                            <th className={`text-left py-3 px-2 font-medium ${textSecondary}`}>Team Member</th>
+                                            <th className={`text-center py-3 px-2 font-medium ${textSecondary}`}>Tasks</th>
+                                            <th className={`text-center py-3 px-2 font-medium ${textSecondary}`}>Calls</th>
+                                            <th className={`text-right py-3 px-2 font-medium ${textSecondary}`}>Revenue</th>
+                                            <th className={`text-center py-3 px-2 font-medium ${textSecondary}`}>
                                                 <div className="flex items-center justify-center gap-1 group relative">
                                                     Efficiency
-                                                    <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                                                    <HelpCircle className={`w-3.5 h-3.5 ${textMuted} cursor-help`} />
+                                                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg ${isMidnight ? 'bg-gray-800 border border-white/[0.1]' : 'bg-gray-900 dark:bg-gray-700'}`}>
                                                         <div className="font-semibold mb-1">How Efficiency is Calculated:</div>
                                                         <div className="space-y-0.5 text-gray-300">
                                                             <div>• Tasks Completed: 40%</div>
@@ -919,7 +964,7 @@ export const ReportsPage = () => {
                                                             <div>• Revenue Generated: 30%</div>
                                                         </div>
                                                         <div className="mt-1 text-gray-400 italic">Normalized against team average</div>
-                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+                                                        <div className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${isMidnight ? 'border-t-gray-800' : 'border-t-gray-900 dark:border-t-gray-700'}`} />
                                                     </div>
                                                 </div>
                                             </th>
@@ -927,8 +972,8 @@ export const ReportsPage = () => {
                                     </thead>
                                     <tbody>
                                         {teamData.map((member, i) => (
-                                            <tr key={i} className={`border-b last:border-b-0 ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
-                                                <td className={`py-4 px-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            <tr key={i} className={`border-b last:border-b-0 ${borderColor}`}>
+                                                <td className={`py-4 px-2 font-medium ${textPrimary}`}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
                                                             {member.name.charAt(0)}
@@ -936,15 +981,15 @@ export const ReportsPage = () => {
                                                         {member.name}
                                                     </div>
                                                 </td>
-                                                <td className={`py-4 px-2 text-center ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{member.tasks}</td>
-                                                <td className={`py-4 px-2 text-center ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{member.calls}</td>
-                                                <td className={`py-4 px-2 text-right font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>${member.revenue.toLocaleString()}</td>
+                                                <td className={`py-4 px-2 text-center ${textSecondary}`}>{member.tasks}</td>
+                                                <td className={`py-4 px-2 text-center ${textSecondary}`}>{member.calls}</td>
+                                                <td className={`py-4 px-2 text-right font-medium ${textPrimary}`}>${member.revenue.toLocaleString()}</td>
                                                 <td className="py-4 px-2">
                                                     <div className="flex items-center gap-2 justify-center">
-                                                        <div className={`w-16 h-2 rounded-full ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                                        <div className={`w-16 h-2 rounded-full ${isMidnight ? 'bg-white/[0.06]' : 'bg-gray-100 dark:bg-gray-800'}`}>
                                                             <div className="h-2 rounded-full bg-green-500" style={{ width: `${member.efficiency}%` }} />
                                                         </div>
-                                                        <span className="text-sm font-medium text-green-600">{member.efficiency}%</span>
+                                                        <span className="text-sm font-medium text-green-500">{member.efficiency}%</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -970,10 +1015,10 @@ export const ReportsPage = () => {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={customerGrowthData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                        <XAxis dataKey="month" stroke={isDark ? '#9CA3AF' : '#6B7280'} />
-                                        <YAxis stroke={isDark ? '#9CA3AF' : '#6B7280'} />
-                                        <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                        <XAxis dataKey="month" stroke={chartAxisColor} />
+                                        <YAxis stroke={chartAxisColor} />
+                                        <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} />
                                         <Legend />
                                         <Line type="monotone" dataKey="total" name="Total Customers" stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
                                         <Line type="monotone" dataKey="new" name="New" stroke="#10B981" strokeWidth={2} dot={{ fill: '#10B981' }} />
@@ -991,10 +1036,10 @@ export const ReportsPage = () => {
                             <div className="h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={pipelineData} layout="vertical">
-                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
-                                        <XAxis type="number" stroke={isDark ? '#9CA3AF' : '#6B7280'} />
-                                        <YAxis type="category" dataKey="name" stroke={isDark ? '#9CA3AF' : '#6B7280'} width={100} />
-                                        <Tooltip contentStyle={{ backgroundColor: isDark ? '#1F2937' : '#FFF', border: 'none', borderRadius: '8px' }} />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                                        <XAxis type="number" stroke={chartAxisColor} />
+                                        <YAxis type="category" dataKey="name" stroke={chartAxisColor} width={100} />
+                                        <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: isMidnight ? '1px solid rgba(255,255,255,0.1)' : 'none', borderRadius: '8px', color: isDark || isMidnight ? '#fff' : '#111' }} />
                                         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                                             {pipelineData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -1062,7 +1107,7 @@ export const ReportsPage = () => {
 
                 {/* Mobile Download Section */}
                 <div className="md:hidden mt-8">
-                    <h3 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Quick Downloads</h3>
+                    <h3 className={`font-semibold mb-4 ${textPrimary}`}>Quick Downloads</h3>
                     <div className="grid grid-cols-2 gap-3">
                         {[
                             { label: 'Revenue Report', data: revenueData, filename: 'revenue' },
@@ -1073,7 +1118,7 @@ export const ReportsPage = () => {
                             <button
                                 key={i}
                                 onClick={() => exportToCSV(report.data, report.filename)}
-                                className={`flex items-center justify-center gap-2 p-4 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                                className={`flex items-center justify-center gap-2 p-4 rounded-xl text-sm font-medium transition-colors ${btnSecondaryClasses}`}
                             >
                                 <Download className="w-4 h-4" />
                                 {report.label}
@@ -1082,7 +1127,7 @@ export const ReportsPage = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </PageContainer>
     );
 };
 
