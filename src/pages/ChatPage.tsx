@@ -265,6 +265,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     }));
 
                     const org = useOrganizationStore.getState().currentOrganization;
+                    const membership = useOrganizationStore.getState().currentMembership;
 
                     const response = await fetch(`${supabaseUrl}/functions/v1/copilot-chat`, {
                         method: 'POST',
@@ -279,6 +280,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 page: 'Team Chat',
                                 industry: org?.industry_template || 'general_business',
                                 orgName: org?.name || 'Your Organization',
+                                userRole: membership?.role || 'user',
                             },
                         }),
                     });
@@ -290,10 +292,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         if (data.error === 'token_limit_reached') {
                             aiContent = "You've used all your AI tokens for this month. Upgrade your plan for more monthly tokens, or wait until your tokens reset at the start of the next billing period.";
                         } else {
-                            aiContent = "Sorry, I encountered an issue processing your request. Please try again in a moment.";
+                            aiContent = `Sorry, I encountered an issue processing your request. Please try again in a moment.`;
                         }
                     } else {
                         aiContent = data.response || "I'm not sure how to respond to that. Could you try rephrasing?";
+                    }
+                    // Log debug info to console for troubleshooting
+                    if (data.debug) {
+                        console.warn('[Sparky AI Debug]', data.debug);
+                    }
+                    if (data.provider === 'error' || data.provider === 'none') {
+                        console.error('[Sparky AI] Provider issue:', data.provider, data.debug);
                     }
 
                     const aiMsg: Message = {

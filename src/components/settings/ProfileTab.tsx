@@ -1,10 +1,14 @@
-﻿/**
+/**
  * Profile Tab Component
  * Premium user profile settings with avatar upload and AI CoPilot context
  * Design inspired by Monday.com, GoHighLevel, Linear
+ *
+ * Avatar: Uploads to Supabase Storage `avatars` bucket, persists URL to `user_profiles.avatar_url`
+ * Profile data: `user_profiles.full_name` + `user_profiles.profile_metadata` (JSONB)
+ * Uses direct fetch() to bypass Supabase AbortController issue (see MEMORY.md)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     User, Camera, Upload, X, Check, Briefcase,
     MapPin, Phone, Mail, Linkedin, Globe,
@@ -14,6 +18,8 @@ import {
 import AvatarEditor from 'react-avatar-editor';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import toast from 'react-hot-toast';
 
 // Get comprehensive timezone list from browser
@@ -63,6 +69,19 @@ interface ProfileData {
 
 const PROFILE_KEY = 'cxtrack_user_profile';
 
+/** Read auth token from localStorage (bypass AbortController) */
+const getAuthToken = (): string | null => {
+    for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try {
+                const stored = JSON.parse(localStorage.getItem(key) || '');
+                if (stored?.access_token) return stored.access_token;
+            } catch { /* skip */ }
+        }
+    }
+    return null;
+};
+
 // Default profile factory - uses auth user data when available
 const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_name?: string } } | null): ProfileData => {
     const rawName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -94,22 +113,26 @@ const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_na
 
 export const ProfileTab: React.FC = () => {
     const { user } = useAuthContext();
+    const { fetchTeamMembers } = useOrganizationStore();
     const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(user));
     const [avatar, setAvatar] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showCropper, setShowCropper] = useState(false);
     const [scale, setScale] = useState(1.2);
     const [saving, setSaving] = useState(false);
+    const [loadedFromDb, setLoadedFromDb] = useState(false);
     const editorRef = useRef<AvatarEditor | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const pendingAvatarBlob = useRef<Blob | null>(null);
+    const pendingAvatarRemoved = useRef(false);
 
-    // Load profile - prioritize localStorage but sync with auth user
+    // Load profile — show localStorage cache instantly, then fetch DB in background
     useEffect(() => {
+        // 1) Instant: load from localStorage cache
         const saved = localStorage.getItem(PROFILE_KEY);
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // If saved email matches current user, use saved data
                 if (user?.email && parsed.email === user.email) {
                     // Migrate old profiles: split full_name into first/last if not present
                     if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
@@ -121,40 +144,229 @@ export const ProfileTab: React.FC = () => {
                     if (parsed.avatar_url) {
                         setAvatarPreview(parsed.avatar_url);
                     }
-                    return;
                 }
             } catch (e) {
                 // Error handled silently
             }
-        }
-        // No saved profile or different user - use auth user data
-        if (user) {
+        } else if (user) {
             setProfile(createDefaultProfile(user));
+        }
+
+        // 2) Background: fetch from user_profiles DB
+        if (user?.id) {
+            fetchProfileFromDb(user.id);
         }
     }, [user]);
 
+    /** Fetch profile from user_profiles table (direct fetch to bypass AbortController) */
+    const fetchProfileFromDb = async (userId: string) => {
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+
+            const res = await fetch(
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=full_name,avatar_url,profile_metadata`,
+                {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!res.ok) return;
+            const rows = await res.json();
+            if (!rows || rows.length === 0) return;
+
+            const dbProfile = rows[0];
+            const meta = dbProfile.profile_metadata || {};
+
+            // Merge DB data into state
+            const fullName = dbProfile.full_name || '';
+            const spaceIdx = fullName.indexOf(' ');
+            const firstName = meta.first_name || (spaceIdx > -1 ? fullName.slice(0, spaceIdx) : fullName);
+            const lastName = meta.last_name || (spaceIdx > -1 ? fullName.slice(spaceIdx + 1) : '');
+
+            const merged: ProfileData = {
+                full_name: fullName,
+                first_name: firstName,
+                last_name: lastName,
+                email: user?.email || '',
+                phone: meta.phone || '',
+                title: meta.title || '',
+                department: meta.department || '',
+                location: meta.location || '',
+                timezone: meta.timezone || (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/Toronto'; } })(),
+                bio: meta.bio || '',
+                linkedin: meta.linkedin || '',
+                website: meta.website || '',
+                birthday: meta.birthday || '',
+                avatar_url: dbProfile.avatar_url || null,
+                work_style: meta.work_style || [],
+                communication_preference: meta.communication_preference || [],
+                goals: meta.goals || [],
+                interests: meta.interests || [],
+                expertise: meta.expertise || [],
+                learning_topics: meta.learning_topics || [],
+            };
+
+            setProfile(merged);
+            if (merged.avatar_url) {
+                setAvatarPreview(merged.avatar_url);
+            }
+            setLoadedFromDb(true);
+
+            // Update localStorage cache
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(merged));
+        } catch (error) {
+            console.error('[ProfileTab] Error fetching profile from DB:', error);
+        }
+    };
+
+    /** Crop handler — store both preview data URL and pending blob for upload */
     const handleAvatarUpload = async () => {
         if (!editorRef.current) return;
 
-        // Get cropped image as data URL
         const canvas = editorRef.current.getImageScaledToCanvas();
-        const dataUrl = canvas.toDataURL('image/png');
 
-        // Store as data URL
+        // Data URL for instant preview
+        const dataUrl = canvas.toDataURL('image/png');
         setAvatarPreview(dataUrl);
         setProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+
+        // Store blob for actual upload on Save
+        canvas.toBlob((blob) => {
+            if (blob) {
+                pendingAvatarBlob.current = blob;
+                pendingAvatarRemoved.current = false;
+            }
+        }, 'image/png');
+
         setShowCropper(false);
-        toast.success('Photo updated!');
+        toast.success('Photo updated! Click Save to persist.');
     };
 
+    /** Remove avatar handler */
+    const handleRemoveAvatar = () => {
+        setAvatarPreview(null);
+        setProfile(prev => ({ ...prev, avatar_url: null }));
+        pendingAvatarBlob.current = null;
+        pendingAvatarRemoved.current = true;
+    };
+
+    /** Save profile — upload avatar to Storage + persist all fields to user_profiles */
     const handleSaveProfile = async () => {
+        if (!user?.id) {
+            toast.error('Not authenticated');
+            return;
+        }
+
         setSaving(true);
 
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-        await new Promise(r => setTimeout(r, 500)); // Simulate save
-        toast.success('Profile saved successfully!');
+        try {
+            let avatarPublicUrl: string | null = profile.avatar_url;
 
-        setSaving(false);
+            // 1) Upload avatar to Supabase Storage if pending
+            if (pendingAvatarBlob.current) {
+                const filePath = `${user.id}/avatar.png`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('avatars')
+                    .upload(filePath, pendingAvatarBlob.current, {
+                        upsert: true,
+                        contentType: 'image/png',
+                    });
+
+                if (uploadError) throw new Error(`Avatar upload failed: ${uploadError.message}`);
+
+                // Get public URL with cache-bust
+                const { data: urlData } = supabase.storage
+                    .from('avatars')
+                    .getPublicUrl(filePath);
+
+                avatarPublicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                pendingAvatarBlob.current = null;
+            } else if (pendingAvatarRemoved.current) {
+                // Remove avatar from storage
+                const filePath = `${user.id}/avatar.png`;
+                await supabase.storage.from('avatars').remove([filePath]);
+                avatarPublicUrl = null;
+                pendingAvatarRemoved.current = false;
+            }
+
+            // 2) Build profile_metadata JSONB
+            const profileMetadata = {
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                phone: profile.phone,
+                title: profile.title,
+                department: profile.department,
+                location: profile.location,
+                timezone: profile.timezone,
+                bio: profile.bio,
+                linkedin: profile.linkedin,
+                website: profile.website,
+                birthday: profile.birthday,
+                work_style: profile.work_style,
+                communication_preference: profile.communication_preference,
+                goals: profile.goals,
+                interests: profile.interests,
+                expertise: profile.expertise,
+                learning_topics: profile.learning_topics,
+            };
+
+            // 3) PATCH user_profiles via direct fetch (bypass AbortController)
+            const token = getAuthToken();
+            if (!token) throw new Error('No auth token found');
+
+            const res = await fetch(
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal',
+                    },
+                    body: JSON.stringify({
+                        full_name: `${profile.first_name} ${profile.last_name}`.trim(),
+                        avatar_url: avatarPublicUrl,
+                        profile_metadata: profileMetadata,
+                    }),
+                }
+            );
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Profile update failed (${res.status}): ${errText}`);
+            }
+
+            // 4) Update local state with the persisted public URL
+            const updatedProfile = {
+                ...profile,
+                full_name: `${profile.first_name} ${profile.last_name}`.trim(),
+                avatar_url: avatarPublicUrl,
+            };
+            setProfile(updatedProfile);
+            setAvatarPreview(avatarPublicUrl);
+
+            // 5) Update localStorage cache
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(updatedProfile));
+
+            // 6) Refresh team members so sidebar picks up new avatar
+            try {
+                await fetchTeamMembers();
+            } catch { /* non-critical */ }
+
+            toast.success('Profile saved successfully!');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to save profile';
+            console.error('[ProfileTab] Save error:', error);
+            toast.error(message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const toggleArrayItem = (field: keyof ProfileData, item: string) => {
@@ -210,6 +422,10 @@ export const ProfileTab: React.FC = () => {
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
+                                    if (file.size > 2 * 1024 * 1024) {
+                                        toast.error('Image must be under 2MB');
+                                        return;
+                                    }
                                     setAvatar(URL.createObjectURL(file));
                                     setShowCropper(true);
                                 }
@@ -224,7 +440,7 @@ export const ProfileTab: React.FC = () => {
                             Upload a new photo
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            Your photo helps team members recognize you. Recommended size: 400x400px
+                            Your photo helps team members recognize you. Max 2MB, recommended 400x400px.
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -236,10 +452,7 @@ export const ProfileTab: React.FC = () => {
                             </button>
                             {avatarPreview && (
                                 <button
-                                    onClick={() => {
-                                        setAvatarPreview(null);
-                                        setProfile(prev => ({ ...prev, avatar_url: null }));
-                                    }}
+                                    onClick={handleRemoveAvatar}
                                     className="px-4 py-2 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors"
                                 >
                                     Remove

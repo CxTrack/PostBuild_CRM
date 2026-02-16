@@ -192,6 +192,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Get organization context
       const org = useOrganizationStore.getState().currentOrganization;
+      const membership = useOrganizationStore.getState().currentMembership;
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
@@ -206,6 +207,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             page: currentContext?.page || 'Dashboard',
             industry: org?.industry_template || 'general_business',
             orgName: org?.name || 'Your Organization',
+            userRole: membership?.role || 'user',
           },
         }),
       });
