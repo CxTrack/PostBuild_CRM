@@ -63,6 +63,12 @@ export function clearOrganizationDataStores(): void {
   clearAllDataStores();
 }
 
-// Register the org-switch cleanup so organizationStore can invoke it
-// without importing this module (which would create a circular dep).
-registerCleanupCallback(clearOrganizationDataStores);
+/**
+ * Initializes the store cleanup system by registering the org-switch callback.
+ * Must be called AFTER all modules have finished loading (e.g. in a useEffect)
+ * to avoid TDZ errors in production builds where module evaluation order
+ * can cause minified variables to be accessed before initialization.
+ */
+export function initStoreCleanup(): void {
+  registerCleanupCallback(clearOrganizationDataStores);
+}

@@ -2,7 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useOrganizationStore } from '@/stores/organizationStore';
-import { clearAllDataStores } from '@/stores/storeCleanup';
+import { clearAllDataStores, initStoreCleanup } from '@/stores/storeCleanup';
 
 interface User extends SupabaseUser {
   role?: string;
@@ -29,6 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Register store cleanup callbacks now that all modules are fully initialized.
+    // This MUST NOT run at module-level (TDZ errors in production minified builds).
+    initStoreCleanup();
+
     let isMounted = true;
 
     // CRITICAL: Guarantee loading becomes false after timeout
