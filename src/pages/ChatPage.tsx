@@ -106,7 +106,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     }, [user]);
 
     useEffect(() => {
-        if (activeConversation && !activeConversation.id.startsWith('new-')) {
+        if (activeConversation && !activeConversation.id.startsWith('new-') && activeConversation.id !== 'ai-agent') {
             loadMessages(activeConversation.id);
 
             const channel = supabase.channel(`page-chat-${activeConversation.id}`)
@@ -159,6 +159,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     };
 
     const loadMessages = async (conversationId: string) => {
+        if (conversationId === 'ai-agent') return;
         try {
             const { data, error: fetchError } = await supabase
                 .from('messages')
@@ -202,7 +203,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         setMessages(prev => [...prev, newMsg]);
 
         // If it's a real conversation, try to save to DB
-        if (activeConversation && !activeConversation.id.startsWith('new-') && user) {
+        if (activeConversation && !activeConversation.id.startsWith('new-') && activeConversation.id !== 'ai-agent' && user) {
             const { error } = await supabase
                 .from('messages')
                 .insert({
