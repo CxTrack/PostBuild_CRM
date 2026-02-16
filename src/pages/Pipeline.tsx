@@ -180,7 +180,7 @@ const Pipeline: React.FC = () => {
           status: deal.final_status || 'open',
           created_at: deal.created_at,
           stage: deal.stage || 'lead',
-          probability: deal.probability || 0,
+          probability: (deal.probability || 0) > 1 ? (deal.probability / 100) : (deal.probability || 0),
         });
       });
 
@@ -721,7 +721,7 @@ const Pipeline: React.FC = () => {
         />
       ) : viewMode === 'split' ? (
         <div className="grid grid-cols-12 gap-6" style={{ height: 'calc(100vh - 400px)' }}>
-          <div className="col-span-12 lg:col-span-5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+          <div className="col-span-12 lg:col-span-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
             <div className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-700 px-6 py-4">
               <h3 className="font-semibold text-slate-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
             </div>
@@ -761,7 +761,7 @@ const Pipeline: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-7 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+          <div className="col-span-12 lg:col-span-8 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
             {selectedItem ? (
               <div className="h-full overflow-y-auto">
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b-2 border-slate-200 dark:border-slate-700 px-8 py-6">
