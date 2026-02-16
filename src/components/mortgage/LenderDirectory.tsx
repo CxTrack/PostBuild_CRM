@@ -142,15 +142,15 @@ export const LenderDirectory: React.FC = () => {
     };
 
     const textPrimary = theme === 'soft-modern'
-        ? 'text-slate-900'
+        ? 'text-gray-900'
         : 'text-gray-900 dark:text-white';
 
     const textSecondary = theme === 'soft-modern'
-        ? 'text-slate-600'
+        ? 'text-gray-600'
         : 'text-gray-600 dark:text-gray-400';
 
     const textMuted = theme === 'soft-modern'
-        ? 'text-slate-500'
+        ? 'text-gray-500'
         : 'text-gray-500 dark:text-gray-500';
 
     const inputClasses = 'w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white text-sm outline-none';

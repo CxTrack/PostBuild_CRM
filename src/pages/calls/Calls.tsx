@@ -199,9 +199,9 @@ export default function Calls() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Calls</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats?.total_calls || 0}</h3>
-            <p className="text-xs text-slate-500 mt-1">{stats?.human_calls || 0} human, {stats?.ai_agent_calls || 0} AI</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Calls</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.total_calls || 0}</h3>
+            <p className="text-xs text-gray-500 mt-1">{stats?.human_calls || 0} human, {stats?.ai_agent_calls || 0} AI</p>
           </div>
         </Card>
 
@@ -212,8 +212,8 @@ export default function Calls() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">This Week</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats?.this_week || 0}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">This Week</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.this_week || 0}</h3>
             <span className="inline-block px-2 py-0.5 mt-1 rounded text-[10px] font-bold bg-teal-50 text-teal-700 uppercase">Active</span>
           </div>
         </Card>
@@ -225,8 +225,8 @@ export default function Calls() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Avg Duration</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{formatDuration(stats?.avg_duration_seconds || 0)}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Avg Duration</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(stats?.avg_duration_seconds || 0)}</h3>
           </div>
         </Card>
 
@@ -237,17 +237,17 @@ export default function Calls() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Connection Rate</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round((stats?.connection_rate || 0) * 100)}%</h3>
-            <p className="text-xs text-slate-500 mt-1">{stats?.positive_outcomes || 0} successful</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Connection Rate</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round((stats?.connection_rate || 0) * 100)}%</h3>
+            <p className="text-xs text-gray-500 mt-1">{stats?.positive_outcomes || 0} successful</p>
           </div>
         </Card>
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         {/* Tabs as Segmented Control */}
-        <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
+        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
           {[
             { id: 'all', label: 'All Calls', icon: Phone },
             { id: 'my-calls', label: 'My Calls', icon: User },
@@ -262,8 +262,8 @@ export default function Calls() {
                 onClick={() => handleTabChange(tab.id as TabType)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${tab.id === 'ai-agents' ? aiAgentTabStyles : ''
                   } ${activeTab === tab.id
-                    ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
               >
                 {tab.id === 'live' ? (
@@ -281,38 +281,38 @@ export default function Calls() {
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={labels.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`p-2 rounded-lg transition-all ${showFilters
               ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-              : 'bg-slate-100 dark:bg-gray-700 text-slate-500 hover:text-slate-700'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
               }`}
           >
             <Filter size={18} />
           </button>
-          <button className="p-2 bg-slate-100 dark:bg-gray-700 rounded-lg text-slate-500 hover:text-slate-700 transition-all">
+          <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-700 transition-all">
             <Download size={18} />
           </button>
         </div>
       </div>
 
       {showFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl mb-2">
           <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Call Type</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Call Type</label>
             <select
               value={filters.callType || 'all'}
               onChange={(e) => setFilters({ callType: e.target.value as any })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Calls</option>
               <option value="human">Human Only</option>
@@ -320,11 +320,11 @@ export default function Calls() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Direction</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Direction</label>
             <select
               value={filters.direction || 'all'}
               onChange={(e) => setFilters({ direction: e.target.value as any })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All</option>
               <option value="inbound">Inbound</option>
@@ -339,23 +339,23 @@ export default function Calls() {
       <Card className="overflow-hidden p-0 min-h-[500px]">
         {calls.length > 0 ? (
           <table className="w-full">
-            <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-slate-50 dark:bg-gray-700 border-b-2 border-slate-100 dark:border-gray-600"}>
+            <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600"}>
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">User/Agent</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Direction</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Duration</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Outcome</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Time</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">User/Agent</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Direction</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Duration</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Outcome</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Time</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {calls.map((call) => (
                 <tr
                   key={call.id}
                   onClick={() => navigate(`/calls/${call.id}`)}
-                  className="hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -369,18 +369,18 @@ export default function Calls() {
                         </div>
                       )}
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
                           {call.agent_name || 'Team Member'}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-gray-500">
                           {call.call_type === 'ai_agent' ? `${call.agent_type} AI` : 'Human'}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{getCustomerName(call)}</p>
-                    <p className="text-xs text-slate-500">{call.customer_phone || call.phone_number}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{getCustomerName(call)}</p>
+                    <p className="text-xs text-gray-500">{call.customer_phone || call.phone_number}</p>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -389,10 +389,10 @@ export default function Calls() {
                       ) : (
                         <PhoneOutgoing className="w-4 h-4 text-blue-600" />
                       )}
-                      <span className="text-sm capitalize text-slate-700 dark:text-slate-300">{call.direction}</span>
+                      <span className="text-sm capitalize text-gray-700 dark:text-gray-300">{call.direction}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
+                  <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                     {call.duration_seconds ? formatDuration(call.duration_seconds) : '-'}
                   </td>
                   <td className="px-6 py-4">
@@ -406,12 +406,12 @@ export default function Calls() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-500">
+                  <td className="px-6 py-4 text-sm text-gray-500">
                     {call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" onClick={(e) => e.stopPropagation()}>
-                      <MoreVertical className="w-4 h-4 text-slate-400" />
+                      <MoreVertical className="w-4 h-4 text-gray-400" />
                     </button>
                   </td>
                 </tr>
@@ -420,11 +420,11 @@ export default function Calls() {
           </table>
         ) : (
           <div className="text-center py-20">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <Phone className="w-8 h-8 text-slate-400" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Phone className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{labels.emptyStateTitle}</h3>
-            <p className="text-slate-500 mb-6">{labels.emptyStateDescription}</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{labels.emptyStateTitle}</h3>
+            <p className="text-gray-500 mb-6">{labels.emptyStateDescription}</p>
             <button
               onClick={() => setShowLogCallModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow hover:bg-blue-700 transition"

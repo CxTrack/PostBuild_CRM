@@ -333,34 +333,34 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-900 rounded-[32px] shadow-2xl w-full max-w-[1600px] h-[90vh] overflow-hidden border-2 border-slate-200 dark:border-slate-800 flex flex-col">
+            <div className="bg-white dark:bg-gray-900 rounded-[32px] shadow-2xl w-full max-w-[1600px] h-[90vh] overflow-hidden border-2 border-gray-200 dark:border-gray-800 flex flex-col">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-8 py-6 border-b-2 border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10">
+                <div className="flex items-center justify-between px-8 py-6 border-b-2 border-gray-200 dark:border-gray-800 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
                             <Shield className="w-7 h-7 text-white stroke-[2.5px]" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
                                 CxTrack Admin Panel
                             </h1>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                                 Enterprise System Management • v1.0.4
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-3 hover:bg-white dark:hover:bg-slate-800 rounded-2xl transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                        className="p-3 hover:bg-white dark:hover:bg-gray-800 rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                     >
-                        <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                        <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                     </button>
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar Navigation */}
-                    <div className="w-72 border-r-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-6 overflow-y-auto">
+                    <div className="w-72 border-r-2 border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-6 overflow-y-auto">
                         <nav className="space-y-2">
                             {adminTabs.map(tab => (
                                 <button
@@ -370,7 +370,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all
                     ${activeAdminTab === tab.id
                                             ? 'bg-purple-600 text-white shadow-xl shadow-purple-500/30 active:scale-95'
-                                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
                                         }
                   `}
                                 >
@@ -387,7 +387,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30 dark:bg-slate-900/10">
+                    <div className="flex-1 overflow-y-auto p-10 bg-gray-50/30 dark:bg-gray-900/10">
                         {renderAdminTabContent()}
                     </div>
                 </div>

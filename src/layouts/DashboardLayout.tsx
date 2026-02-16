@@ -531,7 +531,7 @@ export const DashboardLayout = () => {
               }
             }}
             className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center p-2' : 'justify-between p-3'} rounded-2xl transition-all ${theme === 'soft-modern'
-              ? 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'hover:bg-gray-100 dark:hover:bg-gray-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             title={sidebarCollapsed ? (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User') : undefined}
@@ -559,7 +559,7 @@ export const DashboardLayout = () => {
           </button>
 
           <div className={`mt-2 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between px-3'}`}>
-            {!sidebarCollapsed && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest transition-colors">Theme</span>}
+            {!sidebarCollapsed && <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest transition-colors">Theme</span>}
             <button
               onClick={toggleTheme}
               className={theme === 'soft-modern' ? "p-1.5 rounded-lg transition-all btn-ghost" : "p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"}

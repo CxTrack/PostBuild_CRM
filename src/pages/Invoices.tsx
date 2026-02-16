@@ -5,7 +5,7 @@ import {
   Search, Plus, FileText,
   AlertCircle, Clock, MoreVertical, List, Grid,
   Download, Eye, Edit, Send, Trash2, Archive, CheckCircle2,
-  ArrowRight, Wallet, CreditCard
+  ArrowRight, Wallet, CreditCard, Receipt
 } from 'lucide-react';
 import { useInvoiceStore } from '../stores/invoiceStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -22,6 +22,7 @@ import { FilterBar } from '@/components/shared/FilterBar';
 import { Lock } from 'lucide-react';
 import type { InvoiceStatus } from '../types/app.types';
 import { ReportGenerator, ExportButton } from '../components/reports/ReportGenerator';
+import ExpenseModal from '@/components/financials/ExpenseModal';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export default function Invoices() {
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [viewMode, setViewMode] = useState<'compact' | 'table'>('compact');
 
   const { invoices, loading, fetchInvoices, deleteInvoice } = useInvoiceStore();
@@ -182,7 +184,7 @@ export default function Invoices() {
   const getStatusColor = (status: InvoiceStatus) => {
     switch (status) {
       case 'draft':
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
       case 'sent':
       case 'viewed':
         return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -194,9 +196,9 @@ export default function Invoices() {
         return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'cancelled':
       case 'refunded':
-        return 'bg-slate-100 text-slate-500 border-slate-300';
+        return 'bg-gray-100 text-gray-500 border-gray-300';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -216,7 +218,7 @@ export default function Invoices() {
               navigate(`/invoices/${invoice.id}`);
               onClose();
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-white"
           >
             <Eye className="w-4 h-4" />
             View Details
@@ -227,7 +229,7 @@ export default function Invoices() {
               navigate(`/invoices/builder/${invoice.id}`);
               onClose();
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-white"
           >
             <Edit className="w-4 h-4" />
             Edit {entityLabels.entitySingular.charAt(0).toUpperCase() + entityLabels.entitySingular.slice(1)}
@@ -238,7 +240,7 @@ export default function Invoices() {
               toast.success('Invoice sent!');
               onClose();
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-white"
           >
             <Send className="w-4 h-4" />
             Send to Customer
@@ -249,13 +251,13 @@ export default function Invoices() {
               toast.success('Download started!');
               onClose();
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-white"
           >
             <Download className="w-4 h-4" />
             Download PDF
           </button>
 
-          <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
+          <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
           {/* Role-based guard for sensitive actions */}
           {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
@@ -336,6 +338,13 @@ export default function Invoices() {
             <Download size={16} className="mr-1.5" />
             Report
           </button>
+          <button
+            onClick={() => setShowExpenseModal(true)}
+            className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
+          >
+            <Receipt size={16} className="mr-1.5" />
+            Log Expense
+          </button>
           <Link
             to="/invoices/builder"
             className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
@@ -354,10 +363,10 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalRevenue}</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.totalRevenue}</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -367,10 +376,10 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalPaid}</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalPaid / 1000).toFixed(1)}k</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.totalPaid}</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${(stats.totalPaid / 1000).toFixed(1)}k</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -380,10 +389,10 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.outstanding}</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalOutstanding / 1000).toFixed(1)}k</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.outstanding}</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${(stats.totalOutstanding / 1000).toFixed(1)}k</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -393,22 +402,22 @@ export default function Invoices() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.overdue}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.overdue}</p>
             <h3 className="text-2xl font-bold text-rose-600">{stats.overdueCount}</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
-        <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
           {(['all', 'draft', 'sent', 'paid', 'overdue'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
               className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${filterStatus === status
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
               {status}
@@ -418,27 +427,27 @@ export default function Invoices() {
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 dark:bg-gray-700 rounded-lg h-[36px]">
+          <div className="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-lg h-[36px]">
             <button
               onClick={() => setViewMode('compact')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Compact View"
             >
               <List size={18} />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Table View"
             >
               <Grid size={18} />
@@ -622,45 +631,45 @@ export default function Invoices() {
             {/* Desktop Table View */}
             <Card className="hidden md:block overflow-hidden p-0 min-h-[600px]">
               <table className="w-full">
-                <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-slate-50 dark:bg-gray-700 border-b-2 border-slate-100 dark:border-gray-600"}>
+                <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600"}>
                   <tr>
                     <th className="w-12 px-4 py-4 text-left">
                       <input
                         type="checkbox"
                         checked={selectAll}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
-                    <th className="w-16 text-center px-4 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="w-16 text-center px-4 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       #
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {labels.columns?.number || 'Invoice #'}
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {labels.columns?.customer || 'Customer'}
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Date / Due
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Amount
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {filteredInvoices.map((invoice, index) => (
                     <tr
                       key={invoice.id}
                       onClick={() => navigate(`/invoices/${invoice.id}`)}
-                      className="hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-slate-100 dark:border-gray-700"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700"
                     >
                       <td className="px-4 py-4">
                         <input
@@ -671,11 +680,11 @@ export default function Invoices() {
                             handleSelectInvoice(invoice.id);
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
                       <td className="text-center px-4 py-4">
-                        <span className="text-sm font-medium text-slate-400">
+                        <span className="text-sm font-medium text-gray-400">
                           {index + 1}
                         </span>
                       </td>
@@ -834,13 +843,13 @@ export default function Invoices() {
 
       {selectedInvoices.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 px-6 py-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 px-6 py-4">
             <div className="flex items-center gap-6">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 {selectedInvoices.size} selected
               </span>
 
-              <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
 
               <div className="flex items-center gap-3">
                 <button
@@ -853,7 +862,7 @@ export default function Invoices() {
 
                 <button
                   onClick={bulkArchive}
-                  className="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2"
                 >
                   <Archive className="w-4 h-4" />
                   Archive
@@ -872,7 +881,7 @@ export default function Invoices() {
                     setSelectedInvoices(new Set());
                     setSelectAll(false);
                   }}
-                  className="px-4 py-2 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="px-4 py-2 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
@@ -889,6 +898,12 @@ export default function Invoices() {
         defaultType="invoices"
       />
       <DialogComponent />
+
+      {/* Expense Modal with Receipt Scanning */}
+      <ExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+      />
     </PageContainer>
   );
 }

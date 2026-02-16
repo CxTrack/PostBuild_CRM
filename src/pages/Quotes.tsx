@@ -318,7 +318,7 @@ export default function Quotes() {
   const getStatusColor = (status: QuoteStatus) => {
     switch (status) {
       case 'draft':
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
       case 'sent':
       case 'viewed':
         return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -331,7 +331,7 @@ export default function Quotes() {
       case 'converted':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -412,10 +412,10 @@ export default function Quotes() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pipeline Value</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pipeline Value</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -425,10 +425,10 @@ export default function Quotes() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pending</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.sentCount}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.sentCount}</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -438,10 +438,10 @@ export default function Quotes() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Accepted</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.acceptedCount}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Accepted</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.acceptedCount}</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
 
         <Card hover className="flex items-center gap-4 p-4 group h-24">
@@ -451,22 +451,22 @@ export default function Quotes() {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Win Rate</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.conversionRate.toFixed(0)}%</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Win Rate</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.conversionRate.toFixed(0)}%</h3>
           </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
         </Card>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
-        <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide">
           {(['all', 'draft', 'sent', 'accepted', 'declined'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
               className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${filterStatus === status
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
               {status}
@@ -476,34 +476,34 @@ export default function Quotes() {
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-gray-400"
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 dark:bg-gray-700 rounded-lg h-[36px]">
+          <div className="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-lg h-[36px]">
             <button
               onClick={() => setViewMode('compact')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Compact View"
             >
               <List size={18} />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Table View"
             >
               <Grid size={18} />
             </button>
           </div>
 
-          <button className="p-2 bg-slate-100 dark:bg-gray-700 rounded-lg text-slate-500 hover:text-slate-700 transition-all">
+          <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-700 transition-all">
             <Filter size={18} />
           </button>
         </div>
@@ -611,45 +611,45 @@ export default function Quotes() {
             {/* Desktop Table View */}
             <Card className="hidden md:block overflow-hidden p-0">
               <table className="w-full">
-                <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-slate-50 dark:bg-gray-700 border-b-2 border-slate-100 dark:border-gray-600"}>
+                <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600"}>
                   <tr>
                     <th className="w-12 px-4 py-4 text-left">
                       <input
                         type="checkbox"
                         checked={selectAll}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
-                    <th className="w-16 text-center px-4 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="w-16 text-center px-4 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       #
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {labels.entitySingular} #
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Customer
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Date
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Amount
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {filteredQuotes.map((quote, index) => (
                     <tr
                       key={quote.id}
                       onClick={() => navigate(`/quotes/${quote.id}`)}
-                      className="hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-slate-100 dark:border-gray-700"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700"
                     >
                       <td className="px-4 py-4">
                         <input
@@ -660,11 +660,11 @@ export default function Quotes() {
                             handleSelectQuote(quote.id);
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
                       <td className="text-center px-4 py-4">
-                        <span className="text-sm font-medium text-slate-400">
+                        <span className="text-sm font-medium text-gray-400">
                           {index + 1}
                         </span>
                       </td>
@@ -781,13 +781,13 @@ export default function Quotes() {
       {
         selectedQuotes.size > 0 && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 px-6 py-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 px-6 py-4">
               <div className="flex items-center gap-6">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   {selectedQuotes.size} selected
                 </span>
 
-                <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
 
                 <div className="flex items-center gap-3">
                   <button
@@ -800,7 +800,7 @@ export default function Quotes() {
 
                   <button
                     onClick={bulkArchive}
-                    className="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2"
                   >
                     <Archive className="w-4 h-4" />
                     Archive
@@ -819,7 +819,7 @@ export default function Quotes() {
                       setSelectedQuotes(new Set());
                       setSelectAll(false);
                     }}
-                    className="px-4 py-2 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    className="px-4 py-2 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     Cancel
                   </button>

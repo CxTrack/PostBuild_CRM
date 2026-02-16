@@ -67,15 +67,15 @@ export const SprintBoard: React.FC = () => {
 
     // Theme-aware colors
     const textPrimary = theme === 'soft-modern'
-        ? 'text-slate-900'
+        ? 'text-gray-900'
         : 'text-gray-900 dark:text-white';
 
     const textSecondary = theme === 'soft-modern'
-        ? 'text-slate-600'
+        ? 'text-gray-600'
         : 'text-gray-600 dark:text-gray-400';
 
     const bgColumn = theme === 'soft-modern'
-        ? 'bg-slate-100'
+        ? 'bg-gray-100'
         : 'bg-gray-50 dark:bg-gray-800/50';
 
     const columns = [

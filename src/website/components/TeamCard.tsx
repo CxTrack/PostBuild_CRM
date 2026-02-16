@@ -35,7 +35,7 @@ export default function TeamCard({ member, index }: TeamCardProps) {
                                 className="object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                         ) : (
-                            <div className="w-full h-full bg-slate-900" />
+                            <div className="w-full h-full bg-gray-900" />
                         )}
                     </div>
                 </div>

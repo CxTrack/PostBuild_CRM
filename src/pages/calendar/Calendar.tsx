@@ -195,7 +195,7 @@ export default function Calendar() {
           <div
             className={
               theme === 'soft-modern'
-                ? 'flex items-center space-x-2 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-1 shadow-inner'
+                ? 'flex items-center space-x-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-1 shadow-inner'
                 : 'flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1'
             }
           >

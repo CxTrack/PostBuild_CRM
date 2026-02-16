@@ -197,13 +197,13 @@ export const Button: React.FC<{
         active:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.2)]
       `,
       secondary: `
-        bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700
+        bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700
         shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.9)]
         hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12)]
         active:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)]
       `,
       action: `
-        bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700
+        bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700
         shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.9)]
         hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12)]
         active:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)]
@@ -310,7 +310,7 @@ export const Input: React.FC<{
             border-2 border-transparent
             focus:border-blue-500 focus:shadow-[2px_2px_6px_rgba(0,0,0,0.08)]
             transition-all
-            text-slate-700 placeholder:text-slate-400
+            text-gray-700 placeholder:text-gray-400
           "
         />
       ) : (
@@ -385,7 +385,7 @@ export const Select: React.FC<{
             border-2 border-transparent
             focus:border-blue-500 focus:shadow-[2px_2px_6px_rgba(0,0,0,0.08)]
             transition-all
-            text-slate-700
+            text-gray-700
           "
         >
           {options.map((option) => (
@@ -481,7 +481,7 @@ export const Badge: React.FC<{
   const { theme } = useThemeStore();
 
   const variants = {
-    default: 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-300',
+    default: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
     success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
@@ -547,10 +547,10 @@ export const Modal: React.FC<{
           className={`rounded-2xl shadow-[16px_16px_32px_rgba(0,0,0,0.15),-8px_-8px_24px_rgba(255,255,255,0.9)] ${maxWidths[maxWidth]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
           style={{ background: '#F8F6F2' }}
         >
-          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0" style={{ background: '#F8F6F2' }}>
-            <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0" style={{ background: '#F8F6F2' }}>
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
             <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors">
-              <X size={20} className="text-slate-600" />
+              <X size={20} className="text-gray-600" />
             </button>
           </div>
           <div className="p-6 overflow-y-auto flex-1">{children}</div>

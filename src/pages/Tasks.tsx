@@ -54,7 +54,7 @@ const priorityColors: Record<Priority, string> = {
 };
 
 const statusStyles: Record<Status, string> = {
-  'To Do': 'bg-slate-50 text-slate-700 border-slate-200',
+  'To Do': 'bg-gray-50 text-gray-700 border-gray-200',
   'In Progress': 'bg-blue-50 text-blue-700 border-blue-200',
   'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
@@ -288,8 +288,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
               {!embedded && (
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">{labels.title}</h1>
-                    <p className="text-slate-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
+                    <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">{labels.title}</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
                   </div>
 
                   <button
@@ -308,7 +308,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
               <div className="flex items-center gap-4 mb-4">
 
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
                   <input
                     type="text"
                     placeholder={labels.searchPlaceholder}
@@ -329,7 +329,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                       ? theme === 'soft-modern'
                         ? 'bg-surface shadow-sm text-primary'
                         : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : theme === 'soft-modern' ? 'text-secondary hover:text-primary' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                      : theme === 'soft-modern' ? 'text-secondary hover:text-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                       }`}
                   >
                     <ListTodo size={16} />
@@ -341,7 +341,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                       ? theme === 'soft-modern'
                         ? 'bg-surface shadow-sm text-primary'
                         : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : theme === 'soft-modern' ? 'text-secondary hover:text-primary' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                      : theme === 'soft-modern' ? 'text-secondary hover:text-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                       }`}
                   >
                     <LayoutGrid size={16} />
@@ -368,7 +368,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
               <div className={theme === 'soft-modern' ? 'card mb-6 space-y-4 p-8' : 'mb-6 space-y-4 bg-white dark:bg-gray-800 rounded-2xl p-6 border-2 border-gray-200 dark:border-gray-700'}>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Start Date
                     </label>
                     <input
@@ -383,7 +383,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">End Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
                     <input
                       type="date"
                       value={dateRange.end}
@@ -398,13 +398,13 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Priority</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
                   <select
                     value={filterPriority}
                     onChange={(e) => setFilterPriority(e.target.value)}
                     className={
                       theme === 'soft-modern'
-                        ? 'w-full px-4 py-2.5 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-slate-700'
+                        ? 'w-full px-4 py-2.5 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-gray-700'
                         : 'w-full px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-gray-900 dark:text-white'
                     }
                   >
@@ -417,13 +417,13 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Status</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
                     className={
                       theme === 'soft-modern'
-                        ? 'w-full px-4 py-2.5 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-slate-700'
+                        ? 'w-full px-4 py-2.5 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-gray-700'
                         : 'w-full px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-gray-900 dark:text-white'
                     }
                   >
@@ -451,47 +451,47 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 <div className={theme === 'soft-modern' ? 'hidden md:block card overflow-hidden' : 'hidden md:block overflow-hidden bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700'}>
                   <div className="w-full overflow-x-auto custom-scrollbar">
                     <table className="w-full min-w-[900px]">
-                      <thead className={theme === 'soft-modern' ? 'bg-base border-b-2 border-default' : 'bg-slate-50 dark:bg-gray-700 border-b-2 border-slate-100 dark:border-gray-600'}>
+                      <thead className={theme === 'soft-modern' ? 'bg-base border-b-2 border-default' : 'bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600'}>
                         <tr>
                           <th className="w-12 px-3 py-3 text-left">
                             <input
                               type="checkbox"
                               checked={selectAll}
                               onChange={handleSelectAll}
-                              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </th>
-                          <th className="w-12 text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-12 text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             #
                           </th>
-                          <th className="min-w-[250px] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="min-w-[250px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Task
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Status
                           </th>
-                          <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Priority
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Due Date
                           </th>
-                          <th className="w-36 px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-36 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Customer
                           </th>
-                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y-2 divide-slate-100 dark:divide-gray-700">
+                      <tbody className="divide-y-2 divide-gray-100 dark:divide-gray-700">
                         {filteredTasks.map((task, index) => {
                           const overdue = isOverdue(task.dueDate, task.status);
                           return (
                             <tr
                               key={task.id}
                               onClick={() => openTaskDetail(task)}
-                              className={`hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-slate-100 dark:border-gray-700 ${overdue ? 'border-l-4 border-l-rose-500' : ''
+                              className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700 ${overdue ? 'border-l-4 border-l-rose-500' : ''
                                 }`}
                             >
                               <td className="px-3 py-3">
@@ -503,11 +503,11 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                     handleSelectTask(task.id);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
                               </td>
                               <td className="text-center px-3 py-3">
-                                <span className="text-sm font-medium text-slate-400">
+                                <span className="text-sm font-medium text-gray-400">
                                   {index + 1}
                                 </span>
                               </td>
@@ -517,12 +517,12 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                   {task.status === 'Completed' ? (
                                     <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                                   ) : (
-                                    <Circle className="w-5 h-5 text-slate-300 dark:text-gray-600 flex-shrink-0" />
+                                    <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
                                   )}
                                   <div className="min-w-0">
-                                    <div className="font-medium text-slate-900 dark:text-white truncate">{task.title}</div>
+                                    <div className="font-medium text-gray-900 dark:text-white truncate">{task.title}</div>
                                     {task.description && (
-                                      <div className="text-sm text-slate-500 dark:text-gray-400 mt-0.5 truncate">
+                                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                                         {task.description}
                                       </div>
                                     )}
@@ -553,7 +553,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                     className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityColors[task.priority]
                                       }`}
                                   />
-                                  <span className="text-sm text-slate-700 dark:text-gray-300 capitalize truncate">
+                                  <span className="text-sm text-gray-700 dark:text-gray-300 capitalize truncate">
                                     {task.priority}
                                   </span>
                                 </div>
@@ -563,7 +563,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 <div className="flex items-center gap-2 min-w-0">
                                   {overdue && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
                                   <span
-                                    className={`text-sm truncate ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-700 dark:text-gray-300'
+                                    className={`text-sm truncate ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'
                                       }`}
                                   >
                                     {formatDate(task.dueDate)}
@@ -572,7 +572,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               </td>
 
                               <td className="px-3 py-3">
-                                <span className="text-sm text-slate-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
+                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
                                   {task.customer || '€”'}
                                 </span>
                               </td>
@@ -584,7 +584,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                       e.stopPropagation();
                                       openTaskDetail(task);
                                     }}
-                                    className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                    className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                   >
                                     <Edit2 className="w-4 h-4" />
                                   </button>
@@ -593,7 +593,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                       e.stopPropagation();
                                       deleteTask(task.id);
                                     }}
-                                    className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -688,8 +688,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 </div>
 
                 {filteredTasks.length === 0 && (
-                  <div className="py-12 text-center text-slate-500 dark:text-gray-400">
-                    <ListTodo className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-gray-600" />
+                  <div className="py-12 text-center text-gray-500 dark:text-gray-400">
+                    <ListTodo className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                     <p className="font-medium">{labels.emptyStateTitle}</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters</p>
                   </div>
@@ -714,13 +714,13 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
       {selectedTasks.size > 0 && viewMode === 'table' && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 px-6 py-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 px-6 py-4">
             <div className="flex items-center gap-6">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 {selectedTasks.size} selected
               </span>
 
-              <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
 
               <div className="flex items-center gap-3">
                 <button
@@ -733,7 +733,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
                 <button
                   onClick={bulkArchive}
-                  className="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2"
                 >
                   <Archive className="w-4 h-4" />
                   Archive
@@ -752,7 +752,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                     setSelectedTasks(new Set());
                     setSelectAll(false);
                   }}
-                  className="px-4 py-2 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="px-4 py-2 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
@@ -770,8 +770,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Delete {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}</h3>
-                <p className="text-sm text-slate-600 dark:text-gray-400">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Delete {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Are you sure you want to delete {selectedTasks.size} {labels.entityPlural}? This action cannot
                   be undone.
                 </p>
@@ -781,7 +781,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className={theme === 'soft-modern' ? 'px-4 py-2.5 rounded-xl font-medium bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700 shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.9)] hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12)] active:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] transition-all duration-200' : 'px-4 py-2.5 rounded-xl font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors'}
+                className={theme === 'soft-modern' ? 'px-4 py-2.5 rounded-xl font-medium bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.9)] hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12)] active:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] transition-all duration-200' : 'px-4 py-2.5 rounded-xl font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors'}
               >
                 Cancel
               </button>

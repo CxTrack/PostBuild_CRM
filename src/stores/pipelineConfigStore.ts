@@ -90,7 +90,7 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
         if (stage) {
             return { bg: stage.color_bg, text: stage.color_text };
         }
-        return { bg: 'bg-slate-100', text: 'text-slate-700' };
+        return { bg: 'bg-gray-100', text: 'text-gray-700' };
     },
 
     getStageProbability: (key: string) => {
@@ -106,7 +106,7 @@ export const usePipelineConfigStore = create<PipelineConfigState>((set, get) => 
 // Default stages fallback (matches current hardcoded behavior)
 function getDefaultStages(): PipelineStage[] {
     return [
-        { stage_key: 'lead', stage_label: 'Lead', stage_order: 1, default_probability: 10, color_bg: 'bg-slate-100', color_text: 'text-slate-700', is_terminal: false },
+        { stage_key: 'lead', stage_label: 'Lead', stage_order: 1, default_probability: 10, color_bg: 'bg-gray-100', color_text: 'text-gray-700', is_terminal: false },
         { stage_key: 'qualified', stage_label: 'Qualified', stage_order: 2, default_probability: 25, color_bg: 'bg-blue-100', color_text: 'text-blue-700', is_terminal: false },
         { stage_key: 'proposal', stage_label: 'Proposal', stage_order: 3, default_probability: 50, color_bg: 'bg-purple-100', color_text: 'text-purple-700', is_terminal: false },
         { stage_key: 'negotiation', stage_label: 'Negotiation', stage_order: 4, default_probability: 75, color_bg: 'bg-amber-100', color_text: 'text-amber-700', is_terminal: false },

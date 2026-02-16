@@ -32,7 +32,7 @@ export const MiniAdminPanel = () => {
 
     const adminActions = [
         { label: 'User Management', icon: Users, path: '/admin/users', color: 'text-blue-600' },
-        { label: 'System Settings', icon: Settings, path: '/admin/settings', color: 'text-slate-600' },
+        { label: 'System Settings', icon: Settings, path: '/admin/settings', color: 'text-gray-600' },
         { label: 'Database View', icon: Database, path: '/admin/database', color: 'text-green-600' },
         { label: 'Audit Log', icon: Activity, path: '/admin/audit', color: 'text-orange-600' },
     ];
@@ -46,18 +46,18 @@ export const MiniAdminPanel = () => {
           transform transition-all duration-200 origin-bottom-left
           ${theme === 'soft-modern'
                         ? 'bg-white/90 backdrop-blur-md border-white/50'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
         `}>
-                    <div className="p-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
                         <div className="flex items-center gap-2">
                             <Shield size={14} className="text-purple-600" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                            <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                                 Admin Panel
                             </span>
                         </div>
                         <button
                             onClick={() => setIsOpen(false)}
-                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                         >
                             <X size={14} />
                         </button>
@@ -73,22 +73,22 @@ export const MiniAdminPanel = () => {
                                 }}
                                 className={`
                   w-full flex items-center justify-between p-2 rounded-lg text-left group
-                  hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
+                  hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors
                 `}
                             >
                                 <div className="flex items-center gap-3">
                                     <action.icon size={16} className={`${action.color} opacity-70 group-hover:opacity-100`} />
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                         {action.label}
                                     </span>
                                 </div>
-                                <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <ChevronRight size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
                     </div>
 
-                    <div className="p-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/30">
-                        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400">
+                    <div className="p-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/30">
+                        <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400">
                             <Command size={10} />
                             <span>Quick Access</span>
                         </div>
@@ -102,9 +102,9 @@ export const MiniAdminPanel = () => {
                 className={`
           flex items-center justify-center w-12 h-12 rounded-[18px] shadow-lg transition-all hover:scale-105 active:scale-95
           ${isOpen
-                        ? 'bg-slate-900 text-white rotate-90 dark:bg-white dark:text-slate-900'
-                        : 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white'}
-          border-2 border-slate-100 dark:border-slate-700
+                        ? 'bg-gray-900 text-white rotate-90 dark:bg-white dark:text-gray-900'
+                        : 'bg-white text-gray-900 dark:bg-gray-800 dark:text-white'}
+          border-2 border-gray-100 dark:border-gray-700
         `}
             >
                 <Shield size={20} className={isOpen ? 'text-purple-400' : 'text-purple-600'} />

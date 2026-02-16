@@ -116,8 +116,8 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
 };
 
 export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
-  tax_accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks', 'quotes'],
-  distribution_logistics: ['dashboard', 'crm', 'products', 'inventory', 'suppliers', 'quotes', 'invoices', 'financials', 'pipeline'],
+  tax_accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks', 'quotes', 'calls'],
+  distribution_logistics: ['dashboard', 'crm', 'products', 'inventory', 'suppliers', 'quotes', 'invoices', 'financials', 'pipeline', 'calls'],
   gyms_fitness: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls', 'pipeline', 'products', 'inventory'],
   contractors_home_services: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
   healthcare: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls'],
@@ -125,7 +125,7 @@ export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
   legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes'],
   general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
   // New templates
-  software_development: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes'],
+  agency: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes', 'calls'],
   mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'products', 'financials'],
   construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
 };
@@ -164,13 +164,14 @@ export const INDUSTRY_LABELS: Record<string, any> = {
     quotes: { name: 'Fee Proposals' }
   },
   // New template labels
-  software_development: {
+  agency: {
     crm: { name: 'Clients' },
     pipeline: { name: 'Projects' },
-    tasks: { name: 'Sprints & Tasks' },
+    tasks: { name: 'Tasks' },
     quotes: { name: 'Proposals' },
     invoices: { name: 'Billing' },
-    calendar: { name: 'Milestones' }
+    calendar: { name: 'Schedule' },
+    calls: { name: 'Calls' }
   },
   mortgage_broker: {
     crm: { name: 'Borrowers' },
@@ -204,6 +205,14 @@ export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls', 'products', 'invent
 
 // Trial duration in days
 export const FREE_TRIAL_DAYS = 30;
+
+// Voice Agent minutes included per plan per month
+export const PLAN_VOICE_MINUTES: Record<string, number> = {
+  free: 60,           // 60 min during 30-day trial only
+  business: 120,      // Basic tier
+  elite_premium: 500, // 500 min/month
+  enterprise: 99999,  // Effectively unlimited
+};
 
 // ============================================================================
 // PAGE LABELS - Industry-specific page content
@@ -1435,8 +1444,8 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
     },
   },
 
-  // SOFTWARE DEVELOPMENT
-  software_development: {
+  // AGENCY
+  agency: {
     crm: {
       title: 'Clients',
       subtitle: 'Manage client relationships and project contacts',
@@ -1451,7 +1460,7 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
     },
     pipeline: {
       title: 'Projects',
-      subtitle: 'Track software projects through development lifecycle',
+      subtitle: 'Track client projects through delivery lifecycle',
       entitySingular: 'project',
       entityPlural: 'projects',
       newButton: 'New Project',
@@ -1468,28 +1477,28 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       },
       stats: {
         total: 'Total Projects',
-        totalRevenue: 'Total Budget',
+        totalRevenue: 'Total Revenue',
         outstanding: 'Weighted Value',
       },
-      titlePlaceholder: 'e.g. "Mobile App - Acme Corp"',
+      titlePlaceholder: 'e.g. "CRM Build - Acme Corp"',
       titleSuggestions: [
-        'Web Application',
-        'Mobile App (iOS/Android)',
-        'API Integration',
-        'E-Commerce Platform',
-        'CRM Customization',
-        'Database Migration',
-        'Cloud Infrastructure',
-        'UI/UX Redesign',
-        'Security Audit',
-        'Maintenance Contract',
-        'MVP Development',
+        'Website Redesign',
+        'CRM Implementation',
+        'AI Automation',
+        'Voice Agent Setup',
+        'Marketing Campaign',
+        'Brand Strategy',
+        'SEO & Content',
+        'App Development',
+        'Consulting Retainer',
+        'System Integration',
+        'Digital Transformation',
       ],
-      sourceOptions: ['Referral', 'Clutch / G2', 'Website', 'LinkedIn', 'Partner', 'Other'],
+      sourceOptions: ['Referral', 'Website', 'LinkedIn', 'Partner', 'Cold Outreach', 'Event', 'Other'],
     },
     tasks: {
-      title: 'Sprints & Tasks',
-      subtitle: 'Manage development sprints and tasks',
+      title: 'Tasks',
+      subtitle: 'Manage deliverables and action items',
       entitySingular: 'task',
       entityPlural: 'tasks',
       newButton: 'New Task',
@@ -1501,19 +1510,19 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
     },
     quotes: {
       title: 'Proposals',
-      subtitle: 'Create and manage project proposals',
+      subtitle: 'Create and manage client proposals',
       entitySingular: 'proposal',
       entityPlural: 'proposals',
       newButton: 'New Proposal',
       searchPlaceholder: 'Search proposals...',
       emptyStateTitle: 'No proposals found',
-      emptyStateDescription: 'Create your first project proposal',
+      emptyStateDescription: 'Create your first client proposal',
       emptyStateButton: 'Create Your First Proposal',
       loadingText: 'Loading proposals...',
     },
     invoices: {
       title: 'Billing',
-      subtitle: 'Manage project billing and invoices',
+      subtitle: 'Manage client billing and invoices',
       entitySingular: 'invoice',
       entityPlural: 'invoices',
       newButton: 'New Invoice',
@@ -1524,16 +1533,28 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       loadingText: 'Loading invoices...',
     },
     calendar: {
-      title: 'Milestones',
-      subtitle: 'Track project milestones and deadlines',
-      entitySingular: 'milestone',
-      entityPlural: 'milestones',
-      newButton: 'Add Milestone',
-      searchPlaceholder: 'Search milestones...',
-      emptyStateTitle: 'No milestones scheduled',
-      emptyStateDescription: 'Add your first project milestone',
-      emptyStateButton: 'Add First Milestone',
-      loadingText: 'Loading milestones...',
+      title: 'Schedule',
+      subtitle: 'Track meetings, deadlines, and milestones',
+      entitySingular: 'event',
+      entityPlural: 'events',
+      newButton: 'Add Event',
+      searchPlaceholder: 'Search events...',
+      emptyStateTitle: 'No events scheduled',
+      emptyStateDescription: 'Add your first meeting or milestone',
+      emptyStateButton: 'Add First Event',
+      loadingText: 'Loading schedule...',
+    },
+    calls: {
+      title: 'Calls',
+      subtitle: 'Track client calls and follow-ups',
+      entitySingular: 'call',
+      entityPlural: 'calls',
+      newButton: 'Log Call',
+      searchPlaceholder: 'Search calls...',
+      emptyStateTitle: 'No calls logged',
+      emptyStateDescription: 'Log your first client call',
+      emptyStateButton: 'Log Your First Call',
+      loadingText: 'Loading calls...',
     },
   },
 
@@ -1756,8 +1777,8 @@ export const QUOTE_FIELD_LABELS: Record<string, QuoteFieldLabels> = {
     showTermsField: true,
   },
 
-  // Software Development - Proposals
-  software_development: {
+  // Agency - Proposals
+  agency: {
     sectionTitle: 'Proposal Details',
     dateLabel: 'Proposal Date',
     expiryLabel: 'Valid Until',
@@ -1901,7 +1922,7 @@ export const INVOICE_FIELD_LABELS: Record<string, InvoiceFieldLabels> = {
     customerPlaceholder: 'Select account...',
     notesPlaceholder: 'Internal notes (not visible to account)...',
   },
-  software_development: {
+  agency: {
     sectionTitle: 'Billing Details',
     dateLabel: 'Invoice Date',
     customerLabel: 'Client',

@@ -52,6 +52,9 @@ export const useLenderStore = create<LenderStore>((set, get) => ({
     const currentOrg = useOrganizationStore.getState().currentOrganization;
     if (!currentOrg) return;
 
+    // Industry guard: lenders are only relevant for mortgage_broker
+    if (currentOrg.industry_template !== 'mortgage_broker') return;
+
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase

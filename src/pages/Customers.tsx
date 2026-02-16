@@ -179,7 +179,7 @@ export const Customers: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className={
                 theme === 'soft-modern'
-                  ? 'w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-slate-700 placeholder:text-slate-400'
+                  ? 'w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-[4px_4px_8px_rgba(0,0,0,0.06),-2px_-2px_6px_rgba(255,255,255,0.9)] border-2 border-transparent focus:border-blue-500 transition-all text-gray-700 placeholder:text-gray-400'
                   : 'w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-gray-900 dark:text-white placeholder-gray-500'
               }
             />

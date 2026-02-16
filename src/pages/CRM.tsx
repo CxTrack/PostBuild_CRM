@@ -86,8 +86,8 @@ export default function CRM() {
                         size="md"
                     />
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Leads</p>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{totalLeads}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Leads</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{totalLeads}</h3>
                     </div>
                 </Card>
 
@@ -98,8 +98,8 @@ export default function CRM() {
                         size="md"
                     />
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Qualified</p>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{qualifiedLeads}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Qualified</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{qualifiedLeads}</h3>
                     </div>
                 </Card>
 
@@ -110,8 +110,8 @@ export default function CRM() {
                         size="md"
                     />
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Opportunities</p>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{activeOpps}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Opportunities</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{activeOpps}</h3>
                     </div>
                 </Card>
 
@@ -122,22 +122,22 @@ export default function CRM() {
                         size="md"
                     />
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pipeline</p>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">${Math.round(pipelineValue).toLocaleString()}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pipeline</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">${Math.round(pipelineValue).toLocaleString()}</h3>
                     </div>
                 </Card>
             </div>
 
             {/* Unified Toolbar */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
-                <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
                     {(['leads', 'opportunities', 'tasks'] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${activeTab === tab
-                                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                                 }`}
                         >
                             {tab}
@@ -147,13 +147,13 @@ export default function CRM() {
 
                 <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
                     <div className="relative flex-1">
-                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
                             placeholder={`Search ${activeTab}...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+                            className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
                         />
                     </div>
                 </div>

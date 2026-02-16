@@ -42,7 +42,7 @@ export default function OpportunitiesTable() {
         <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className={theme === 'soft-modern' ? "bg-slate-50 border-b border-slate-200" : "bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"}>
+                    <thead className={theme === 'soft-modern' ? "bg-gray-50 border-b border-gray-200" : "bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"}>
                         <tr>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Opportunity</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stage</th>

@@ -556,12 +556,12 @@ export default function Settings() {
                 })}
               </div>
 
-              <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <p className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center">
+              <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <p className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center">
                   <Smartphone size={16} className="mr-2 text-blue-600" />
                   Bottom Bar Preview
                 </p>
-                <div className="flex justify-around items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-slate-200 dark:border-gray-700 max-w-sm mx-auto">
+                <div className="flex justify-around items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700 max-w-sm mx-auto">
                   <div className="flex flex-col items-center opacity-40"><LayoutGrid size={18} /><span className="text-[8px] mt-1 font-bold">Home</span></div>
                   {(preferences.mobileNavItems || []).map(path => {
                     const item = MOBILE_NAV_OPTIONS.find(o => o.path === path);

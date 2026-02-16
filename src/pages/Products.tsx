@@ -214,13 +214,13 @@ export default function Products() {
 
         {!isMortgage && product.track_inventory && (
           <div className="mt-auto pt-3">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-bold">
               <span>Inventory</span>
               <span className={product.quantity_on_hand <= (product.low_stock_threshold || 5) ? 'text-rose-500' : 'text-emerald-500'}>
                 {product.quantity_on_hand} in stock
               </span>
             </div>
-            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${product.quantity_on_hand <= (product.low_stock_threshold || 5)
                   ? 'bg-rose-500'
@@ -289,34 +289,34 @@ export default function Products() {
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<Home size={20} className="text-blue-600" />} gradient="bg-blue-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Loan Products</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).totalLoanProducts}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Loan Products</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).totalLoanProducts}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<CheckCircle2 size={20} className="text-emerald-600" />} gradient="bg-emerald-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Active</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).activeProducts}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Active</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).activeProducts}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<TrendingUp size={20} className="text-orange-600" />} gradient="bg-orange-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Loan Types</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).loanTypes}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Loan Types</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).loanTypes}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<Percent size={20} className="text-purple-600" />} gradient="bg-purple-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Fixed Rate</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).fixedRate}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fixed Rate</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).fixedRate}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
           </>
         ) : (
@@ -324,49 +324,49 @@ export default function Products() {
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<ShoppingCart size={20} className="text-blue-600" />} gradient="bg-blue-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Items</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).totalProducts + (stats as any).activeServices}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Items</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).totalProducts + (stats as any).activeServices}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<Zap size={20} className="text-emerald-600" />} gradient="bg-emerald-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).activeServices}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Services</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{(stats as any).activeServices}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<BarChart2 size={20} className="text-orange-600" />} gradient="bg-orange-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Avg Price</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats as any).avgPrice.toFixed(0)}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Avg Price</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${(stats as any).avgPrice.toFixed(0)}</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
             <Card hover className="flex items-center gap-4 p-4 group h-24">
               <IconBadge icon={<PackageOpen size={20} className="text-purple-600" />} gradient="bg-purple-50" size="md" />
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Value</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${((stats as any).totalValue / 1000).toFixed(1)}k</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Value</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">${((stats as any).totalValue / 1000).toFixed(1)}k</h3>
               </div>
-              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              <ArrowRight size={16} className="ml-auto text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
             </Card>
           </>
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         {!isMortgage && (
-          <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg">
+          <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
             {(['all', 'product', 'service', 'bundle'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
                 className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${filterType === type
-                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
                 {type}s
@@ -377,27 +377,27 @@ export default function Products() {
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={labels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 dark:bg-gray-700 rounded-lg h-[36px]">
+          <div className="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-lg h-[36px]">
             <button
               onClick={() => setViewMode('compact')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Compact View"
             >
               <List size={18} />
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Card View"
             >
               <Grid size={18} />

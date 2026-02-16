@@ -44,8 +44,8 @@ const priorityColors = {
 
 const statusConfig = {
   'To Do': {
-    bg: 'bg-slate-50',
-    border: 'border-slate-200',
+    bg: 'bg-gray-50',
+    border: 'border-gray-200',
   },
   'In Progress': {
     bg: 'bg-blue-50',
@@ -83,26 +83,26 @@ function SortableTaskCard({ task, onTaskClick }: { task: Task; onTaskClick?: (ta
       {...listeners}
       onClick={() => onTaskClick?.(task)}
       className={`bg-white border-2 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all ${
-        isOverdue ? 'border-red-500' : 'border-slate-200'
+        isOverdue ? 'border-red-500' : 'border-gray-200'
       }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${priorityColors[task.priority]}`} />
-          <span className="text-xs font-medium text-slate-600 capitalize">{task.priority}</span>
+          <span className="text-xs font-medium text-gray-600 capitalize">{task.priority}</span>
         </div>
-        <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-          <MoreVertical className="w-4 h-4 text-slate-400" />
+        <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+          <MoreVertical className="w-4 h-4 text-gray-400" />
         </button>
       </div>
 
-      <h4 className="font-semibold text-slate-900 mb-1">{task.title}</h4>
+      <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
       {task.description && (
-        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{task.description}</p>
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
           <Calendar className="w-3.5 h-3.5" />
           <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
             {formatDate(task.dueDate)}
@@ -114,7 +114,7 @@ function SortableTaskCard({ task, onTaskClick }: { task: Task; onTaskClick?: (ta
         </div>
 
         {task.customer && (
-          <div className="flex items-center gap-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
             <User className="w-3.5 h-3.5" />
             <span>{task.customer}</span>
           </div>
@@ -139,8 +139,8 @@ function KanbanColumn({
     <div className="flex-1 min-w-[300px]">
       <div className={`${config.bg} border-2 ${config.border} rounded-2xl p-4 h-full`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900">{status}</h3>
-          <span className="px-2.5 py-1 bg-white border-2 border-slate-200 rounded-lg text-sm font-medium text-slate-700">
+          <h3 className="font-semibold text-gray-900">{status}</h3>
+          <span className="px-2.5 py-1 bg-white border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700">
             {tasks.length}
           </span>
         </div>
@@ -154,7 +154,7 @@ function KanbanColumn({
         </SortableContext>
 
         {tasks.length === 0 && (
-          <div className="text-center py-8 text-slate-400 text-sm">
+          <div className="text-center py-8 text-gray-400 text-sm">
             No tasks
           </div>
         )}
@@ -232,14 +232,14 @@ export default function KanbanBoard({ tasks, onTaskMove, onTaskClick }: KanbanBo
 
       <DragOverlay>
         {activeTask && (
-          <div className="bg-white border-2 border-slate-300 rounded-xl p-4 shadow-xl rotate-3">
+          <div className="bg-white border-2 border-gray-300 rounded-xl p-4 shadow-xl rotate-3">
             <div className="flex items-center gap-2 mb-2">
               <div className={`w-2.5 h-2.5 rounded-full ${priorityColors[activeTask.priority]}`} />
-              <span className="text-xs font-medium text-slate-600 capitalize">
+              <span className="text-xs font-medium text-gray-600 capitalize">
                 {activeTask.priority}
               </span>
             </div>
-            <h4 className="font-semibold text-slate-900">{activeTask.title}</h4>
+            <h4 className="font-semibold text-gray-900">{activeTask.title}</h4>
           </div>
         )}
       </DragOverlay>

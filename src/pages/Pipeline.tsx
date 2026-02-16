@@ -66,7 +66,7 @@ const Pipeline: React.FC = () => {
   const STAGES = useMemo(() => {
     if (configStages.length === 0) {
       return [
-        { id: 'lead', name: 'Lead', probability: 0.1, color: 'bg-slate-100 text-slate-700', isTerminal: false },
+        { id: 'lead', name: 'Lead', probability: 0.1, color: 'bg-gray-100 text-gray-700', isTerminal: false },
         { id: 'qualified', name: 'Qualified', probability: 0.25, color: 'bg-blue-100 text-blue-700', isTerminal: false },
         { id: 'proposal', name: 'Proposal', probability: 0.5, color: 'bg-purple-100 text-purple-700', isTerminal: false },
         { id: 'negotiation', name: 'Negotiation', probability: 0.75, color: 'bg-amber-100 text-amber-700', isTerminal: false },
@@ -339,10 +339,10 @@ const Pipeline: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className={`w-2 h-2 rounded-full ${item.type === 'quote' ? 'bg-purple-500' : 'bg-blue-500'}`} />
           <div>
-            <p className="font-semibold text-slate-900 dark:text-white">
+            <p className="font-semibold text-gray-900 dark:text-white">
               {item.number}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               {item.type}
             </p>
           </div>
@@ -356,10 +356,10 @@ const Pipeline: React.FC = () => {
       minWidth: 150,
       render: (item) => (
         <div>
-          <p className="font-medium text-slate-900 dark:text-white truncate">
+          <p className="font-medium text-gray-900 dark:text-white truncate">
             {item.customer_name}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {item.customer_email}
           </p>
         </div>
@@ -371,7 +371,7 @@ const Pipeline: React.FC = () => {
       defaultWidth: 120,
       minWidth: 100,
       render: (item) => (
-        <div className="text-right font-bold text-slate-900 dark:text-white">
+        <div className="text-right font-bold text-gray-900 dark:text-white">
           ${item.total_amount.toLocaleString()}
         </div>
       ),
@@ -396,16 +396,16 @@ const Pipeline: React.FC = () => {
       minWidth: 120,
       render: (item) => (
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${item.probability >= 0.75 ? 'bg-green-500' :
                 item.probability >= 0.5 ? 'bg-blue-500' :
-                  item.probability >= 0.25 ? 'bg-orange-500' : 'bg-slate-400'
+                  item.probability >= 0.25 ? 'bg-orange-500' : 'bg-gray-400'
                 }`}
               style={{ width: `${item.probability * 100}%` }}
             />
           </div>
-          <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-8 text-right">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-8 text-right">
             {Math.round(item.probability * 100)}%
           </span>
         </div>
@@ -417,7 +417,7 @@ const Pipeline: React.FC = () => {
       defaultWidth: 120,
       minWidth: 100,
       render: (item) => (
-        <div className="text-sm text-slate-600 dark:text-slate-400 text-right">
+        <div className="text-sm text-gray-600 dark:text-gray-400 text-right">
           {new Date(item.created_at).toLocaleDateString()}
         </div>
       ),
@@ -434,7 +434,7 @@ const Pipeline: React.FC = () => {
               e.stopPropagation();
               navigate(`/${item.type === 'quote' ? 'quotes' : 'invoices'}/${item.id}`);
             }}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors text-slate-400 hover:text-blue-600"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-400 hover:text-blue-600"
           >
             <FileText size={16} />
           </button>
@@ -443,7 +443,7 @@ const Pipeline: React.FC = () => {
               e.stopPropagation();
               // More actions
             }}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors text-slate-400 hover:text-slate-600"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-400 hover:text-gray-600"
           >
             <MoreVertical size={16} />
           </button>
@@ -483,12 +483,12 @@ const Pipeline: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg">
+          <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
             <button
               onClick={() => setViewMode('kanban')}
               className={`px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all flex items-center gap-2 ${viewMode === 'kanban'
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -497,8 +497,8 @@ const Pipeline: React.FC = () => {
             <button
               onClick={() => setViewMode('table')}
               className={`hidden md:flex px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-2 ${viewMode === 'table'
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <List className="w-4 h-4" />
@@ -507,8 +507,8 @@ const Pipeline: React.FC = () => {
             <button
               onClick={() => setViewMode('split')}
               className={`hidden md:flex px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-2 ${viewMode === 'split'
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <Columns className="w-4 h-4" />
@@ -543,8 +543,8 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.total || 'Total Items'}</p>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{filteredItems.length}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.total || 'Total Items'}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{filteredItems.length}</h3>
           </div>
         </Card>
 
@@ -555,8 +555,8 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.totalRevenue || 'Total Value'}</p>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">${totalValue.toLocaleString()}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.totalRevenue || 'Total Value'}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">${totalValue.toLocaleString()}</h3>
           </div>
         </Card>
 
@@ -567,19 +567,19 @@ const Pipeline: React.FC = () => {
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{labels.stats?.outstanding || 'Weighted Value'}</p>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">${Math.round(weightedValue).toLocaleString()}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.outstanding || 'Weighted Value'}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">${Math.round(weightedValue).toLocaleString()}</h3>
           </div>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div className="relative flex items-center max-w-full min-w-0">
           {canScrollLeft && (
             <button
               onClick={() => scrollStages('left')}
-              className="absolute left-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-slate-200 dark:border-gray-600 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -ml-1"
+              className="absolute left-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -ml-1"
               aria-label="Scroll stages left"
             >
               <ChevronLeft size={16} />
@@ -587,13 +587,13 @@ const Pipeline: React.FC = () => {
           )}
           <div
             ref={stageTabsRef}
-            className={`flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide ${canScrollLeft ? 'ml-6' : ''} ${canScrollRight ? 'mr-6' : ''}`}
+            className={`flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto scrollbar-hide ${canScrollLeft ? 'ml-6' : ''} ${canScrollRight ? 'mr-6' : ''}`}
           >
             <button
               onClick={() => setSelectedStage('all')}
               className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === 'all'
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               All Stages
@@ -603,8 +603,8 @@ const Pipeline: React.FC = () => {
                 key={stage.id}
                 onClick={() => setSelectedStage(stage.id)}
                 className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === stage.id
-                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
               >
                 {stage.name}
@@ -614,7 +614,7 @@ const Pipeline: React.FC = () => {
           {canScrollRight && (
             <button
               onClick={() => scrollStages('right')}
-              className="absolute right-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-slate-200 dark:border-gray-600 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -mr-1"
+              className="absolute right-0 z-10 p-1 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors -mr-1"
               aria-label="Scroll stages right"
             >
               <ChevronRight size={16} />
@@ -624,13 +624,13 @@ const Pipeline: React.FC = () => {
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={labels.searchPlaceholder}
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
             />
           </div>
         </div>
