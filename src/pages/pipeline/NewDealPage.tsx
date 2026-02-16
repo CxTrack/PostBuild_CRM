@@ -88,7 +88,7 @@ export default function NewDealPage() {
                     value: deal.value?.toString() || '',
                     currency: deal.currency || currentOrganization?.metadata?.currency || 'USD',
                     stage: deal.stage || '',
-                    probability: deal.probability != null ? (deal.probability > 1 ? deal.probability.toString() : (deal.probability * 100).toString()) : '',
+                    probability: deal.probability != null ? deal.probability.toString() : '',
                     expected_close_date: deal.expected_close_date ? deal.expected_close_date.split('T')[0] : '',
                     source: deal.source || 'other',
                     revenue_type: deal.revenue_type || 'one_time',

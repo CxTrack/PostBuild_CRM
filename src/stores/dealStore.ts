@@ -233,9 +233,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
         value: dealData.value || 0,
         currency: dealData.currency || 'USD',
         stage: dealData.stage || 'lead',
-        probability: ((dealData.probability ?? getDefaultProbability(dealData.stage || 'lead')) > 1
-          ? (dealData.probability ?? getDefaultProbability(dealData.stage || 'lead')) / 100
-          : (dealData.probability ?? getDefaultProbability(dealData.stage || 'lead'))),
+        probability: Math.round(dealData.probability ?? getDefaultProbability(dealData.stage || 'lead')),
         expected_close_date: dealData.expected_close_date,
         source: dealData.source || 'other',
         revenue_type: dealData.revenue_type || 'one_time',
@@ -281,8 +279,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
       const updateData: Partial<Deal> = { ...updates };
 
       if (updates.stage) {
-        const rawProb = updates.probability ?? getDefaultProbability(updates.stage);
-        (updateData as any).probability = rawProb > 1 ? rawProb / 100 : rawProb;
+        (updateData as any).probability = Math.round(updates.probability ?? getDefaultProbability(updates.stage));
       }
 
       const { error } = await supabase
@@ -323,8 +320,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
 
   moveDealToStage: async (id: string, stage: Deal['stage']) => {
     try {
-      const rawProb = getDefaultProbability(stage);
-      const probability = rawProb > 1 ? rawProb / 100 : rawProb;
+      const probability = Math.round(getDefaultProbability(stage));
 
       const updates: Partial<Deal> = {
         stage,
@@ -379,7 +375,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
         value: quote.total_amount,
         currency: quote.currency || 'USD',
         stage: 'proposal',
-        probability: 0.5,
+        probability: 50,
         expected_close_date: dealData.expected_close_date,
         source: 'quote',
         revenue_type: dealData.revenue_type || 'one_time',
@@ -426,7 +422,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
         .from('pipeline_items')
         .update({
           stage: 'closed_won',
-          probability: 1,
+          probability: 100,
           actual_close_date: new Date().toISOString().split('T')[0],
           final_status: 'Sale',
         })

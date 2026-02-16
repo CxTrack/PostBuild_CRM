@@ -111,14 +111,14 @@ export default function OpportunitiesTable() {
                                         <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-blue-500"
-                                                style={{ width: `${opp.probability * 100}%` }}
+                                                style={{ width: `${opp.probability}%` }}
                                             />
                                         </div>
-                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{(opp.probability * 100).toFixed(0)}%</span>
+                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{Math.round(opp.probability)}%</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                                    ${Math.round(opp.value * opp.probability).toLocaleString()}
+                                    ${Math.round(opp.value * opp.probability / 100).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                     {opp.expected_close_date ? format(new Date(opp.expected_close_date), 'MMM d, yyyy') : '-'}

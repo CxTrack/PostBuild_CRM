@@ -239,6 +239,15 @@
   color: var(--mn-text-primary) !important;
 }
 
+/* Inputs with bg-gray-900 (used in NewDealPage) */
+.midnight input.dark\:bg-gray-900,
+.midnight select.dark\:bg-gray-900,
+.midnight textarea.dark\:bg-gray-900 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--mn-border-default) !important;
+  color: var(--mn-text-primary) !important;
+}
+
 .midnight input:focus,
 .midnight select:focus,
 .midnight textarea:focus {
@@ -249,6 +258,28 @@
 .midnight input::placeholder,
 .midnight textarea::placeholder {
   color: var(--mn-text-tertiary) !important;
+}
+
+/* Native <select> <option> elements — use solid dark bg for readability */
+.midnight select option {
+  background-color: #1a1a1a !important;
+  color: var(--mn-text-primary) !important;
+}
+
+/* Dropdown menus / suggestion popups — solid dark bg instead of glass */
+.midnight [class*="absolute"][class*="z-50"][class*="dark:bg-gray-800"],
+.midnight [class*="absolute"][class*="z-"][class*="dark:bg-gray-800"] {
+  background-color: #141414 !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-color: var(--mn-border-strong) !important;
+}
+
+/* Dropdown hover items */
+.midnight [class*="absolute"][class*="z-"] button:hover,
+.midnight [class*="absolute"][class*="z-"] a:hover,
+.midnight [class*="absolute"][class*="z-"] [class*="hover\:bg-"]:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ============================================

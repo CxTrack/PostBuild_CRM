@@ -167,13 +167,16 @@ export default function ProductForm() {
     setSaving(true);
 
     try {
+      // Strip fields that don't exist in the DB schema
+      const { is_featured, reorder_quantity, ...cleanFormData } = formData;
+
       const productData = {
-        ...formData,
+        ...cleanFormData,
         organization_id: currentOrganization?.id || '',
         // For mortgage, auto-set product_type to 'service' (loan products are services)
-        product_type: isMortgage ? 'service' as ProductType : formData.product_type,
+        product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
         // For mortgage, category is the loan type label
-        category: isMortgage ? (LOAN_TYPES.find(t => t.value === formData.loan_type)?.label || formData.category) : formData.category,
+        category: isMortgage ? (LOAN_TYPES.find(t => t.value === cleanFormData.loan_type)?.label || cleanFormData.category) : cleanFormData.category,
       };
 
       if (isEdit && id) {

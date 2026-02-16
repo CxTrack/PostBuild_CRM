@@ -66,18 +66,18 @@ const Pipeline: React.FC = () => {
   const STAGES = useMemo(() => {
     if (configStages.length === 0) {
       return [
-        { id: 'lead', name: 'Lead', probability: 0.1, color: 'bg-gray-100 text-gray-700', isTerminal: false },
-        { id: 'qualified', name: 'Qualified', probability: 0.25, color: 'bg-blue-100 text-blue-700', isTerminal: false },
-        { id: 'proposal', name: 'Proposal', probability: 0.5, color: 'bg-purple-100 text-purple-700', isTerminal: false },
-        { id: 'negotiation', name: 'Negotiation', probability: 0.75, color: 'bg-amber-100 text-amber-700', isTerminal: false },
-        { id: 'closed_won', name: 'Won', probability: 1, color: 'bg-green-100 text-green-700', isTerminal: true },
+        { id: 'lead', name: 'Lead', probability: 10, color: 'bg-gray-100 text-gray-700', isTerminal: false },
+        { id: 'qualified', name: 'Qualified', probability: 25, color: 'bg-blue-100 text-blue-700', isTerminal: false },
+        { id: 'proposal', name: 'Proposal', probability: 50, color: 'bg-purple-100 text-purple-700', isTerminal: false },
+        { id: 'negotiation', name: 'Negotiation', probability: 75, color: 'bg-amber-100 text-amber-700', isTerminal: false },
+        { id: 'closed_won', name: 'Won', probability: 100, color: 'bg-green-100 text-green-700', isTerminal: true },
         { id: 'closed_lost', name: 'Lost', probability: 0, color: 'bg-red-100 text-red-700', isTerminal: true },
       ];
     }
     return configStages.map(s => ({
       id: s.stage_key,
       name: s.stage_label,
-      probability: s.default_probability / 100,
+      probability: s.default_probability,
       color: `${s.color_bg} ${s.color_text}`,
       isTerminal: s.is_terminal
     }));
@@ -180,7 +180,7 @@ const Pipeline: React.FC = () => {
           status: deal.final_status || 'open',
           created_at: deal.created_at,
           stage: deal.stage || 'lead',
-          probability: (deal.probability || 0) > 1 ? (deal.probability / 100) : (deal.probability || 0),
+          probability: deal.probability || 0,
         });
       });
 
@@ -197,7 +197,7 @@ const Pipeline: React.FC = () => {
             status: quote.status,
             created_at: quote.created_at,
             stage: 'proposal',
-            probability: 0.5,
+            probability: 50,
           });
         }
       });
@@ -215,7 +215,7 @@ const Pipeline: React.FC = () => {
             status: invoice.status,
             created_at: invoice.created_at,
             stage: 'negotiation',
-            probability: 0.75,
+            probability: 75,
           });
         } else if (invoice.status === 'paid') {
           const customer = customers.find(c => c.id === invoice.customer_id);
@@ -229,7 +229,7 @@ const Pipeline: React.FC = () => {
             status: invoice.status,
             created_at: invoice.created_at,
             stage: 'won',
-            probability: 1,
+            probability: 100,
           });
         }
       });
@@ -398,15 +398,15 @@ const Pipeline: React.FC = () => {
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${item.probability >= 0.75 ? 'bg-green-500' :
-                item.probability >= 0.5 ? 'bg-blue-500' :
-                  item.probability >= 0.25 ? 'bg-orange-500' : 'bg-gray-400'
+              className={`h-full rounded-full transition-all ${item.probability >= 75 ? 'bg-green-500' :
+                item.probability >= 50 ? 'bg-blue-500' :
+                  item.probability >= 25 ? 'bg-orange-500' : 'bg-gray-400'
                 }`}
-              style={{ width: `${item.probability * 100}%` }}
+              style={{ width: `${item.probability}%` }}
             />
           </div>
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-8 text-right">
-            {Math.round(item.probability * 100)}%
+            {Math.round(item.probability)}%
           </span>
         </div>
       ),
@@ -753,7 +753,7 @@ const Pipeline: React.FC = () => {
                       {getStageLabel(item.stage)}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {Math.round(item.probability * 100)}% probability
+                      {Math.round(item.probability)}% probability
                     </span>
                   </div>
                 </div>
@@ -792,11 +792,11 @@ const Pipeline: React.FC = () => {
                       <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-600 rounded-full transition-all"
-                          style={{ width: `${selectedItem.probability * 100}%` }}
+                          style={{ width: `${selectedItem.probability}%` }}
                         />
                       </div>
                       <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        {Math.round(selectedItem.probability * 100)}% probability
+                        {Math.round(selectedItem.probability)}% probability
                       </span>
                     </div>
                   </div>
@@ -972,7 +972,7 @@ const Pipeline: React.FC = () => {
                     </span>
                   </div>
                   <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>
-                    {stage.probability * 100}%
+                    {stage.probability}%
                   </span>
                 </div>
 
