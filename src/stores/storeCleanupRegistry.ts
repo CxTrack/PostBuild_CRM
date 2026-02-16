@@ -11,8 +11,8 @@
  *
  * Dependency graph (no cycles):
  *   organizationStore -> storeCleanupRegistry  (this file, leaf node)
- *   storeCleanup -> {8 data stores} -> organizationStore
  *   storeCleanup -> storeCleanupRegistry  (registers callback)
+ *   storeCleanup -> {8 data stores} via dynamic import() (no static dep)
  *   AuthContext  -> storeCleanup  (imports & calls clearAllDataStores)
  *   AuthContext  -> organizationStore
  */

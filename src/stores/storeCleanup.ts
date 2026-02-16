@@ -9,43 +9,66 @@
  * Note: Persisted stores (authStore, organizationStore, themeStore) are NOT
  * cleared here - they handle their own cleanup.
  *
- * IMPORTANT: This file does NOT import organizationStore.  The reverse
- * direction (organizationStore needing cleanup) goes through the
- * storeCleanupRegistry callback to avoid circular dependencies.
+ * IMPORTANT: This file uses dynamic imports to avoid circular dependencies.
+ * The 8 data stores all import organizationStore, and AuthContext imports
+ * both this file and organizationStore — static imports here would create
+ * a circular chain that causes TDZ errors in production minified builds.
  */
 
-import { useCalendarStore } from './calendarStore';
-import { useCallStore } from './callStore';
-import { useCustomerStore } from './customerStore';
-import { useDealStore } from './dealStore';
-import { useInvoiceStore } from './invoiceStore';
-import { usePreferencesStore } from './preferencesStore';
-import { useQuoteStore } from './quoteStore';
-import { useTaskStore } from './taskStore';
 import { registerCleanupCallback } from './storeCleanupRegistry';
 
-const dataStores = [
-  useCalendarStore,
-  useCallStore,
-  useCustomerStore,
-  useDealStore,
-  useInvoiceStore,
-  usePreferencesStore,
-  useQuoteStore,
-  useTaskStore,
-];
+/**
+ * Dynamically loads all data stores and calls reset() on each.
+ * Using dynamic import() breaks the circular dependency chain at
+ * module evaluation time — stores are only loaded when cleanup
+ * is actually invoked (logout or org switch), not at import time.
+ */
+async function resetAllStores(): Promise<void> {
+  const [
+    { useCalendarStore },
+    { useCallStore },
+    { useCustomerStore },
+    { useDealStore },
+    { useInvoiceStore },
+    { usePreferencesStore },
+    { useQuoteStore },
+    { useTaskStore },
+  ] = await Promise.all([
+    import('./calendarStore'),
+    import('./callStore'),
+    import('./customerStore'),
+    import('./dealStore'),
+    import('./invoiceStore'),
+    import('./preferencesStore'),
+    import('./quoteStore'),
+    import('./taskStore'),
+  ]);
+
+  const stores = [
+    useCalendarStore,
+    useCallStore,
+    useCustomerStore,
+    useDealStore,
+    useInvoiceStore,
+    usePreferencesStore,
+    useQuoteStore,
+    useTaskStore,
+  ];
+
+  for (const store of stores) {
+    store.getState().reset();
+  }
+}
 
 /**
  * Clears all non-persisted data stores.
  * Call this on logout to ensure no stale data remains.
  */
-export function clearAllDataStores(): void {
+export async function clearAllDataStores(): Promise<void> {
   console.log('[StoreCleanup] Clearing all data stores...');
 
   try {
-    for (const store of dataStores) {
-      store.getState().reset();
-    }
+    await resetAllStores();
     console.log('[StoreCleanup] All data stores cleared successfully');
   } catch (error) {
     console.error('[StoreCleanup] Error clearing stores:', error);
@@ -58,9 +81,9 @@ export function clearAllDataStores(): void {
  * Same as clearAllDataStores for now, but can be refined
  * to exclude user-specific non-org data if needed.
  */
-export function clearOrganizationDataStores(): void {
+export async function clearOrganizationDataStores(): Promise<void> {
   console.log('[StoreCleanup] Clearing organization-specific stores...');
-  clearAllDataStores();
+  await clearAllDataStores();
 }
 
 /**
@@ -70,5 +93,7 @@ export function clearOrganizationDataStores(): void {
  * can cause minified variables to be accessed before initialization.
  */
 export function initStoreCleanup(): void {
-  registerCleanupCallback(clearOrganizationDataStores);
+  registerCleanupCallback(() => {
+    clearOrganizationDataStores();
+  });
 }
