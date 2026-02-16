@@ -479,7 +479,7 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     fetchVoices: async () => {
         const organizationId = useOrganizationStore.getState().currentOrganization?.id;
 
-        set({ voicesLoading: true });
+        set({ voicesLoading: true, error: null });
         try {
             const result = await retellService.listVoices(organizationId || undefined);
 
@@ -488,9 +488,13 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
                     voices: result.voices,
                     currentVoiceId: result.currentVoiceId || null,
                 });
+            } else if (result.error) {
+                console.error('Failed to fetch voices:', result.error);
+                set({ error: result.error });
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch voices';
+            console.error('fetchVoices error:', message);
             set({ error: message });
         } finally {
             set({ voicesLoading: false });

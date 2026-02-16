@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 
 export interface ProvisionVoiceAgentParams {
   organizationId: string;
@@ -23,6 +23,7 @@ export interface ProvisionResult {
   agentId?: string;
   agentName?: string;
   error?: string;
+  notConfigured?: boolean;
 }
 
 export interface UpdateAgentParams {
@@ -103,23 +104,71 @@ export interface ManageKBParams {
   knowledgeBaseIds?: string[];
 }
 
+/**
+ * Get the auth token directly from localStorage to avoid
+ * the Supabase JS AbortController issue that kills in-flight
+ * requests during auth state transitions.
+ */
+function getAuthToken(): string | null {
+  try {
+    const ref = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1];
+    if (!ref) return null;
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Invoke a Supabase Edge Function using direct fetch() to bypass
+ * the Supabase JS client's AbortController that kills requests.
+ */
+async function invokeEdgeFunction<T = unknown>(
+  functionName: string,
+  body: unknown
+): Promise<{ data: T | null; error: string | null }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { data: null, error: 'Not authenticated' };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseAnonKey || '',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { data: null, error: `Edge function error (${res.status}): ${text}` };
+    }
+
+    const data = await res.json();
+    return { data: data as T, error: null };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Network error';
+    return { data: null, error: message };
+  }
+}
+
 export const retellService = {
   async provisionVoiceAgent(params: ProvisionVoiceAgentParams): Promise<ProvisionResult> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        return { success: false, error: 'Not authenticated' };
+      const { data, error } = await invokeEdgeFunction<ProvisionResult>('provision-voice-agent', params);
+
+      if (error) {
+        return { success: false, error };
       }
 
-      const response = await supabase.functions.invoke('provision-voice-agent', {
-        body: params,
-      });
-
-      if (response.error) {
-        return { success: false, error: response.error.message };
-      }
-
-      return response.data as ProvisionResult;
+      return data || { success: false, error: 'No response from edge function' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       return { success: false, error: message };
@@ -128,20 +177,13 @@ export const retellService = {
 
   async updateAgent(params: UpdateAgentParams): Promise<{ success: boolean; error?: string }> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        return { success: false, error: 'Not authenticated' };
+      const { data, error } = await invokeEdgeFunction<{ success: boolean; error?: string }>('update-retell-agent', params);
+
+      if (error) {
+        return { success: false, error };
       }
 
-      const response = await supabase.functions.invoke('update-retell-agent', {
-        body: params,
-      });
-
-      if (response.error) {
-        return { success: false, error: response.error.message };
-      }
-
-      return response.data as { success: boolean; error?: string };
+      return data || { success: false, error: 'No response from edge function' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       return { success: false, error: message };
@@ -157,20 +199,20 @@ export const retellService = {
     error?: string;
   }> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        return { success: false, error: 'Not authenticated' };
+      const { data, error } = await invokeEdgeFunction<{
+        success: boolean;
+        knowledgeBaseId?: string;
+        knowledgeBaseName?: string;
+        knowledgeBases?: KnowledgeBase[];
+        status?: string;
+        error?: string;
+      }>('manage-knowledge-base', params);
+
+      if (error) {
+        return { success: false, error };
       }
 
-      const response = await supabase.functions.invoke('manage-knowledge-base', {
-        body: params,
-      });
-
-      if (response.error) {
-        return { success: false, error: response.error.message };
-      }
-
-      return response.data;
+      return data || { success: false, error: 'No response from edge function' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       return { success: false, error: message };
@@ -181,23 +223,25 @@ export const retellService = {
     success: boolean;
     voices?: RetellVoice[];
     currentVoiceId?: string | null;
+    total?: number;
+    notConfigured?: boolean;
     error?: string;
   }> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        return { success: false, error: 'Not authenticated' };
+      const { data, error } = await invokeEdgeFunction<{
+        success: boolean;
+        voices?: RetellVoice[];
+        currentVoiceId?: string | null;
+        total?: number;
+        notConfigured?: boolean;
+        error?: string;
+      }>('list-voices', { organizationId });
+
+      if (error) {
+        return { success: false, error };
       }
 
-      const response = await supabase.functions.invoke('list-voices', {
-        body: { organizationId },
-      });
-
-      if (response.error) {
-        return { success: false, error: response.error.message };
-      }
-
-      return response.data;
+      return data || { success: false, error: 'No response from edge function' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       return { success: false, error: message };

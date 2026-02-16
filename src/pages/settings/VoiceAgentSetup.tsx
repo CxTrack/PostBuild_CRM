@@ -1135,11 +1135,31 @@ export const VoiceAgentSetup = () => {
                                     </div>
                                 )}
 
-                                {/* No Results */}
+                                {/* No Results from filters */}
                                 {!voicesLoading && filteredVoices.length === 0 && voices.length > 0 && (
                                     <div className="text-center py-12 text-gray-500">
                                         <Volume2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p>No voices match your filters. Try adjusting your search.</p>
+                                    </div>
+                                )}
+
+                                {/* Empty state - no voices loaded at all */}
+                                {!voicesLoading && voices.length === 0 && (
+                                    <div className="text-center py-12">
+                                        <Volume2 className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-40" />
+                                        <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">
+                                            Voice library is loading or unavailable
+                                        </p>
+                                        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+                                            Voice AI provisioning is being finalized. Try refreshing in a moment.
+                                        </p>
+                                        <button
+                                            onClick={() => fetchVoices()}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                                        >
+                                            <Loader2 className={`w-4 h-4 ${voicesLoading ? 'animate-spin' : ''}`} />
+                                            Retry Loading Voices
+                                        </button>
                                     </div>
                                 )}
 
