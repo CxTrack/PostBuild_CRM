@@ -1,5 +1,7 @@
-﻿import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useCustomerStore } from '@/stores/customerStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -21,6 +23,12 @@ interface CoPilotConfig {
   endpoint?: string;
 }
 
+interface TokenUsage {
+  tokensUsed: number;
+  tokensRemaining: number;
+  tokensAllocated: number;
+}
+
 interface CoPilotContextType {
   isOpen: boolean;
   panelSide: 'left' | 'right';
@@ -28,6 +36,7 @@ interface CoPilotContextType {
   isLoading: boolean;
   currentContext: ContextData | null;
   config: CoPilotConfig;
+  tokenUsage: TokenUsage | null;
   openPanel: () => void;
   closePanel: () => void;
   setPanelSide: (side: 'left' | 'right') => void;
@@ -39,12 +48,15 @@ interface CoPilotContextType {
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+
 export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentContext, setCurrentContext] = useState<ContextData | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [config, setConfig] = useState<CoPilotConfig>({
     provider: 'internal',
     model: 'internal-assistant',
@@ -68,37 +80,6 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const { customers, addNote, fetchCustomers } = useCustomerStore();
 
-  const generateResponse = async (userMessage: string): Promise<string> => {
-    const lowerMessage = userMessage.toLowerCase();
-
-    // HANDLED IN SEND_MESSAGE FOR ACTIONS
-    if (lowerMessage.includes('add a note') || lowerMessage.includes('add note') || lowerMessage.includes('put a note') || lowerMessage.includes('create a note')) {
-      return "Thinking..."; // Placeholder, actual logic in sendMessage
-    }
-
-    if (lowerMessage.includes('customer') || lowerMessage.includes('clients')) {
-      return "I can help you analyze your customer data. Based on your CRM, I see you have multiple customers with various engagement levels. Would you like me to:\n\n€¢ Show top customers by revenue\n€¢ Identify customers needing follow-up\n€¢ Generate a customer health report\n\nWhat would be most helpful?";
-    }
-
-    if (lowerMessage.includes('revenue') || lowerMessage.includes('sales')) {
-      return "I can analyze your revenue trends. To provide the most relevant insights, I'd need to know:\n\n€¢ Time period (this month, quarter, year?)\n€¢ Comparison basis (vs last period, year-over-year?)\n€¢ Specific metrics (total revenue, average deal size, growth rate?)\n\nLet me know what you'd like to focus on!";
-    }
-
-    if (lowerMessage.includes('task') || lowerMessage.includes('overdue')) {
-      return "I'll help you manage your tasks. Here's what I can do:\n\n€¢ List overdue tasks by priority\n€¢ Show tasks due this week\n€¢ Suggest task prioritization\n€¢ Create task summaries by customer\n\nWhich would help you most right now?";
-    }
-
-    if (lowerMessage.includes('report') || lowerMessage.includes('summary')) {
-      return "I can generate various reports for you:\n\n€¢ Customer activity summary\n€¢ Revenue and pipeline analysis\n€¢ Task completion metrics\n€¢ Appointment and calendar overview\n\nWhich report would you like me to create?";
-    }
-
-    if (lowerMessage.includes('help') || lowerMessage.includes('what can you')) {
-      return "I'm your CxTrack CoPilot! Here's what I can help with:\n\n**Data Analysis**\n€¢ Customer insights and segmentation\n€¢ Revenue trends and forecasting\n€¢ Pipeline health checks\n\n**Task Management**\n€¢ Overdue task identification\n€¢ Priority recommendations\n€¢ Task summaries by customer\n\n**Reporting**\n€¢ Custom report generation\n€¢ Data visualization suggestions\n€¢ Export data summaries\n\n**Navigation**\n€¢ Quick access to customer profiles\n€¢ Search across all data\n€¢ Contextual suggestions\n\nWhat would you like to explore?";
-    }
-
-    return "I understand you're asking about that. While I'm still learning the specifics of your request, I can help with:\n\n€¢ Customer data analysis\n€¢ Revenue and sales insights\n€¢ Task and appointment management\n€¢ Report generation\n\nCould you rephrase your question or choose one of these areas?";
-  };
-
   const sendMessage = useCallback(async (content: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -113,17 +94,13 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const lowerContent = content.toLowerCase();
 
-      // LOGIC FOR ACTIONS
+      // LOCAL ACTIONS: Note adding (handled locally, no AI needed)
       if (lowerContent.includes('add a note') || lowerContent.includes('add note') || lowerContent.includes('put a note') || lowerContent.includes('create a note')) {
-        // Ensure customers are loaded
         if (customers.length === 0) {
           await fetchCustomers();
         }
 
-        // Simple name extraction (e.g., "add a note on Manik Sharma's profile...")
         let customer = null;
-
-        // Try to find a matching customer name in the query
         for (const c of useCustomerStore.getState().customers) {
           if (content.toLowerCase().includes(c.name.toLowerCase())) {
             customer = c;
@@ -132,7 +109,6 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         if (customer) {
-          // Extract note content - everything after "that " or "note "
           let noteContent = "";
           if (content.includes("that ")) {
             noteContent = content.split("that ").slice(1).join("that ").trim();
@@ -151,7 +127,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const assistantMessage: Message = {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: `œ… Done! I've added that note to **${customer.name}'s** profile.\n\n**Note:** "${noteContent}"`,
+              content: `✅ Done! I've added that note to **${customer.name}'s** profile.\n\n**Note:** "${noteContent}"`,
               timestamp: new Date(),
             };
             setMessages(prev => [...prev, assistantMessage]);
@@ -170,17 +146,88 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // Default response generation
-      const responseContent = await generateResponse(content);
+      // AI RESPONSE: Call the Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I need you to be signed in to use AI features. Please refresh the page and try again.",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
+      }
+
+      // Build conversation history for context
+      const conversationHistory = messages.slice(-10).map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+
+      // Get organization context
+      const org = useOrganizationStore.getState().currentOrganization;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          conversationHistory,
+          context: {
+            page: currentContext?.page || 'Dashboard',
+            industry: org?.industry_template || 'general_business',
+            orgName: org?.name || 'Your Organization',
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle token limit reached
+        if (data.error === 'token_limit_reached') {
+          setTokenUsage({
+            tokensUsed: data.tokensUsed || 0,
+            tokensRemaining: 0,
+            tokensAllocated: data.tokensAllocated || 0,
+          });
+
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: "🚫 **Out of AI tokens**\n\nYou've used all your AI tokens for this month. To continue using CoPilot AI:\n\n• **Upgrade your plan** for more monthly tokens\n• Tokens reset at the start of each billing period\n\nI can still help with basic CRM actions like adding notes!",
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          return;
+        }
+
+        throw new Error(data.error || 'Failed to get AI response');
+      }
+
+      // Update token usage
+      if (data.tokensRemaining !== undefined) {
+        setTokenUsage({
+          tokensUsed: data.tokensUsed || 0,
+          tokensRemaining: data.tokensRemaining,
+          tokensAllocated: data.tokensAllocated || 0,
+        });
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseContent,
+        content: data.response,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
 
     } catch (error) {
+      console.error('CoPilot error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -191,7 +238,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } finally {
       setIsLoading(false);
     }
-  }, [customers, addNote, fetchCustomers]);
+  }, [customers, addNote, fetchCustomers, messages, currentContext]);
 
   return (
     <CoPilotContext.Provider
@@ -202,6 +249,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isLoading,
         currentContext,
         config,
+        tokenUsage,
         openPanel,
         closePanel,
         setPanelSide,

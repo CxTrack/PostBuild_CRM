@@ -24,6 +24,7 @@ const CoPilotPanel: React.FC = () => {
     messages,
     isLoading,
     currentContext,
+    tokenUsage,
     closePanel,
     setPanelSide,
     sendMessage,
@@ -66,16 +67,16 @@ const CoPilotPanel: React.FC = () => {
 
   if (!isOpen) return null;
 
-  const isDark = theme === 'dark';
+  const isDark = theme === 'dark' || theme === 'midnight';
   const isSoftModern = theme === 'soft-modern';
 
   return (
     <div
       className={`
         fixed top-0 ${panelSide === 'left' ? 'left-0' : 'right-0'} h-full z-50
-        ${isSoftModern ? 'bg-[#F8F6F2]' : isDark ? 'bg-gray-800' : 'bg-white'}
-        border-2 ${panelSide === 'left' ? 'border-r' : 'border-l'}
-        ${isDark ? 'border-gray-700' : 'border-gray-200'}
+        ${isSoftModern ? 'bg-[#F8F6F2]' : 'bg-white dark:bg-gray-800'}
+        border ${panelSide === 'left' ? 'border-r' : 'border-l'}
+        border-gray-200 dark:border-gray-700
         flex flex-col
         transition-all duration-300
       `}
@@ -87,16 +88,16 @@ const CoPilotPanel: React.FC = () => {
       }}
     >
       {/* Header */}
-      <div className={`flex items-center justify-between p-4 border-b-2 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
               CxTrack CoPilot
             </h2>
-            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               AI-powered assistant
             </p>
           </div>
@@ -105,30 +106,30 @@ const CoPilotPanel: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={switchSide}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
             title="Switch side"
           >
             {panelSide === 'left' ? (
-              <ChevronRight className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             ) : (
-              <ChevronLeft className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             )}
           </button>
 
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
             title="Settings"
           >
-            <Settings className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+            <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
 
           <button
             onClick={closePanel}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
             title="Close"
           >
-            <X className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+            <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
       </div>
@@ -136,12 +137,9 @@ const CoPilotPanel: React.FC = () => {
       {showSettings && <CoPilotSettings onClose={() => setShowSettings(false)} />}
 
       {currentContext && (
-        <div className={`px-4 py-3 border-b-2 ${isDark
-          ? 'bg-blue-900/30 border-blue-800'
-          : 'bg-blue-50 border-blue-100'
-          } flex items-center gap-2`}>
-          <Database className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-          <span className={`text-xs font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+        <div className="px-4 py-3 border-b bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800 flex items-center gap-2">
+          <Database className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
             Context: {currentContext.page || 'Dashboard'}
           </span>
         </div>
@@ -158,7 +156,7 @@ const CoPilotPanel: React.FC = () => {
         )}
 
         {isLoading && (
-          <div className={`flex items-center gap-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
@@ -170,7 +168,7 @@ const CoPilotPanel: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className={`px-4 py-2 border-t-2 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <QuickActionChip
             icon={<MessageSquare className="w-3.5 h-3.5" />}
@@ -191,7 +189,38 @@ const CoPilotPanel: React.FC = () => {
       </div>
 
       {/* Input area */}
-      <div className={`p-4 border-t-2 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+      {/* Token Usage Indicator */}
+      {tokenUsage && (
+        <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <span>AI Tokens</span>
+            <span>
+              {tokenUsage.tokensRemaining.toLocaleString()} / {tokenUsage.tokensAllocated.toLocaleString()} remaining
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                tokenUsage.tokensRemaining <= 0
+                  ? 'bg-red-500'
+                  : tokenUsage.tokensRemaining < tokenUsage.tokensAllocated * 0.2
+                    ? 'bg-amber-500'
+                    : 'bg-purple-500'
+              }`}
+              style={{
+                width: `${Math.max(0, Math.min(100, (tokenUsage.tokensRemaining / tokenUsage.tokensAllocated) * 100))}%`,
+              }}
+            />
+          </div>
+          {tokenUsage.tokensRemaining <= 0 && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-1 font-medium">
+              Out of tokens — upgrade your plan for more
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
@@ -201,19 +230,18 @@ const CoPilotPanel: React.FC = () => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask CoPilot anything..."
-                className={`
+                className="
                   w-full px-4 py-3 pr-10
                   rounded-xl
-                  border-2
-                  ${isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-500'
-                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
-                  }
+                  border
+                  bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
                   focus:border-purple-500 focus:outline-none
                   resize-none
                   transition-colors
                   max-h-32
-                `}
+                "
                 rows={1}
                 style={{ minHeight: '48px' }}
               />
@@ -222,10 +250,10 @@ const CoPilotPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={clearMessages}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
                   title="Clear conversation"
                 >
-                  <Trash2 className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                  <Trash2 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 </button>
               )}
             </div>
@@ -244,10 +272,7 @@ const CoPilotPanel: React.FC = () => {
               />
               <label
                 htmlFor="copilot-file-upload"
-                className={`p-3 rounded-xl border-2 transition-all cursor-pointer ${isDark
-                  ? 'bg-gray-700 border-gray-600 text-gray-400 hover:text-white hover:border-gray-500'
-                  : 'bg-white border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className="p-3 rounded-xl border transition-all cursor-pointer bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-500"
                 title="Upload file"
               >
                 <Paperclip className="w-5 h-5" />
@@ -256,7 +281,7 @@ const CoPilotPanel: React.FC = () => {
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className={`
+                className="
                   p-3 rounded-xl
                   bg-gradient-to-br from-purple-500 to-purple-600
                   text-white
@@ -264,7 +289,7 @@ const CoPilotPanel: React.FC = () => {
                   hover:from-purple-600 hover:to-purple-700
                   disabled:opacity-50 disabled:cursor-not-allowed
                   transition-all
-                `}
+                "
               >
                 <Send className="w-5 h-5" />
               </button>
@@ -272,7 +297,7 @@ const CoPilotPanel: React.FC = () => {
           </div>
         </form>
 
-        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'} mt-3 text-center`}>
+        <p className="text-xs text-gray-500 mt-3 text-center">
           Press Enter to send • Shift+Enter for new line
         </p>
       </div>
@@ -281,26 +306,20 @@ const CoPilotPanel: React.FC = () => {
 };
 
 const EmptyState: React.FC = () => {
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
-
   return (
     <div className="text-center py-12">
-      <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark
-        ? 'bg-purple-900/30'
-        : 'bg-gradient-to-br from-purple-100 to-purple-200'
-        }`}>
-        <Sparkles className={`w-8 h-8 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-900/30">
+        <Sparkles className="w-8 h-8 text-purple-600 dark:text-purple-400" />
       </div>
-      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Hi! I'm your CoPilot
       </h3>
-      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4 max-w-xs mx-auto`}>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-xs mx-auto">
         I can help you analyze data, generate reports, find customers, and more.
       </p>
 
       <div className="space-y-2">
-        <p className={`text-xs font-semibold ${isDark ? 'text-gray-500' : 'text-gray-500'} uppercase tracking-wide`}>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           Try asking:
         </p>
         <div className="space-y-2">
@@ -315,16 +334,11 @@ const EmptyState: React.FC = () => {
 
 const SuggestedPrompt: React.FC<{ text: string }> = ({ text }) => {
   const { sendMessage } = useCoPilot();
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
 
   return (
     <button
       onClick={() => sendMessage(text)}
-      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${isDark
-        ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300'
-        : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
-        }`}
+      className="block w-full text-left px-4 py-2 rounded-lg text-sm transition-colors bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300"
     >
       "{text}"
     </button>
@@ -332,8 +346,6 @@ const SuggestedPrompt: React.FC<{ text: string }> = ({ text }) => {
 };
 
 const MessageBubble: React.FC<{ message: any }> = ({ message }) => {
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
   const isUser = message.role === 'user';
 
   return (
@@ -343,9 +355,7 @@ const MessageBubble: React.FC<{ message: any }> = ({ message }) => {
           max-w-[85%] px-4 py-3 rounded-2xl
           ${isUser
             ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
-            : isDark
-              ? 'bg-gray-700 text-white'
-              : 'bg-gray-100 text-gray-900'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
           }
         `}
       >
@@ -353,9 +363,7 @@ const MessageBubble: React.FC<{ message: any }> = ({ message }) => {
         <p
           className={`text-xs mt-1 ${isUser
             ? 'text-purple-100'
-            : isDark
-              ? 'text-gray-400'
-              : 'text-gray-500'
+            : 'text-gray-500 dark:text-gray-400'
             }`}
         >
           {new Date(message.timestamp).toLocaleTimeString()}
@@ -370,16 +378,10 @@ const QuickActionChip: React.FC<{
   label: string;
   onClick: () => void;
 }> = ({ icon, label, onClick }) => {
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
-
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${isDark
-        ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300'
-        : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
-        }`}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300"
     >
       {icon}
       {label}
@@ -389,8 +391,6 @@ const QuickActionChip: React.FC<{
 
 const CoPilotSettings: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { config, setConfig } = useCoPilot();
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
   const [localConfig, setLocalConfig] = useState(config);
 
   const handleSave = () => {
@@ -399,12 +399,9 @@ const CoPilotSettings: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className={`px-4 py-3 border-b-2 space-y-3 ${isDark
-      ? 'bg-gray-900 border-gray-700'
-      : 'bg-gray-50 border-gray-200'
-      }`}>
+    <div className="px-4 py-3 border-b space-y-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between">
-        <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
           CoPilot Settings
         </h3>
         <button
@@ -416,63 +413,18 @@ const CoPilotSettings: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </div>
 
       <div>
-        <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          Provider
-        </label>
-        <select
-          value={localConfig.provider}
-          onChange={(e) =>
-            setLocalConfig({ ...localConfig, provider: e.target.value as any })
-          }
-          className={`w-full px-3 py-2 rounded-lg border-2 text-sm ${isDark
-            ? 'bg-gray-700 border-gray-600 text-white'
-            : 'bg-white border-gray-200 text-gray-900'
-            }`}
-        >
-          <option value="internal">Internal (Database)</option>
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic (Claude)</option>
-          <option value="ollama">Ollama (Local)</option>
-          <option value="custom">Custom Endpoint</option>
-        </select>
-      </div>
-
-      {(localConfig.provider === 'openai' || localConfig.provider === 'anthropic') && (
-        <div>
-          <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            API Key
-          </label>
-          <input
-            type="password"
-            value={localConfig.apiKey || ''}
-            onChange={(e) =>
-              setLocalConfig({ ...localConfig, apiKey: e.target.value })
-            }
-            className={`w-full px-3 py-2 rounded-lg border-2 text-sm ${isDark
-              ? 'bg-gray-700 border-gray-600 text-white'
-              : 'bg-white border-gray-200 text-gray-900'
-              }`}
-            placeholder="sk-..."
-          />
-        </div>
-      )}
-
-      <div>
-        <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        <label className="text-xs font-medium mb-1 block text-gray-600 dark:text-gray-400">
           Model
         </label>
-        <input
-          type="text"
-          value={localConfig.model || ''}
+        <select
+          value={localConfig.model || 'internal-assistant'}
           onChange={(e) =>
             setLocalConfig({ ...localConfig, model: e.target.value })
           }
-          className={`w-full px-3 py-2 rounded-lg border-2 text-sm ${isDark
-            ? 'bg-gray-700 border-gray-600 text-white'
-            : 'bg-white border-gray-200 text-gray-900'
-            }`}
-          placeholder="gpt-4, claude-3, llama2..."
-        />
+          className="w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white"
+        >
+          <option value="internal-assistant">CxTrack AI (Default)</option>
+        </select>
       </div>
 
       <button

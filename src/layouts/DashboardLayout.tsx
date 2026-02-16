@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -27,7 +27,25 @@ import {
   Sparkles,
   PanelLeftClose,
   PanelLeftOpen,
+  GripVertical,
 } from 'lucide-react';
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { supabase } from '../lib/supabase';
 import { useCoPilot } from '../contexts/CoPilotContext';
@@ -77,6 +95,75 @@ const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home'
 const SETTINGS_ITEM: NavItem = { path: '/dashboard/settings', icon: Settings, label: 'Settings' };
 const CHAT_ITEM: NavItem = { path: '/dashboard/chat', icon: MessageCircle, label: 'Chat' };
 
+// Extract module ID from path for DnD sorting
+const getModuleIdFromPath = (path: string): string => {
+  const segments = path.replace('/dashboard/', '').split('/');
+  return segments[0] || path;
+};
+
+// Sortable nav item component for drag-and-drop reordering (desktop only)
+const SortableNavItem: React.FC<{
+  item: NavItem;
+  isActive: boolean;
+  sidebarCollapsed: boolean;
+  theme: string;
+}> = ({ item, isActive: active, sidebarCollapsed, theme }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: getModuleIdFromPath(item.path) });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group/drag relative">
+      <Link
+        to={item.isLocked ? '/dashboard/upgrade' : item.path}
+        className={
+          theme === 'soft-modern'
+            ? `nav-item flex items-center px-4 py-3 ${active ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
+            : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${active
+              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            } ${item.isLocked ? 'opacity-60' : ''}`
+        }
+        title={sidebarCollapsed ? item.label : (item.isTrialFeature ? `🎁 Premium feature free for ${item.trialDaysRemaining} days! Upgrade to keep access forever.` : undefined)}
+      >
+        {/* Drag handle - appears on hover, only when not collapsed */}
+        {!sidebarCollapsed && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 opacity-0 group-hover/drag:opacity-60 hover:!opacity-100 cursor-grab active:cursor-grabbing p-0.5 text-gray-400 dark:text-gray-500 transition-opacity"
+            onClick={(e) => e.preventDefault()}
+            tabIndex={-1}
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
+        <item.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+        {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
+        {!sidebarCollapsed && item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
+        {!sidebarCollapsed && item.isTrialFeature && !item.isLocked && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded" title={`Premium feature - ${item.trialDaysRemaining} days left in trial`}>
+            <Sparkles size={10} />
+            {item.trialDaysRemaining}d
+          </span>
+        )}
+      </Link>
+    </div>
+  );
+};
+
 export const DashboardLayout = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [navItems, setNavItems] = useState<NavItem[]>([]);
@@ -97,7 +184,30 @@ export const DashboardLayout = () => {
 
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
-  const { loadPreferences } = usePreferencesStore();
+  const { loadPreferences, saveSidebarOrder } = usePreferencesStore();
+
+  // DnD sensors — require 8px movement before dragging starts to avoid accidental drags on clicks
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = visibleNavItems.findIndex(item => getModuleIdFromPath(item.path) === active.id);
+    const newIndex = visibleNavItems.findIndex(item => getModuleIdFromPath(item.path) === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(visibleNavItems, oldIndex, newIndex);
+    setNavItems(reordered);
+
+    // Persist the new order using module IDs
+    const newOrder = reordered.map(item => getModuleIdFromPath(item.path));
+    saveSidebarOrder(newOrder);
+  }, [visibleNavItems, saveSidebarOrder]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
@@ -181,10 +291,31 @@ export const DashboardLayout = () => {
 
     const moduleNavItems = Array.from(moduleMap.values());
 
-    // Set nav items directly from templates - no preference reordering for now
-    setNavItems(moduleNavItems);
+    // Apply saved sidebar order from user preferences
+    const savedOrder = preferences.sidebarOrder;
+    if (savedOrder && savedOrder.length > 0) {
+      // Reorder moduleNavItems to match saved order
+      const ordered: NavItem[] = [];
+      const remaining = new Map(moduleNavItems.map(item => [getModuleIdFromPath(item.path), item]));
 
-  }, [visibleModules]);
+      // Add items in saved order (skip stale IDs that no longer exist)
+      savedOrder.forEach((moduleId: string) => {
+        const item = remaining.get(moduleId);
+        if (item) {
+          ordered.push(item);
+          remaining.delete(moduleId);
+        }
+      });
+
+      // Append any new modules not in saved order (e.g. newly added to template)
+      remaining.forEach(item => ordered.push(item));
+
+      setNavItems(ordered);
+    } else {
+      setNavItems(moduleNavItems);
+    }
+
+  }, [visibleModules, preferences.sidebarOrder]);
 
 
   // Fetch organizations once when user changes - use getState() to avoid infinite loops
@@ -297,31 +428,26 @@ export const DashboardLayout = () => {
             {!sidebarCollapsed && <span className="font-medium">{HOME_ITEM.label}</span>}
           </Link>
 
-          {visibleNavItems.map((item) => (
-            <Link
-              key={`nav-${item.label}`}
-              to={item.isLocked ? '/dashboard/upgrade' : item.path}
-              className={
-                theme === 'soft-modern'
-                  ? `nav-item flex items-center px-4 py-3 ${isActive(item.path) ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
-                  : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(item.path)
-                    ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  } ${item.isLocked ? 'opacity-60' : ''}`
-              }
-              title={sidebarCollapsed ? item.label : (item.isTrialFeature ? `🎁 Premium feature free for ${item.trialDaysRemaining} days! Upgrade to keep access forever.` : undefined)}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={visibleNavItems.map(item => getModuleIdFromPath(item.path))}
+              strategy={verticalListSortingStrategy}
             >
-              <item.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
-              {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
-              {!sidebarCollapsed && item.isLocked && <Lock size={14} className="ml-auto text-amber-500" />}
-              {!sidebarCollapsed && item.isTrialFeature && !item.isLocked && (
-                <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded" title={`Premium feature - ${item.trialDaysRemaining} days left in trial`}>
-                  <Sparkles size={10} />
-                  {item.trialDaysRemaining}d
-                </span>
-              )}
-            </Link>
-          ))}
+              {visibleNavItems.map((item) => (
+                <SortableNavItem
+                  key={`nav-${getModuleIdFromPath(item.path)}`}
+                  item={item}
+                  isActive={isActive(item.path)}
+                  sidebarCollapsed={sidebarCollapsed}
+                  theme={theme}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
           <Link
             to={SETTINGS_ITEM.path}

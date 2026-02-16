@@ -24,9 +24,9 @@ export default function AgendaPanel({
   const { theme } = useThemeStore();
 
   return (
-    <Card className={`w-full lg:w-96 border-l ${theme === 'soft-modern' ? 'border-gray-200' : 'border-gray-200 dark:border-gray-700'} flex flex-col rounded-none`}>
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
+    <Card className={`w-full lg:w-96 border-l ${theme === 'soft-modern' ? 'border-gray-200' : 'border-gray-200 dark:border-gray-700'} flex flex-col rounded-none h-full`}>
+      <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Today's Agenda
           </h3>
@@ -44,24 +44,24 @@ export default function AgendaPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        {events.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar size={32} className="text-gray-400" />
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              No events scheduled
-            </p>
-            <button
-              onClick={onScheduleEvent}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              <Plus size={16} className="inline mr-1" />
-              Schedule Event
-            </button>
+      {events.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+            <Calendar size={32} className="text-gray-400" />
           </div>
-        ) : (
+          <p className="text-gray-600 dark:text-gray-400 mb-5">
+            No events scheduled
+          </p>
+          <button
+            onClick={onScheduleEvent}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center"
+          >
+            <Plus size={16} className="mr-1.5" />
+            Schedule Event
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-5">
           <div className="space-y-3">
             {events.map((event) => (
               <button
@@ -114,10 +114,10 @@ export default function AgendaPanel({
               </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className={`p-6 border-t ${theme === 'soft-modern' ? 'border-gray-200 bg-white/50' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'}`}>
+      <div className={`p-5 border-t flex-shrink-0 ${theme === 'soft-modern' ? 'border-gray-200 bg-white/50' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'}`}>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
