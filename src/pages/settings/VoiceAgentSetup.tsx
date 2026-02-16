@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { INDUSTRY_TEMPLATES } from '@/config/modules.config';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ export const VoiceAgentSetup = () => {
         getPhoneNumber,
         provisionAgent,
         updateRetellAgent,
+        fetchRetellPrompt,
         knowledgeBases,
         kbLoading,
         fetchKnowledgeBases,
@@ -73,7 +75,6 @@ export const VoiceAgentSetup = () => {
         customIndustry: '',
         business_description: '',
         agent_tone: 'professional' as AgentTone,
-        greeting_script: '',
         common_call_reasons: [] as string[],
         handling_preference: 'handle_automatically' as HandlingPreference,
         fallback_behavior: 'take_message' as FallbackBehavior,
@@ -83,6 +84,30 @@ export const VoiceAgentSetup = () => {
         begin_message: '',
     });
     const [newReason, setNewReason] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+
+    // Phone formatting utilities for Twilio E.164 compatibility
+    const formatPhoneDisplay = (value: string): string => {
+        const digits = value.replace(/\D/g, '');
+        const cleaned = digits.startsWith('1') && digits.length > 10 ? digits.slice(1) : digits;
+        if (cleaned.length <= 3) return cleaned;
+        if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    };
+
+    const toE164 = (value: string): string => {
+        const digits = value.replace(/\D/g, '');
+        const cleaned = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+        if (cleaned.length === 10) return `+1${cleaned}`;
+        return value;
+    };
+
+    const isValidUSPhone = (value: string): boolean => {
+        if (!value || !value.trim()) return true; // Empty is valid (optional field)
+        const digits = value.replace(/\D/g, '');
+        const cleaned = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+        return cleaned.length === 10;
+    };
 
     useEffect(() => {
         fetchConfig();
@@ -190,25 +215,31 @@ export const VoiceAgentSetup = () => {
                 customIndustry: isKnownIndustry ? '' : config.industry || '',
                 business_description: config.business_description || '',
                 agent_tone: config.agent_tone || 'professional',
-                greeting_script: config.greeting_script || "Hello! Thank you for calling {business_name}. How can I help you today?",
                 common_call_reasons: config.common_call_reasons || [],
                 handling_preference: config.handling_preference || 'handle_automatically',
                 fallback_behavior: config.fallback_behavior || 'take_message',
-                broker_phone: config.broker_phone || '',
+                broker_phone: config.broker_phone ? formatPhoneDisplay(config.broker_phone) : '',
                 broker_name: config.broker_name || '',
-                general_prompt: (config as any).general_prompt || '',
-                begin_message: (config as any).begin_message || '',
+                general_prompt: config.general_prompt || '',
+                begin_message: config.begin_message || '',
             });
             setCurrentStep(config.setup_step || 0);
+
+            // Auto-backfill: if agent is provisioned but prompt is empty in DB, fetch from Retell
+            if (config.retell_agent_id && !config.general_prompt) {
+                fetchRetellPrompt();
+            }
         }
     }, [config]);
 
     // Strip non-DB fields before saving to voice_agent_configs table
     const getDbSafeFormData = () => {
-        const { general_prompt: _gp, begin_message: _bm, customIndustry: _ci, ...dbFields } = formData;
+        const { customIndustry: _ci, ...dbFields } = formData;
         return {
             ...dbFields,
             industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+            broker_phone: formData.broker_phone ? toE164(formData.broker_phone) : '',
+            broker_name: formData.broker_name?.trim() || '',
         };
     };
 
@@ -242,6 +273,11 @@ export const VoiceAgentSetup = () => {
     };
 
     const handleActivate = async () => {
+        if (formData.broker_phone && !isValidUSPhone(formData.broker_phone)) {
+            setPhoneError('Please enter a valid 10-digit US phone number');
+            toast.error('Invalid phone number for SMS notifications');
+            return;
+        }
         setSaving(true);
         try {
             // Save config first
@@ -278,6 +314,14 @@ export const VoiceAgentSetup = () => {
     };
 
     const handleSaveSettings = async () => {
+        if (formData.broker_phone && !isValidUSPhone(formData.broker_phone)) {
+            setPhoneError('Please enter a valid 10-digit US phone number');
+            toast.error('Invalid phone number for SMS notifications');
+            return;
+        }
+        if (formData.broker_phone && !formData.broker_name?.trim()) {
+            toast('Consider adding your name for personalized SMS summaries', { icon: 'ℹ️' });
+        }
         setSaving(true);
         try {
             // Save to local DB
@@ -290,12 +334,11 @@ export const VoiceAgentSetup = () => {
                     businessName: formData.business_name,
                     brokerPhone: formData.broker_phone,
                     brokerName: formData.broker_name,
-                    // Sync prompt/greeting to Retell LLM
+                    // Sync prompt to Retell LLM + DB
                     generalPrompt: formData.general_prompt || undefined,
                     beginMessage: formData.begin_message || undefined,
                     // Sync local-only fields to DB via edge function
                     agentTone: formData.agent_tone,
-                    greetingScript: formData.greeting_script,
                     handlingPreference: formData.handling_preference,
                     fallbackBehavior: formData.fallback_behavior,
                     commonCallReasons: formData.common_call_reasons,
@@ -407,6 +450,23 @@ export const VoiceAgentSetup = () => {
         });
     };
 
+    // Industry guard: only show voice agent setup for industries with calls module
+    const industryTemplate = currentOrganization?.industry_template || 'general_business';
+    const hasCallsModule = INDUSTRY_TEMPLATES[industryTemplate]?.includes('calls');
+
+    if (!hasCallsModule) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Phone className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Voice Agent Not Available</h3>
+                <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-md">
+                    Voice agent features are not included in your current industry template.
+                    Contact support if you'd like to add call management to your plan.
+                </p>
+            </div>
+        );
+    }
+
     if (loading && !config) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -478,11 +538,34 @@ export const VoiceAgentSetup = () => {
                         <div className="mt-4">
                             <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all"
+                                    className={`h-full rounded-full transition-all ${
+                                        usage.minutes_used >= usage.minutes_included
+                                            ? 'bg-red-500'
+                                            : usage.minutes_used >= usage.minutes_included * 0.8
+                                                ? 'bg-gradient-to-r from-yellow-500 to-red-500'
+                                                : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                                    }`}
                                     style={{ width: `${Math.min((usage.minutes_used / usage.minutes_included) * 100, 100)}%` }}
                                 />
                             </div>
                         </div>
+                        {usage.minutes_used >= usage.minutes_included * 0.8 && (
+                            <div className={`mt-3 p-3 rounded-lg text-sm ${
+                                usage.minutes_used >= usage.minutes_included
+                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                                    : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
+                            }`}>
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                    <span>
+                                        {usage.minutes_used >= usage.minutes_included
+                                            ? 'You have exceeded your included voice minutes. Upgrade your plan to continue using the AI Voice Agent.'
+                                            : `You've used ${Math.round((usage.minutes_used / usage.minutes_included) * 100)}% of your included minutes this month.`
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -614,11 +697,20 @@ export const VoiceAgentSetup = () => {
                                             <input
                                                 type="tel"
                                                 value={formData.broker_phone}
-                                                onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
-                                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                                placeholder="+1 (555) 123-4567"
+                                                onChange={(e) => {
+                                                    const formatted = formatPhoneDisplay(e.target.value);
+                                                    setFormData({ ...formData, broker_phone: formatted });
+                                                    if (phoneError) setPhoneError('');
+                                                }}
+                                                className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                                placeholder="(555) 123-4567"
+                                                maxLength={14}
                                             />
-                                            <p className="text-xs text-gray-500 mt-1">You'll receive SMS summaries after each AI call</p>
+                                            {phoneError ? (
+                                                <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                                            ) : (
+                                                <p className="text-xs text-gray-500 mt-1">You'll receive SMS summaries after each AI call</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -650,19 +742,6 @@ export const VoiceAgentSetup = () => {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Greeting Script
-                                    </label>
-                                    <textarea
-                                        value={formData.greeting_script}
-                                        onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
-                                        rows={3}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                        placeholder="Hello! Thank you for calling {business_name}. How can I help you today?"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">Use {'{business_name}'} to insert your business name dynamically</p>
-                                </div>
                             </div>
                         )}
 
@@ -916,18 +995,6 @@ export const VoiceAgentSetup = () => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Greeting Script
-                                </label>
-                                <textarea
-                                    value={formData.greeting_script}
-                                    onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
-                                    rows={3}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                />
-                            </div>
-
                             {/* SMS Contact Info */}
                             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
@@ -953,10 +1020,18 @@ export const VoiceAgentSetup = () => {
                                         <input
                                             type="tel"
                                             value={formData.broker_phone}
-                                            onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                            placeholder="+1 (555) 123-4567"
+                                            onChange={(e) => {
+                                                const formatted = formatPhoneDisplay(e.target.value);
+                                                setFormData({ ...formData, broker_phone: formatted });
+                                                if (phoneError) setPhoneError('');
+                                            }}
+                                            className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                            placeholder="(555) 123-4567"
+                                            maxLength={14}
                                         />
+                                        {phoneError && (
+                                            <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>

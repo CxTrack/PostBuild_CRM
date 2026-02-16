@@ -34,6 +34,8 @@ export interface VoiceAgentConfig {
     provisioning_error?: string;
     broker_phone?: string;
     broker_name?: string;
+    general_prompt?: string;
+    begin_message?: string;
     created_at: string;
     updated_at: string;
 }
@@ -67,6 +69,7 @@ interface VoiceAgentStore {
     getPhoneNumber: () => string | null;
     provisionAgent: (params: Omit<ProvisionVoiceAgentParams, 'organizationId'>) => Promise<{ success: boolean; phoneNumber?: string; error?: string }>;
     updateRetellAgent: (params: Omit<UpdateAgentParams, 'organizationId'>) => Promise<{ success: boolean; error?: string }>;
+    fetchRetellPrompt: () => Promise<{ general_prompt?: string; begin_message?: string } | null>;
     // Knowledge base actions
     knowledgeBases: KnowledgeBase[];
     kbLoading: boolean;
@@ -221,13 +224,10 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
         }
 
         try {
+            // Use RPC to auto-create usage record if none exists for current billing period
             const { data, error } = await supabase
-                .from('voice_usage')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .order('billing_period_start', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+                .rpc('get_or_create_voice_usage', { p_organization_id: organizationId })
+                .single();
 
             if (error && error.code !== 'PGRST116') throw error;
             set({ usage: data || null });
@@ -314,6 +314,32 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
             return { success: false, error: message };
         } finally {
             set({ loading: false });
+        }
+    },
+
+    fetchRetellPrompt: async () => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) return null;
+
+        try {
+            const result = await retellService.fetchAgentPrompt(organizationId);
+            if (result.success && (result.general_prompt || result.begin_message)) {
+                // Merge into current config
+                const currentConfig = get().config;
+                if (currentConfig) {
+                    set({
+                        config: {
+                            ...currentConfig,
+                            general_prompt: result.general_prompt || currentConfig.general_prompt,
+                            begin_message: result.begin_message || currentConfig.begin_message,
+                        },
+                    });
+                }
+                return { general_prompt: result.general_prompt, begin_message: result.begin_message };
+            }
+            return null;
+        } catch {
+            return null;
         }
     },
 

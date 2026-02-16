@@ -28,6 +28,7 @@ export interface ProvisionResult {
 
 export interface UpdateAgentParams {
   organizationId: string;
+  mode?: 'update' | 'fetch';
   // Agent-level settings (synced to Retell Agent API)
   agentName?: string;
   businessName?: string;
@@ -236,6 +237,31 @@ export const retellService = {
         notConfigured?: boolean;
         error?: string;
       }>('list-voices', { organizationId });
+
+      if (error) {
+        return { success: false, error };
+      }
+
+      return data || { success: false, error: 'No response from edge function' };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      return { success: false, error: message };
+    }
+  },
+
+  async fetchAgentPrompt(organizationId: string): Promise<{
+    success: boolean;
+    general_prompt?: string;
+    begin_message?: string;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await invokeEdgeFunction<{
+        success: boolean;
+        general_prompt?: string;
+        begin_message?: string;
+        error?: string;
+      }>('update-retell-agent', { organizationId, mode: 'fetch' });
 
       if (error) {
         return { success: false, error };
