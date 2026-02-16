@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
-import { retellService, type ProvisionVoiceAgentParams, type UpdateAgentParams, type KnowledgeBase, type ManageKBParams } from '@/services/retell.service';
+import { retellService, type ProvisionVoiceAgentParams, type UpdateAgentParams, type KnowledgeBase, type ManageKBParams, type RetellVoice } from '@/services/retell.service';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
@@ -76,6 +76,12 @@ interface VoiceAgentStore {
     addUrlToKB: (knowledgeBaseId: string, url: string) => Promise<{ success: boolean; error?: string }>;
     deleteKnowledgeBase: (knowledgeBaseId: string) => Promise<{ success: boolean; error?: string }>;
     attachKBsToAgent: (knowledgeBaseIds: string[]) => Promise<{ success: boolean; error?: string }>;
+    // Voice selection
+    voices: RetellVoice[];
+    voicesLoading: boolean;
+    currentVoiceId: string | null;
+    fetchVoices: () => Promise<void>;
+    setVoice: (voiceId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const DEFAULT_CONFIG: Omit<VoiceAgentConfig, 'id' | 'organization_id' | 'created_at' | 'updated_at'> = {
@@ -123,6 +129,9 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     error: null,
     knowledgeBases: [],
     kbLoading: false,
+    voices: [],
+    voicesLoading: false,
+    currentVoiceId: null,
 
     fetchConfig: async () => {
         const organizationId = useOrganizationStore.getState().currentOrganization?.id;
@@ -305,6 +314,212 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
             return { success: false, error: message };
         } finally {
             set({ loading: false });
+        }
+    },
+
+    // Knowledge Base methods
+    fetchKnowledgeBases: async () => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) return;
+
+        set({ kbLoading: true });
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'list',
+            });
+
+            if (result.success && result.knowledgeBases) {
+                set({ knowledgeBases: result.knowledgeBases });
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to fetch knowledge bases';
+            set({ error: message });
+        } finally {
+            set({ kbLoading: false });
+        }
+    },
+
+    createKnowledgeBase: async (name, texts, urls) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        set({ kbLoading: true });
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'create',
+                knowledgeBaseName: name,
+                texts,
+                urls,
+            });
+
+            if (result.success) {
+                await get().fetchKnowledgeBases();
+            }
+
+            return {
+                success: result.success,
+                knowledgeBaseId: result.knowledgeBaseId,
+                error: result.error,
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to create knowledge base';
+            return { success: false, error: message };
+        } finally {
+            set({ kbLoading: false });
+        }
+    },
+
+    addTextToKB: async (knowledgeBaseId, title, text) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'add_text',
+                knowledgeBaseId,
+                title,
+                text,
+            });
+
+            if (result.success) {
+                await get().fetchKnowledgeBases();
+            }
+
+            return { success: result.success, error: result.error };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to add text';
+            return { success: false, error: message };
+        }
+    },
+
+    addUrlToKB: async (knowledgeBaseId, url) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'add_url',
+                knowledgeBaseId,
+                url,
+            });
+
+            if (result.success) {
+                await get().fetchKnowledgeBases();
+            }
+
+            return { success: result.success, error: result.error };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to add URL';
+            return { success: false, error: message };
+        }
+    },
+
+    deleteKnowledgeBase: async (knowledgeBaseId) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        set({ kbLoading: true });
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'delete',
+                knowledgeBaseId,
+            });
+
+            if (result.success) {
+                set((state) => ({
+                    knowledgeBases: state.knowledgeBases.filter(
+                        (kb) => kb.knowledge_base_id !== knowledgeBaseId
+                    ),
+                }));
+            }
+
+            return { success: result.success, error: result.error };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to delete knowledge base';
+            return { success: false, error: message };
+        } finally {
+            set({ kbLoading: false });
+        }
+    },
+
+    attachKBsToAgent: async (knowledgeBaseIds) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        try {
+            const result = await retellService.manageKnowledgeBase({
+                organizationId,
+                action: 'attach_to_agent',
+                knowledgeBaseIds,
+            });
+
+            return { success: result.success, error: result.error };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to attach knowledge bases';
+            return { success: false, error: message };
+        }
+    },
+
+    // Voice selection methods
+    fetchVoices: async () => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+
+        set({ voicesLoading: true });
+        try {
+            const result = await retellService.listVoices(organizationId || undefined);
+
+            if (result.success && result.voices) {
+                set({
+                    voices: result.voices,
+                    currentVoiceId: result.currentVoiceId || null,
+                });
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to fetch voices';
+            set({ error: message });
+        } finally {
+            set({ voicesLoading: false });
+        }
+    },
+
+    setVoice: async (voiceId) => {
+        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!organizationId) {
+            return { success: false, error: 'No organization selected' };
+        }
+
+        set({ voicesLoading: true });
+        try {
+            const result = await retellService.updateAgent({
+                organizationId,
+                voiceId,
+            });
+
+            if (result.success) {
+                set({ currentVoiceId: voiceId });
+            }
+
+            return result;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to set voice';
+            return { success: false, error: message };
+        } finally {
+            set({ voicesLoading: false });
         }
     },
 }));

@@ -78,6 +78,17 @@ export interface KnowledgeBase {
   last_refreshed_timestamp?: number;
 }
 
+// Voice types
+export interface RetellVoice {
+  voice_id: string;
+  voice_name: string;
+  provider: 'elevenlabs' | 'openai' | 'deepgram' | 'cartesia' | 'minimax';
+  gender: 'male' | 'female';
+  accent?: string;
+  age?: string;
+  preview_audio_url?: string;
+}
+
 export interface ManageKBParams {
   organizationId: string;
   action: KBAction;
@@ -153,6 +164,33 @@ export const retellService = {
 
       const response = await supabase.functions.invoke('manage-knowledge-base', {
         body: params,
+      });
+
+      if (response.error) {
+        return { success: false, error: response.error.message };
+      }
+
+      return response.data;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      return { success: false, error: message };
+    }
+  },
+
+  async listVoices(organizationId?: string): Promise<{
+    success: boolean;
+    voices?: RetellVoice[];
+    currentVoiceId?: string | null;
+    error?: string;
+  }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const response = await supabase.functions.invoke('list-voices', {
+        body: { organizationId },
       });
 
       if (response.error) {

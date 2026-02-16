@@ -312,24 +312,31 @@ export const Financials: React.FC = () => {
                     <Card>
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Expense Categories</h2>
                         <div className="space-y-4">
-                            {categories.filter((cat, index, arr) => arr.findIndex(c => c.name === cat.name) === index).slice(0, 5).map(cat => {
-                                const catExpenses = expenses.filter(e => e.category_id === cat.id);
-                                const total = catExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0);
-                                const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
+                            {categories
+                                .filter((cat, index, arr) => arr.findIndex(c => c.name === cat.name) === index)
+                                .map(cat => {
+                                    const catExpenses = filteredExpensesList.filter(e => e.category_id === cat.id);
+                                    const total = catExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0);
+                                    return { ...cat, _total: total };
+                                })
+                                .sort((a, b) => b._total - a._total)
+                                .slice(0, 8)
+                                .map(cat => {
+                                    const percentage = stats.totalExpenses > 0 ? (cat._total / stats.totalExpenses) * 100 : 0;
 
-                                return (
-                                    <div key={cat.id} className="flex items-center justify-between">
-                                        <div className="flex items-center">
-                                            <div className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: cat.color }}></div>
-                                            <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">{cat.name}</span>
+                                    return (
+                                        <div key={cat.id} className="flex items-center justify-between">
+                                            <div className="flex items-center">
+                                                <div className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: cat.color }}></div>
+                                                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">{cat.name}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white">${cat._total.toLocaleString()}</span>
+                                                <span className="text-[10px] text-gray-500 ml-2">({percentage.toFixed(0)}%)</span>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="text-sm font-bold text-gray-900 dark:text-white">${total.toLocaleString()}</span>
-                                            <span className="text-[10px] text-gray-500 ml-2">({percentage.toFixed(0)}%)</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
                             <Button variant="secondary" size="sm" className="w-full mt-4" onClick={() => navigate('/dashboard/settings')}>Manage Categories</Button>
                         </div>
                     </Card>

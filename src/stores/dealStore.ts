@@ -44,6 +44,7 @@ export interface Deal {
   products?: DealProduct[];
   tags?: string[];
   metadata?: Record<string, any>;
+  product_id?: string;
   lender_id?: string;
   commission_percentage?: number;
   volume_commission_percentage?: number;
@@ -55,6 +56,7 @@ export interface Deal {
   customers?: DealCustomer;
   user_profiles?: DealUserProfile;
   lenders?: { id: string; name: string; default_commission_pct: number; default_volume_commission_pct: number } | null;
+  loan_product?: { id: string; name: string; loan_type: string; interest_rate_type: string; min_rate: number; max_rate: number } | null;
 }
 
 export interface PipelineStats {
@@ -132,6 +134,14 @@ export const useDealStore = create<DealStore>((set, get) => ({
             name,
             default_commission_pct,
             default_volume_commission_pct
+          ),
+          loan_product:product_id (
+            id,
+            name,
+            loan_type,
+            interest_rate_type,
+            min_rate,
+            max_rate
           )
         `)
         .eq('organization_id', currentOrg.id)
@@ -234,6 +244,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
         tags: dealData.tags || [],
         metadata: dealData.metadata || {},
         quote_id: dealData.quote_id,
+        product_id: dealData.product_id || null,
         lender_id: dealData.lender_id || null,
         commission_percentage: dealData.commission_percentage || 0,
         volume_commission_percentage: dealData.volume_commission_percentage || 0,

@@ -45,10 +45,25 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
     const [lineItems, setLineItems] = useState<Array<{ description: string; quantity: number; unit_price: number; amount: number }>>([]);
 
     const applyAiData = (result: ReceiptScanResult) => {
-        // Find matching category by name
+        // Find matching category by name (case-insensitive)
         const matchedCategory = categories.find(
             c => c.name.toLowerCase() === result.category_suggestion?.toLowerCase()
         );
+
+        // Try to match vendor to existing supplier (fuzzy match)
+        let matchedSupplier: typeof suppliers[0] | undefined;
+        if (result.vendor_name) {
+            const vendorLower = result.vendor_name.toLowerCase().trim();
+            // Exact match first
+            matchedSupplier = suppliers.find(s => s.name.toLowerCase().trim() === vendorLower);
+            // Partial match: supplier name contains vendor or vice versa
+            if (!matchedSupplier) {
+                matchedSupplier = suppliers.find(s =>
+                    s.name.toLowerCase().includes(vendorLower) ||
+                    vendorLower.includes(s.name.toLowerCase())
+                );
+            }
+        }
 
         setFormData(prev => ({
             ...prev,
@@ -58,6 +73,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
             total_amount: result.total_amount || prev.total_amount,
             expense_date: result.expense_date || prev.expense_date,
             vendor_name: result.vendor_name || prev.vendor_name,
+            supplier_id: matchedSupplier?.id || prev.supplier_id,
             payment_method: (result.payment_method as PaymentMethod) || prev.payment_method,
             category_id: matchedCategory?.id || prev.category_id,
             notes: prev.notes || (result.vendor_name ? `AI-scanned receipt from ${result.vendor_name}` : ''),
@@ -94,7 +110,11 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                     'Authorization': `Bearer ${token}`,
                     'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
                 },
-                body: JSON.stringify({ file_path: filePath, bucket: 'receipts' }),
+                body: JSON.stringify({
+                    file_path: filePath,
+                    bucket: 'receipts',
+                    industry: currentOrganization?.industry_template || 'general_business',
+                }),
             });
 
             if (!response.ok) {
@@ -420,26 +440,41 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                Vendor / Supplier
+                                                Vendor Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.vendor_name || ''}
+                                                onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                                                className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all dark:text-white"
+                                                placeholder="Business or store name"
+                                            />
+                                        </div>
+
+                                        {suppliers.length > 0 && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Link to Supplier
                                             </label>
                                             <select
-                                                value={formData.supplier_id}
+                                                value={formData.supplier_id || ''}
                                                 onChange={(e) => {
                                                     const s = suppliers.find(sup => sup.id === e.target.value);
                                                     setFormData({
                                                         ...formData,
                                                         supplier_id: e.target.value,
-                                                        vendor_name: s ? s.name : ''
+                                                        vendor_name: s ? s.name : formData.vendor_name,
                                                     });
                                                 }}
                                                 className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all dark:text-white"
                                             >
-                                                <option value="">Select Supplier (Optional)</option>
+                                                <option value="">None (Optional)</option>
                                                 {suppliers.map(sup => (
                                                     <option key={sup.id} value={sup.id}>{sup.name}</option>
                                                 ))}
                                             </select>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* Payment Method + Status Row */}

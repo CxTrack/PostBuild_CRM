@@ -6,7 +6,8 @@ import {
   MoreVertical,
   Trash2, Eye, Boxes,
   Zap, ArrowRight,
-  ShoppingCart, BarChart2, PackageOpen
+  ShoppingCart, BarChart2, PackageOpen,
+  Home, Percent, TrendingUp, CheckCircle2
 } from 'lucide-react';
 import { useProductStore } from '../stores/productStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -30,6 +31,7 @@ export default function Products() {
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
   const labels = usePageLabels('products');
+  const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
 
   useEffect(() => {
     fetchProducts(currentOrganization?.id);
@@ -56,6 +58,13 @@ export default function Products() {
   }, [products, filterType, debouncedSearchTerm]);
 
   const stats = useMemo(() => {
+    if (isMortgage) {
+      const totalLoanProducts = products.length;
+      const activeProducts = products.filter((p) => p.is_active).length;
+      const loanTypes = new Set(products.map(p => p.loan_type).filter(Boolean)).size;
+      const fixedRate = products.filter(p => p.interest_rate_type === 'fixed').length;
+      return { totalLoanProducts, activeProducts, loanTypes, fixedRate };
+    }
     const totalProducts = products.filter((p) => p.product_type === 'product').length;
     const activeServices = products.filter((p) => p.product_type === 'service' && p.is_active).length;
     const avgPrice = products.length > 0
@@ -64,7 +73,7 @@ export default function Products() {
     const totalValue = products.reduce((sum, p) => sum + (p.price * (p.quantity_on_hand || 0)), 0);
 
     return { totalProducts, activeServices, avgPrice, totalValue };
-  }, [products]);
+  }, [products, isMortgage]);
 
   const handleDelete = async (id: string) => {
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
@@ -91,12 +100,14 @@ export default function Products() {
       <div className="aspect-video bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center relative overflow-hidden">
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+        ) : isMortgage ? (
+          <Home size={48} className="text-blue-600 dark:text-blue-400" />
         ) : (
           <Package size={48} className="text-blue-600 dark:text-blue-400" />
         )}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
           <Link
-            to={`products/${product.id}`}
+            to={`/dashboard/products/${product.id}/edit`}
             className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:scale-110 transition-transform shadow-sm"
           >
             <Eye size={18} className="text-gray-900 dark:text-white" />
@@ -119,7 +130,7 @@ export default function Products() {
               {product.name}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-              {product.description || 'No description'}
+              {product.description || (isMortgage ? product.notes : 'No description') || 'No description'}
             </p>
           </div>
           <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
@@ -127,38 +138,72 @@ export default function Products() {
           </button>
         </div>
 
-        <div className="flex items-center space-x-2 mb-3">
-          <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.product_type === 'service'
-            ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
-            : product.product_type === 'bundle'
-              ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
-              : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
-            }`}>
-            {product.product_type.charAt(0).toUpperCase() + product.product_type.slice(1)}
-          </span>
-          {product.category && (
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">
-              {product.category}
-            </span>
-          )}
-          {product.sku && (
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs rounded-full font-mono">
-              {product.sku}
-            </span>
+        <div className="flex items-center space-x-2 mb-3 flex-wrap gap-y-1">
+          {isMortgage ? (
+            <>
+              {product.loan_type && (
+                <span className="px-2 py-1 text-xs rounded-full font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                  {formatLoanType(product.loan_type)}
+                </span>
+              )}
+              {product.interest_rate_type && (
+                <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                  product.interest_rate_type === 'fixed' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' :
+                  product.interest_rate_type === 'variable' ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400' :
+                  'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                }`}>
+                  {product.interest_rate_type.charAt(0).toUpperCase() + product.interest_rate_type.slice(1)}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.product_type === 'service'
+                ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                : product.product_type === 'bundle'
+                  ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
+                  : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                }`}>
+                {product.product_type.charAt(0).toUpperCase() + product.product_type.slice(1)}
+              </span>
+              {product.category && (
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">
+                  {product.category}
+                </span>
+              )}
+              {product.sku && (
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs rounded-full font-mono">
+                  {product.sku}
+                </span>
+              )}
+            </>
           )}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              ${product.price.toFixed(2)}
-            </p>
-            {product.pricing_model === 'recurring' && product.recurring_interval && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                per {product.recurring_interval}
+          {isMortgage ? (
+            <div>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">
+                {formatRateRange(product.min_rate, product.max_rate)}
               </p>
-            )}
-          </div>
+              {product.max_term_months && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Up to {product.max_term_months / 12} year term
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                ${product.price.toFixed(2)}
+              </p>
+              {product.pricing_model === 'recurring' && product.recurring_interval && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  per {product.recurring_interval}
+                </p>
+              )}
+            </div>
+          )}
           <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.is_active
             ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
             : 'bg-gray-100 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400'
@@ -167,7 +212,7 @@ export default function Products() {
           </span>
         </div>
 
-        {product.track_inventory && (
+        {!isMortgage && product.track_inventory && (
           <div className="mt-auto pt-3">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold">
               <span>Inventory</span>
@@ -189,6 +234,23 @@ export default function Products() {
       </div>
     </Card >
   );
+
+  const formatLoanType = (type?: string) => {
+    if (!type) return '—';
+    const labels: Record<string, string> = {
+      conventional: 'Conventional', fha: 'FHA', va: 'VA', usda: 'USDA',
+      jumbo: 'Jumbo', heloc: 'HELOC', construction: 'Construction',
+      reverse: 'Reverse', bridge: 'Bridge', private: 'Private', variable: 'Variable',
+    };
+    return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  const formatRateRange = (min?: number, max?: number) => {
+    if (min != null && max != null) return `${min}% – ${max}%`;
+    if (min != null) return `${min}%+`;
+    if (max != null) return `Up to ${max}%`;
+    return '—';
+  };
 
   if (loading && products.length === 0) {
     return (
@@ -213,7 +275,7 @@ export default function Products() {
           </p>
         </div>
         <Link
-          to="products/new"
+          to="/dashboard/products/new"
           className="flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
         >
           <Plus size={18} className="mr-2" />
@@ -222,74 +284,96 @@ export default function Products() {
       </div>
 
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card hover className="flex items-center gap-4 p-4 group h-24">
-          <IconBadge
-            icon={<ShoppingCart size={20} className="text-blue-600" />}
-            gradient="bg-blue-50"
-            size="md"
-          />
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Items</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalProducts + stats.activeServices}</h3>
-          </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-        </Card>
-
-        <Card hover className="flex items-center gap-4 p-4 group h-24">
-          <IconBadge
-            icon={<Zap size={20} className="text-emerald-600" />}
-            gradient="bg-emerald-50"
-            size="md"
-          />
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeServices}</h3>
-          </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-        </Card>
-
-        <Card hover className="flex items-center gap-4 p-4 group h-24">
-          <IconBadge
-            icon={<BarChart2 size={20} className="text-orange-600" />}
-            gradient="bg-orange-50"
-            size="md"
-          />
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Avg Price</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${stats.avgPrice.toFixed(0)}</h3>
-          </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-        </Card>
-
-        <Card hover className="flex items-center gap-4 p-4 group h-24">
-          <IconBadge
-            icon={<PackageOpen size={20} className="text-purple-600" />}
-            gradient="bg-purple-50"
-            size="md"
-          />
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Value</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats.totalValue / 1000).toFixed(1)}k</h3>
-          </div>
-          <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-        </Card>
+        {isMortgage ? (
+          <>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<Home size={20} className="text-blue-600" />} gradient="bg-blue-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Loan Products</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).totalLoanProducts}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<CheckCircle2 size={20} className="text-emerald-600" />} gradient="bg-emerald-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Active</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).activeProducts}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<TrendingUp size={20} className="text-orange-600" />} gradient="bg-orange-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Loan Types</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).loanTypes}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<Percent size={20} className="text-purple-600" />} gradient="bg-purple-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Fixed Rate</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).fixedRate}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<ShoppingCart size={20} className="text-blue-600" />} gradient="bg-blue-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Items</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).totalProducts + (stats as any).activeServices}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<Zap size={20} className="text-emerald-600" />} gradient="bg-emerald-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{(stats as any).activeServices}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<BarChart2 size={20} className="text-orange-600" />} gradient="bg-orange-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Avg Price</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${(stats as any).avgPrice.toFixed(0)}</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+            <Card hover className="flex items-center gap-4 p-4 group h-24">
+              <IconBadge icon={<PackageOpen size={20} className="text-purple-600" />} gradient="bg-purple-50" size="md" />
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Value</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${((stats as any).totalValue / 1000).toFixed(1)}k</h3>
+              </div>
+              <ArrowRight size={16} className="ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </Card>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-gray-700">
-        <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg">
-          {(['all', 'product', 'service', 'bundle'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${filterType === type
-                ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-                }`}
-            >
-              {type}s
-            </button>
-          ))}
-        </div>
+        {!isMortgage && (
+          <div className="flex bg-slate-100 dark:bg-gray-700 p-1 rounded-lg">
+            {(['all', 'product', 'service', 'bundle'] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${filterType === type
+                  ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                {type}s
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-3 w-full md:w-auto md:flex-1 md:max-w-xl md:ml-8">
           <div className="relative flex-1">
@@ -338,7 +422,7 @@ export default function Products() {
             </p>
             {!searchTerm && filterType === 'all' && (
               <Link
-                to="products/new"
+                to="/dashboard/products/new"
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} className="mr-2" />
@@ -349,19 +433,131 @@ export default function Products() {
         ) : viewMode === 'compact' ? (
           <>
             {/* Compact Stats */}
-            <CompactStatsBar stats={[
+            <CompactStatsBar stats={isMortgage ? [
               { label: 'Total', value: filteredProducts.length },
               { label: 'Active', value: filteredProducts.filter(p => p.is_active).length },
-              { label: 'Avg Price', value: `$${stats.avgPrice.toFixed(0)}` },
-              { label: 'Value', value: `$${(stats.totalValue / 1000).toFixed(1)}k` },
+              { label: 'Loan Types', value: new Set(filteredProducts.map(p => p.loan_type).filter(Boolean)).size },
+              { label: 'Fixed Rate', value: filteredProducts.filter(p => p.interest_rate_type === 'fixed').length },
+            ] : [
+              { label: 'Total', value: filteredProducts.length },
+              { label: 'Active', value: filteredProducts.filter(p => p.is_active).length },
+              { label: 'Avg Price', value: `$${(stats as any).avgPrice.toFixed(0)}` },
+              { label: 'Value', value: `$${((stats as any).totalValue / 1000).toFixed(1)}k` },
             ]} />
 
             {/* Resizable Table */}
             <ResizableTable
-              storageKey="products"
+              storageKey={isMortgage ? "loan-products" : "products"}
               data={filteredProducts}
-              onRowClick={(product) => window.location.href = `products/${product.id}`}
-              columns={[
+              onRowClick={(product) => window.location.href = `/dashboard/products/${product.id}/edit`}
+              columns={isMortgage ? [
+                {
+                  id: 'product',
+                  header: 'Loan Product',
+                  defaultWidth: 220,
+                  minWidth: 150,
+                  render: (product) => (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center text-white flex-shrink-0">
+                        <Home size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <Link
+                          to={`/dashboard/products/${product.id}/edit`}
+                          className="font-medium text-gray-900 dark:text-white text-sm truncate block hover:text-blue-600 dark:hover:text-blue-400"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {product.name}
+                        </Link>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  id: 'loan_type',
+                  header: 'Loan Type',
+                  defaultWidth: 120,
+                  minWidth: 80,
+                  render: (product) => (
+                    <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      {formatLoanType(product.loan_type)}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'rate_type',
+                  header: 'Rate Type',
+                  defaultWidth: 100,
+                  minWidth: 70,
+                  render: (product) => (
+                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                      product.interest_rate_type === 'fixed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      product.interest_rate_type === 'variable' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {product.interest_rate_type ? product.interest_rate_type.charAt(0).toUpperCase() + product.interest_rate_type.slice(1) : '—'}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'rate_range',
+                  header: 'Rate Range',
+                  defaultWidth: 110,
+                  minWidth: 80,
+                  render: (product) => (
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {formatRateRange(product.min_rate, product.max_rate)}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'term',
+                  header: 'Term',
+                  defaultWidth: 100,
+                  minWidth: 70,
+                  render: (product) => (
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {product.min_term_months && product.max_term_months
+                        ? `${product.min_term_months / 12}–${product.max_term_months / 12} yr`
+                        : product.max_term_months
+                          ? `Up to ${product.max_term_months / 12} yr`
+                          : '—'}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  defaultWidth: 80,
+                  minWidth: 60,
+                  render: (product) => (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${product.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                      {product.is_active ? 'Active' : 'Off'}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'actions',
+                  header: 'Actions',
+                  defaultWidth: 100,
+                  minWidth: 80,
+                  align: 'right',
+                  render: (product) => (
+                    <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      <Link to={`/dashboard/products/${product.id}/edit`} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded opacity-60 hover:opacity-100">
+                        <Eye className="w-3.5 h-3.5 text-gray-500" />
+                      </Link>
+                      {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
+                        <button onClick={() => handleDelete(product.id)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded opacity-60 hover:opacity-100">
+                          <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-600" />
+                        </button>
+                      )}
+                    </div>
+                  ),
+                },
+              ] as ColumnDef[] : [
                 {
                   id: 'product',
                   header: 'Product',
@@ -374,7 +570,7 @@ export default function Products() {
                       </div>
                       <div className="min-w-0">
                         <Link
-                          to={`products/${product.id}`}
+                          to={`/dashboard/products/${product.id}/edit`}
                           className="font-medium text-gray-900 dark:text-white text-sm truncate block hover:text-blue-600 dark:hover:text-blue-400"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -457,7 +653,7 @@ export default function Products() {
                   align: 'right',
                   render: (product) => (
                     <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-                      <Link to={`products/${product.id}`} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded opacity-60 hover:opacity-100">
+                      <Link to={`/dashboard/products/${product.id}/edit`} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded opacity-60 hover:opacity-100">
                         <Eye className="w-3.5 h-3.5 text-gray-500" />
                       </Link>
                       {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
@@ -485,19 +681,19 @@ export default function Products() {
                 <thead className={theme === 'soft-modern' ? "bg-base border-b border-default" : "bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"}>
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Product
+                      {isMortgage ? 'Loan Product' : 'Product'}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Type
+                      {isMortgage ? 'Loan Type' : 'Type'}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Category
+                      {isMortgage ? 'Rate Type' : 'Category'}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Price
+                      {isMortgage ? 'Rate Range' : 'Price'}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Stock
+                      {isMortgage ? 'Term' : 'Stock'}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                       Status
@@ -513,41 +709,69 @@ export default function Products() {
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg flex items-center justify-center mr-3">
-                            <Package size={20} className="text-blue-600 dark:text-blue-400" />
+                            {isMortgage ? <Home size={20} className="text-blue-600 dark:text-blue-400" /> : <Package size={20} className="text-blue-600 dark:text-blue-400" />}
                           </div>
                           <div>
                             <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
-                            {product.sku && (
+                            {!isMortgage && product.sku && (
                               <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{product.sku}</p>
                             )}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.product_type === 'service'
-                          ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
-                          : product.product_type === 'bundle'
-                            ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
-                            : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
-                          }`}>
-                          {product.product_type.charAt(0).toUpperCase() + product.product_type.slice(1)}
-                        </span>
+                        {isMortgage ? (
+                          <span className="px-2 py-1 text-xs rounded-full font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                            {formatLoanType(product.loan_type)}
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.product_type === 'service'
+                            ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                            : product.product_type === 'bundle'
+                              ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
+                              : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                            }`}>
+                            {product.product_type.charAt(0).toUpperCase() + product.product_type.slice(1)}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                        {product.category || '-'}
+                      <td className="px-6 py-4 text-sm">
+                        {isMortgage ? (
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                            product.interest_rate_type === 'fixed' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' :
+                            product.interest_rate_type === 'variable' ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400' :
+                            'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                          }`}>
+                            {product.interest_rate_type ? product.interest_rate_type.charAt(0).toUpperCase() + product.interest_rate_type.slice(1) : '—'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 dark:text-gray-400">{product.category || '-'}</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          ${product.price.toFixed(2)}
-                        </p>
-                        {product.pricing_model === 'recurring' && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            /{product.recurring_interval}
+                        {isMortgage ? (
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {formatRateRange(product.min_rate, product.max_rate)}
                           </p>
+                        ) : (
+                          <>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              ${product.price.toFixed(2)}
+                            </p>
+                            {product.pricing_model === 'recurring' && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                /{product.recurring_interval}
+                              </p>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                        {product.track_inventory ? `${product.quantity_on_hand} units` : '-'}
+                        {isMortgage ? (
+                          product.max_term_months ? `${product.max_term_months / 12} yr` : '—'
+                        ) : (
+                          product.track_inventory ? `${product.quantity_on_hand} units` : '-'
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.is_active
@@ -586,11 +810,15 @@ export default function Products() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mr-3">
-                        <Package size={20} className="text-blue-600 dark:text-blue-400" />
+                        {isMortgage ? <Home size={20} className="text-blue-600 dark:text-blue-400" /> : <Package size={20} className="text-blue-600 dark:text-blue-400" />}
                       </div>
                       <div>
                         <h3 className="font-bold text-gray-900 dark:text-white line-clamp-1">{product.name}</h3>
-                        <p className="text-[10px] text-gray-500 font-mono">{product.sku || 'NO-SKU'}</p>
+                        {isMortgage ? (
+                          <p className="text-[10px] text-gray-500">{formatLoanType(product.loan_type)}</p>
+                        ) : (
+                          <p className="text-[10px] text-gray-500 font-mono">{product.sku || 'NO-SKU'}</p>
+                        )}
                       </div>
                     </div>
                     <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-full ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
@@ -599,23 +827,42 @@ export default function Products() {
                   </div>
 
                   <div className="flex items-center justify-between py-2 border-t border-b border-gray-50 dark:border-gray-700 mb-3">
-                    <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
-                      <p className="text-[10px] text-gray-500 uppercase">Price</p>
-                      <p className="font-bold text-gray-900 dark:text-white">${product.price.toFixed(2)}</p>
-                    </div>
-                    <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
-                      <p className="text-[10px] text-gray-500 uppercase">Type</p>
-                      <p className="font-bold text-gray-900 dark:text-white text-xs capitalize">{product.product_type}</p>
-                    </div>
-                    <div className="text-center flex-1">
-                      <p className="text-[10px] text-gray-500 uppercase">Stock</p>
-                      <p className="font-bold text-gray-900 dark:text-white">{product.track_inventory ? product.quantity_on_hand : '—'}</p>
-                    </div>
+                    {isMortgage ? (
+                      <>
+                        <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
+                          <p className="text-[10px] text-gray-500 uppercase">Rate Type</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-xs capitalize">{product.interest_rate_type || '—'}</p>
+                        </div>
+                        <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
+                          <p className="text-[10px] text-gray-500 uppercase">Rate Range</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-xs">{formatRateRange(product.min_rate, product.max_rate)}</p>
+                        </div>
+                        <div className="text-center flex-1">
+                          <p className="text-[10px] text-gray-500 uppercase">Term</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-xs">{product.max_term_months ? `${product.max_term_months / 12} yr` : '—'}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
+                          <p className="text-[10px] text-gray-500 uppercase">Price</p>
+                          <p className="font-bold text-gray-900 dark:text-white">${product.price.toFixed(2)}</p>
+                        </div>
+                        <div className="text-center flex-1 border-r border-gray-50 dark:border-gray-700">
+                          <p className="text-[10px] text-gray-500 uppercase">Type</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-xs capitalize">{product.product_type}</p>
+                        </div>
+                        <div className="text-center flex-1">
+                          <p className="text-[10px] text-gray-500 uppercase">Stock</p>
+                          <p className="font-bold text-gray-900 dark:text-white">{product.track_inventory ? product.quantity_on_hand : '—'}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Link
-                      to={`products/${product.id}`}
+                      to={`/dashboard/products/${product.id}/edit`}
                       className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-center text-xs font-bold"
                     >
                       View Details

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Mic, Volume2, MessageSquare, Building2, Users, Settings2,
     ChevronRight, ChevronLeft, Check, Save, RefreshCw, Zap,
-    Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2
+    Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2,
+    BookOpen, Globe, Plus, Trash2, Link, FileText, Brain,
+    Square, Search, Filter
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -34,10 +36,36 @@ export const VoiceAgentSetup = () => {
         getPhoneNumber,
         provisionAgent,
         updateRetellAgent,
+        knowledgeBases,
+        kbLoading,
+        fetchKnowledgeBases,
+        createKnowledgeBase,
+        addTextToKB,
+        addUrlToKB,
+        deleteKnowledgeBase,
+        attachKBsToAgent,
+        voices,
+        voicesLoading,
+        currentVoiceId,
+        fetchVoices,
+        setVoice,
     } = useVoiceAgentStore();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge'>('settings');
+    // Voice selection state
+    const [voiceSearch, setVoiceSearch] = useState('');
+    const [voiceGenderFilter, setVoiceGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+    const [voiceProviderFilter, setVoiceProviderFilter] = useState<string>('all');
+    const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    // Knowledge base form state
+    const [kbName, setKbName] = useState('');
+    const [kbTextTitle, setKbTextTitle] = useState('');
+    const [kbTextContent, setKbTextContent] = useState('');
+    const [kbUrl, setKbUrl] = useState('');
+    const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         agent_name: '',
         business_name: '',
@@ -51,13 +79,106 @@ export const VoiceAgentSetup = () => {
         fallback_behavior: 'take_message' as FallbackBehavior,
         broker_phone: '',
         broker_name: '',
+        general_prompt: '',
+        begin_message: '',
     });
     const [newReason, setNewReason] = useState('');
 
     useEffect(() => {
         fetchConfig();
         fetchUsage();
-    }, [fetchConfig, fetchUsage]);
+        fetchKnowledgeBases();
+        fetchVoices();
+    }, [fetchConfig, fetchUsage, fetchKnowledgeBases, fetchVoices]);
+
+    // Cleanup audio on unmount
+    useEffect(() => {
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+        };
+    }, []);
+
+    const handlePlayPreview = useCallback((voiceId: string, previewUrl?: string) => {
+        // If already playing this voice, stop it
+        if (playingVoiceId === voiceId && audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+            setPlayingVoiceId(null);
+            return;
+        }
+
+        // Stop any currently playing audio
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+
+        if (!previewUrl) {
+            toast.error('No preview available for this voice');
+            return;
+        }
+
+        const audio = new Audio(previewUrl);
+        audioRef.current = audio;
+        setPlayingVoiceId(voiceId);
+
+        audio.play().catch(() => {
+            toast.error('Failed to play audio preview');
+            setPlayingVoiceId(null);
+        });
+
+        audio.onended = () => {
+            setPlayingVoiceId(null);
+            audioRef.current = null;
+        };
+
+        audio.onerror = () => {
+            setPlayingVoiceId(null);
+            audioRef.current = null;
+        };
+    }, [playingVoiceId]);
+
+    const handleSelectVoice = async (voiceId: string) => {
+        if (!isProvisioned()) {
+            toast.error('Please provision your agent first before changing the voice');
+            return;
+        }
+
+        // Stop any playing audio
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+            setPlayingVoiceId(null);
+        }
+
+        const result = await setVoice(voiceId);
+        if (result.success) {
+            toast.success('Voice updated!');
+        } else {
+            toast.error(result.error || 'Failed to update voice');
+        }
+    };
+
+    const filteredVoices = voices.filter((v) => {
+        if (voiceGenderFilter !== 'all' && v.gender !== voiceGenderFilter) return false;
+        if (voiceProviderFilter !== 'all' && v.provider !== voiceProviderFilter) return false;
+        if (voiceSearch) {
+            const search = voiceSearch.toLowerCase();
+            return (
+                v.voice_name.toLowerCase().includes(search) ||
+                v.provider.toLowerCase().includes(search) ||
+                (v.accent && v.accent.toLowerCase().includes(search)) ||
+                (v.age && v.age.toLowerCase().includes(search)) ||
+                v.gender.toLowerCase().includes(search)
+            );
+        }
+        return true;
+    });
+
+    const voiceProviders = [...new Set(voices.map(v => v.provider))].sort();
 
     useEffect(() => {
         if (config) {
@@ -75,17 +196,27 @@ export const VoiceAgentSetup = () => {
                 fallback_behavior: config.fallback_behavior || 'take_message',
                 broker_phone: config.broker_phone || '',
                 broker_name: config.broker_name || '',
+                general_prompt: (config as any).general_prompt || '',
+                begin_message: (config as any).begin_message || '',
             });
             setCurrentStep(config.setup_step || 0);
         }
     }, [config]);
 
+    // Strip non-DB fields before saving to voice_agent_configs table
+    const getDbSafeFormData = () => {
+        const { general_prompt: _gp, begin_message: _bm, customIndustry: _ci, ...dbFields } = formData;
+        return {
+            ...dbFields,
+            industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+        };
+    };
+
     const handleSaveStep = async () => {
         setSaving(true);
         try {
             await saveConfig({
-                ...formData,
-                industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+                ...getDbSafeFormData(),
                 setup_step: currentStep,
             });
             toast.success('Progress saved');
@@ -115,8 +246,7 @@ export const VoiceAgentSetup = () => {
         try {
             // Save config first
             await saveConfig({
-                ...formData,
-                industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
+                ...getDbSafeFormData(),
                 setup_completed: true,
             });
 
@@ -151,18 +281,25 @@ export const VoiceAgentSetup = () => {
         setSaving(true);
         try {
             // Save to local DB
-            await saveConfig({
-                ...formData,
-                industry: formData.industry === 'Other' ? formData.customIndustry : formData.industry,
-            });
+            await saveConfig(getDbSafeFormData());
 
-            // If provisioned, also sync changes to Retell API
+            // If provisioned, sync ALL changes to Retell API (agent + LLM)
             if (isProvisioned()) {
                 const result = await updateRetellAgent({
                     agentName: formData.agent_name,
                     businessName: formData.business_name,
                     brokerPhone: formData.broker_phone,
                     brokerName: formData.broker_name,
+                    // Sync prompt/greeting to Retell LLM
+                    generalPrompt: formData.general_prompt || undefined,
+                    beginMessage: formData.begin_message || undefined,
+                    // Sync local-only fields to DB via edge function
+                    agentTone: formData.agent_tone,
+                    greetingScript: formData.greeting_script,
+                    handlingPreference: formData.handling_preference,
+                    fallbackBehavior: formData.fallback_behavior,
+                    commonCallReasons: formData.common_call_reasons,
+                    businessDescription: formData.business_description,
                 });
                 if (!result.success) {
                     toast.error(`Saved locally but Retell sync failed: ${result.error}`);
@@ -170,11 +307,69 @@ export const VoiceAgentSetup = () => {
                 }
             }
 
-            toast.success('Settings saved');
+            toast.success('Settings saved & synced to AI agent');
         } catch {
             toast.error('Failed to save');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleCreateKB = async () => {
+        if (!kbName.trim()) {
+            toast.error('Please enter a knowledge base name');
+            return;
+        }
+        const result = await createKnowledgeBase(kbName.trim());
+        if (result.success) {
+            toast.success('Knowledge base created!');
+            setKbName('');
+            if (result.knowledgeBaseId) {
+                setSelectedKbId(result.knowledgeBaseId);
+                // Auto-attach to agent
+                await attachKBsToAgent([result.knowledgeBaseId]);
+            }
+        } else {
+            toast.error(result.error || 'Failed to create knowledge base');
+        }
+    };
+
+    const handleAddText = async () => {
+        if (!selectedKbId || !kbTextTitle.trim() || !kbTextContent.trim()) {
+            toast.error('Please fill in both title and content');
+            return;
+        }
+        const result = await addTextToKB(selectedKbId, kbTextTitle.trim(), kbTextContent.trim());
+        if (result.success) {
+            toast.success('Text added to knowledge base');
+            setKbTextTitle('');
+            setKbTextContent('');
+        } else {
+            toast.error(result.error || 'Failed to add text');
+        }
+    };
+
+    const handleAddUrl = async () => {
+        if (!selectedKbId || !kbUrl.trim()) {
+            toast.error('Please enter a URL');
+            return;
+        }
+        const result = await addUrlToKB(selectedKbId, kbUrl.trim());
+        if (result.success) {
+            toast.success('URL added — content will be scraped shortly');
+            setKbUrl('');
+        } else {
+            toast.error(result.error || 'Failed to add URL');
+        }
+    };
+
+    const handleDeleteKB = async (kbId: string) => {
+        const result = await deleteKnowledgeBase(kbId);
+        if (result.success) {
+            toast.success('Knowledge base deleted');
+            if (selectedKbId === kbId) setSelectedKbId(null);
+        } else {
+            toast.error(result.error || 'Failed to delete');
         }
     };
 
@@ -621,7 +816,7 @@ export const VoiceAgentSetup = () => {
                 </>
             )}
 
-            {/* Post-Setup: Quick Settings */}
+            {/* Post-Setup: Full Configuration */}
             {isSetupComplete && (
                 <div className="space-y-6">
                     {/* Phone Number & Call Forwarding */}
@@ -664,95 +859,548 @@ export const VoiceAgentSetup = () => {
                         </div>
                     )}
 
-                    {/* Quick Settings Form */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick Settings</h3>
+                    {/* Tab Navigation */}
+                    <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        {[
+                            { id: 'settings' as const, label: 'General Settings', icon: Settings2 },
+                            { id: 'voice' as const, label: 'Voice Selection', icon: Volume2 },
+                            { id: 'prompt' as const, label: 'Prompt & Personality', icon: Brain },
+                            { id: 'knowledge' as const, label: 'Knowledge Base', icon: BookOpen },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                    activeTab === tab.id
+                                        ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                                }`}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Agent Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.agent_name}
-                                    onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Agent Tone
-                                </label>
-                                <select
-                                    value={formData.agent_tone}
-                                    onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                >
-                                    <option value="professional">Professional</option>
-                                    <option value="friendly">Friendly</option>
-                                    <option value="casual">Casual</option>
-                                    <option value="formal">Formal</option>
-                                </select>
-                            </div>
-                        </div>
+                    {/* Tab: General Settings */}
+                    {activeTab === 'settings' && (
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">General Settings</h3>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Greeting Script
-                            </label>
-                            <textarea
-                                value={formData.greeting_script}
-                                onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
-                                rows={3}
-                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                            />
-                        </div>
-
-                        {/* Broker Contact Info */}
-                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                                SMS Call Summary Notifications
-                            </p>
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Your Name
+                                        Agent Name
                                     </label>
                                     <input
                                         type="text"
-                                        value={formData.broker_name}
-                                        onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                                        value={formData.agent_name}
+                                        onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
                                         className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                        placeholder="e.g., John Smith"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Your Phone Number
+                                        Agent Tone
                                     </label>
-                                    <input
-                                        type="tel"
-                                        value={formData.broker_phone}
-                                        onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                                    <select
+                                        value={formData.agent_tone}
+                                        onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
                                         className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
-                                        placeholder="+1 (555) 123-4567"
-                                    />
+                                    >
+                                        <option value="professional">Professional</option>
+                                        <option value="friendly">Friendly</option>
+                                        <option value="casual">Casual</option>
+                                        <option value="formal">Formal</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Greeting Script
+                                </label>
+                                <textarea
+                                    value={formData.greeting_script}
+                                    onChange={(e) => setFormData({ ...formData, greeting_script: e.target.value })}
+                                    rows={3}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                />
+                            </div>
+
+                            {/* SMS Contact Info */}
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                                    SMS Call Summary Notifications
+                                </p>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Your Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.broker_name}
+                                            onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            placeholder="e.g., John Smith"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Your Phone Number
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={formData.broker_phone}
+                                            onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            placeholder="+1 (555) 123-4567"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveSettings}
+                                    disabled={saving}
+                                    className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {saving ? 'Saving & Syncing...' : 'Save & Sync to Agent'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tab: Voice Selection */}
+                    {activeTab === 'voice' && (
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Choose Your Agent's Voice</h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Select a voice for your AI agent. Click the play button to hear a preview, then click "Use This Voice" to apply it.
+                                    </p>
+                                </div>
+
+                                {/* Filters */}
+                                <div className="flex flex-wrap gap-3">
+                                    {/* Search */}
+                                    <div className="flex-1 min-w-[200px] relative">
+                                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={voiceSearch}
+                                            onChange={(e) => setVoiceSearch(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                            placeholder="Search voices by name, accent, provider..."
+                                        />
+                                    </div>
+
+                                    {/* Gender Filter */}
+                                    <div className="flex rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
+                                        {(['all', 'male', 'female'] as const).map((g) => (
+                                            <button
+                                                key={g}
+                                                onClick={() => setVoiceGenderFilter(g)}
+                                                className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+                                                    voiceGenderFilter === g
+                                                        ? 'bg-purple-600 text-white'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                                }`}
+                                            >
+                                                {g === 'all' ? 'All' : g.charAt(0).toUpperCase() + g.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Provider Filter */}
+                                    <select
+                                        value={voiceProviderFilter}
+                                        onChange={(e) => setVoiceProviderFilter(e.target.value)}
+                                        className="px-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                    >
+                                        <option value="all">All Providers</option>
+                                        {voiceProviders.map((p) => (
+                                            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Current Voice Badge */}
+                                {currentVoiceId && (
+                                    <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span>Current voice: <strong>{voices.find(v => v.voice_id === currentVoiceId)?.voice_name || currentVoiceId}</strong></span>
+                                    </div>
+                                )}
+
+                                {/* Loading State */}
+                                {voicesLoading && voices.length === 0 && (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                                        <span className="ml-3 text-gray-500">Loading voices...</span>
+                                    </div>
+                                )}
+
+                                {/* Voice Grid */}
+                                {filteredVoices.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-1">
+                                        {filteredVoices.map((voice) => {
+                                            const isCurrentVoice = currentVoiceId === voice.voice_id;
+                                            const isPlaying = playingVoiceId === voice.voice_id;
+
+                                            return (
+                                                <div
+                                                    key={voice.voice_id}
+                                                    className={`relative p-4 rounded-xl border-2 transition-all ${
+                                                        isCurrentVoice
+                                                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 ring-2 ring-purple-300 dark:ring-purple-700'
+                                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                    }`}
+                                                >
+                                                    {/* Current badge */}
+                                                    {isCurrentVoice && (
+                                                        <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                                                            Active
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div>
+                                                            <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                                                {voice.voice_name}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                                    voice.gender === 'female'
+                                                                        ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
+                                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                                }`}>
+                                                                    {voice.gender === 'female' ? '♀ Female' : '♂ Male'}
+                                                                </span>
+                                                                {voice.accent && (
+                                                                    <span className="text-xs text-gray-500">{voice.accent}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Provider & Age */}
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400">
+                                                            {voice.provider}
+                                                        </span>
+                                                        {voice.age && (
+                                                            <span className="text-xs text-gray-500">{voice.age}</span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Preview Button */}
+                                                        <button
+                                                            onClick={() => handlePlayPreview(voice.voice_id, voice.preview_audio_url)}
+                                                            disabled={!voice.preview_audio_url}
+                                                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                                isPlaying
+                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200'
+                                                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                                                        >
+                                                            {isPlaying ? (
+                                                                <><Square className="w-3.5 h-3.5" />Stop</>
+                                                            ) : (
+                                                                <><Play className="w-3.5 h-3.5" />Preview</>
+                                                            )}
+                                                        </button>
+
+                                                        {/* Select Button */}
+                                                        {!isCurrentVoice && (
+                                                            <button
+                                                                onClick={() => handleSelectVoice(voice.voice_id)}
+                                                                disabled={voicesLoading}
+                                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                Use This
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* No Results */}
+                                {!voicesLoading && filteredVoices.length === 0 && voices.length > 0 && (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <Volume2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                                        <p>No voices match your filters. Try adjusting your search.</p>
+                                    </div>
+                                )}
+
+                                {/* Result count */}
+                                {filteredVoices.length > 0 && (
+                                    <p className="text-xs text-gray-500 text-right">
+                                        Showing {filteredVoices.length} of {voices.length} voices
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Info Box */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <Volume2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm">
+                                        <p className="font-medium text-blue-800 dark:text-blue-200">Voice Tips</p>
+                                        <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                            Choose a voice that matches your brand. Professional services often prefer calm, mature voices. Customer-facing businesses may benefit from friendly, energetic voices. You can change the voice at any time.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        <div className="flex justify-end">
-                            <button
-                                onClick={handleSaveSettings}
-                                disabled={saving}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                            >
-                                <Save className="w-4 h-4" />
-                                {saving ? 'Saving...' : 'Save Changes'}
-                            </button>
+                    {/* Tab: Prompt & Personality */}
+                    {activeTab === 'prompt' && (
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Prompt & Personality</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Customize your AI agent's instructions and opening message. Changes are synced directly to the Retell AI engine.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Opening Message
+                                </label>
+                                <textarea
+                                    value={formData.begin_message}
+                                    onChange={(e) => setFormData({ ...formData, begin_message: e.target.value })}
+                                    rows={3}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                    placeholder="Hello! Thank you for calling. How can I help you today?"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    The first thing your agent says when it answers. Leave empty for dynamic greeting.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Agent Instructions (System Prompt)
+                                </label>
+                                <textarea
+                                    value={formData.general_prompt}
+                                    onChange={(e) => setFormData({ ...formData, general_prompt: e.target.value })}
+                                    rows={12}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white font-mono text-sm"
+                                    placeholder={`You are a professional AI assistant for [Business Name]. Your role is to help callers with:\n- Scheduling appointments\n- Answering common questions\n- Taking messages when the team is unavailable\n\nBe polite, professional, and helpful. If you don't know the answer, offer to take a message and have someone call back.\n\nBusiness hours: Monday-Friday 9am-5pm\nServices offered: ...`}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    This is the core personality and instruction set for your AI agent. Include business details, services, hours, policies, and how to handle common scenarios.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Business Description
+                                </label>
+                                <textarea
+                                    value={formData.business_description}
+                                    onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
+                                    rows={4}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                    placeholder="Describe your business, services, and what makes you unique..."
+                                />
+                            </div>
+
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <Brain className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm">
+                                        <p className="font-medium text-blue-800 dark:text-blue-200">How it works</p>
+                                        <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                            The <strong>Agent Instructions</strong> control your AI's behavior on every call. Include your business hours, services, pricing FAQs, and call handling rules. The <strong>Opening Message</strong> is the first thing callers hear.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveSettings}
+                                    disabled={saving}
+                                    className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {saving ? 'Saving & Syncing...' : 'Save & Sync to Agent'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Tab: Knowledge Base */}
+                    {activeTab === 'knowledge' && (
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Knowledge Base</h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Give your AI agent access to your business information. Upload documents, add text, or scrape your website so the agent can answer questions accurately.
+                                    </p>
+                                </div>
+
+                                {/* Existing Knowledge Bases */}
+                                {knowledgeBases.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Knowledge Bases</h4>
+                                        {knowledgeBases.map((kb) => (
+                                            <div
+                                                key={kb.knowledge_base_id}
+                                                className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                                                    selectedKbId === kb.knowledge_base_id
+                                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                }`}
+                                                onClick={() => setSelectedKbId(
+                                                    selectedKbId === kb.knowledge_base_id ? null : kb.knowledge_base_id
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <BookOpen className="w-5 h-5 text-purple-500" />
+                                                    <div>
+                                                        <p className="font-medium text-gray-900 dark:text-white">{kb.knowledge_base_name}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {kb.status === 'complete' ? 'Ready' :
+                                                             kb.status === 'in_progress' ? 'Processing...' :
+                                                             kb.status === 'error' ? 'Error' : kb.status}
+                                                            {kb.knowledge_base_sources && ` • ${kb.knowledge_base_sources.length} source(s)`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteKB(kb.knowledge_base_id); }}
+                                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Create New KB */}
+                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Create New Knowledge Base</h4>
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            value={kbName}
+                                            onChange={(e) => setKbName(e.target.value)}
+                                            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            placeholder="e.g., Company FAQ, Service Catalog"
+                                            maxLength={40}
+                                        />
+                                        <button
+                                            onClick={handleCreateKB}
+                                            disabled={kbLoading || !kbName.trim()}
+                                            className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {kbLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                            Create
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Add Content to Selected KB */}
+                            {selectedKbId && (
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        Add Content to: {knowledgeBases.find(kb => kb.knowledge_base_id === selectedKbId)?.knowledge_base_name}
+                                    </h3>
+
+                                    {/* Add Text */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="w-4 h-4 text-gray-500" />
+                                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Add Text Content</h4>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={kbTextTitle}
+                                            onChange={(e) => setKbTextTitle(e.target.value)}
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            placeholder="Title (e.g., Business Hours, Pricing, Services)"
+                                        />
+                                        <textarea
+                                            value={kbTextContent}
+                                            onChange={(e) => setKbTextContent(e.target.value)}
+                                            rows={6}
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                            placeholder="Enter the content your agent should know about this topic..."
+                                        />
+                                        <button
+                                            onClick={handleAddText}
+                                            disabled={!kbTextTitle.trim() || !kbTextContent.trim()}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add Text
+                                        </button>
+                                    </div>
+
+                                    {/* Add URL */}
+                                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Globe className="w-4 h-4 text-gray-500" />
+                                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Scrape from Website</h4>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <input
+                                                type="url"
+                                                value={kbUrl}
+                                                onChange={(e) => setKbUrl(e.target.value)}
+                                                className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                placeholder="https://yourbusiness.com/about"
+                                            />
+                                            <button
+                                                onClick={handleAddUrl}
+                                                disabled={!kbUrl.trim()}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                <Link className="w-4 h-4" />
+                                                Add URL
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                            The AI will scrape the page content and use it to answer caller questions.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Info Box */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <BookOpen className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm">
+                                        <p className="font-medium text-blue-800 dark:text-blue-200">How Knowledge Bases Work</p>
+                                        <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                            When a caller asks a question, your AI agent automatically searches through your knowledge base to find the most relevant information and uses it to answer. Add your FAQ, pricing, services, policies, and any other info your agent should know.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

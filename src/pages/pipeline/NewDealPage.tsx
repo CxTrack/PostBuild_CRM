@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Save, Zap, Calendar,
     Tag as TagIcon, Info, Target, TrendingUp,
-    Clock, Repeat, Building2, DollarSign
+    Clock, Repeat, Building2, DollarSign, Home, ChevronRight, X
 } from 'lucide-react';
 import { useDealStore } from '@/stores/dealStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { usePipelineConfigStore } from '@/stores/pipelineConfigStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useLenderStore } from '@/stores/lenderStore';
+import { useProductStore } from '@/stores/productStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import { UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import type { Product } from '@/types/app.types';
 
 export default function NewDealPage() {
     const navigate = useNavigate();
@@ -23,8 +25,15 @@ export default function NewDealPage() {
     const { stages } = usePipelineConfigStore();
     const { currentOrganization } = useOrganizationStore();
     const { lenders, fetchLenders, createLender } = useLenderStore();
+    const { products, fetchProducts } = useProductStore();
     const labels = usePageLabels('pipeline');
     const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
+
+    // Loan products for mortgage broker
+    const loanProducts = useMemo(() => {
+        if (!isMortgage) return [];
+        return products.filter(p => p.is_active && p.loan_type);
+    }, [isMortgage, products]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -49,6 +58,7 @@ export default function NewDealPage() {
         recurring_interval: 'monthly' as 'monthly' | 'quarterly' | 'annual',
         description: '',
         tags: [] as string[],
+        product_id: '',
         lender_id: '',
         commission_percentage: '',
         volume_commission_percentage: '',
@@ -56,8 +66,11 @@ export default function NewDealPage() {
 
     useEffect(() => {
         fetchCustomers();
-        if (isMortgage) fetchLenders();
-    }, [fetchCustomers, isMortgage, fetchLenders]);
+        if (isMortgage) {
+            fetchLenders();
+            fetchProducts(currentOrganization?.id);
+        }
+    }, [fetchCustomers, isMortgage, fetchLenders, fetchProducts, currentOrganization?.id]);
 
     const availableStages = useMemo(() => {
         if (stages.length > 0) {
@@ -114,6 +127,18 @@ export default function NewDealPage() {
             tags: prev.tags.filter(t => t !== tagToRemove)
         }));
     };
+
+    const handleLoanProductChange = (productId: string) => {
+        const product = loanProducts.find(p => p.id === productId);
+        setFormData(prev => ({
+            ...prev,
+            product_id: productId,
+            // Auto-fill title if empty
+            title: prev.title || (product?.name || ''),
+        }));
+    };
+
+    const selectedLoanProduct = loanProducts.find(p => p.id === formData.product_id);
 
     const handleLenderChange = (lenderId: string) => {
         const lender = lenders.find(l => l.id === lenderId);
@@ -183,6 +208,7 @@ export default function NewDealPage() {
                 recurring_interval: formData.revenue_type === 'recurring' ? formData.recurring_interval : undefined,
                 description: formData.description || undefined,
                 tags: formData.tags,
+                product_id: formData.product_id || undefined,
                 lender_id: formData.lender_id || undefined,
                 commission_percentage: parseFloat(formData.commission_percentage) || 0,
                 volume_commission_percentage: parseFloat(formData.volume_commission_percentage) || 0,
@@ -329,6 +355,118 @@ export default function NewDealPage() {
                                 </div>
                             </div>
                         </Card>
+
+                        {/* Loan Product Selector (Mortgage only) */}
+                        {isMortgage && (
+                            <Card className="p-6 border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                    <Home className="text-primary-500" size={18} />
+                                    Loan Product
+                                </h3>
+
+                                <div className="space-y-4">
+                                    {loanProducts.length > 0 ? (
+                                        <>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {loanProducts.map(product => (
+                                                    <button
+                                                        key={product.id}
+                                                        type="button"
+                                                        onClick={() => handleLoanProductChange(product.id)}
+                                                        className={`p-3 rounded-xl border-2 text-left transition-all ${formData.product_id === product.id
+                                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-sm'
+                                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="min-w-0">
+                                                                <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{product.name}</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    {product.loan_type && (
+                                                                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase rounded">
+                                                                            {product.loan_type}
+                                                                        </span>
+                                                                    )}
+                                                                    {product.interest_rate_type && (
+                                                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-medium">
+                                                                            {product.interest_rate_type}
+                                                                        </span>
+                                                                    )}
+                                                                    {product.min_rate != null && product.max_rate != null && (
+                                                                        <span className="text-[11px] text-green-600 dark:text-green-400 font-medium">
+                                                                            {product.min_rate}%&ndash;{product.max_rate}%
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {formData.product_id === product.id && (
+                                                                <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                                                    <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {formData.product_id && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, product_id: '' }))}
+                                                    className="text-xs text-gray-500 hover:text-red-500 transition-colors flex items-center gap-1"
+                                                >
+                                                    <X size={12} /> Clear selection
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                                            <Home size={24} className="mx-auto text-gray-400 mb-2" />
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">No loan products configured</p>
+                                            <a
+                                                href="/dashboard/products/new"
+                                                className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium inline-flex items-center gap-1"
+                                            >
+                                                Add your first loan product <ChevronRight size={12} />
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {selectedLoanProduct && (
+                                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                {selectedLoanProduct.min_amount != null && selectedLoanProduct.max_amount != null && (
+                                                    <div>
+                                                        <span className="text-gray-500 dark:text-gray-400">Amount Range:</span>
+                                                        <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                                                            ${selectedLoanProduct.min_amount.toLocaleString()} &ndash; ${selectedLoanProduct.max_amount.toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {selectedLoanProduct.min_term_months != null && selectedLoanProduct.max_term_months != null && (
+                                                    <div>
+                                                        <span className="text-gray-500 dark:text-gray-400">Term:</span>
+                                                        <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                                                            {selectedLoanProduct.min_term_months} &ndash; {selectedLoanProduct.max_term_months} months
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {selectedLoanProduct.down_payment_min_pct != null && (
+                                                    <div>
+                                                        <span className="text-gray-500 dark:text-gray-400">Min Down:</span>
+                                                        <span className="ml-1 font-medium text-gray-900 dark:text-white">{selectedLoanProduct.down_payment_min_pct}%</span>
+                                                    </div>
+                                                )}
+                                                {selectedLoanProduct.insurance_required && (
+                                                    <div>
+                                                        <span className="text-orange-600 dark:text-orange-400 font-medium">Mortgage insurance required</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        )}
 
                         {/* Revenue Model */}
                         <Card className="p-6 border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">

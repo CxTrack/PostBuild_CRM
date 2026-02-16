@@ -89,6 +89,18 @@ export interface Product {
   discount_type?: string;
   image_url?: string;
   custom_fields?: Record<string, any>;
+  // Loan product fields (mortgage_broker industry)
+  loan_type?: string;
+  interest_rate_type?: string;
+  min_rate?: number;
+  max_rate?: number;
+  min_term_months?: number;
+  max_term_months?: number;
+  min_amount?: number;
+  max_amount?: number;
+  down_payment_min_pct?: number;
+  insurance_required?: boolean;
+  notes?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
