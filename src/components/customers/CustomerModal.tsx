@@ -1,9 +1,11 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, User, Mail, Building, Save, AlertCircle, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, User, Mail, Building, Save, AlertCircle, MapPin, ChevronDown, ChevronUp, Camera, Loader2, CreditCard } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
@@ -18,8 +20,12 @@ interface CustomerModalProps {
 export default function CustomerModal({ isOpen, onClose, customer, navigateToProfileAfterCreate = false }: CustomerModalProps) {
   const navigate = useNavigate();
   const { createCustomer, updateCustomer } = useCustomerStore();
+  const { currentOrganization } = useOrganizationStore();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState('');
+  const scanInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     customer_type: customer?.customer_type || 'personal',
@@ -63,6 +69,85 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
       setShowAddress(Boolean(customer.address || customer.city || customer.state || customer.postal_code));
     }
   }, [customer]);
+
+  const handleScanCard = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentOrganization?.id) return;
+
+    setIsScanning(true);
+    setScanProgress('Uploading image...');
+    setError('');
+
+    try {
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${currentOrganization.id}/${timestamp}_${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('business-cards')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw new Error('Upload failed: ' + uploadError.message);
+
+      const { data: signedUrlData } = await supabase.storage
+        .from('business-cards')
+        .createSignedUrl(path, 3600);
+
+      const imageUrl = signedUrlData?.signedUrl || path;
+
+      setScanProgress('Scanning card...');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const ocrResponse = await fetch(`${supabaseUrl}/functions/v1/ocr-extract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ file_path: path, bucket: 'business-cards' }),
+      });
+
+      if (!ocrResponse.ok) {
+        const errorData = await ocrResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'OCR processing failed');
+      }
+
+      const ocrData = await ocrResponse.json();
+
+      if (ocrData.success && ocrData.contact) {
+        const c = ocrData.contact;
+        setFormData(prev => ({
+          ...prev,
+          first_name: c.first_name || prev.first_name,
+          last_name: c.last_name || prev.last_name,
+          email: c.email || prev.email,
+          phone: c.phone || prev.phone,
+          company: c.company || prev.company,
+          customer_type: c.company ? 'business' : prev.customer_type,
+          address: c.address || prev.address,
+          city: c.city || prev.city,
+          state: c.state || prev.state,
+          postal_code: c.postal_code || prev.postal_code,
+          country: c.country || prev.country,
+          card_image_url: imageUrl,
+        }));
+        if (c.address || c.city || c.state || c.postal_code) {
+          setShowAddress(true);
+        }
+        toast.success('Business card scanned — fields populated!');
+      } else {
+        throw new Error(ocrData.error || 'Could not extract contact info');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to scan business card');
+      toast.error(err.message || 'Scan failed');
+    } finally {
+      setIsScanning(false);
+      setScanProgress('');
+      e.target.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,8 +272,41 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           </button>
         </div>
 
+        {/* Scan Business Card — shown for new customers */}
+        {!customer?.id && (
+          <div className="mx-6 mt-4">
+            <button
+              type="button"
+              onClick={() => scanInputRef.current?.click()}
+              disabled={isScanning}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium text-sm transition-all disabled:opacity-60"
+            >
+              {isScanning ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  {scanProgress}
+                </>
+              ) : (
+                <>
+                  <Camera size={18} />
+                  <span className="hidden sm:inline">Scan Business Card</span>
+                  <span className="sm:hidden">Scan Card to Auto-Fill</span>
+                </>
+              )}
+            </button>
+            <input
+              ref={scanInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanCard}
+              className="hidden"
+            />
+          </div>
+        )}
+
         {formData.card_image_url && (
-          <div className="mx-6 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="mx-6 mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Business Card Reference:</p>
             <img
               src={formData.card_image_url}
