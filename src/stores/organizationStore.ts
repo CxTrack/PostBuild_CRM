@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { Organization, OrganizationMember, UserProfile } from '../types/database.types';
-import { clearOrganizationDataStores } from './storeCleanup';
+import { cleanupOrganizationData } from './storeCleanupRegistry';
 
 // Read auth token directly from localStorage — bypasses Supabase JS client's AbortController.
 // The Supabase client persists session under sb-{ref}-auth-token in localStorage.
@@ -193,7 +193,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         // Clear data stores if switching to a different org
         if (currentOrganization?.id && currentOrganization.id !== orgId) {
           console.log('[OrgStore] Switching org, clearing data stores...');
-          clearOrganizationDataStores();
+          cleanupOrganizationData();
         }
 
         set({

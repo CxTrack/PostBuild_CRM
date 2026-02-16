@@ -8,6 +8,10 @@
  *
  * Note: Persisted stores (authStore, organizationStore, themeStore) are NOT
  * cleared here - they handle their own cleanup.
+ *
+ * IMPORTANT: This file does NOT import organizationStore.  The reverse
+ * direction (organizationStore needing cleanup) goes through the
+ * storeCleanupRegistry callback to avoid circular dependencies.
  */
 
 import { useCalendarStore } from './calendarStore';
@@ -18,6 +22,18 @@ import { useInvoiceStore } from './invoiceStore';
 import { usePreferencesStore } from './preferencesStore';
 import { useQuoteStore } from './quoteStore';
 import { useTaskStore } from './taskStore';
+import { registerCleanupCallback } from './storeCleanupRegistry';
+
+const dataStores = [
+  useCalendarStore,
+  useCallStore,
+  useCustomerStore,
+  useDealStore,
+  useInvoiceStore,
+  usePreferencesStore,
+  useQuoteStore,
+  useTaskStore,
+];
 
 /**
  * Clears all non-persisted data stores.
@@ -27,15 +43,9 @@ export function clearAllDataStores(): void {
   console.log('[StoreCleanup] Clearing all data stores...');
 
   try {
-    useCalendarStore.getState().reset();
-    useCallStore.getState().reset();
-    useCustomerStore.getState().reset();
-    useDealStore.getState().reset();
-    useInvoiceStore.getState().reset();
-    usePreferencesStore.getState().reset();
-    useQuoteStore.getState().reset();
-    useTaskStore.getState().reset();
-
+    for (const store of dataStores) {
+      store.getState().reset();
+    }
     console.log('[StoreCleanup] All data stores cleared successfully');
   } catch (error) {
     console.error('[StoreCleanup] Error clearing stores:', error);
@@ -52,3 +62,7 @@ export function clearOrganizationDataStores(): void {
   console.log('[StoreCleanup] Clearing organization-specific stores...');
   clearAllDataStores();
 }
+
+// Register the org-switch cleanup so organizationStore can invoke it
+// without importing this module (which would create a circular dep).
+registerCleanupCallback(clearOrganizationDataStores);
