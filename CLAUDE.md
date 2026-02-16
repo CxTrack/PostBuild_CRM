@@ -102,6 +102,18 @@ curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members" 
 | `user_profiles` | Extended user info (REST API accessible) |
 | `organizations` | Companies, industry_template, subscription_tier |
 | `organization_members` | Links users to orgs (user_id, organization_id, role) |
+| `team_invitations` | Token-based team invitations (7-day expiry) |
+
+### Supabase Edge Function Secrets
+| Secret | Purpose |
+|--------|---------|
+| `RESEND_API_KEY` | Resend email API (send-invitation edge function) |
+| `OPENROUTER_API_KEY` | AI models (copilot-chat, receipt-scan) |
+| `RETELL_API_KEY` | Voice agent (provision, list-voices, update, manage-kb, webhook) |
+| `GOOGLE_CLOUD_VISION_API_KEY` | Business card OCR (ocr-extract) |
+| `TWILIO_MASTER_ACCOUNT_SID` | Phone numbers + SMS |
+| `TWILIO_MASTER_AUTH_TOKEN` | Twilio auth |
+| `TWILIO_SIP_TRUNK_*` | SIP trunk (SID, TERMINATION_URI, AUTH_USERNAME, AUTH_PASSWORD) |
 
 ---
 
@@ -149,15 +161,19 @@ CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 **Config:** `src/config/modules.config.ts`
 **Hook:** `src/hooks/useIndustryLabel.ts` and `src/hooks/usePageLabels.ts`
 
-| Industry | customers | invoices | quotes | pipeline |
-|----------|-----------|----------|--------|----------|
-| mortgage_broker | Borrowers | Commissions | - | Applications |
-| real_estate | Contacts | - | Listing Proposals | Deal Pipeline |
-| contractors | Clients | Invoices | Estimates | Job Pipeline |
-| healthcare | Patients | Invoices | - | - |
-| legal_services | Clients | Invoices | Fee Proposals | Case Pipeline |
-| construction | Clients | Invoices | Bids | Projects |
-| general_business | Customers | Invoices | Quotes | Pipeline |
+| Industry | customers | invoices | quotes | pipeline | calls |
+|----------|-----------|----------|--------|----------|-------|
+| agency | Clients | Billing | Proposals | Projects | Calls |
+| mortgage_broker | Borrowers | Commissions | - | Applications | Call Log |
+| real_estate | Contacts | - | Listing Proposals | Deal Pipeline | Calls |
+| contractors | Clients | Invoices | Estimates | Job Pipeline | Calls |
+| healthcare | Patients | Invoices | - | - | Calls |
+| legal_services | Clients | Invoices | Fee Proposals | Case Pipeline | Calls |
+| construction | Clients | Invoices | Bids | Projects | Calls |
+| tax_accounting | Clients | Invoices | Engagement Letters | - | Calls |
+| distribution_logistics | Accounts | Invoices | Quotes | Order Pipeline | Calls |
+| gyms_fitness | Members | Invoices | - | Membership Pipeline | Calls |
+| general_business | Customers | Invoices | Quotes | Pipeline | Calls |
 
 **Rule:** Never hardcode user-facing strings. Use `usePageLabels(pageId)` or `useIndustryLabel(moduleId)`.
 
@@ -232,42 +248,39 @@ useEffect(() => {
 
 ---
 
-## RESOLVED ERRORS (fixed 2026-02-13)
+## RESOLVED ERRORS (Summary)
 
-> All three onboarding errors have been resolved via database migrations and code changes.
+> Full details in memory/debugging.md. All resolved 2026-02-13.
 
-### Error 1: AbortError During Onboarding — RESOLVED
-**Root Cause:** PlanPage.tsx had a fragile 4-step chain (users → organizations → user_profiles → organization_members) with retry logic that masked the real issue (RLS blocking).
-**Fix:** Replaced with single atomic `supabase.rpc('create_organization_with_owner', {...})` call. The RPC is `SECURITY DEFINER` so it bypasses RLS.
+| Error | Root Cause | Fix |
+|-------|-----------|-----|
+| AbortError during onboarding | Fragile 4-step chain + RLS blocking | Single atomic `supabase.rpc('create_organization_with_owner')` |
+| 403 on organizations table | Chicken-and-egg RLS — new users can't INSERT | `SECURITY DEFINER` RPC bypasses RLS atomically |
+| Auth session not establishing | `handle_new_user()` trigger missing records | Trigger now creates `public.users` + `user_profiles` |
 
-### Error 2: 403 Forbidden on Organizations Table — RESOLVED
-**Root Cause:** Chicken-and-egg RLS problem — new users couldn't INSERT into organizations because policies required membership that didn't exist yet.
-**Fix:** Created `create_organization_with_owner()` SECURITY DEFINER RPC function that atomically creates org + user_profiles + organization_members. Fixed RLS policies to restrict direct INSERT (only via RPC).
+### Key Migrations Applied (2026-02-13)
+- RLS enabled on all unprotected tables, dev bypass policies removed
+- Stripe key columns dropped from organizations
+- `create_organization_with_owner()` RPC + fixed RLS policies
+- `handle_new_user()` trigger updated
 
-### Error 3: Auth Session Not Establishing After Signup — RESOLVED
-**Root Cause:** Email confirmation was already disabled. The real issue was that `handle_new_user()` trigger didn't create `user_profiles` or `public.users` records, causing FK violations when creating organization_members.
-**Fix:** Updated trigger to create both `public.users` and `user_profiles` records. Simplified Register.tsx to remove unnecessary fallback sign-in logic.
+### Recent Fixes (2026-02-14 to 2026-02-16)
+| Commit | Fix |
+|--------|-----|
+| `46b120a` | CoPilot 401 — redeployed with `verify_jwt: false`, localStorage token reading |
+| `41f11f8` | TDZ crash — moved `visibleNavItems` above `useCallback` dependency |
+| `dc9f311` | Sidebar DnD snap-back — optimistic Zustand update before async DB save |
+| `eb0e146` | IP-based country detection + trial fallback to `created_at` |
 
----
-
-### Database Migrations Applied (2026-02-13)
-
-| Migration | Description |
-|-----------|-------------|
-| `remove_dev_bypass_policies` | Dropped `dev_anon_all` and `dev_auth_all` from customers, pipeline_items, tasks, calendar_events |
-| `enable_rls_on_unprotected_tables` | Enabled RLS on calls, profiles, audit_requests, custom_crm_requests, onboarding_leads, plan_module_access, industries, industry_templates, voice_agent_configs |
-| `remove_stripe_keys_from_organizations` | Dropped `stripe_secret_key` and `stripe_publishable_key` columns |
-| `create_organization_with_owner_rpc` | Created atomic SECURITY DEFINER RPC for org creation |
-| `fix_org_and_members_rls_policies` | Fixed RLS on organizations and organization_members tables |
-| `fix_handle_new_user_trigger` | Updated trigger to create public.users + user_profiles records |
-
-### Code Changes (2026-02-13)
-
-| File | Changes Made |
-|------|-------------|
-| `src/pages/onboarding/PlanPage.tsx` | Replaced 4-step chain + retry logic with single `supabase.rpc('create_organization_with_owner')` call |
-| `src/pages/Register.tsx` | Removed fallback sign-in logic, simplified to just `signUp()` + navigate |
-| `src/stores/organizationStore.ts` | Fixed `_hasHydrated` default from `true` to `false`, added `onRehydrateStorage` callback |
+### Cross-Industry Review Fixes (2026-02-16)
+| Change | Details |
+|--------|---------|
+| Midnight theme: `slate-*` → `gray-*` | 77 files, 459 occurrences — midnight.css only intercepts `gray-*` classes |
+| `software_development` → `agency` | Renamed template key in config, DB, onboarding, marketing site. No existing orgs affected |
+| `calls` module → ALL 11 industries | Was missing from tax_accounting, distribution_logistics, software_development (now agency) |
+| Receipt scanning on Invoices page | `ExpenseModal` now accessible from Invoices (all 11 industries), not just Financials (3 industries) |
+| Voice agent industry guard | `VoiceAgentSetup.tsx` checks `INDUSTRY_TEMPLATES` for `calls` — shows "Not Available" if missing |
+| Lender store industry guard | `lenderStore.fetchLenders()` returns early if `industry_template !== 'mortgage_broker'` |
 
 ---
 
@@ -281,6 +294,16 @@ useEffect(() => {
 | 2026-02-12 | Missing route in App.tsx | Component existed but wasn't routed | Check: file exists, imported, route defined |
 | 2026-02-12 | Searched wrong directory | Kept looking in wrong path | ALWAYS verify: `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
 | 2026-02-12 | Said "Vercel" instead of Netlify | Wrong platform mentioned | Platform is ALWAYS Netlify |
+
+---
+
+## Confluence Documentation Boundaries
+
+**ONLY operate within these two Confluence pages** (under Technical Knowledge > Development):
+- `CxTrack - Official Website` — marketing site docs
+- `CxTrack - CRM Application` — CRM app docs
+
+**NEVER** delete, modify, or interfere with any other Confluence pages. Other developers maintain pages like Development Process, Demo environments, Vulnerabilities, Calcom, Troubleshooting, Setup, etc. — those are off-limits.
 
 ---
 
