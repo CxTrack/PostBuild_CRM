@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl } from '@/lib/supabase';
 import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
@@ -217,21 +217,109 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             }
         }
 
-        // AI Response Logic
+        // AI Response Logic — call copilot-chat edge function
         if (activeConversation.id === 'ai-agent' || activeConversation.name === 'Sparky AI') {
             setIsTyping(true);
-            setTimeout(async () => {
-                const aiMsg: Message = {
-                    id: `ai-${Date.now()}`,
-                    content: `Hi! I'm Sparky, your CxTrack AI Assistant. I can help you manage your CRM, check deal statuses, or even draft emails. You just said: "${messageContent}". How else can I help?`,
-                    sender_id: 'sparky-ai',
-                    created_at: new Date().toISOString(),
-                    sender: { full_name: 'Sparky AI' },
-                    reactions: [],
-                };
-                setMessages(prev => [...prev, aiMsg]);
-                setIsTyping(false);
-            }, 1500);
+            (async () => {
+                try {
+                    // Read auth token from localStorage (avoids Supabase AbortController issue)
+                    let accessToken: string | null = null;
+                    try {
+                        const ref = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1];
+                        const storageKey = ref ? `sb-${ref}-auth-token` : null;
+                        const stored = storageKey ? localStorage.getItem(storageKey) : null;
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            accessToken = parsed?.access_token || null;
+                        }
+                        if (!accessToken) {
+                            const fallbackKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+                            if (fallbackKey) {
+                                const parsed = JSON.parse(localStorage.getItem(fallbackKey) || '{}');
+                                accessToken = parsed?.access_token || null;
+                            }
+                        }
+                    } catch {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        accessToken = session?.access_token || null;
+                    }
+
+                    if (!accessToken) {
+                        const aiMsg: Message = {
+                            id: `ai-${Date.now()}`,
+                            content: "I need you to be signed in to use AI features. Please refresh the page and try again.",
+                            sender_id: 'sparky-ai',
+                            created_at: new Date().toISOString(),
+                            sender: { full_name: 'Sparky AI' },
+                            reactions: [],
+                        };
+                        setMessages(prev => [...prev, aiMsg]);
+                        setIsTyping(false);
+                        return;
+                    }
+
+                    // Build conversation history from recent messages
+                    const recentMessages = messages.slice(-10).map(m => ({
+                        role: m.sender_id === 'sparky-ai' ? 'assistant' as const : 'user' as const,
+                        content: m.content,
+                    }));
+
+                    const org = useOrganizationStore.getState().currentOrganization;
+
+                    const response = await fetch(`${supabaseUrl}/functions/v1/copilot-chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: messageContent,
+                            conversationHistory: recentMessages,
+                            context: {
+                                page: 'Team Chat',
+                                industry: org?.industry_template || 'general_business',
+                                orgName: org?.name || 'Your Organization',
+                            },
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    let aiContent: string;
+                    if (!response.ok) {
+                        if (data.error === 'token_limit_reached') {
+                            aiContent = "You've used all your AI tokens for this month. Upgrade your plan for more monthly tokens, or wait until your tokens reset at the start of the next billing period.";
+                        } else {
+                            aiContent = "Sorry, I encountered an issue processing your request. Please try again in a moment.";
+                        }
+                    } else {
+                        aiContent = data.response || "I'm not sure how to respond to that. Could you try rephrasing?";
+                    }
+
+                    const aiMsg: Message = {
+                        id: `ai-${Date.now()}`,
+                        content: aiContent,
+                        sender_id: 'sparky-ai',
+                        created_at: new Date().toISOString(),
+                        sender: { full_name: 'Sparky AI' },
+                        reactions: [],
+                    };
+                    setMessages(prev => [...prev, aiMsg]);
+                } catch (err) {
+                    console.error('Sparky AI error:', err);
+                    const aiMsg: Message = {
+                        id: `ai-${Date.now()}`,
+                        content: "Sorry, I encountered an error. Please try again.",
+                        sender_id: 'sparky-ai',
+                        created_at: new Date().toISOString(),
+                        sender: { full_name: 'Sparky AI' },
+                        reactions: [],
+                    };
+                    setMessages(prev => [...prev, aiMsg]);
+                } finally {
+                    setIsTyping(false);
+                }
+            })();
         }
     };
 

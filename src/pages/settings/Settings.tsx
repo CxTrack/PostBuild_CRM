@@ -398,7 +398,7 @@ export default function Settings() {
               { id: 'twilio', label: 'Communications', icon: MessageSquare },
               { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
               { id: 'sharing', label: 'Sharing', icon: Share2 },
-              { id: 'voiceagent', label: 'Voice Agent', icon: Mic },
+              { id: 'voiceagent', label: 'Voice Agent', icon: Sparkles, premium: true },
               { id: 'notifications', label: 'Notifications', icon: Users },
               { id: 'security', label: 'Security', icon: Key },
               { id: 'help', label: 'Help', icon: HelpCircle },
@@ -406,10 +406,15 @@ export default function Settings() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
-                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                  : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 border border-transparent'
-                  }`}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  (tab as any).premium
+                    ? activeTab === tab.id
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-500 shadow-lg shadow-purple-500/25'
+                      : 'bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-purple-600 dark:text-purple-400 border border-purple-300 dark:border-purple-700 hover:from-purple-500/20 hover:to-indigo-500/20 hover:shadow-md hover:shadow-purple-500/10'
+                    : activeTab === tab.id
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 border border-transparent'
+                }`}
               >
                 <tab.icon className="w-4 h-4 mr-2" />
                 {tab.label}
