@@ -307,6 +307,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     const data = await response.json();
 
                     let aiContent: string;
+                    let aiAction: Message['action'] = undefined;
+                    let aiActionStatus: Message['actionStatus'] = undefined;
+
                     if (!response.ok) {
                         if (data.error === 'token_limit_reached') {
                             aiContent = "You've used all your AI tokens for this month. Upgrade your plan for more monthly tokens, or wait until your tokens reset at the start of the next billing period.";
@@ -314,7 +317,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             aiContent = `Sorry, I encountered an issue processing your request. Please try again in a moment.`;
                         }
                     } else {
-                        aiContent = data.response || "I'm not sure how to respond to that. Could you try rephrasing?";
+                        const rawResponse = data.response || "I'm not sure how to respond to that. Could you try rephrasing?";
+                        // Parse for action proposals
+                        const parsed = parseActionProposal(rawResponse);
+                        aiContent = parsed.textContent;
+
+                        // Permission gate: strip action if user doesn't have permission
+                        if (parsed.action) {
+                            if (checkActionPermission(parsed.action.actionType)) {
+                                aiAction = parsed.action;
+                                aiActionStatus = 'proposed';
+                            } else {
+                                aiContent += "\n\n\u26a0\ufe0f You don't have permission to perform this action. Contact your admin.";
+                            }
+                        }
                     }
                     // Log debug info to console for troubleshooting
                     if (data.debug) {
@@ -331,6 +347,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         created_at: new Date().toISOString(),
                         sender: { full_name: 'Sparky AI' },
                         reactions: [],
+                        action: aiAction,
+                        actionStatus: aiActionStatus,
                     };
                     setMessages(prev => [...prev, aiMsg]);
                 } catch (err) {
@@ -350,6 +368,39 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             })();
         }
     };
+
+    // Confirm an action proposed by Sparky AI
+    const handleConfirmAction = useCallback(async (messageId: string, editedFields: Record<string, any>) => {
+        // Set status to executing
+        setMessages(prev => prev.map(m =>
+            m.id === messageId ? { ...m, actionStatus: 'executing' as ActionStatus } : m
+        ));
+
+        const message = messages.find(m => m.id === messageId);
+        if (!message?.action) return;
+
+        const result = await executeAction(message.action, editedFields);
+
+        // Update the message with the result
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, actionStatus: (result.success ? 'completed' : 'failed') as ActionStatus, actionResult: result }
+                : m
+        ));
+
+        if (result.success) {
+            toast.success(result.message);
+        } else {
+            toast.error(result.message);
+        }
+    }, [messages]);
+
+    // Cancel an action proposed by Sparky AI
+    const handleCancelAction = useCallback((messageId: string) => {
+        setMessages(prev => prev.map(m =>
+            m.id === messageId ? { ...m, actionStatus: 'cancelled' as ActionStatus } : m
+        ));
+    }, []);
 
     const handleAddReaction = useCallback((messageId: string, emoji: string) => {
         setMessages(prev => prev.map(msg => {
@@ -701,6 +752,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                         onAddReaction={handleAddReaction}
                                         onRemoveReaction={handleRemoveReaction}
                                         compact={chatSettings.compact_mode}
+                                        onConfirmAction={handleConfirmAction}
+                                        onCancelAction={handleCancelAction}
                                     />
                                 ))}
                                 {isTyping && (
