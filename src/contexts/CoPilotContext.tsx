@@ -147,8 +147,33 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // AI RESPONSE: Call the Edge Function
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      // Read auth token directly from localStorage to avoid Supabase AbortController issue
+      // (supabase.auth.getSession() can return stale/null during auth state transitions)
+      let accessToken: string | null = null;
+      try {
+        // Derive storage key dynamically from SUPABASE_URL (pattern: sb-{ref}-auth-token)
+        const ref = SUPABASE_URL.split('//')[1]?.split('.')[0];
+        const storageKey = ref ? `sb-${ref}-auth-token` : null;
+        const stored = storageKey ? localStorage.getItem(storageKey) : null;
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          accessToken = parsed?.access_token || null;
+        }
+        // Fallback: search for any Supabase auth token key
+        if (!accessToken) {
+          const fallbackKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+          if (fallbackKey) {
+            const parsed = JSON.parse(localStorage.getItem(fallbackKey) || '{}');
+            accessToken = parsed?.access_token || null;
+          }
+        }
+      } catch {
+        // Last resort: use supabase client
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token || null;
+      }
+
+      if (!accessToken) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -171,7 +196,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const response = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

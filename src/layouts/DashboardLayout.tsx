@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -192,25 +192,27 @@ export const DashboardLayout = () => {
     useSensor(KeyboardSensor)
   );
 
-  // Sharing filter — must be defined before handleDragEnd which depends on visibleNavItems
-  const isModuleShared = (path: string) => {
-    if (!currentOrganization?.metadata?.sharing) return true;
+  // Sharing metadata reference for memoization
+  const sharingMetadata = currentOrganization?.metadata?.sharing;
 
-    const pathMap: Record<string, string> = {
-      '/dashboard/customers': 'customers',
-      '/dashboard/calendar': 'calendar',
-      '/dashboard/pipeline': 'pipeline',
-      '/dashboard/tasks': 'tasks',
-      // Default to shared if not explicitly in the map or metadata
-    };
+  // Memoize visible nav items to prevent unnecessary re-renders and DnD instability
+  const visibleNavItems = useMemo(() => {
+    return navItems.filter(item => {
+      if (!sharingMetadata) return true;
 
-    const key = pathMap[path];
-    if (!key) return true;
+      const pathMap: Record<string, string> = {
+        '/dashboard/customers': 'customers',
+        '/dashboard/calendar': 'calendar',
+        '/dashboard/pipeline': 'pipeline',
+        '/dashboard/tasks': 'tasks',
+      };
 
-    return currentOrganization.metadata.sharing[key] ?? true;
-  };
+      const key = pathMap[item.path];
+      if (!key) return true;
 
-  const visibleNavItems = navItems.filter(item => isModuleShared(item.path));
+      return sharingMetadata[key] ?? true;
+    });
+  }, [navItems, sharingMetadata]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
