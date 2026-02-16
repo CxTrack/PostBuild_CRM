@@ -89,6 +89,13 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     },
 
     saveSidebarOrder: async (order: string[]) => {
+        // Optimistically update Zustand state BEFORE async DB call
+        // so the useEffect that rebuilds navItems sees the new order immediately
+        // and doesn't snap the sidebar back to the old order while awaiting DB
+        set(state => ({
+            preferences: { ...state.preferences, sidebarOrder: order }
+        }));
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -108,10 +115,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                     onConflict: 'user_id,organization_id,preference_type'
                 });
 
-            set(state => ({
-                preferences: { ...state.preferences, sidebarOrder: order }
-            }));
-            toast.success('Navigation order saved');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to save navigation order';
             toast.error(message);
