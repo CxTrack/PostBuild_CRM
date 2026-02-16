@@ -721,30 +721,30 @@ const Pipeline: React.FC = () => {
         />
       ) : viewMode === 'split' ? (
         <div className="grid grid-cols-12 gap-6" style={{ height: 'calc(100vh - 400px)' }}>
-          <div className="col-span-12 lg:col-span-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
-            <div className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-700 px-6 py-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
+          <div className="col-span-12 lg:col-span-4 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+            <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
             </div>
             <div className="overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
               {sortedItems.map(item => (
                 <div
                   key={`${item.type}-${item.id}`}
                   onClick={() => setSelectedItem(item)}
-                  className={`px-6 py-4 border-b border-slate-100 dark:border-slate-700 cursor-pointer transition-all ${selectedItem?.id === item.id
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-600 dark:border-l-blue-500'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  className={`px-6 py-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-all ${selectedItem?.id === item.id
+                    ? 'bg-gray-100 dark:bg-gray-700 border-l-4 border-l-blue-600 dark:border-l-blue-500'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
                         {item.customer_name}
                       </p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {item.number}
                       </p>
                     </div>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
                       ${item.total_amount.toLocaleString()}
                     </p>
                   </div>
@@ -752,7 +752,7 @@ const Pipeline: React.FC = () => {
                     <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${getStageColor(item.stage)}`}>
                       {getStageLabel(item.stage)}
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {Math.round(item.probability * 100)}% probability
                     </span>
                   </div>
@@ -761,25 +761,25 @@ const Pipeline: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-8 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+          <div className="col-span-12 lg:col-span-8 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
             {selectedItem ? (
               <div className="h-full overflow-y-auto">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b-2 border-slate-200 dark:border-slate-700 px-8 py-6">
+                <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-8 py-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                         {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
                       </p>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                         {selectedItem.customer_name}
                       </h2>
-                      <p className="text-slate-600 dark:text-slate-400">
+                      <p className="text-gray-600 dark:text-gray-400">
                         {selectedItem.customer_email}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{labels.columns?.value || 'Value'}</p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{labels.columns?.value || 'Value'}</p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
                         ${selectedItem.total_amount.toLocaleString()}
                       </p>
                     </div>
@@ -789,13 +789,13 @@ const Pipeline: React.FC = () => {
                       {getStageLabel(selectedItem.stage)}
                     </span>
                     <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-white/50 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-600 rounded-full transition-all"
                           style={{ width: `${selectedItem.probability * 100}%` }}
                         />
                       </div>
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                         {Math.round(selectedItem.probability * 100)}% probability
                       </span>
                     </div>
@@ -804,31 +804,31 @@ const Pipeline: React.FC = () => {
 
                 <div className="p-8 space-y-8">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                       {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Information
                     </h3>
                     <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Number</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Number</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
                           {selectedItem.number}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Status</p>
-                        <p className="font-semibold text-slate-900 dark:text-white capitalize">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                        <p className="font-semibold text-gray-900 dark:text-white capitalize">
                           {selectedItem.status}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Created</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Created</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
                           {new Date(selectedItem.created_at).toLocaleDateString()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Type</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Type</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
                           {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
                         </p>
                       </div>
@@ -836,29 +836,29 @@ const Pipeline: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                       {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Timeline
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                           <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 dark:text-white">{labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Created</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="font-semibold text-gray-900 dark:text-white">{labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Created</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {new Date(selectedItem.created_at).toLocaleString()}
                           </p>
                         </div>
                       </div>
                       {selectedItem.status === 'sent' && (
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
                             <Send className="w-5 h-5 text-green-600 dark:text-green-400" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-slate-900 dark:text-white">Sent to Customer</p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="font-semibold text-gray-900 dark:text-white">Sent to Customer</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {new Date(selectedItem.created_at).toLocaleString()}
                             </p>
                           </div>
@@ -892,16 +892,16 @@ const Pipeline: React.FC = () => {
                           navigate(`/invoices/builder/${selectedItem.id}`);
                         }
                       }}
-                      className="px-6 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-900 dark:text-white"
+                      className="px-6 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-white"
                     >
                       Edit
                     </button>
                     <div className="relative">
                       <button
                         onClick={() => setShowItemMenu(!showItemMenu)}
-                        className="p-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        <MoreVertical className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </button>
                       {showItemMenu && (
                         <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -942,11 +942,11 @@ const Pipeline: React.FC = () => {
             ) : (
               <div className="h-full flex items-center justify-center text-center p-8">
                 <div>
-                  <Mouse className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  <Mouse className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     Select a {labels.entitySingular}
                   </h3>
-                  <p className="text-slate-500 dark:text-slate-400">
+                  <p className="text-gray-500 dark:text-gray-400">
                     Click a {labels.entitySingular} from the list to view details
                   </p>
                 </div>
