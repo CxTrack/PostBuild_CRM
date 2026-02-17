@@ -108,7 +108,7 @@ curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members" 
 | Secret | Purpose |
 |--------|---------|
 | `RESEND_API_KEY` | Resend email API (send-invitation edge function) |
-| `OPENROUTER_API_KEY` | AI models (copilot-chat, receipt-scan) |
+| `OPENROUTER_API_KEY` | AI models (copilot-chat v12, receipt-scan) |
 | `RETELL_API_KEY` | Voice agent (provision, list-voices, update, manage-kb, webhook) |
 | `GOOGLE_CLOUD_VISION_API_KEY` | Business card OCR (ocr-extract) |
 | `TWILIO_MASTER_ACCOUNT_SID` | Phone numbers + SMS |
@@ -271,6 +271,8 @@ useEffect(() => {
 | `41f11f8` | TDZ crash — moved `visibleNavItems` above `useCallback` dependency |
 | `dc9f311` | Sidebar DnD snap-back — optimistic Zustand update before async DB save |
 | `eb0e146` | IP-based country detection + trial fallback to `created_at` |
+| `656d04c` | Admin Command Center — 16-tab dashboard with real analytics, admin RPCs, API monitoring |
+| `7dd27f0` | Action system in Sparky AI chat + copilot-chat v12 with admin context |
 
 ### Cross-Industry Review Fixes (2026-02-16)
 | Change | Details |
@@ -281,6 +283,24 @@ useEffect(() => {
 | Receipt scanning on Invoices page | `ExpenseModal` now accessible from Invoices (all 11 industries), not just Financials (3 industries) |
 | Voice agent industry guard | `VoiceAgentSetup.tsx` checks `INDUSTRY_TEMPLATES` for `calls` — shows "Not Available" if missing |
 | Lender store industry guard | `lenderStore.fetchLenders()` returns early if `industry_template !== 'mortgage_broker'` |
+
+### Admin Command Center (2026-02-16)
+- **Route**: `/admin` — protected by `RequireAdmin` component
+- **3 Admin Users**: `abdullah.nassar@cxtrack.com`, `cto@cxtrack.com`, `info@cxtrack.com` (in `admin_settings` table)
+- **Sidebar**: DashboardLayout shows Shield icon + "SUPER ADMIN" label → click navigates to `/admin`
+- **16 tabs** in 4 groups: Overview, Analytics, Operations, System
+- **adminStore.ts**: Zustand store using direct `fetch()` for admin RPC calls
+- **9 admin RPC functions**: `admin_get_platform_kpis()`, `admin_get_user_growth()`, `admin_get_org_breakdown()`, `admin_get_module_usage()`, `admin_get_api_usage_summary()`, `admin_get_priority_alerts()`, `admin_get_ai_analytics()`, `admin_get_voice_analytics()`, `admin_get_financial_summary()`, `admin_get_activity_log()`
+- **api_usage_log table**: All 10 edge functions instrumented with `logApiCall()` helper
+- **ReportingEngine**: 7 report types with CSV export + print-to-PDF
+- **MCPConnectionPanel**: Claude MCP connection reference for admin power users
+- **CoPilot admin context**: `isAdmin: true` flag → verified server-side → admin-specific RAG + system prompt
+
+### Chat System (2026-02-16)
+- **Route**: `/dashboard/chat` (ChatPage.tsx) + `/chat-window` (popup mode)
+- **DB Tables**: `conversations`, `messages`, `conversation_participants`
+- **Features**: 1:1 DMs, group chats, AI Sparky integration
+- **Sparky AI**: Virtual participant `id = 'ai-agent'` — guard DB queries with `id !== 'ai-agent'`
 
 ---
 

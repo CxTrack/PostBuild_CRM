@@ -18,6 +18,10 @@ import { formatPhoneDisplay } from '@/utils/phone.utils';
 import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
+import CustomerModal from '@/components/customers/CustomerModal';
+import SendSMSModal from '@/components/sms/SendSMSModal';
+import AICustomerSummary from '@/components/customers/AICustomerSummary';
+import RecentCallsSection from '@/components/customers/RecentCallsSection';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -59,6 +63,8 @@ export const CustomerProfile: React.FC = () => {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
+  const [showSMSModal, setShowSMSModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -172,16 +178,22 @@ export const CustomerProfile: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                  <Send size={18} />
-                </button>
-                <Link
-                  to={`/dashboard/customers/${id}/edit`}
+                {currentCustomer.phone && (
+                  <button
+                    onClick={() => setShowSMSModal(true)}
+                    className="p-2 text-gray-500 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors"
+                    title="Send SMS"
+                  >
+                    <MessageSquare size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowEditModal(true)}
                   className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                 >
                   <Edit size={16} className="mr-2" />
                   Edit Profile
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -246,6 +258,8 @@ export const CustomerProfile: React.FC = () => {
             enabledModuleIds={enabledModuleIds}
             quotesLabels={quotesLabels}
             invoicesLabels={invoicesLabels}
+            onEditCustomer={() => setShowEditModal(true)}
+            onSendSMS={() => setShowSMSModal(true)}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
@@ -297,6 +311,25 @@ export const CustomerProfile: React.FC = () => {
           }}
         />
       )}
+
+      <SendSMSModal
+        isOpen={showSMSModal}
+        onClose={() => setShowSMSModal(false)}
+        customerPhone={currentCustomer.phone || ''}
+        customerName={currentCustomer.name}
+        customerId={currentCustomer.id}
+      />
+
+      {showEditModal && (
+        <CustomerModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            if (id) fetchCustomerById(id);
+          }}
+          customer={currentCustomer}
+        />
+      )}
     </div>
   );
 };
@@ -318,7 +351,9 @@ function OverviewTab({
   onDeleteContact,
   enabledModuleIds,
   quotesLabels,
-  invoicesLabels
+  invoicesLabels,
+  onEditCustomer,
+  onSendSMS,
 }: {
   customer: any;
   quotes: any[];
@@ -337,6 +372,8 @@ function OverviewTab({
   enabledModuleIds: string[];
   quotesLabels: any;
   invoicesLabels: any;
+  onEditCustomer: () => void;
+  onSendSMS: () => void;
 }) {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganizationStore();
@@ -351,9 +388,9 @@ function OverviewTab({
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Contact Information
             </h2>
-            <Link to={`/dashboard/customers/${customer.id}/edit`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+            <button onClick={onEditCustomer} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
               Edit
-            </Link>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -377,6 +414,14 @@ function OverviewTab({
             </div>
           </div>
         </div>
+
+        {/* AI Customer Summary */}
+        <AICustomerSummary customerId={customer.id} customerName={customer.name} />
+
+        {/* Recent Calls */}
+        {enabledModuleIds.includes('calls') && (
+          <RecentCallsSection customerId={customer.id} />
+        )}
 
         {/* Contacts Section - Only for Business Customers */}
         {isBusinessCustomer && (
@@ -576,13 +621,13 @@ function OverviewTab({
               </button>
             )}
 
-            {/* Send SMS — mortgage_broker only */}
-            {isMortgage && customer.phone && (
+            {/* Send SMS — all industries */}
+            {customer.phone && (
               <button
-                onClick={() => window.open(`sms:${customer.phone}`, '_blank')}
+                onClick={onSendSMS}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
               >
-                <MessageSquare size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <MessageSquare size={16} className="mr-3 text-green-600 dark:text-green-400" />
                 <span className="text-sm text-gray-900 dark:text-white">Send SMS</span>
               </button>
             )}

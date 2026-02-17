@@ -18,6 +18,7 @@ import NotificationsTab from '@/components/settings/NotificationsTab';
 import SecurityTab from '@/components/settings/SecurityTab';
 import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
+import SMSSettingsTab from '@/components/settings/SMSSettingsTab';
 import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -1010,109 +1011,7 @@ export default function Settings() {
         )}
 
         {activeTab === 'twilio' && (
-          <div className="max-w-4xl space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Twilio Integration</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Connect your Twilio account to send SMS messages and make calls
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Not Connected</span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Twilio Account SID
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    className="font-mono"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Find this in your Twilio Console Dashboard
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Auth Token
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Your Twilio auth token"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Keep this secret - never share it publicly
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Twilio Phone Number
-                  </label>
-                  <PhoneInput
-                    value=""
-                    onChange={() => { }}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Your Twilio phone number for sending SMS and making calls
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <Button variant="outline" className="mr-3">
-                    Test Connection
-                  </Button>
-                  <Button>
-                    Save Twilio Settings
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">SMS Capabilities</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                With Twilio configured, you can:
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  { label: 'Send quotes via SMS', description: 'Share quotes directly to customer phones' },
-                  { label: 'Send invoices via SMS', description: 'Notify customers about new invoices' },
-                  { label: 'Appointment reminders', description: 'Automatically remind customers of upcoming appointments' },
-                  { label: 'AI Voice Agent calls', description: 'Enable outbound calls from your AI agent' },
-                ].map((feature) => (
-                  <div key={feature.label} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{feature.label}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{feature.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">Need a Twilio account?</h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                    Sign up at <a href="https://www.twilio.com" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">twilio.com</a> to get your Account SID, Auth Token, and purchase a phone number.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SMSSettingsTab organizationId={currentOrganization.id} industry={currentOrganization.industry || 'general_business'} />
         )}
 
         {activeTab === 'calendar' && (

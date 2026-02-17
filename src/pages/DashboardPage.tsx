@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Users, Calendar, FileText, DollarSign, TrendingUp, Phone,
     CheckCircle, Plus, UserPlus, CalendarPlus, FilePlus, GripVertical,
-    Bot, PhoneIncoming, PhoneOutgoing, Clock, Package
+    Bot, PhoneIncoming, PhoneOutgoing, Clock, Package, MessageSquare
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import {
@@ -36,6 +36,7 @@ import { format } from 'date-fns';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import SendSMSModal from '@/components/sms/SendSMSModal';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -185,6 +186,7 @@ export const DashboardPage = () => {
     const enabledModuleIds = visibleModules.filter(m => !m.isLocked).map(m => m.id);
 
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [showSMSModal, setShowSMSModal] = useState(false);
 
     // Define all quick actions with their module mapping
     const allQuickActions = [
@@ -250,6 +252,15 @@ export const DashboardPage = () => {
             onClick: () => navigate('/dashboard/financials'),
             bgColor: 'bg-emerald-50 text-emerald-600',
             iconColor: 'text-emerald-600',
+        },
+        {
+            id: 'send-sms',
+            moduleId: 'crm',
+            label: 'Send SMS',
+            icon: MessageSquare,
+            onClick: () => setShowSMSModal(true),
+            bgColor: 'bg-green-50 text-green-600',
+            iconColor: 'text-green-600',
         },
     ];
 
@@ -683,6 +694,11 @@ export const DashboardPage = () => {
                 </CompactWidget>
 
             </div>
+
+            <SendSMSModal
+                isOpen={showSMSModal}
+                onClose={() => setShowSMSModal(false)}
+            />
         </PageContainer>
     );
 };

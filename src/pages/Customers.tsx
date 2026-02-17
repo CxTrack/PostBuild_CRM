@@ -3,12 +3,13 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
   Search, Plus, Users, Building2, Mail, Phone,
-  Eye, Edit, Trash2
+  Eye, Edit, Trash2, MessageSquare
 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import CustomerModal from '@/components/customers/CustomerModal';
+import SendSMSModal from '@/components/sms/SendSMSModal';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { formatPhoneDisplay } from '@/utils/phone.utils';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
@@ -34,6 +35,7 @@ export const Customers: React.FC = () => {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [showCustomFields, setShowCustomFields] = useState(false);
+  const [smsTarget, setSmsTarget] = useState<{ phone: string; name: string; id: string } | null>(null);
 
   const { currentOrganization, currentMembership, _hasHydrated } = useOrganizationStore();
   const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
@@ -394,8 +396,21 @@ export const Customers: React.FC = () => {
                             >
                               <Eye size={18} />
                             </Link>
+                            {customer.phone && (
+                              <button
+                                onClick={() => setSmsTarget({
+                                  phone: customer.phone!,
+                                  name: getCustomerFullName(customer),
+                                  id: customer.id,
+                                })}
+                                className="p-2 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                title="Send SMS"
+                              >
+                                <MessageSquare size={18} />
+                              </button>
+                            )}
                             <Link
-                              to={`/dashboard/customers/${customer.id}/edit`}
+                              to={`/dashboard/customers/${customer.id}`}
                               className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               title="Edit"
                             >
@@ -517,6 +532,14 @@ export const Customers: React.FC = () => {
       <DialogComponent />
       {/* Mobile Business Card Scanner FAB */}
       <BusinessCardCapture onContactExtracted={handleCardExtracted} />
+
+      <SendSMSModal
+        isOpen={!!smsTarget}
+        onClose={() => setSmsTarget(null)}
+        customerPhone={smsTarget?.phone || ''}
+        customerName={smsTarget?.name || ''}
+        customerId={smsTarget?.id}
+      />
     </PageContainer>
   );
 };

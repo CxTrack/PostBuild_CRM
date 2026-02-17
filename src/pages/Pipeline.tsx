@@ -7,7 +7,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import {
   Plus, Search, FileText, DollarSign, TrendingUp,
   LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap,
-  ChevronLeft, ChevronRight, Trash2, ArrowRightCircle
+  ChevronLeft, ChevronRight, Trash2, ArrowRightCircle, MessageSquare
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { FilterBar } from '@/components/shared/FilterBar';
@@ -19,6 +19,8 @@ import { usePageLabels } from '@/hooks/usePageLabels';
 import { useMemo } from 'react';
 import { DashboardStatsSkeleton, TableSkeleton } from '@/components/ui/skeletons';
 import QuickAddDealModal from '@/components/pipeline/QuickAddDealModal';
+import SendSMSModal from '@/components/sms/SendSMSModal';
+import { smsService } from '@/services/sms.service';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Lock } from 'lucide-react';
 
@@ -100,6 +102,12 @@ const Pipeline: React.FC = () => {
   const [showItemMenu, setShowItemMenu] = useState(false);
   const [filterDateRange, setFilterDateRange] = useState('all');
   const [filterValueMin, setFilterValueMin] = useState('');
+  const [smsTarget, setSmsTarget] = useState<{
+    phone: string;
+    name: string;
+    customerId: string;
+    stageName: string;
+  } | null>(null);
 
   // Stage tab scroll
   const stageTabsRef = useRef<HTMLDivElement>(null);
@@ -908,9 +916,27 @@ const Pipeline: React.FC = () => {
                           {selectedItem.type === 'deal' && STAGES.filter(s => s.id !== selectedItem.stage).slice(0, 4).map(stage => (
                             <button
                               key={stage.id}
-                              onClick={() => {
+                              onClick={async () => {
                                 moveDealToStage(selectedItem.id, stage.id as any);
                                 setShowItemMenu(false);
+                                // Check if pipeline SMS is enabled and trigger SMS modal
+                                try {
+                                  const settings = await smsService.getSMSSettings(currentOrganization!.id);
+                                  if (settings?.pipeline_sms_enabled) {
+                                    const stages = settings.pipeline_stages_to_notify || [];
+                                    if (stages.length === 0 || stages.includes(stage.id)) {
+                                      const customer = customers.find(c => c.id === selectedItem.customer_id);
+                                      if (customer?.phone) {
+                                        setSmsTarget({
+                                          phone: customer.phone,
+                                          name: customer.name,
+                                          customerId: customer.id,
+                                          stageName: stage.name,
+                                        });
+                                      }
+                                    }
+                                  }
+                                } catch { /* SMS check failed silently */ }
                               }}
                               className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
                             >
@@ -1050,6 +1076,17 @@ const Pipeline: React.FC = () => {
       <QuickAddDealModal
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
+      />
+
+      {/* SMS Modal triggered on pipeline stage change */}
+      <SendSMSModal
+        isOpen={!!smsTarget}
+        onClose={() => setSmsTarget(null)}
+        customerPhone={smsTarget?.phone}
+        customerName={smsTarget?.name}
+        customerId={smsTarget?.customerId}
+        preselectedTemplate="pipeline_change"
+        context={{ stageName: smsTarget?.stageName || '' }}
       />
     </PageContainer>
   );
