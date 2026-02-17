@@ -11,6 +11,7 @@ export interface ProvisionVoiceAgentParams {
   ownerPhone: string;
   ownerName: string;
   agentInstructions?: string;
+  voiceId?: string;
   // Legacy aliases (edge function accepts both)
   brokerPhone?: string;
   brokerName?: string;

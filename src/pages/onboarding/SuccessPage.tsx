@@ -84,6 +84,7 @@ export default function SuccessPage() {
         ownerPhone: lead.phone || '',
         ownerName: lead.name || lead.firstName || '',
         agentInstructions: lead.voiceConfig.agentInstructions || '',
+        voiceId: lead.voiceConfig.voiceId || undefined,
         countryCode: lead.country === 'CA' ? 'CA' : 'US',
       });
 
