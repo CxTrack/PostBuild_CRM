@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserPlus,
+    User,
     LayoutGrid,
     Building2,
     Zap,
@@ -14,6 +15,7 @@ import {
 
 const steps = [
     { id: 'account', label: 'Account', path: '/register', icon: UserPlus },
+    { id: 'profile', label: 'Profile', path: '/onboarding/profile', icon: User },
     { id: 'selection', label: 'Service', path: '/onboarding/select-service', icon: LayoutGrid },
     { id: 'industry', label: 'Industry & Region', path: '/onboarding/industry', icon: Building2 },
     { id: 'plan', label: 'Scaling Tier', path: '/onboarding/plan', icon: Zap },
@@ -28,12 +30,13 @@ export default function OnboardingHeader() {
     const getActiveStepIndex = () => {
         const path = location.pathname;
         if (path === '/register') return 0;
-        if (path === '/onboarding/select-service') return 1;
-        if (path === '/onboarding/industry') return 2;
-        if (['/onboarding/plan', '/onboarding/custom-crm', '/onboarding/audit'].includes(path)) return 3;
-        if (path === '/onboarding/voice-setup') return 4;
-        if (path === '/onboarding/checkout') return 5;
-        if (path === '/onboarding/success') return 6;
+        if (path === '/onboarding/profile') return 1;
+        if (path === '/onboarding/select-service') return 2;
+        if (path === '/onboarding/industry') return 3;
+        if (['/onboarding/plan', '/onboarding/custom-crm', '/onboarding/audit'].includes(path)) return 4;
+        if (path === '/onboarding/voice-setup') return 5;
+        if (path === '/onboarding/checkout') return 6;
+        if (path === '/onboarding/success') return 7;
         return 0;
     };
 

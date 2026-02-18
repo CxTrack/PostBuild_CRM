@@ -13,6 +13,8 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
@@ -35,10 +37,11 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ loading: true });
 
-        // Check for tokens in URL (from marketing site OAuth redirect)
+        // Check for tokens in URL query params or hash fragment (OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
           const { data, error } = await supabase.auth.setSession({
@@ -98,6 +101,33 @@ export const useAuthStore = create<AuthState>()(
           const profile = await getUserProfile(data.user.id);
           set({ user: data.user, profile, loading: false });
         }
+      },
+
+      /* ----------------------------------------
+       * SIGN IN WITH GOOGLE (OAuth)
+       * ---------------------------------------- */
+      signInWithGoogle: async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/onboarding/profile`,
+          },
+        });
+        if (error) throw error;
+      },
+
+      /* ----------------------------------------
+       * SIGN IN WITH MICROSOFT (OAuth)
+       * ---------------------------------------- */
+      signInWithMicrosoft: async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'azure',
+          options: {
+            redirectTo: `${window.location.origin}/onboarding/profile`,
+            scopes: 'email profile openid',
+          },
+        });
+        if (error) throw error;
       },
 
       /* ----------------------------------------

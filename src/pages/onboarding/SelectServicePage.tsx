@@ -13,7 +13,7 @@ export default function SelectServicePage() {
     // Check if user has onboarding data from signup
     const leadData = sessionStorage.getItem('onboarding_lead');
     if (!leadData) {
-      navigate('/register');
+      navigate('/onboarding/profile');
     }
   }, [navigate]);
 
@@ -45,11 +45,11 @@ export default function SelectServicePage() {
       <div className="max-w-6xl mx-auto space-y-12">
         <div className="flex flex-col items-center text-center space-y-6">
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/onboarding/profile')}
             className="flex items-center gap-2 text-white/40 hover:text-[#FFD700] transition-colors text-[10px] font-black uppercase tracking-[0.3em] mb-4 group"
           >
             <span className="group-hover:-translate-x-1 transition-transform">&larr;</span> Return to
-            Account
+            Profile
           </button>
           <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter italic">
             Choose Your <span className="text-[#FFD700]">Service</span>

@@ -45,6 +45,7 @@ import QuoteBuilder from './pages/quotes/QuoteBuilder';
 import InvoiceBuilder from './pages/invoices/InvoiceBuilder';
 
 // Onboarding Pages
+import ProfilePage from './pages/onboarding/ProfilePage';
 import SelectServicePage from './pages/onboarding/SelectServicePage';
 import IndustryPage from './pages/onboarding/IndustryPage';
 import PlanPage from './pages/onboarding/PlanPage';
@@ -55,6 +56,11 @@ import CustomConfigPage from './pages/onboarding/CustomConfigPage';
 import { BookingPage } from './pages/public/BookingPage';
 import { SharedDocumentViewer } from './pages/public/SharedDocumentViewer';
 import { AcceptInvite } from './pages/AcceptInvite';
+
+// Legal & Auth Pages
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import { CookieConsent } from './components/common/CookieConsent';
 
 // Pipeline Pages
 import NewDealPage from './pages/pipeline/NewDealPage';
@@ -104,14 +110,19 @@ export default function App() {
             },
           }}
         />
+        <CookieConsent />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/access" element={<Access />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
           {/* Onboarding Routes (Public - user creates account during onboarding) */}
+          <Route path="/onboarding/profile" element={<ProfilePage />} />
           <Route path="/onboarding/select-service" element={<SelectServicePage />} />
           <Route path="/onboarding/industry" element={<IndustryPage />} />
           <Route path="/onboarding/plan" element={<PlanPage />} />
