@@ -18,7 +18,7 @@ import {
 import AvatarEditor from 'react-avatar-editor';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { PhoneInput } from '@/components/ui/PhoneInput';
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import toast from 'react-hot-toast';
 
@@ -264,32 +264,52 @@ export const ProfileTab: React.FC = () => {
         setSaving(true);
 
         try {
-            let avatarPublicUrl: string | null = profile.avatar_url;
+            const token = getAuthToken();
+            if (!token) throw new Error('No auth token found');
+
+            // Default to existing avatar URL — but never persist data URLs (from crop preview)
+            let avatarPublicUrl: string | null = profile.avatar_url?.startsWith('data:') ? null : (profile.avatar_url || null);
 
             // 1) Upload avatar to Supabase Storage if pending
+            //    Uses direct fetch() to bypass Supabase AbortController issue
             if (pendingAvatarBlob.current) {
                 const filePath = `${user.id}/avatar.png`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, pendingAvatarBlob.current, {
-                        upsert: true,
-                        contentType: 'image/png',
-                    });
+                const uploadRes = await fetch(
+                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'x-upsert': 'true',
+                            'Content-Type': 'image/png',
+                        },
+                        body: pendingAvatarBlob.current,
+                    }
+                );
 
-                if (uploadError) throw new Error(`Avatar upload failed: ${uploadError.message}`);
+                if (!uploadRes.ok) {
+                    const errText = await uploadRes.text();
+                    throw new Error(`Avatar upload failed (${uploadRes.status}): ${errText}`);
+                }
 
-                // Get public URL with cache-bust
-                const { data: urlData } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-
-                avatarPublicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                // Build public URL with cache-bust
+                avatarPublicUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${filePath}?t=${Date.now()}`;
                 pendingAvatarBlob.current = null;
             } else if (pendingAvatarRemoved.current) {
-                // Remove avatar from storage
+                // Remove avatar from storage via direct fetch
                 const filePath = `${user.id}/avatar.png`;
-                await supabase.storage.from('avatars').remove([filePath]);
+                await fetch(
+                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }
+                );
                 avatarPublicUrl = null;
                 pendingAvatarRemoved.current = false;
             }
@@ -316,8 +336,6 @@ export const ProfileTab: React.FC = () => {
             };
 
             // 3) PATCH user_profiles via direct fetch (bypass AbortController)
-            const token = getAuthToken();
-            if (!token) throw new Error('No auth token found');
 
             const res = await fetch(
                 `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,

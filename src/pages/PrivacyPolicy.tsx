@@ -10,7 +10,7 @@ export const PrivacyPolicy: React.FC = () => {
                 {/* Logo */}
                 <div className="mb-8">
                     <Link to="/">
-                        <img src="/logo.png" alt="CxTrack" className="h-10 opacity-90 hover:opacity-100 transition-opacity" />
+                        <img src="/cx-icon.png" alt="CxTrack" className="h-10 opacity-90 hover:opacity-100 transition-opacity" />
                     </Link>
                 </div>
 

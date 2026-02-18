@@ -98,7 +98,7 @@ export const Register: React.FC = () => {
         <div className="mb-8">
           <Link to="/">
             <img
-              src="/logo.png"
+              src="/cx-icon.png"
               alt="CxTrack"
               className="h-10 opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
             />

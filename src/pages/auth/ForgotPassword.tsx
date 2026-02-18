@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'react-hot-toast';
-import { Mail } from 'lucide-react';
+import { Mail, AlertTriangle } from 'lucide-react';
 
 interface ForgotPasswordFormData {
   email: string;
@@ -74,6 +74,16 @@ const ForgotPassword: React.FC = () => {
                   We've sent password reset instructions to your email address. Please check your inbox.
                 </p>
               </div>
+
+              <div className="bg-white/[0.03] border border-[#FFD700]/10 rounded-xl p-4 mb-6 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-[#FFD700]/60 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white/50 text-xs leading-relaxed">
+                    <span className="text-white/70 font-medium">Can't find the email?</span> Check your <span className="text-[#FFD700]/70 font-medium">spam or junk folder</span>. Some email providers may flag the reset email. If you still don't see it, wait a minute and try again.
+                  </p>
+                </div>
+              </div>
+
               <Link
                 to="/login"
                 className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] inline-block text-center"

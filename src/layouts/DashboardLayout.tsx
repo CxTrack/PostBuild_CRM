@@ -666,9 +666,16 @@ export const DashboardLayout = () => {
 
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
-                    {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
-                  </div>
+                  {(() => {
+                    const mobileAvatar = teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                    return mobileAvatar ? (
+                      <img src={mobileAvatar} alt="" className="w-10 h-10 rounded-full object-cover mr-3" />
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                        {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
+                      </div>
+                    );
+                  })()}
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
