@@ -1,8 +1,9 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface ResetPasswordFormData {
@@ -12,26 +13,63 @@ interface ResetPasswordFormData {
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
-  const { updatePassword, loading, error, clearError } = useAuthStore();
+  const { loading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Capture hash params immediately before they get cleaned
+  const hashParamsRef = useRef(new URLSearchParams(window.location.hash.substring(1)));
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<ResetPasswordFormData>();
   const password = watch('password');
 
+  // On mount, check if we have a valid recovery session
+  useEffect(() => {
+    const hashParams = hashParamsRef.current;
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const type = hashParams.get('type');
+
+    if (accessToken && refreshToken && type === 'recovery') {
+      // Set the recovery session
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ error }) => {
+        if (error) {
+          setIsValidToken(false);
+          toast.error('This reset link has expired. Please request a new one.');
+          setTimeout(() => navigate('/forgot-password'), 2000);
+        } else {
+          setIsValidToken(true);
+          // Clean the URL hash
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      });
+    } else {
+      // No token in URL — check if there's already an active session (authStore may have set it)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setIsValidToken(true);
+        } else {
+          setIsValidToken(false);
+          toast.error('Invalid or expired reset link. Please request a new one.');
+          setTimeout(() => navigate('/forgot-password'), 2000);
+        }
+      });
+    }
+  }, [navigate]);
+
   const onSubmit = async (data: ResetPasswordFormData) => {
     clearError();
+    setSubmitting(true);
     try {
-      // Get access token from URL hash
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
+      const { error } = await supabase.auth.updateUser({ password: data.password });
+      if (error) throw error;
 
-      if (!accessToken) {
-        throw new Error('Invalid or expired reset link');
-      }
-
-      await updatePassword(accessToken, data.password);
-      toast.success('Password reset successfully', {
+      toast.success('Password reset successfully!', {
         style: {
           background: '#1a1a1a',
           color: '#FFD700',
@@ -39,23 +77,35 @@ const ResetPassword: React.FC = () => {
         }
       });
 
-      // Redirect to login after success
+      // Sign out so user logs in with new password
+      await supabase.auth.signOut();
+
       setTimeout(() => {
         navigate('/login');
       }, 1500);
-    } catch (err) {
-      const errorMessage = error?.includes('Invalid') || error?.includes('expired')
+    } catch (err: any) {
+      const errorMessage = err.message?.includes('Invalid') || err.message?.includes('expired')
         ? 'This password reset link has expired. Please request a new one.'
-        : error || 'Failed to reset password. Please try again.';
+        : err.message || 'Failed to reset password. Please try again.';
 
       toast.error(errorMessage);
 
-      // Redirect to forgot password for invalid/expired tokens
       if (errorMessage.includes('expired') || errorMessage.includes('Invalid')) {
         setTimeout(() => navigate('/forgot-password'), 2000);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  // Show loading while validating token
+  if (isValidToken === null) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -153,10 +203,10 @@ const ResetPassword: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
             >
-              {loading ? (
+              {submitting ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

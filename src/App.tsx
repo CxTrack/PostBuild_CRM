@@ -60,6 +60,7 @@ import { AcceptInvite } from './pages/AcceptInvite';
 // Legal & Auth Pages
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import { CookieConsent } from './components/common/CookieConsent';
 
 // Pipeline Pages
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
