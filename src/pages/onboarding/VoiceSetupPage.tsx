@@ -6,34 +6,35 @@ import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
 // 4 curated voices for quick onboarding — covers female/male, professional/friendly
+// Voice IDs must match Retell's actual catalog (verified via /list-voices API)
 const QUICK_VOICES = [
   {
-    id: '11labs-Rachel',
-    name: 'Rachel',
+    id: '11labs-Grace',
+    name: 'Grace',
     description: 'Warm & Professional',
     gender: 'female' as const,
     provider: 'ElevenLabs',
     accent: 'American',
   },
   {
-    id: '11labs-Sarah',
-    name: 'Sarah',
+    id: '11labs-Marissa',
+    name: 'Marissa',
     description: 'Friendly & Conversational',
     gender: 'female' as const,
     provider: 'ElevenLabs',
     accent: 'American',
   },
   {
-    id: '11labs-Chris',
-    name: 'Chris',
+    id: '11labs-Brian',
+    name: 'Brian',
     description: 'Confident & Clear',
     gender: 'male' as const,
     provider: 'ElevenLabs',
     accent: 'American',
   },
   {
-    id: '11labs-George',
-    name: 'George',
+    id: '11labs-Anthony',
+    name: 'Anthony',
     description: 'Calm & Authoritative',
     gender: 'male' as const,
     provider: 'ElevenLabs',
