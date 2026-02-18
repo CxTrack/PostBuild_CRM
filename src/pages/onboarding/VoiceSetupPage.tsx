@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Play, Pause, Settings, Volume2, Check } from 'lucide-react';
+import { Play, Pause, Settings, Volume2, Check, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { CA_PROVINCES, US_STATES } from '@/constants/onboarding';
 
 // 4 curated voices for quick onboarding — covers female/male, professional/friendly
 // Voice IDs must match Retell's actual catalog (verified via /list-voices API)
@@ -46,6 +47,8 @@ interface VoiceConfig {
   agentName: string;
   voiceId: string;
   voiceName: string;
+  regionCode?: string;
+  areaCode?: number;
 }
 
 function getAuthToken(): string | null {
@@ -333,6 +336,43 @@ export default function VoiceSetupPage() {
               This is the name your agent will use when answering calls.
             </p>
           </div>
+
+          {/* Region / Province / State Selection — only for CA and US */}
+          {lead?.country && (lead.country === 'CA' || lead.country === 'US') && (
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-[#FFD700] flex items-center gap-2">
+                <MapPin size={14} />
+                {lead.country === 'CA' ? 'Select Your Province' : 'Select Your State'}
+              </label>
+              <select
+                value={config.regionCode || ''}
+                onChange={(e) => {
+                  const regionCode = e.target.value;
+                  const regions = lead.country === 'CA' ? CA_PROVINCES : US_STATES;
+                  const region = regions.find(r => r.code === regionCode);
+                  setConfig({
+                    ...config,
+                    regionCode,
+                    areaCode: region?.areaCode,
+                  });
+                }}
+                className="w-full bg-white/[0.03] border border-white/10 text-white rounded-xl px-5 py-4 focus:outline-none focus:border-[#FFD700] text-lg appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff40' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center' }}
+              >
+                <option value="" className="bg-gray-900 text-white/40">
+                  {lead.country === 'CA' ? '-- Choose a province --' : '-- Choose a state --'}
+                </option>
+                {(lead.country === 'CA' ? CA_PROVINCES : US_STATES).map((region) => (
+                  <option key={region.code} value={region.code} className="bg-gray-900 text-white">
+                    {region.name} ({region.areaCode})
+                  </option>
+                ))}
+              </select>
+              <p className="text-white/30 text-xs">
+                We'll try to get you a local phone number with a ({config.areaCode || '...'}) area code.
+              </p>
+            </div>
+          )}
 
           {/* Voice Selection */}
           <div className="space-y-4">

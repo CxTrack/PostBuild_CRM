@@ -48,6 +48,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import { supabase } from '../lib/supabase';
+import { PersistentTooltip } from '@/components/tour/PersistentTooltip';
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
@@ -452,21 +453,29 @@ export const DashboardLayout = () => {
             </SortableContext>
           </DndContext>
 
-          <Link
-            to={SETTINGS_ITEM.path}
-            className={
-              theme === 'soft-modern'
-                ? `nav-item flex items-center px-4 py-3 ${isActive(SETTINGS_ITEM.path) ? 'active' : ''}`
-                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
-                  ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`
-            }
-            title={sidebarCollapsed ? SETTINGS_ITEM.label : undefined}
+          <PersistentTooltip
+            id="voice-agent-settings-hint"
+            title="Voice Agent Settings"
+            description="Manage your AI phone agent, update voice settings, and view call forwarding instructions here."
+            position="right"
+            type="feature"
           >
-            <SETTINGS_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
-            {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
-          </Link>
+            <Link
+              to={SETTINGS_ITEM.path}
+              className={
+                theme === 'soft-modern'
+                  ? `nav-item flex items-center px-4 py-3 ${isActive(SETTINGS_ITEM.path) ? 'active' : ''}`
+                  : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
+                    ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`
+              }
+              title={sidebarCollapsed ? SETTINGS_ITEM.label : undefined}
+            >
+              <SETTINGS_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+              {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
+            </Link>
+          </PersistentTooltip>
 
           {/* Upgrade Button - Only show for free tier */}
           {currentOrganization?.subscription_tier === 'free' && (

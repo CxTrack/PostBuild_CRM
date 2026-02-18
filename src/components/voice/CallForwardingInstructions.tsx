@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Smartphone, Copy, Check } from 'lucide-react';
 
 interface CallForwardingInstructionsProps {
   phoneNumber: string;
+  countryCode?: string; // 'CA' or 'US' — filters shown carriers
 }
 
 interface CarrierInfo {
@@ -22,7 +23,7 @@ const CARRIERS: CarrierInfo[] = [
   { name: 'Telus', country: 'CA', enableCode: '*61*{NUMBER}#', disableCode: '#61#', note: 'Forwards on no answer' },
 ];
 
-export default function CallForwardingInstructions({ phoneNumber }: CallForwardingInstructionsProps) {
+export default function CallForwardingInstructions({ phoneNumber, countryCode }: CallForwardingInstructionsProps) {
   const [expanded, setExpanded] = useState(true);
   const [copiedCarrier, setCopiedCarrier] = useState<string | null>(null);
 
@@ -62,6 +63,9 @@ export default function CallForwardingInstructions({ phoneNumber }: CallForwardi
           <span className="text-white font-bold text-sm uppercase tracking-widest">
             Call Forwarding Setup
           </span>
+          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-red-500/30 animate-pulse">
+            Important!
+          </span>
         </div>
         {expanded ? (
           <ChevronUp className="text-white/40" size={20} />
@@ -76,72 +80,88 @@ export default function CallForwardingInstructions({ phoneNumber }: CallForwardi
             Set up call forwarding on your personal phone so unanswered calls go to your AI agent.
             Open your phone's dialer app and dial the code for your carrier:
           </p>
+          <p className="text-red-400/80 text-xs font-bold">
+            {'\u26A0\uFE0F'} Without call forwarding, your AI agent won't receive calls. Complete this step to activate.
+          </p>
 
-          {/* US Carriers */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">United States</p>
-            {usCarriers.map((carrier) => (
-              <div key={carrier.name} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <div className="space-y-1">
-                  <p className="text-white font-bold text-sm">{carrier.name}</p>
-                  <p className="text-[#FFD700] font-mono text-sm font-bold">{getDialCode(carrier)}</p>
-                  {carrier.note && (
-                    <p className="text-white/30 text-[10px]">{carrier.note}</p>
-                  )}
+          {/* US Carriers — hidden if user is in Canada */}
+          {countryCode !== 'CA' && (
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">United States</p>
+              {usCarriers.map((carrier) => (
+                <div key={carrier.name} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="space-y-1">
+                    <p className="text-white font-bold text-sm">{carrier.name}</p>
+                    <p className="text-[#FFD700] font-mono text-sm font-bold">{getDialCode(carrier)}</p>
+                    {carrier.note && (
+                      <p className="text-white/30 text-[10px]">{carrier.note}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleCopyCode(carrier)}
+                    className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    title="Copy dial code"
+                  >
+                    {copiedCarrier === carrier.name ? (
+                      <Check size={16} className="text-green-400" />
+                    ) : (
+                      <Copy size={16} className="text-white/40" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleCopyCode(carrier)}
-                  className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-                  title="Copy dial code"
-                >
-                  {copiedCarrier === carrier.name ? (
-                    <Check size={16} className="text-green-400" />
-                  ) : (
-                    <Copy size={16} className="text-white/40" />
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {/* Canadian Carriers */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Canada</p>
-            {caCarriers.map((carrier) => (
-              <div key={carrier.name} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <div className="space-y-1">
-                  <p className="text-white font-bold text-sm">{carrier.name}</p>
-                  <p className="text-[#FFD700] font-mono text-sm font-bold">{getDialCode(carrier)}</p>
-                  {carrier.note && (
-                    <p className="text-white/30 text-[10px]">{carrier.note}</p>
-                  )}
+          {/* Canadian Carriers — hidden if user is in US */}
+          {countryCode !== 'US' && (
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Canada</p>
+              {caCarriers.map((carrier) => (
+                <div key={carrier.name} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="space-y-1">
+                    <p className="text-white font-bold text-sm">{carrier.name}</p>
+                    <p className="text-[#FFD700] font-mono text-sm font-bold">{getDialCode(carrier)}</p>
+                    {carrier.note && (
+                      <p className="text-white/30 text-[10px]">{carrier.note}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleCopyCode(carrier)}
+                    className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    title="Copy dial code"
+                  >
+                    {copiedCarrier === carrier.name ? (
+                      <Check size={16} className="text-green-400" />
+                    ) : (
+                      <Copy size={16} className="text-white/40" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleCopyCode(carrier)}
-                  className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-                  title="Copy dial code"
-                >
-                  {copiedCarrier === carrier.name ? (
-                    <Check size={16} className="text-green-400" />
-                  ) : (
-                    <Copy size={16} className="text-white/40" />
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {/* Disable instructions */}
+          {/* Disable instructions — filtered by country */}
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
               To Disable Forwarding
             </p>
             <p className="text-white/40 text-xs">
-              AT&T: <span className="text-white/60 font-mono">#61#</span> &middot;
-              Verizon: <span className="text-white/60 font-mono">*73</span> &middot;
-              T-Mobile: <span className="text-white/60 font-mono">##61#</span> &middot;
-              Bell: <span className="text-white/60 font-mono">*93</span> &middot;
-              Rogers/Telus: <span className="text-white/60 font-mono">#61#</span>
+              {countryCode !== 'CA' && (
+                <>
+                  AT&T: <span className="text-white/60 font-mono">#61#</span> &middot;{' '}
+                  Verizon: <span className="text-white/60 font-mono">*73</span> &middot;{' '}
+                  T-Mobile: <span className="text-white/60 font-mono">##61#</span>
+                  {countryCode !== 'US' && <> &middot; </>}
+                </>
+              )}
+              {countryCode !== 'US' && (
+                <>
+                  Bell: <span className="text-white/60 font-mono">*93</span> &middot;{' '}
+                  Rogers/Telus: <span className="text-white/60 font-mono">#61#</span>
+                </>
+              )}
             </p>
           </div>
 
