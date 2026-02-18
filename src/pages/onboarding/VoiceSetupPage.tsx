@@ -94,7 +94,10 @@ export default function VoiceSetupPage() {
   useEffect(() => {
     const fetchPreviews = async () => {
       const token = getAuthToken();
-      if (!token) return;
+      if (!token) {
+        console.log('[VoiceSetup] No auth token available for voice previews');
+        return;
+      }
 
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/list-voices`, {
@@ -113,14 +116,32 @@ export default function VoiceSetupPage() {
             const map: Record<string, string> = {};
             for (const v of data.voices) {
               if (v.preview_audio_url) {
+                // Map by exact voice_id
                 map[v.voice_id] = v.preview_audio_url;
+                // Also map by provider-name pattern for fuzzy matching
+                // Handles cases where Retell IDs differ slightly from our hardcoded ones
+                if (v.voice_name) {
+                  if (v.provider === 'elevenlabs') {
+                    map[`11labs-${v.voice_name}`] = v.preview_audio_url;
+                  }
+                  // Also map lowercase variant
+                  map[`11labs-${v.voice_name.toLowerCase()}`] = v.preview_audio_url;
+                }
               }
             }
+
+            // Debug: log which of our quick voices were found
+            const quickIds = QUICK_VOICES.map((qv) => qv.id);
+            const matches = quickIds.map((id) => `${id}=${!!map[id]}`).join(', ');
+            console.log(`[VoiceSetup] Fetched ${data.voices.length} voices. Quick voice matches: ${matches}`);
+
             setRetellVoices(map);
           }
+        } else {
+          console.warn('[VoiceSetup] list-voices returned', res.status);
         }
-      } catch {
-        // Non-critical — previews just won't be available
+      } catch (err) {
+        console.warn('[VoiceSetup] Failed to fetch voice previews:', err);
       }
     };
 
@@ -328,7 +349,6 @@ export default function VoiceSetupPage() {
               {QUICK_VOICES.map((voice) => {
                 const isSelected = config.voiceId === voice.id;
                 const isPlaying = playingVoiceId === voice.id;
-                const hasPreview = !!retellVoices[voice.id];
 
                 return (
                   <button
@@ -374,33 +394,31 @@ export default function VoiceSetupPage() {
                       </div>
                     </div>
 
-                    {/* Preview button */}
-                    {hasPreview && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePlayPreview(voice.id);
-                        }}
-                        className={`mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                          isPlaying
-                            ? 'bg-[#FFD700]/20 text-[#FFD700]'
-                            : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
-                        }`}
-                      >
-                        {isPlaying ? (
-                          <>
-                            <Pause size={12} />
-                            Playing...
-                          </>
-                        ) : (
-                          <>
-                            <Play size={12} />
-                            Preview
-                          </>
-                        )}
-                      </button>
-                    )}
+                    {/* Preview button — always shown, graceful fallback if no URL */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlayPreview(voice.id);
+                      }}
+                      className={`mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                        isPlaying
+                          ? 'bg-[#FFD700]/20 text-[#FFD700]'
+                          : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
+                      }`}
+                    >
+                      {isPlaying ? (
+                        <>
+                          <Pause size={12} />
+                          Playing...
+                        </>
+                      ) : (
+                        <>
+                          <Play size={12} />
+                          Preview
+                        </>
+                      )}
+                    </button>
                   </button>
                 );
               })}
