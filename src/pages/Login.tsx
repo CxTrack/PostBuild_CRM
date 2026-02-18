@@ -83,13 +83,13 @@ export const Login: React.FC = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo top-left */}
         <div className="mb-8">
-          <Link to="/">
+          <a href="https://easyaicrm.com">
             <img
-              src="/cx-icon.png"
+              src="/cxtrack-logo.png"
               alt="CxTrack"
               className="h-10 opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
             />
-          </Link>
+          </a>
         </div>
 
         <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
