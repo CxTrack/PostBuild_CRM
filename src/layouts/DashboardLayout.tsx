@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
 import { useOrganizationStore } from '../stores/organizationStore';
@@ -165,9 +166,11 @@ const SortableNavItem: React.FC<{
   );
 };
 
-/** Compact one-time hint bubble next to Settings link — voice agent nudge */
+/** Compact one-time hint bubble next to Settings link — uses portal to escape sidebar overflow */
 const SettingsHint: React.FC<{ sidebarCollapsed: boolean; theme: string; isActive: boolean }> = ({ sidebarCollapsed, theme, isActive }) => {
   const [showHint, setShowHint] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const linkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     TourManager.shouldShowTooltip('voice-agent-settings-hint').then(show => {
@@ -175,14 +178,28 @@ const SettingsHint: React.FC<{ sidebarCollapsed: boolean; theme: string; isActiv
     });
   }, []);
 
+  // Position the portal tooltip relative to the Settings link
+  useEffect(() => {
+    if (!showHint || sidebarCollapsed || !linkRef.current) return;
+    const update = () => {
+      const rect = linkRef.current?.getBoundingClientRect();
+      if (rect) setPos({ top: rect.top + rect.height / 2, left: rect.right + 10 });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true); };
+  }, [showHint, sidebarCollapsed]);
+
   const dismiss = () => {
     setShowHint(false);
     TourManager.dismissTooltip('voice-agent-settings-hint');
   };
 
   return (
-    <div className="relative">
+    <>
       <Link
+        ref={linkRef}
         to={SETTINGS_ITEM.path}
         className={
           theme === 'soft-modern'
@@ -199,14 +216,17 @@ const SettingsHint: React.FC<{ sidebarCollapsed: boolean; theme: string; isActiv
         {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
       </Link>
 
-      {showHint && !sidebarCollapsed && (
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 animate-in fade-in slide-in-from-left-2 duration-300">
-          <div className="relative bg-indigo-600 text-white rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap max-w-[200px]">
+      {showHint && !sidebarCollapsed && pos && createPortal(
+        <div
+          className="fixed z-[9999] animate-in fade-in slide-in-from-left-2 duration-300 pointer-events-auto"
+          style={{ top: pos.top, left: pos.left, transform: 'translateY(-50%)' }}
+        >
+          <div className="relative bg-indigo-600 text-white rounded-lg shadow-lg shadow-indigo-500/30 px-3 py-2 text-xs whitespace-nowrap">
             {/* Arrow pointing left */}
             <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[6px] border-r-indigo-600" />
             <div className="flex items-center gap-2">
               <Sparkles size={12} className="text-indigo-200 shrink-0" />
-              <span className="font-semibold leading-tight">Your Voice Agent settings live here</span>
+              <span className="font-semibold leading-tight">Voice Agent settings live here</span>
             </div>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); dismiss(); }}
@@ -216,9 +236,10 @@ const SettingsHint: React.FC<{ sidebarCollapsed: boolean; theme: string; isActiv
               <X size={10} />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
