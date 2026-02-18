@@ -48,7 +48,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import { supabase } from '../lib/supabase';
-import { PersistentTooltip } from '@/components/tour/PersistentTooltip';
+import { TourManager } from '@/lib/tourManager';
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
@@ -161,6 +161,63 @@ const SortableNavItem: React.FC<{
           </span>
         )}
       </Link>
+    </div>
+  );
+};
+
+/** Compact one-time hint bubble next to Settings link — voice agent nudge */
+const SettingsHint: React.FC<{ sidebarCollapsed: boolean; theme: string; isActive: boolean }> = ({ sidebarCollapsed, theme, isActive }) => {
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    TourManager.shouldShowTooltip('voice-agent-settings-hint').then(show => {
+      if (show) setShowHint(true);
+    });
+  }, []);
+
+  const dismiss = () => {
+    setShowHint(false);
+    TourManager.dismissTooltip('voice-agent-settings-hint');
+  };
+
+  return (
+    <div className="relative">
+      <Link
+        to={SETTINGS_ITEM.path}
+        className={
+          theme === 'soft-modern'
+            ? `nav-item flex items-center px-4 py-3 ${isActive ? 'active' : ''}`
+            : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive
+              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`
+        }
+        title={sidebarCollapsed ? SETTINGS_ITEM.label : undefined}
+        onClick={showHint ? dismiss : undefined}
+      >
+        <SETTINGS_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+        {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
+      </Link>
+
+      {showHint && !sidebarCollapsed && (
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className="relative bg-indigo-600 text-white rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap max-w-[200px]">
+            {/* Arrow pointing left */}
+            <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[6px] border-r-indigo-600" />
+            <div className="flex items-center gap-2">
+              <Sparkles size={12} className="text-indigo-200 shrink-0" />
+              <span className="font-semibold leading-tight">Your Voice Agent settings live here</span>
+            </div>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); dismiss(); }}
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-indigo-800 hover:bg-indigo-900 rounded-full flex items-center justify-center transition-colors"
+              aria-label="Dismiss"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -453,29 +510,7 @@ export const DashboardLayout = () => {
             </SortableContext>
           </DndContext>
 
-          <PersistentTooltip
-            id="voice-agent-settings-hint"
-            title="Voice Agent Settings"
-            description="Manage your AI phone agent, update voice settings, and view call forwarding instructions here."
-            position="right"
-            type="feature"
-          >
-            <Link
-              to={SETTINGS_ITEM.path}
-              className={
-                theme === 'soft-modern'
-                  ? `nav-item flex items-center px-4 py-3 ${isActive(SETTINGS_ITEM.path) ? 'active' : ''}`
-                  : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg transition-colors ${isActive(SETTINGS_ITEM.path)
-                    ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`
-              }
-              title={sidebarCollapsed ? SETTINGS_ITEM.label : undefined}
-            >
-              <SETTINGS_ITEM.icon size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
-              {!sidebarCollapsed && <span className="font-medium">{SETTINGS_ITEM.label}</span>}
-            </Link>
-          </PersistentTooltip>
+          <SettingsHint sidebarCollapsed={sidebarCollapsed} theme={theme} isActive={isActive(SETTINGS_ITEM.path)} />
 
           {/* Upgrade Button - Only show for free tier */}
           {currentOrganization?.subscription_tier === 'free' && (
