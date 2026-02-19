@@ -9,6 +9,8 @@ import { formatPhoneForStorage } from '@/utils/phone.utils';
 import { validateEmail, validatePhone } from '@/utils/validation';
 import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { PAYMENT_TERMS_OPTIONS } from '@/config/paymentTerms';
+import StripeConnectSettings from '@/components/settings/StripeConnectSettings';
 
 export default function BusinessSettings() {
   const { currentOrganization } = useOrganizationStore();
@@ -296,12 +298,17 @@ export default function BusinessSettings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Default Payment Terms
               </label>
-              <Input
-                type="text"
-                value={settings.default_payment_terms}
+              <select
+                value={PAYMENT_TERMS_OPTIONS.find(o => o.key === settings.default_payment_terms) ? settings.default_payment_terms : (settings.default_payment_terms ? 'custom' : '')}
                 onChange={(e) => setSettings({ ...settings, default_payment_terms: e.target.value })}
-                placeholder="Net 30"
-              />
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select default terms...</option>
+                {PAYMENT_TERMS_OPTIONS.map(option => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Applied to new invoices and quotes by default</p>
             </div>
           </div>
 
@@ -467,18 +474,7 @@ export default function BusinessSettings() {
       )}
 
       {activeTab === 'payment' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Stripe Integration</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Connect your Stripe account to accept online payments for invoices
-            </p>
-          </div>
-
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Stripe integration will be configured via Stripe Connect in a future update. Your API keys are managed securely server-side.
-          </p>
-        </div>
+        <StripeConnectSettings organizationId={currentOrganization?.id} />
       )}
     </div>
   );

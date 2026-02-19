@@ -21,6 +21,7 @@ import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { getQuoteFieldLabels, getInvoiceFieldLabels } from '@/config/modules.config';
+import { PAYMENT_TERMS_OPTIONS, calculateDueDate } from '@/config/paymentTerms';
 
 export default function QuoteBuilder() {
   const { id } = useParams();
@@ -1146,12 +1147,33 @@ export default function QuoteBuilder() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {fieldLabels.termsLabel}
                     </label>
-                    <Input
-                      type="text"
-                      value={formData.payment_terms || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                      placeholder={fieldLabels.termsPlaceholder}
-                    />
+                    <select
+                      value={PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) ? formData.payment_terms : (formData.payment_terms ? 'custom' : '')}
+                      onChange={(e) => {
+                        const selectedKey = e.target.value;
+                        setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
+                      }}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select payment terms...</option>
+                      {PAYMENT_TERMS_OPTIONS.map(option => (
+                        <option key={option.key} value={option.key}>{option.label}</option>
+                      ))}
+                    </select>
+                    {formData.payment_terms === 'custom' && (
+                      <Input
+                        type="text"
+                        value={formData.payment_terms === 'custom' ? '' : formData.payment_terms}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value || 'custom' }))}
+                        placeholder={fieldLabels.termsPlaceholder}
+                        className="mt-2"
+                      />
+                    )}
+                    {formData.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms)?.description}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

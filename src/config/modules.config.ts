@@ -125,7 +125,7 @@ export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
   legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes'],
   general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
   // New templates
-  agency: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'quotes', 'calls'],
+  agency: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'financials', 'quotes', 'products', 'calls'],
   mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'products', 'financials'],
   construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
 };
@@ -171,7 +171,9 @@ export const INDUSTRY_LABELS: Record<string, any> = {
     quotes: { name: 'Proposals' },
     invoices: { name: 'Billing' },
     calendar: { name: 'Schedule' },
-    calls: { name: 'Calls' }
+    calls: { name: 'Calls' },
+    products: { name: 'Offerings' },
+    financials: { name: 'Financials' }
   },
   mortgage_broker: {
     crm: { name: 'Borrowers' },
@@ -1555,6 +1557,45 @@ export const PAGE_LABELS: Record<string, Record<string, Partial<PageLabels>>> = 
       emptyStateDescription: 'Log your first client call',
       emptyStateButton: 'Log Your First Call',
       loadingText: 'Loading calls...',
+    },
+    products: {
+      title: 'Services & Products',
+      subtitle: 'Manage your service offerings, retainer packages, and product catalog',
+      entitySingular: 'offering',
+      entityPlural: 'offerings',
+      newButton: 'New Offering',
+      searchPlaceholder: 'Search offerings...',
+      emptyStateTitle: 'No offerings configured',
+      emptyStateDescription: 'Define your agency services, retainer packages, SaaS products, and one-time deliverables to use in proposals and invoices',
+      emptyStateButton: 'Add Your First Offering',
+      loadingText: 'Loading offerings...',
+      columns: {
+        name: 'Offering',
+        amount: 'Rate',
+        status: 'Status',
+      },
+      stats: {
+        total: 'Total Offerings',
+        active: 'Active',
+      },
+    },
+    financials: {
+      title: 'Financials',
+      subtitle: 'Track agency revenue, project costs, and profitability',
+      entitySingular: 'transaction',
+      entityPlural: 'transactions',
+      newButton: 'Add Expense',
+      searchPlaceholder: 'Search transactions...',
+      emptyStateTitle: 'No financial data yet',
+      emptyStateDescription: 'Start tracking your agency revenue and project expenses to monitor profitability',
+      emptyStateButton: 'Add Your First Transaction',
+      loadingText: 'Loading financials...',
+      columns: {},
+      stats: {
+        total: 'Total Transactions',
+        totalRevenue: 'Revenue',
+        outstanding: 'Expenses',
+      },
     },
   },
 

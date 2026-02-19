@@ -19,11 +19,13 @@ import SecurityTab from '@/components/settings/SecurityTab';
 import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import SMSSettingsTab from '@/components/settings/SMSSettingsTab';
+import StripeConnectSettings from '@/components/settings/StripeConnectSettings';
 import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
+import { PAYMENT_TERMS_OPTIONS } from '@/config/paymentTerms';
 import { webhookService, Webhook } from '@/services/webhook.service';
 import { apiKeyService } from '@/services/apiKey.service';
 import { WebhookConfigModal } from '@/components/settings/WebhookConfigModal';
@@ -888,13 +890,17 @@ export default function Settings() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Default Payment Terms
                   </label>
-                  <Input
-                    type="text"
-                    value={settings.default_payment_terms}
+                  <select
+                    value={PAYMENT_TERMS_OPTIONS.find(o => o.key === settings.default_payment_terms) ? settings.default_payment_terms : (settings.default_payment_terms ? 'custom' : '')}
                     onChange={(e) => setSettings({ ...settings, default_payment_terms: e.target.value })}
-                    placeholder="Net 30"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">e.g., Net 30, Due on Receipt</p>
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select default terms...</option>
+                    {PAYMENT_TERMS_OPTIONS.map(option => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Applied to new invoices and quotes by default</p>
                 </div>
               </div>
             </div>
@@ -969,24 +975,7 @@ export default function Settings() {
 
         {activeTab === 'payment' && (
           <div className="max-w-4xl space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Stripe Integration</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Connect your Stripe account to accept online payments
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Not Connected</span>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Stripe integration will be configured via Stripe Connect in a future update. Your API keys are managed securely server-side.
-              </p>
-            </div>
+            <StripeConnectSettings organizationId={currentOrganization?.id} />
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Methods</h2>

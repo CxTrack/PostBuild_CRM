@@ -33,6 +33,7 @@ import Calls from './pages/calls/Calls';
 import { CallDetail } from './pages/calls/CallDetail';
 import Tasks from './pages/Tasks';
 import Settings from './pages/settings/Settings';
+import StripeCallback from './pages/settings/StripeCallback';
 import { ChatPage } from './pages/ChatPage';
 import ReportsPage from './pages/ReportsPage';
 import { Suppliers } from './pages/Suppliers';
@@ -154,6 +155,7 @@ export default function App() {
             <Route path="tasks" element={<Tasks />} />
             <Route path="upgrade" element={<UpgradePage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="settings/stripe-callback" element={<StripeCallback />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="suppliers" element={<Suppliers />} />

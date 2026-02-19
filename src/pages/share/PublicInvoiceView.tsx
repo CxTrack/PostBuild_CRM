@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Download, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { Download, AlertCircle, Loader2, Lock, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 import { shareLinkService } from '@/services/shareLink.service';
 import { invoiceService, Invoice } from '@/services/invoice.service';
 import { pdfService } from '@/services/pdf.service';
 import toast from 'react-hot-toast';
+import { getTermsLabel } from '@/config/paymentTerms';
 
 export default function PublicInvoiceView() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [password, setPassword] = useState('');
   const [validating, setValidating] = useState(false);
+
+  const paymentSuccess = searchParams.get('payment') === 'success';
+  const paymentCancelled = searchParams.get('payment') === 'cancelled';
+  const paymentLinkUrl = searchParams.get('pay_url');
 
   useEffect(() => {
     if (token) {
@@ -196,6 +202,68 @@ export default function PublicInvoiceView() {
             </div>
           </div>
 
+          {/* Payment success banner */}
+          {paymentSuccess && (
+            <div className="mx-8 mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Payment received successfully
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
+                    Thank you for your payment. The invoice status will be updated shortly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment cancelled banner */}
+          {paymentCancelled && (
+            <div className="mx-8 mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Payment was cancelled
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-0.5">
+                    No charges were made. You can try again using the Pay Now button below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pay Now button - show when invoice is not paid and has a payment link */}
+          {invoice.status !== 'paid' && paymentLinkUrl && (
+            <div className="mx-8 mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Online payment available
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                      Amount due: ${invoice.amount_due.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={paymentLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm hover:shadow-md"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Pay Now
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div>
@@ -340,7 +408,7 @@ export default function PublicInvoiceView() {
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       Payment Terms
                     </h4>
-                    <p className="text-gray-600 dark:text-gray-400">{invoice.payment_terms}</p>
+                    <p className="text-gray-600 dark:text-gray-400">{getTermsLabel(invoice.payment_terms)}</p>
                   </div>
                 )}
                 {invoice.notes && (

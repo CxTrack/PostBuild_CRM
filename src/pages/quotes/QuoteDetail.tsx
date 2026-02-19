@@ -11,6 +11,7 @@ import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
 import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { getTermsLabel } from '@/config/paymentTerms';
 
 interface OrganizationInfo {
   name: string;
@@ -328,7 +329,7 @@ export default function QuoteDetail() {
             {quote.payment_terms && (
               <div className="mb-4">
                 <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Payment Terms</h3>
-                <p className="text-gray-900 dark:text-white">{quote.payment_terms}</p>
+                <p className="text-gray-900 dark:text-white">{getTermsLabel(quote.payment_terms)}</p>
               </div>
             )}
             {quote.notes && (

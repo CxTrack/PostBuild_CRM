@@ -223,27 +223,101 @@ export const ProfileTab: React.FC = () => {
         }
     };
 
-    /** Crop handler — store both preview data URL and pending blob for upload */
+    /** Crop handler — immediately upload to Supabase Storage for persistence */
     const handleAvatarUpload = async () => {
-        if (!editorRef.current) return;
+        if (!editorRef.current || !user?.id) return;
 
         const canvas = editorRef.current.getImageScaledToCanvas();
 
         // Data URL for instant preview
         const dataUrl = canvas.toDataURL('image/png');
         setAvatarPreview(dataUrl);
-        setProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+        setShowCropper(false);
 
-        // Store blob for actual upload on Save
-        canvas.toBlob((blob) => {
-            if (blob) {
-                pendingAvatarBlob.current = blob;
+        // Convert to blob and upload immediately
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+
+            try {
+                const token = getAuthToken();
+                if (!token) throw new Error('No auth token');
+
+                const filePath = `${user.id}/avatar.png`;
+
+                // Upload to Supabase Storage immediately
+                const uploadRes = await fetch(
+                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'x-upsert': 'true',
+                            'Content-Type': 'image/png',
+                        },
+                        body: blob,
+                    }
+                );
+
+                if (!uploadRes.ok) {
+                    const errText = await uploadRes.text();
+                    console.error('[ProfileTab] Avatar upload failed:', uploadRes.status, errText);
+                    toast.error(`Avatar upload failed: ${uploadRes.status}`);
+                    return;
+                }
+
+                // Build public URL with cache-bust
+                const avatarPublicUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${filePath}?t=${Date.now()}`;
+
+                // Persist URL to user_profiles immediately
+                const patchRes = await fetch(
+                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal',
+                        },
+                        body: JSON.stringify({ avatar_url: avatarPublicUrl }),
+                    }
+                );
+
+                if (!patchRes.ok) {
+                    const errText = await patchRes.text();
+                    console.error('[ProfileTab] Avatar URL save failed:', patchRes.status, errText);
+                    toast.error(`Failed to save avatar URL: ${patchRes.status}`);
+                    return;
+                }
+
+                // Update local state with persisted public URL (not data URL)
+                setAvatarPreview(avatarPublicUrl);
+                setProfile(prev => ({ ...prev, avatar_url: avatarPublicUrl }));
+
+                // Update localStorage cache
+                const cached = localStorage.getItem(PROFILE_KEY);
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        parsed.avatar_url = avatarPublicUrl;
+                        localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+                    } catch { /* skip */ }
+                }
+
+                // Clear pending refs
+                pendingAvatarBlob.current = null;
                 pendingAvatarRemoved.current = false;
+
+                // Refresh team members so sidebar picks up new avatar
+                try { await fetchTeamMembers(); } catch { /* non-critical */ }
+
+                toast.success('Photo saved!');
+            } catch (error) {
+                console.error('[ProfileTab] Avatar upload error:', error);
+                toast.error(error instanceof Error ? error.message : 'Avatar upload failed');
             }
         }, 'image/png');
-
-        setShowCropper(false);
-        toast.success('Photo updated! Click Save to persist.');
     };
 
     /** Remove avatar handler */
@@ -254,7 +328,7 @@ export const ProfileTab: React.FC = () => {
         pendingAvatarRemoved.current = true;
     };
 
-    /** Save profile — upload avatar to Storage + persist all fields to user_profiles */
+    /** Save profile — persist all fields to user_profiles (avatar is uploaded separately on crop) */
     const handleSaveProfile = async () => {
         if (!user?.id) {
             toast.error('Not authenticated');
@@ -267,38 +341,12 @@ export const ProfileTab: React.FC = () => {
             const token = getAuthToken();
             if (!token) throw new Error('No auth token found');
 
-            // Default to existing avatar URL — but never persist data URLs (from crop preview)
+            // Avatar URL: use current profile value (already persisted by handleAvatarUpload)
+            // Never persist data: URLs — those are transient previews
             let avatarPublicUrl: string | null = profile.avatar_url?.startsWith('data:') ? null : (profile.avatar_url || null);
 
-            // 1) Upload avatar to Supabase Storage if pending
-            //    Uses direct fetch() to bypass Supabase AbortController issue
-            if (pendingAvatarBlob.current) {
-                const filePath = `${user.id}/avatar.png`;
-
-                const uploadRes = await fetch(
-                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'apikey': supabaseAnonKey,
-                            'Authorization': `Bearer ${token}`,
-                            'x-upsert': 'true',
-                            'Content-Type': 'image/png',
-                        },
-                        body: pendingAvatarBlob.current,
-                    }
-                );
-
-                if (!uploadRes.ok) {
-                    const errText = await uploadRes.text();
-                    throw new Error(`Avatar upload failed (${uploadRes.status}): ${errText}`);
-                }
-
-                // Build public URL with cache-bust
-                avatarPublicUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${filePath}?t=${Date.now()}`;
-                pendingAvatarBlob.current = null;
-            } else if (pendingAvatarRemoved.current) {
-                // Remove avatar from storage via direct fetch
+            // Handle avatar removal if user clicked "Remove"
+            if (pendingAvatarRemoved.current) {
                 const filePath = `${user.id}/avatar.png`;
                 await fetch(
                     `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
@@ -314,7 +362,7 @@ export const ProfileTab: React.FC = () => {
                 pendingAvatarRemoved.current = false;
             }
 
-            // 2) Build profile_metadata JSONB
+            // Build profile_metadata JSONB
             const profileMetadata = {
                 first_name: profile.first_name,
                 last_name: profile.last_name,
@@ -335,7 +383,13 @@ export const ProfileTab: React.FC = () => {
                 learning_topics: profile.learning_topics,
             };
 
-            // 3) PATCH user_profiles via direct fetch (bypass AbortController)
+            // PATCH user_profiles via direct fetch (bypass AbortController)
+            const patchBody = {
+                full_name: `${profile.first_name} ${profile.last_name}`.trim(),
+                avatar_url: avatarPublicUrl,
+                profile_metadata: profileMetadata,
+            };
+            console.log('[ProfileTab] Saving profile:', { userId: user.id, avatar_url: avatarPublicUrl, metadataKeys: Object.keys(profileMetadata) });
 
             const res = await fetch(
                 `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
@@ -347,18 +401,16 @@ export const ProfileTab: React.FC = () => {
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal',
                     },
-                    body: JSON.stringify({
-                        full_name: `${profile.first_name} ${profile.last_name}`.trim(),
-                        avatar_url: avatarPublicUrl,
-                        profile_metadata: profileMetadata,
-                    }),
+                    body: JSON.stringify(patchBody),
                 }
             );
 
             if (!res.ok) {
                 const errText = await res.text();
+                console.error('[ProfileTab] Profile PATCH failed:', res.status, errText);
                 throw new Error(`Profile update failed (${res.status}): ${errText}`);
             }
+            console.log('[ProfileTab] Profile saved successfully');
 
             // 4) Update local state with the persisted public URL
             const updatedProfile = {

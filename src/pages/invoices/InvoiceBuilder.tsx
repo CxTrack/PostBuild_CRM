@@ -22,6 +22,7 @@ import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { getInvoiceFieldLabels } from '@/config/modules.config';
+import { PAYMENT_TERMS_OPTIONS, calculateDueDate } from '@/config/paymentTerms';
 
 export default function InvoiceBuilder() {
   const { id } = useParams();
@@ -104,10 +105,20 @@ export default function InvoiceBuilder() {
       ]);
       setOrganizationInfo(orgInfo);
       if (settings) {
-        setFormData(prev => ({
-          ...prev,
-          ...(settings.default_payment_terms ? { payment_terms: settings.default_payment_terms } : {}),
-        }));
+        setFormData(prev => {
+          const updated = {
+            ...prev,
+            ...(settings.default_payment_terms ? { payment_terms: settings.default_payment_terms } : {}),
+          };
+          // Auto-calculate due date from default payment terms for new invoices
+          if (!id && settings.default_payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === settings.default_payment_terms)) {
+            const newDueDate = calculateDueDate(prev.invoice_date, settings.default_payment_terms);
+            if (newDueDate) {
+              updated.due_date = newDueDate;
+            }
+          }
+          return updated;
+        });
         // Store org tax settings for use when applying tax
         if (settings.default_tax_rate) {
           setOrgTaxRate(settings.default_tax_rate);
@@ -863,7 +874,20 @@ export default function InvoiceBuilder() {
                   <Input
                     type="date"
                     value={formData.invoice_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, invoice_date: e.target.value }))}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setFormData(prev => {
+                        const updated = { ...prev, invoice_date: newDate };
+                        // Recalculate due date if payment terms are set
+                        if (prev.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === prev.payment_terms)) {
+                          const newDueDate = calculateDueDate(newDate, prev.payment_terms);
+                          if (newDueDate) {
+                            updated.due_date = newDueDate;
+                          }
+                        }
+                        return updated;
+                      });
+                    }}
                   />
                 </div>
                 <div>
@@ -880,12 +904,39 @@ export default function InvoiceBuilder() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Payment Terms
                   </label>
-                  <Input
-                    type="text"
-                    value={formData.payment_terms || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                    placeholder="Net 30"
-                  />
+                  <select
+                    value={PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) ? formData.payment_terms : (formData.payment_terms ? 'custom' : '')}
+                    onChange={(e) => {
+                      const selectedKey = e.target.value;
+                      setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
+                      if (selectedKey && selectedKey !== 'custom') {
+                        const newDueDate = calculateDueDate(formData.invoice_date, selectedKey);
+                        if (newDueDate) {
+                          setFormData(prev => ({ ...prev, payment_terms: selectedKey, due_date: newDueDate }));
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select payment terms...</option>
+                    {PAYMENT_TERMS_OPTIONS.map(option => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                  {formData.payment_terms === 'custom' && (
+                    <Input
+                      type="text"
+                      value={formData.payment_terms === 'custom' ? '' : formData.payment_terms}
+                      onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value || 'custom' }))}
+                      placeholder="Enter custom payment terms..."
+                      className="mt-2"
+                    />
+                  )}
+                  {formData.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms)?.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
