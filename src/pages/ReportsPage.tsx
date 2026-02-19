@@ -95,6 +95,49 @@ export const ReportsPage = () => {
 
     const isDark = theme === 'dark';
 
+    // --- Date-filtered data ---
+    const rangeStart = new Date(dateRange.start + 'T00:00:00');
+    const rangeEnd = new Date(dateRange.end + 'T23:59:59');
+    const rangeDays = Math.max(1, Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86400000));
+    const prevStart = new Date(rangeStart.getTime() - rangeDays * 86400000);
+    const prevEnd = new Date(rangeStart.getTime() - 1);
+
+    const filteredInvoices = useMemo(() =>
+        invoices.filter(inv => {
+            const d = new Date(inv.created_at || '');
+            return d >= rangeStart && d <= rangeEnd;
+        }), [invoices, dateRange.start, dateRange.end]);
+
+    const prevInvoices = useMemo(() =>
+        invoices.filter(inv => {
+            const d = new Date(inv.created_at || '');
+            return d >= prevStart && d <= prevEnd;
+        }), [invoices, dateRange.start, dateRange.end]);
+
+    const filteredCustomers = useMemo(() =>
+        customers.filter(c => {
+            const d = new Date(c.created_at || '');
+            return d >= rangeStart && d <= rangeEnd;
+        }), [customers, dateRange.start, dateRange.end]);
+
+    const prevCustomers = useMemo(() =>
+        customers.filter(c => {
+            const d = new Date(c.created_at || '');
+            return d >= prevStart && d <= prevEnd;
+        }), [customers, dateRange.start, dateRange.end]);
+
+    const filteredCalls = useMemo(() =>
+        calls.filter(c => {
+            const d = new Date(c.created_at || '');
+            return d >= rangeStart && d <= rangeEnd;
+        }), [calls, dateRange.start, dateRange.end]);
+
+    const prevCalls = useMemo(() =>
+        calls.filter(c => {
+            const d = new Date(c.created_at || '');
+            return d >= prevStart && d <= prevEnd;
+        }), [calls, dateRange.start, dateRange.end]);
+
     // Load subscription data
     useEffect(() => {
         const loadSubscriptions = async () => {
@@ -215,17 +258,18 @@ export const ReportsPage = () => {
         }
     };
 
-    // Generate revenue data
+    // Generate revenue data — respects dateRange
     const revenueData = useMemo(() => {
         const months = eachMonthOfInterval({
-            start: subMonths(new Date(), 5),
-            end: new Date(),
+            start: startOfMonth(rangeStart),
+            end: rangeEnd,
         });
 
         return months.map((month) => {
+            const mEnd = endOfMonth(month);
             const monthInvoices = invoices.filter(inv => {
                 const invDate = new Date(inv.created_at || '');
-                return invDate.getMonth() === month.getMonth() && invDate.getFullYear() === month.getFullYear();
+                return invDate >= month && invDate <= mEnd && invDate >= rangeStart && invDate <= rangeEnd;
             });
 
             const revenue = monthInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
@@ -238,20 +282,26 @@ export const ReportsPage = () => {
                 pending: revenue - paid,
             };
         });
-    }, [invoices]);
+    }, [invoices, dateRange.start, dateRange.end]);
 
-    // Generate customer growth data
+    // Generate customer growth data — respects dateRange
     const customerGrowthData = useMemo(() => {
         const months = eachMonthOfInterval({
-            start: subMonths(new Date(), 5),
-            end: new Date(),
+            start: startOfMonth(rangeStart),
+            end: rangeEnd,
         });
 
-        let cumulative = 0;
+        // Count customers created before rangeStart as baseline
+        let cumulative = customers.filter(c => {
+            const cDate = new Date(c.created_at || '');
+            return cDate < rangeStart;
+        }).length;
+
         return months.map((month) => {
+            const mEnd = endOfMonth(month);
             const newCustomers = customers.filter(c => {
                 const cDate = new Date(c.created_at || '');
-                return cDate.getMonth() === month.getMonth() && cDate.getFullYear() === month.getFullYear();
+                return cDate >= month && cDate <= mEnd && cDate >= rangeStart && cDate <= rangeEnd;
             }).length;
 
             cumulative += newCustomers;
@@ -261,7 +311,7 @@ export const ReportsPage = () => {
                 total: cumulative,
             };
         });
-    }, [customers]);
+    }, [customers, dateRange.start, dateRange.end]);
 
     // Pipeline data
     const pipelineData = useMemo(() => {
@@ -282,17 +332,17 @@ export const ReportsPage = () => {
         }));
     }, [pipelineStats]);
 
-    // Call analytics data
+    // Call analytics data — date-filtered
     const callData = useMemo(() => {
-        const aiCalls = calls.filter(c => c.call_type === 'ai_agent').length;
-        const humanCalls = calls.filter(c => c.call_type === 'human').length;
-        const inbound = calls.filter(c => c.direction === 'inbound').length;
-        const outbound = calls.filter(c => c.direction === 'outbound').length;
+        const aiCalls = filteredCalls.filter(c => c.call_type === 'ai_agent').length;
+        const humanCalls = filteredCalls.filter(c => c.call_type === 'human').length;
+        const inbound = filteredCalls.filter(c => c.direction === 'inbound').length;
+        const outbound = filteredCalls.filter(c => c.direction === 'outbound').length;
 
         // Calculate sentiment from actual call data
-        const positiveCalls = calls.filter(c => (c as any).sentiment === 'positive').length;
-        const neutralCalls = calls.filter(c => (c as any).sentiment === 'neutral').length;
-        const negativeCalls = calls.filter(c => (c as any).sentiment === 'negative').length;
+        const positiveCalls = filteredCalls.filter(c => (c as any).sentiment === 'positive').length;
+        const neutralCalls = filteredCalls.filter(c => (c as any).sentiment === 'neutral').length;
+        const negativeCalls = filteredCalls.filter(c => (c as any).sentiment === 'negative').length;
 
         return {
             byType: [
@@ -309,53 +359,67 @@ export const ReportsPage = () => {
                 { name: 'Negative', value: negativeCalls, color: CHART_COLORS.danger },
             ],
         };
-    }, [calls]);
+    }, [filteredCalls]);
 
     // Team performance data - will be populated from actual data
     const teamData = useMemo(() => [] as { name: string; tasks: number; calls: number; revenue: number; efficiency: number }[], []);
 
-    // Summary stats
+    // Summary stats — date-filtered with real period-over-period comparison
     const summaryStats = useMemo(() => {
-        const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
-        const paidRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
-        const totalCustomers = customers.length;
-        const totalCalls = calls.length;
+        const totalRevenue = filteredInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const paidRevenue = filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const totalCustomers = filteredCustomers.length;
+        const totalCalls = filteredCalls.length;
+
+        const prevRevenue = prevInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const prevCustomerCount = prevCustomers.length;
+        const prevCallCount = prevCalls.length;
+        const prevPaidRevenue = prevInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const prevTotalRev = prevInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const prevCollectionRate = prevTotalRev > 0 ? (prevPaidRevenue / prevTotalRev) * 100 : 0;
+        const currentCollectionRate = totalRevenue > 0 ? (paidRevenue / totalRevenue) * 100 : 0;
+
+        const pctChange = (curr: number, prev: number) => {
+            if (prev === 0) return curr > 0 ? '+100%' : '0%';
+            const pct = ((curr - prev) / prev) * 100;
+            return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+        };
 
         return [
             {
                 label: 'Total Revenue',
                 value: `$${totalRevenue.toLocaleString()}`,
-                change: '+12.5%',
-                isPositive: true,
+                change: pctChange(totalRevenue, prevRevenue),
+                isPositive: totalRevenue >= prevRevenue,
                 icon: DollarSign,
                 color: 'blue',
             },
             {
                 label: crmLabels.entityPlural,
                 value: totalCustomers.toString(),
-                change: '+8.2%',
-                isPositive: true,
+                change: pctChange(totalCustomers, prevCustomerCount),
+                isPositive: totalCustomers >= prevCustomerCount,
                 icon: Users,
                 color: 'green',
             },
             {
                 label: 'Total Calls',
                 value: totalCalls.toString(),
-                change: '+24.1%',
-                isPositive: true,
+                change: pctChange(totalCalls, prevCallCount),
+                isPositive: totalCalls >= prevCallCount,
                 icon: Phone,
                 color: 'purple',
             },
             {
                 label: 'Collection Rate',
-                value: totalRevenue > 0 ? `${((paidRevenue / totalRevenue) * 100).toFixed(0)}%` : '0%',
-                change: '+5.3%',
-                isPositive: true,
+                value: totalRevenue > 0 ? `${currentCollectionRate.toFixed(0)}%` : '0%',
+                change: pctChange(currentCollectionRate, prevCollectionRate),
+                isPositive: currentCollectionRate >= prevCollectionRate,
                 icon: Target,
                 color: 'amber',
             },
         ];
-    }, [invoices, customers, calls]);
+    }, [filteredInvoices, filteredCustomers, filteredCalls, prevInvoices, prevCustomers, prevCalls]);
 
     // Export functions
     const exportToCSV = (data: any[], filename: string) => {
@@ -494,10 +558,12 @@ export const ReportsPage = () => {
                     <div>
                         <p className={`text-sm ${textSecondary}`}>{stat.label}</p>
                         <p className={`text-2xl font-bold mt-1 ${textPrimary}`}>{stat.value}</p>
+                        {stat.change && (
                         <div className={`flex items-center gap-1 mt-2 text-sm ${stat.isPositive ? 'text-green-500' : 'text-red-500'}`}>
                             {stat.isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                             {stat.change} vs last period
                         </div>
+                        )}
                     </div>
                     <div className={`p-3 rounded-xl ${colorClasses[stat.color]}`}>
                         <stat.icon className="w-5 h-5" />
@@ -568,7 +634,7 @@ export const ReportsPage = () => {
                         {/* Export All Button */}
                         <button
                             onClick={() => {
-                                const allData = invoices.map(inv => ({
+                                const allData = filteredInvoices.map(inv => ({
                                     id: inv.id,
                                     customer: inv.customer_name || 'Unknown',
                                     total: inv.total_amount,
@@ -731,9 +797,9 @@ export const ReportsPage = () => {
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                             {summaryStats.slice(0, 1).map((stat, i) => <StatCard key={i} stat={stat} />)}
-                            <StatCard stat={{ label: 'Paid', value: `$${invoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '+15.2%', isPositive: true, icon: CheckCircle, color: 'green' }} />
-                            <StatCard stat={{ label: 'Sent', value: `$${invoices.filter(inv => inv.status === 'sent').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '-3.1%', isPositive: true, icon: Clock, color: 'amber' }} />
-                            <StatCard stat={{ label: 'Overdue', value: `$${invoices.filter(inv => inv.status === 'overdue').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '+2.4%', isPositive: false, icon: AlertTriangle, color: 'amber' }} />
+                            <StatCard stat={{ label: 'Paid', value: `$${filteredInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '', isPositive: true, icon: CheckCircle, color: 'green' }} />
+                            <StatCard stat={{ label: 'Sent', value: `$${filteredInvoices.filter(inv => inv.status === 'sent').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '', isPositive: true, icon: Clock, color: 'amber' }} />
+                            <StatCard stat={{ label: 'Overdue', value: `$${filteredInvoices.filter(inv => inv.status === 'overdue').reduce((s, inv) => s + (inv.total_amount || 0), 0).toLocaleString()}`, change: '', isPositive: false, icon: AlertTriangle, color: 'amber' }} />
                         </div>
 
                         <ChartCard title="Monthly Revenue Breakdown" onExport={() => exportToCSV(revenueData, 'monthly_revenue')}>
@@ -753,7 +819,7 @@ export const ReportsPage = () => {
                         </ChartCard>
 
                         {/* Invoice Table */}
-                        <ChartCard title="Recent Invoices" onExport={() => exportToPDF('Invoice Report', invoices.map(inv => ({ id: inv.id?.slice(0, 8), customer: inv.customer_name, total: `$${inv.total_amount}`, status: inv.status, date: inv.created_at?.split('T')[0] })))}>
+                        <ChartCard title="Recent Invoices" onExport={() => exportToPDF('Invoice Report', filteredInvoices.map(inv => ({ id: inv.id?.slice(0, 8), customer: inv.customer_name, total: `$${inv.total_amount}`, status: inv.status, date: inv.created_at?.split('T')[0] })))}>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
@@ -765,7 +831,7 @@ export const ReportsPage = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {invoices.slice(0, 5).map((invoice) => (
+                                        {filteredInvoices.slice(0, 5).map((invoice) => (
                                             <tr key={invoice.id} className={`border-b last:border-b-0 ${borderColor} ${hoverBg} cursor-pointer`} onClick={() => navigate(`/invoices/${invoice.id}`)}>
                                                 <td className={`py-3 px-2 font-medium ${textPrimary}`}>#{invoice.id?.slice(-6)}</td>
                                                 <td className={`py-3 px-2 ${textSecondary}`}>{invoice.customer_name || 'Unknown'}</td>
@@ -1008,10 +1074,10 @@ export const ReportsPage = () => {
                 {activeSection === 'customers' && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard stat={{ label: 'Total Customers', value: customers.length.toString(), change: '+8.2%', isPositive: true, icon: Users, color: 'blue' }} />
-                            <StatCard stat={{ label: 'Business', value: customers.filter(c => (c as any).type === 'business').length.toString(), change: '+12.4%', isPositive: true, icon: Target, color: 'purple' }} />
-                            <StatCard stat={{ label: 'Personal', value: customers.filter(c => (c as any).type === 'personal').length.toString(), change: '+3.1%', isPositive: true, icon: Users, color: 'green' }} />
-                            <StatCard stat={{ label: 'New This Month', value: '4', change: '+25%', isPositive: true, icon: TrendingUp, color: 'amber' }} />
+                            <StatCard stat={{ label: 'Total Customers', value: filteredCustomers.length.toString(), change: '', isPositive: true, icon: Users, color: 'blue' }} />
+                            <StatCard stat={{ label: 'Business', value: filteredCustomers.filter(c => (c as any).type === 'business').length.toString(), change: '', isPositive: true, icon: Target, color: 'purple' }} />
+                            <StatCard stat={{ label: 'Personal', value: filteredCustomers.filter(c => (c as any).type === 'personal').length.toString(), change: '', isPositive: true, icon: Users, color: 'green' }} />
+                            <StatCard stat={{ label: `New (${datePreset})`, value: filteredCustomers.length.toString(), change: '', isPositive: true, icon: TrendingUp, color: 'amber' }} />
                         </div>
 
                         <ChartCard title="Customer Growth Over Time" onExport={() => exportToCSV(customerGrowthData, 'customer_growth')}>
@@ -1059,10 +1125,10 @@ export const ReportsPage = () => {
                 {activeSection === 'calls' && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard stat={{ label: 'Total Calls', value: calls.length.toString(), change: '+0%', isPositive: true, icon: Phone, color: 'blue' }} />
-                            <StatCard stat={{ label: 'AI Calls', value: calls.filter(c => c.call_type === 'ai_agent').length.toString(), change: '+0%', isPositive: true, icon: Activity, color: 'purple' }} />
-                            <StatCard stat={{ label: 'Avg Duration', value: calls.length > 0 ? formatDuration(calls.reduce((sum, c) => sum + ((c as any).duration || 0), 0) / calls.length) : '0:00', change: '+0%', isPositive: true, icon: Clock, color: 'green' }} />
-                            <StatCard stat={{ label: 'Positive Sentiment', value: calls.length > 0 ? `${Math.round((calls.filter(c => (c as any).sentiment === 'positive').length / calls.length) * 100)}%` : '0%', change: '+0%', isPositive: true, icon: TrendingUp, color: 'amber' }} />
+                            <StatCard stat={{ label: 'Total Calls', value: filteredCalls.length.toString(), change: '', isPositive: true, icon: Phone, color: 'blue' }} />
+                            <StatCard stat={{ label: 'AI Calls', value: filteredCalls.filter(c => c.call_type === 'ai_agent').length.toString(), change: '', isPositive: true, icon: Activity, color: 'purple' }} />
+                            <StatCard stat={{ label: 'Avg Duration', value: filteredCalls.length > 0 ? formatDuration(filteredCalls.reduce((sum, c) => sum + ((c as any).duration || 0), 0) / filteredCalls.length) : '0:00', change: '', isPositive: true, icon: Clock, color: 'green' }} />
+                            <StatCard stat={{ label: 'Positive Sentiment', value: filteredCalls.length > 0 ? `${Math.round((filteredCalls.filter(c => (c as any).sentiment === 'positive').length / filteredCalls.length) * 100)}%` : '0%', change: '', isPositive: true, icon: TrendingUp, color: 'amber' }} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1119,7 +1185,7 @@ export const ReportsPage = () => {
                     <div className="grid grid-cols-2 gap-3">
                         {[
                             { label: 'Revenue Report', data: revenueData, filename: 'revenue' },
-                            { label: 'Customer Report', data: customers.map(c => ({ name: c.name, type: c.type, email: c.email })), filename: 'customers' },
+                            { label: 'Customer Report', data: filteredCustomers.map(c => ({ name: c.name, type: c.type, email: c.email })), filename: 'customers' },
                             { label: 'Call Report', data: callData.byType, filename: 'calls' },
                             { label: 'Team Report', data: teamData, filename: 'team' },
                         ].map((report, i) => (
