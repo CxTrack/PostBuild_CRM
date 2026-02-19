@@ -354,7 +354,7 @@ export default function Calls() {
               {calls.map((call) => (
                 <tr
                   key={call.id}
-                  onClick={() => navigate(`/calls/${call.id}`)}
+                  onClick={() => navigate(`/dashboard/calls/${call.id}`)}
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">

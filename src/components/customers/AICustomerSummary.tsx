@@ -1,77 +1,73 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
-import { supabaseUrl } from '@/lib/supabase';
+import { Sparkles, RefreshCw, AlertCircle, Info } from 'lucide-react';
+import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
 
 interface AICustomerSummaryProps {
   customerId: string;
   customerName: string;
 }
 
-// Read auth token from localStorage (AbortController workaround)
-const getAuthToken = (): string | null => {
-  for (const key of Object.keys(localStorage)) {
-    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-      try {
-        const stored = JSON.parse(localStorage.getItem(key) || '');
-        if (stored?.access_token) return stored.access_token;
-      } catch { /* skip */ }
-    }
-  }
-  return null;
-};
-
 const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, customerName }) => {
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noData, setNoData] = useState(false);
 
   const generateSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNoData(false);
 
-    const token = getAuthToken();
+    const token = await getAuthToken();
     if (!token) {
-      setError('Not authenticated');
+      setError('Please sign in to view AI summaries');
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/copilot-chat`, {
+      const response = await fetch(`${getSupabaseUrl()}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              content: `Give me a brief overview of customer "${customerName}" (ID: ${customerId}). Include their pipeline stage, open tasks, recent notes, upcoming meetings, outstanding invoices, and call history. Keep it concise - 3-5 sentences maximum. Focus on actionable insights.`,
-            },
-          ],
+          message: `Give me a brief overview of customer "${customerName}" (ID: ${customerId}). Include their pipeline stage, open tasks, recent notes, upcoming meetings, outstanding invoices, and call history. Keep it concise - 3-5 sentences maximum. Focus on actionable insights. If there is very little data available for this customer, say so briefly.`,
+          conversationHistory: [],
           context: {
-            currentPage: 'customers',
-            customerId,
+            page: 'Customers',
           },
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate summary');
+        const data = await response.json().catch(() => ({}));
+        if (data.error === 'token_limit_reached') {
+          setError('Out of AI tokens this month');
+          return;
+        }
+        throw new Error(data.error || 'Could not generate summary');
       }
 
       const data = await response.json();
-      const aiMessage = data.choices?.[0]?.message?.content || data.response || data.message;
+      const aiMessage = data.response;
 
       if (aiMessage) {
+        // Check if the AI response indicates no meaningful data
+        const lowerMsg = aiMessage.toLowerCase();
+        const noDataIndicators = ['no data', 'no information', 'no records', 'no activity', 'couldn\'t find', 'could not find', 'not found'];
+        const isLikelyEmpty = noDataIndicators.some(ind => lowerMsg.includes(ind)) && aiMessage.length < 200;
+
+        if (isLikelyEmpty) {
+          setNoData(true);
+        }
         setSummary(aiMessage);
       } else {
-        setError('No summary generated');
+        setNoData(true);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to generate summary');
+      setError(err.message || 'Could not generate summary');
     } finally {
       setLoading(false);
     }
@@ -113,13 +109,27 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
           <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
+      ) : noData && !summary ? (
+        <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600 rounded-lg">
+          <Info size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Summary will build as more activity is recorded for this client — add notes, tasks, or deals to get started.
+          </p>
+        </div>
       ) : summary ? (
         <div className="p-3 bg-purple-50/50 dark:bg-purple-500/5 border border-purple-100 dark:border-purple-500/20 rounded-lg">
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
             {summary}
           </p>
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600 rounded-lg">
+          <Info size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Summary will build as more activity is recorded for this client — add notes, tasks, or deals to get started.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

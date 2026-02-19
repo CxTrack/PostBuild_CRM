@@ -4,7 +4,8 @@ import {
     BarChart3, TrendingUp, TrendingDown, Users, Phone, DollarSign,
     Download, Calendar, ChevronDown, ChevronRight,
     ArrowUpRight, ArrowDownRight, HelpCircle, CreditCard,
-    Activity, Target, Clock, CheckCircle, AlertTriangle, RefreshCw
+    Activity, Target, Clock, CheckCircle, AlertTriangle, RefreshCw,
+    SlidersHorizontal
 } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -24,6 +25,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { CustomReportsTab } from '@/components/reports/CustomReportsTab';
 
 // Helper to format duration in seconds to mm:ss
 const formatDuration = (seconds: number): string => {
@@ -54,7 +56,7 @@ const DATE_PRESETS = [
 ];
 
 // Report sections
-type ReportSection = 'overview' | 'revenue' | 'subscriptions' | 'customers' | 'pipeline' | 'calls' | 'team';
+type ReportSection = 'overview' | 'revenue' | 'subscriptions' | 'customers' | 'pipeline' | 'calls' | 'team' | 'custom';
 
 export const ReportsPage = () => {
     const { theme } = useThemeStore();
@@ -422,6 +424,7 @@ export const ReportsPage = () => {
         { id: 'pipeline', label: pipelineLabels.title, icon: Target },
         { id: 'calls', label: 'Calls', icon: Phone },
         { id: 'team', label: 'Team', icon: Activity },
+        { id: 'custom', label: 'Custom', icon: SlidersHorizontal },
     ];
 
     // Theme-aware helper classes
@@ -1103,6 +1106,11 @@ export const ReportsPage = () => {
                             </ChartCard>
                         </div>
                     </div>
+                )}
+
+                {/* Custom Reports Section */}
+                {activeSection === 'custom' && (
+                    <CustomReportsTab />
                 )}
 
                 {/* Mobile Download Section */}

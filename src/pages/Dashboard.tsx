@@ -769,7 +769,7 @@ export const Dashboard: React.FC = () => {
               {recentCalls.map((call) => (
                 <Link
                   key={call.id}
-                  to={`/calls/${call.id}`}
+                  to={`/dashboard/calls/${call.id}`}
                   className="block bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-center space-x-3">
