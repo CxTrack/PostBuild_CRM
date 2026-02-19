@@ -4,7 +4,7 @@ import {
     ChevronRight, ChevronLeft, Check, Save, RefreshCw, Zap,
     Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2,
     BookOpen, Globe, Plus, Trash2, Link, FileText, Brain,
-    Square, Search, Filter
+    Square, Search, Filter, Monitor
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -477,95 +477,98 @@ export const VoiceAgentSetup = () => {
 
     const isSetupComplete = config?.setup_completed;
 
+    const usagePercent = usage ? Math.min((usage.minutes_used / usage.minutes_included) * 100, 100) : 0;
+    const usageColor = usagePercent >= 100 ? 'bg-red-500' : usagePercent >= 80 ? 'bg-yellow-500' : 'bg-purple-500';
+
     return (
-        <div className="max-w-4xl space-y-6">
-            {/* Header with Usage */}
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-6 border-2 border-purple-200 dark:border-purple-800">
-                <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                            <Mic className="w-8 h-8 text-white" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                {isSetupComplete ? (config?.agent_name || 'AI Voice Agent') : 'Set Up Your Voice Agent'}
-                            </h2>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                {isSetupComplete
-                                    ? `${config?.is_active ? '🟢 Active' : '🔴 Paused'} • Handling calls 24/7`
-                                    : 'Configure your AI assistant in a few easy steps'}
-                            </p>
-                        </div>
+        <>
+        {/* Mobile gate — hidden on md+ */}
+        <div className="block md:hidden">
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
+                    <Monitor className="w-7 h-7 text-gray-400 dark:text-gray-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Desktop Required</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                    Voice Agent configuration is optimized for desktop. Please switch to a computer for the best experience.
+                </p>
+            </div>
+        </div>
+
+        {/* Desktop layout — hidden on mobile */}
+        <div className="hidden md:block max-w-4xl space-y-5">
+            {/* Compact Header — agent info + usage in one row */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                    {/* Agent avatar */}
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                     </div>
 
+                    {/* Agent name + status */}
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                            {isSetupComplete ? (config?.agent_name || 'AI Voice Agent') : 'Set Up Your Voice Agent'}
+                        </h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {isSetupComplete
+                                ? <>
+                                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${config?.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    {config?.is_active ? 'Active' : 'Paused'} &middot; Handling calls 24/7
+                                  </>
+                                : 'Configure your AI assistant in a few easy steps'}
+                        </p>
+                    </div>
+
+                    {/* Toggle active button */}
                     {isSetupComplete && (
                         <button
                             onClick={handleToggleActive}
                             disabled={saving}
-                            className={`px-4 py-2 rounded-xl font-medium transition-colors ${config?.is_active
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${config?.is_active
                                 ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
                                 : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
                                 }`}
                         >
                             {config?.is_active ? (
-                                <><Pause className="w-4 h-4 inline mr-2" />Pause Agent</>
+                                <><Pause className="w-3 h-3 inline mr-1" />Pause</>
                             ) : (
-                                <><Play className="w-4 h-4 inline mr-2" />Resume Agent</>
+                                <><Play className="w-3 h-3 inline mr-1" />Resume</>
                             )}
                         </button>
                     )}
-                </div>
 
-                {/* Usage Stats */}
-                {usage && (
-                    <div className="mt-6 pt-6 border-t border-purple-200 dark:border-purple-800">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{usage.minutes_used.toFixed(1)}</p>
-                                <p className="text-sm text-gray-500">Minutes Used</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{usage.minutes_included}</p>
-                                <p className="text-sm text-gray-500">Minutes Included</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                    {Math.max(0, usage.minutes_included - usage.minutes_used).toFixed(1)}
+                    {/* Inline usage */}
+                    {usage && isSetupComplete && (
+                        <div className="flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                    {usage.minutes_used.toFixed(1)} <span className="text-gray-400 font-normal">/ {usage.minutes_included} min</span>
                                 </p>
-                                <p className="text-sm text-gray-500">Remaining</p>
                             </div>
-                        </div>
-                        <div className="mt-4">
-                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div className="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full rounded-full transition-all ${
-                                        usage.minutes_used >= usage.minutes_included
-                                            ? 'bg-red-500'
-                                            : usage.minutes_used >= usage.minutes_included * 0.8
-                                                ? 'bg-gradient-to-r from-yellow-500 to-red-500'
-                                                : 'bg-gradient-to-r from-purple-500 to-blue-500'
-                                    }`}
-                                    style={{ width: `${Math.min((usage.minutes_used / usage.minutes_included) * 100, 100)}%` }}
+                                    className={`h-full rounded-full transition-all ${usageColor}`}
+                                    style={{ width: `${usagePercent}%` }}
                                 />
                             </div>
                         </div>
-                        {usage.minutes_used >= usage.minutes_included * 0.8 && (
-                            <div className={`mt-3 p-3 rounded-lg text-sm ${
-                                usage.minutes_used >= usage.minutes_included
-                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
-                                    : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
-                            }`}>
-                                <div className="flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                    <span>
-                                        {usage.minutes_used >= usage.minutes_included
-                                            ? 'You have exceeded your included voice minutes. Upgrade your plan to continue using the AI Voice Agent.'
-                                            : `You've used ${Math.round((usage.minutes_used / usage.minutes_included) * 100)}% of your included minutes this month.`
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                    )}
+                </div>
+                {/* Usage warning — only when approaching limit */}
+                {usage && usage.minutes_used >= usage.minutes_included * 0.8 && (
+                    <div className={`mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
+                        usage.minutes_used >= usage.minutes_included
+                            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                            : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
+                    }`}>
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                            {usage.minutes_used >= usage.minutes_included
+                                ? 'Voice minutes exceeded. Upgrade your plan to continue.'
+                                : `${Math.round(usagePercent)}% of included minutes used this month.`
+                            }
+                        </span>
                     </div>
                 )}
             </div>
@@ -599,12 +602,12 @@ export const VoiceAgentSetup = () => {
                     </div>
 
                     {/* Step Content */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                         {currentStep === 0 && (
                             <div className="space-y-6">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Basic Information</h3>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Agent Name
@@ -613,7 +616,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.agent_name}
                                             onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Alex, Sarah, Max"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">This is how your AI will introduce itself</p>
@@ -626,7 +629,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.business_name}
                                             onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="Your Company Name"
                                         />
                                     </div>
@@ -639,7 +642,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.industry}
                                         onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="">Select your industry</option>
                                         {INDUSTRY_OPTIONS.map(opt => (
@@ -653,7 +656,7 @@ export const VoiceAgentSetup = () => {
                                             placeholder="Enter your industry"
                                             value={formData.customIndustry}
                                             onChange={(e) => setFormData({ ...formData, customIndustry: e.target.value })}
-                                            className="mt-2 w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="mt-2 w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                         />
                                     )}
                                 </div>
@@ -666,7 +669,7 @@ export const VoiceAgentSetup = () => {
                                         value={formData.business_description}
                                         onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
                                         rows={4}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                         placeholder="Describe your business, services, and what makes you unique. This helps the AI represent your brand accurately."
                                     />
                                 </div>
@@ -676,7 +679,7 @@ export const VoiceAgentSetup = () => {
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                                         SMS Call Summary Notifications
                                     </p>
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Your Name
@@ -685,7 +688,7 @@ export const VoiceAgentSetup = () => {
                                                 type="text"
                                                 value={formData.broker_name}
                                                 onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                                 placeholder="e.g., John Smith"
                                             />
                                             <p className="text-xs text-gray-500 mt-1">Used in SMS call summary greetings</p>
@@ -702,7 +705,7 @@ export const VoiceAgentSetup = () => {
                                                     setFormData({ ...formData, broker_phone: formatted });
                                                     if (phoneError) setPhoneError('');
                                                 }}
-                                                className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                                className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
                                                 placeholder="(555) 123-4567"
                                                 maxLength={14}
                                             />
@@ -759,7 +762,7 @@ export const VoiceAgentSetup = () => {
                                             value={newReason}
                                             onChange={(e) => setNewReason(e.target.value)}
                                             onKeyPress={(e) => e.key === 'Enter' && addCallReason()}
-                                            className="flex-1 px-4 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Pricing questions, Support, Schedule appointment"
                                         />
                                         <button
@@ -811,7 +814,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.fallback_behavior}
                                         onChange={(e) => setFormData({ ...formData, fallback_behavior: e.target.value as FallbackBehavior })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="take_message">Take a message</option>
                                         <option value="transfer_to_voicemail">Transfer to voicemail</option>
@@ -826,7 +829,7 @@ export const VoiceAgentSetup = () => {
                             <div className="space-y-6">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Review & Activate</h3>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
                                         <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Agent Info</h4>
                                         <div className="space-y-2 text-sm">
@@ -846,7 +849,7 @@ export const VoiceAgentSetup = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
                                     <div className="flex items-start gap-3">
                                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
                                         <div>
@@ -897,21 +900,22 @@ export const VoiceAgentSetup = () => {
 
             {/* Post-Setup: Full Configuration */}
             {isSetupComplete && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                     {/* Phone Number & Call Forwarding */}
                     {isProvisioned() && getPhoneNumber() && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <PhoneNumberReveal
                                 phoneNumber={getPhoneNumber()!}
                                 phoneNumberPretty={getPhoneNumber()!}
+                                compact
                             />
-                            <CallForwardingInstructions phoneNumber={getPhoneNumber()!} />
+                            <CallForwardingInstructions phoneNumber={getPhoneNumber()!} defaultExpanded={false} />
                         </div>
                     )}
 
                     {/* Provisioning Status (if not yet provisioned) */}
                     {!isProvisioned() && config?.provisioning_status !== 'completed' && (
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-2xl p-6">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
                             <div className="flex items-start gap-3">
                                 <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
@@ -963,10 +967,10 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: General Settings */}
                     {activeTab === 'settings' && (
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">General Settings</h3>
 
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Agent Name
@@ -975,7 +979,7 @@ export const VoiceAgentSetup = () => {
                                         type="text"
                                         value={formData.agent_name}
                                         onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     />
                                 </div>
                                 <div>
@@ -985,7 +989,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.agent_tone}
                                         onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="professional">Professional</option>
                                         <option value="friendly">Friendly</option>
@@ -1000,7 +1004,7 @@ export const VoiceAgentSetup = () => {
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                                     SMS Call Summary Notifications
                                 </p>
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Your Name
@@ -1009,7 +1013,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.broker_name}
                                             onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., John Smith"
                                         />
                                     </div>
@@ -1025,7 +1029,7 @@ export const VoiceAgentSetup = () => {
                                                 setFormData({ ...formData, broker_phone: formatted });
                                                 if (phoneError) setPhoneError('');
                                             }}
-                                            className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                            className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
                                             placeholder="(555) 123-4567"
                                             maxLength={14}
                                         />
@@ -1051,8 +1055,8 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Voice Selection */}
                     {activeTab === 'voice' && (
-                        <div className="space-y-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="space-y-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Choose Your Agent's Voice</h3>
                                     <p className="text-sm text-gray-500 mt-1">
@@ -1069,13 +1073,13 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={voiceSearch}
                                             onChange={(e) => setVoiceSearch(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
                                             placeholder="Search voices by name, accent, provider..."
                                         />
                                     </div>
 
                                     {/* Gender Filter */}
-                                    <div className="flex rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                                         {(['all', 'male', 'female'] as const).map((g) => (
                                             <button
                                                 key={g}
@@ -1095,7 +1099,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={voiceProviderFilter}
                                         onChange={(e) => setVoiceProviderFilter(e.target.value)}
-                                        className="px-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                        className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
                                     >
                                         <option value="all">All Providers</option>
                                         {voiceProviders.map((p) => (
@@ -1263,7 +1267,7 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Prompt & Personality */}
                     {activeTab === 'prompt' && (
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Prompt & Personality</h3>
                                 <p className="text-sm text-gray-500 mt-1">
@@ -1279,7 +1283,7 @@ export const VoiceAgentSetup = () => {
                                     value={formData.begin_message}
                                     onChange={(e) => setFormData({ ...formData, begin_message: e.target.value })}
                                     rows={3}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                     placeholder="Hello! Thank you for calling. How can I help you today?"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
@@ -1295,7 +1299,7 @@ export const VoiceAgentSetup = () => {
                                     value={formData.general_prompt}
                                     onChange={(e) => setFormData({ ...formData, general_prompt: e.target.value })}
                                     rows={12}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white font-mono text-sm"
+                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white font-mono text-sm"
                                     placeholder={`You are a professional AI assistant for [Business Name]. Your role is to help callers with:\n- Scheduling appointments\n- Answering common questions\n- Taking messages when the team is unavailable\n\nBe polite, professional, and helpful. If you don't know the answer, offer to take a message and have someone call back.\n\nBusiness hours: Monday-Friday 9am-5pm\nServices offered: ...`}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
@@ -1311,7 +1315,7 @@ export const VoiceAgentSetup = () => {
                                     value={formData.business_description}
                                     onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
                                     rows={4}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                     placeholder="Describe your business, services, and what makes you unique..."
                                 />
                             </div>
@@ -1343,8 +1347,8 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Knowledge Base */}
                     {activeTab === 'knowledge' && (
-                        <div className="space-y-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="space-y-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Knowledge Base</h3>
                                     <p className="text-sm text-gray-500 mt-1">
@@ -1399,7 +1403,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={kbName}
                                             onChange={(e) => setKbName(e.target.value)}
-                                            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Company FAQ, Service Catalog"
                                             maxLength={40}
                                         />
@@ -1417,7 +1421,7 @@ export const VoiceAgentSetup = () => {
 
                             {/* Add Content to Selected KB */}
                             {selectedKbId && (
-                                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                         Add Content to: {knowledgeBases.find(kb => kb.knowledge_base_id === selectedKbId)?.knowledge_base_name}
                                     </h3>
@@ -1432,14 +1436,14 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={kbTextTitle}
                                             onChange={(e) => setKbTextTitle(e.target.value)}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="Title (e.g., Business Hours, Pricing, Services)"
                                         />
                                         <textarea
                                             value={kbTextContent}
                                             onChange={(e) => setKbTextContent(e.target.value)}
                                             rows={6}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                             placeholder="Enter the content your agent should know about this topic..."
                                         />
                                         <button
@@ -1463,7 +1467,7 @@ export const VoiceAgentSetup = () => {
                                                 type="url"
                                                 value={kbUrl}
                                                 onChange={(e) => setKbUrl(e.target.value)}
-                                                className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                                 placeholder="https://yourbusiness.com/about"
                                             />
                                             <button
@@ -1499,6 +1503,7 @@ export const VoiceAgentSetup = () => {
                 </div>
             )}
         </div>
+        </>
     );
 };
 

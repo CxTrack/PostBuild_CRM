@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Smartphone, Copy, Check } from 'lucide-react';
 interface CallForwardingInstructionsProps {
   phoneNumber: string;
   countryCode?: string; // 'CA' or 'US' — filters shown carriers
+  defaultExpanded?: boolean;
 }
 
 interface CarrierInfo {
@@ -23,8 +24,8 @@ const CARRIERS: CarrierInfo[] = [
   { name: 'Telus', country: 'CA', enableCode: '*61*{NUMBER}#', disableCode: '#61#', note: 'Forwards on no answer' },
 ];
 
-export default function CallForwardingInstructions({ phoneNumber, countryCode }: CallForwardingInstructionsProps) {
-  const [expanded, setExpanded] = useState(true);
+export default function CallForwardingInstructions({ phoneNumber, countryCode, defaultExpanded = true }: CallForwardingInstructionsProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [copiedCarrier, setCopiedCarrier] = useState<string | null>(null);
 
   const cleanNumber = phoneNumber.replace(/\D/g, '');

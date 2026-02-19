@@ -4,9 +4,10 @@ import { Phone, Copy, Check } from 'lucide-react';
 interface PhoneNumberRevealProps {
   phoneNumber: string;
   phoneNumberPretty?: string;
+  compact?: boolean;
 }
 
-export default function PhoneNumberReveal({ phoneNumber, phoneNumberPretty }: PhoneNumberRevealProps) {
+export default function PhoneNumberReveal({ phoneNumber, phoneNumberPretty, compact }: PhoneNumberRevealProps) {
   const [copied, setCopied] = useState(false);
 
   const displayNumber = phoneNumberPretty || phoneNumber;
@@ -29,6 +30,38 @@ export default function PhoneNumberReveal({ phoneNumber, phoneNumberPretty }: Ph
     }
   };
 
+  // Compact variant for Settings context — single horizontal row
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <div className="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Phone className="text-green-600 dark:text-green-400" size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">AI Agent Phone Line</p>
+          <p className="text-lg font-bold font-mono text-gray-900 dark:text-white truncate">{displayNumber}</p>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors flex-shrink-0"
+        >
+          {copied ? (
+            <>
+              <Check size={14} className="text-green-500" />
+              <span className="text-green-600 dark:text-green-400">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={14} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  // Full onboarding reveal variant
   return (
     <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-[#FFD700]/20 overflow-hidden animate-in fade-in duration-700">
       {/* Gold glow effect */}
