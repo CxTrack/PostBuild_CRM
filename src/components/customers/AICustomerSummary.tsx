@@ -37,6 +37,7 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
           conversationHistory: [],
           context: {
             page: 'Customers',
+            customer_id: customerId,
           },
         }),
       });

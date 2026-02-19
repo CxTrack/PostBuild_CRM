@@ -163,9 +163,19 @@ export const CallDetail = () => {
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-bold">Call Details</h1>
                                 {customerName && (
-                                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                                        {customerName}
-                                    </span>
+                                    call.customer_id ? (
+                                        <span
+                                            onClick={() => navigate(`/dashboard/customers/${call.customer_id}`)}
+                                            className={`px-2 py-0.5 rounded-lg text-xs font-bold cursor-pointer hover:ring-2 transition-all ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:ring-blue-400/50' : 'bg-blue-50 text-blue-700 border border-blue-100 hover:ring-blue-400'}`}
+                                            title="View customer profile"
+                                        >
+                                            {customerName}
+                                        </span>
+                                    ) : (
+                                        <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                                            {customerName}
+                                        </span>
+                                    )
                                 )}
                                 {call.call_type === 'ai_agent' && (
                                     <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${isDark ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>

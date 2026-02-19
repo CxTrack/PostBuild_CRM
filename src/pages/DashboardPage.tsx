@@ -460,7 +460,16 @@ export const DashboardPage = () => {
                                     const isInvoice = 'invoice_number' in item;
 
                                     return (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <div
+                                            key={i}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isCall) navigate(`/dashboard/calls/${item.id}`);
+                                                else if (isQuote) navigate(`/quotes/${item.id}`);
+                                                else if (isInvoice) navigate(`/invoices/${item.id}`);
+                                            }}
+                                            className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                        >
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCall ? 'bg-blue-100 text-blue-600' :
                                                 isQuote ? 'bg-purple-100 text-purple-600' :
                                                     'bg-green-100 text-green-600'
@@ -476,7 +485,12 @@ export const DashboardPage = () => {
                                                             isInvoice ? `Invoice #${(item as any).invoice_number}` : 'Activity'}
                                                 </p>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                    {(item as any).customer_name || 'Unknown Customer'}
+                                                    {isCall
+                                                        ? ((item as any).customers
+                                                            ? ([(item as any).customers.first_name, (item as any).customers.last_name].filter(Boolean).join(' ')
+                                                                || (item as any).customers.name || (item as any).customers.company)
+                                                            : (item as any).customer_phone || 'Unknown Customer')
+                                                        : ((item as any).customer_name || 'Unknown Customer')}
                                                 </p>
                                             </div>
                                             <span className="text-xs text-gray-400 whitespace-nowrap">
