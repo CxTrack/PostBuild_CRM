@@ -587,7 +587,7 @@ export const PageContainer: React.FC<{
 
   if (theme === 'midnight') {
     return (
-      <div className={`h-full flex flex-col p-6 bg-black ${className}`}>
+      <div className={`min-h-full flex flex-col p-6 bg-black ${className}`}>
         {children}
       </div>
     );
@@ -596,7 +596,7 @@ export const PageContainer: React.FC<{
   if (theme === 'soft-modern') {
     return (
       <div
-        className={`h-full flex flex-col p-6 ${className}`}
+        className={`min-h-full flex flex-col p-6 ${className}`}
         style={{
           background: 'linear-gradient(135deg, #F0EDE7 0%, #F8F6F2 50%, #E8E4DC 100%)'
         }}
@@ -607,7 +607,7 @@ export const PageContainer: React.FC<{
   }
 
   return (
-    <div className={`h-full flex flex-col p-6 bg-gray-50 dark:bg-gray-900 ${className}`}>
+    <div className={`min-h-full flex flex-col p-6 bg-gray-50 dark:bg-gray-900 ${className}`}>
       {children}
     </div>
   );

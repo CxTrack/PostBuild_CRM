@@ -286,17 +286,31 @@ export const CallDetail = () => {
                         )}
 
                         {/* AI Summary */}
-                        {summaryText && (
-                            <div className={`rounded-2xl border-2 p-6 transition-all ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-                                <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
-                                    <MessageSquare className="w-5 h-5 text-purple-600" />
-                                    AI Summary
-                                </h2>
+                        <div className={`rounded-2xl border-2 p-6 transition-all ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+                                <MessageSquare className="w-5 h-5 text-purple-600" />
+                                AI Summary
+                            </h2>
+                            {summaryText ? (
                                 <p className={`leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                     {summaryText}
                                 </p>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center gap-3 py-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                        <MessageSquare className={`w-5 h-5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                    </div>
+                                    <div>
+                                        <p className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            No AI summary available
+                                        </p>
+                                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                            AI summaries are generated automatically for new calls handled by your voice agent
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Transcript */}
                         {transcript.length > 0 && (

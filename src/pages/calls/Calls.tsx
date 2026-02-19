@@ -112,7 +112,20 @@ export default function Calls() {
       if (customer.first_name || customer.last_name) {
         return `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
       }
-      return customer.name || customer.company || 'Unknown Customer';
+      if (customer.name) return customer.name;
+      if (customer.company) return customer.company;
+    }
+    // Fallback: show formatted phone number
+    const phone = call.customer_phone || call.phone_number;
+    if (phone) {
+      const cleaned = phone.replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      }
+      if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+      }
+      return phone;
     }
     return 'Unknown Customer';
   };
@@ -370,7 +383,7 @@ export default function Calls() {
                       )}
                       <div>
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {call.agent_name || 'Team Member'}
+                          {call.agent_name || (call.call_type === 'ai_agent' ? 'AI Phone Agent' : 'Team Member')}
                         </p>
                         <p className="text-xs text-gray-500">
                           {call.call_type === 'ai_agent' ? `${call.agent_type} AI` : 'Human'}
