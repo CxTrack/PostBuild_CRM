@@ -165,7 +165,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('calls')
-        .select('*')
+        .select('*, customers(first_name, last_name, name, company)')
         .eq('id', id)
         .eq('organization_id', organizationId)
         .maybeSingle();
