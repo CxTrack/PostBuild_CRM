@@ -8,6 +8,7 @@ import React, { useState, useRef } from 'react';
 import { Loader2, AlertCircle, CreditCard, Check, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
 
 interface ExtractedContact {
     first_name: string;
@@ -72,12 +73,11 @@ export const BusinessCardCapture: React.FC<BusinessCardCaptureProps> = ({
 
             const imageUrl = signedUrlData?.signedUrl || path;
 
-            // Step 3: Call OCR Edge Function
-            setProgress('Scanning card...');
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            // Get current session token for the Edge Function call
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            // Step 3: Call OCR Edge Function (uses OpenRouter + Gemini Vision)
+            setProgress('Scanning card with AI...');
+            const supabaseUrl = getSupabaseUrl();
+            const token = await getAuthToken();
+            if (!token) throw new Error('Please sign in to scan business cards');
 
             const ocrResponse = await fetch(
                 `${supabaseUrl}/functions/v1/ocr-extract`,
@@ -96,15 +96,19 @@ export const BusinessCardCapture: React.FC<BusinessCardCaptureProps> = ({
 
             if (!ocrResponse.ok) {
                 const errorData = await ocrResponse.json().catch(() => ({}));
+                if (errorData.error === 'token_limit_reached') {
+                    throw new Error('Out of AI tokens this month. Upgrade your plan for more.');
+                }
                 throw new Error(errorData.error || 'OCR processing failed');
             }
 
             const ocrData = await ocrResponse.json();
 
             if (ocrData.success && ocrData.contact) {
-                setProgress('Contact info extracted!');
+                const tokenInfo = ocrData.tokensUsed ? ` (${ocrData.tokensUsed} AI tokens)` : '';
+                setProgress(`Contact extracted!${tokenInfo}`);
                 // Small delay so user sees the success message
-                await new Promise(r => setTimeout(r, 800));
+                await new Promise(r => setTimeout(r, 1000));
                 onContactExtracted(ocrData.contact, imageUrl);
                 resetState();
             } else {

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
+import { getAuthToken } from '@/utils/auth.utils';
 
 export interface Message {
   id: string;
@@ -188,27 +189,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // AI RESPONSE: Call the Edge Function
-      // Read auth token directly from localStorage to avoid Supabase AbortController issue
-      let accessToken: string | null = null;
-      try {
-        const ref = SUPABASE_URL.split('//')[1]?.split('.')[0];
-        const storageKey = ref ? `sb-${ref}-auth-token` : null;
-        const stored = storageKey ? localStorage.getItem(storageKey) : null;
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          accessToken = parsed?.access_token || null;
-        }
-        if (!accessToken) {
-          const fallbackKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-          if (fallbackKey) {
-            const parsed = JSON.parse(localStorage.getItem(fallbackKey) || '{}');
-            accessToken = parsed?.access_token || null;
-          }
-        }
-      } catch {
-        const { data: { session } } = await supabase.auth.getSession();
-        accessToken = session?.access_token || null;
-      }
+      // Use shared auth utility to avoid Supabase AbortController issue
+      const accessToken = await getAuthToken();
 
       if (!accessToken) {
         const assistantMessage: Message = {

@@ -268,3 +268,202 @@ export const validateImportData = (
 
     return errors;
 };
+
+// =====================================================
+// AI-POWERED CSV CLEANUP UTILITIES
+// =====================================================
+
+/** AI cleanup analysis result from the csv-cleanup edge function */
+export interface AICleanupResult {
+    unmapped_columns: Array<{
+        csvHeader: string;
+        suggestedCrmField: string;
+        confidence: number;
+        reason: string;
+    }>;
+    format_issues: Array<{
+        column: string;
+        issue: string;
+        description: string;
+        affectedCount: number;
+        suggestedFix: string;
+        example: { before: string; after: any };
+    }>;
+    missing_data: Array<{
+        crmField: string;
+        missingCount: number;
+        totalCount: number;
+        severity: 'info' | 'warning' | 'error';
+        suggestion: string;
+    }>;
+    data_quality: Array<{
+        column: string;
+        issue: string;
+        affectedCount: number;
+        examples: string[];
+        suggestedFix: string;
+    }>;
+    overall_quality_score: number;
+    summary: string;
+}
+
+/** Compute column statistics for AI analysis (runs on frontend, no AI needed) */
+export function computeCSVStats(
+    rows: Record<string, string>[],
+    headers: string[]
+): {
+    nullCounts: Record<string, number>;
+    uniqueCounts: Record<string, number>;
+    sampleValues: Record<string, string[]>;
+} {
+    const nullCounts: Record<string, number> = {};
+    const uniqueSets: Record<string, Set<string>> = {};
+
+    for (const header of headers) {
+        nullCounts[header] = 0;
+        uniqueSets[header] = new Set();
+    }
+
+    for (const row of rows) {
+        for (const header of headers) {
+            const val = row[header]?.trim();
+            if (!val) {
+                nullCounts[header]++;
+            } else {
+                uniqueSets[header].add(val);
+            }
+        }
+    }
+
+    const uniqueCounts: Record<string, number> = {};
+    const sampleValues: Record<string, string[]> = {};
+    for (const header of headers) {
+        uniqueCounts[header] = uniqueSets[header].size;
+        sampleValues[header] = Array.from(uniqueSets[header]).slice(0, 5);
+    }
+
+    return { nullCounts, uniqueCounts, sampleValues };
+}
+
+/** Prepare sample rows for AI analysis (first 20 + last 5) */
+export function prepareSampleRows(rows: Record<string, string>[]): Record<string, string>[] {
+    if (rows.length <= 25) return rows;
+    const first = rows.slice(0, 20);
+    const last = rows.slice(-5);
+    return [...first, ...last];
+}
+
+/** Apply AI-suggested cleanup fixes to all rows */
+export function applyCleanupFixes(
+    rows: Record<string, string>[],
+    mapping: Record<string, string>,
+    fixes: AICleanupResult['format_issues'],
+    appliedFixIds: Set<string>
+): { rows: Record<string, string>[]; mapping: Record<string, string> } {
+    let updatedRows = rows.map(row => ({ ...row }));
+    const updatedMapping = { ...mapping };
+
+    for (const fix of fixes) {
+        const fixId = `${fix.column}_${fix.suggestedFix}`;
+        if (!appliedFixIds.has(fixId)) continue;
+
+        switch (fix.suggestedFix) {
+            case 'split_last_comma_first': {
+                // "Smith, John" → first_name: "John", last_name: "Smith"
+                updatedRows = updatedRows.map(row => {
+                    const val = row[fix.column];
+                    if (val && val.includes(',')) {
+                        const parts = val.split(',').map(p => p.trim());
+                        if (parts.length === 2) {
+                            row[fix.column + '_first'] = parts[1];
+                            row[fix.column + '_last'] = parts[0];
+                        }
+                    }
+                    return row;
+                });
+                // Update mapping: unmap the original, map the split columns
+                if (updatedMapping[fix.column] === 'name') {
+                    updatedMapping[fix.column] = '';
+                    updatedMapping[fix.column + '_first'] = 'first_name';
+                    updatedMapping[fix.column + '_last'] = 'last_name';
+                }
+                break;
+            }
+            case 'split_first_last': {
+                // "John Smith" → first_name: "John", last_name: "Smith"
+                updatedRows = updatedRows.map(row => {
+                    const val = row[fix.column];
+                    if (val) {
+                        const parts = val.trim().split(/\s+/);
+                        row[fix.column + '_first'] = parts[0] || '';
+                        row[fix.column + '_last'] = parts.slice(1).join(' ') || '';
+                    }
+                    return row;
+                });
+                if (updatedMapping[fix.column] === 'name') {
+                    updatedMapping[fix.column] = '';
+                    updatedMapping[fix.column + '_first'] = 'first_name';
+                    updatedMapping[fix.column + '_last'] = 'last_name';
+                }
+                break;
+            }
+            case 'normalize_phone': {
+                updatedRows = updatedRows.map(row => {
+                    const val = row[fix.column];
+                    if (val) {
+                        const digits = val.replace(/\D/g, '');
+                        if (digits.length === 10) {
+                            row[fix.column] = '+1' + digits;
+                        } else if (digits.length === 11 && digits.startsWith('1')) {
+                            row[fix.column] = '+' + digits;
+                        } else {
+                            row[fix.column] = digits;
+                        }
+                    }
+                    return row;
+                });
+                break;
+            }
+            case 'normalize_email': {
+                updatedRows = updatedRows.map(row => {
+                    const val = row[fix.column];
+                    if (val) {
+                        row[fix.column] = val.toLowerCase().trim();
+                    }
+                    return row;
+                });
+                break;
+            }
+            case 'flag_for_review': {
+                updatedRows = updatedRows.map(row => {
+                    const val = row[fix.column];
+                    if (val && fix.issue === 'invalid_format') {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(val)) {
+                            row['_flagged'] = 'true';
+                        }
+                    }
+                    return row;
+                });
+                break;
+            }
+        }
+    }
+
+    return { rows: updatedRows, mapping: updatedMapping };
+}
+
+/** Apply AI-suggested column mappings */
+export function applyMappingSuggestions(
+    currentMapping: Record<string, string>,
+    suggestions: AICleanupResult['unmapped_columns'],
+    acceptedHeaders: Set<string>
+): Record<string, string> {
+    const updated = { ...currentMapping };
+    for (const suggestion of suggestions) {
+        if (acceptedHeaders.has(suggestion.csvHeader)) {
+            updated[suggestion.csvHeader] = suggestion.suggestedCrmField;
+        }
+    }
+    return updated;
+}

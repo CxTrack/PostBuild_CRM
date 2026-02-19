@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
+import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -95,21 +96,25 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
 
       const imageUrl = signedUrlData?.signedUrl || path;
 
-      setScanProgress('Scanning card...');
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await supabase.auth.getSession();
+      setScanProgress('Scanning card with AI...');
+      const supabaseUrl = getSupabaseUrl();
+      const accessToken = await getAuthToken();
+      if (!accessToken) throw new Error('Please sign in to scan business cards');
 
       const ocrResponse = await fetch(`${supabaseUrl}/functions/v1/ocr-extract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ file_path: path, bucket: 'business-cards' }),
       });
 
       if (!ocrResponse.ok) {
         const errorData = await ocrResponse.json().catch(() => ({}));
+        if (errorData.error === 'token_limit_reached') {
+          throw new Error('Out of AI tokens this month. Upgrade your plan for more.');
+        }
         throw new Error(errorData.error || 'OCR processing failed');
       }
 
@@ -135,7 +140,8 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
         if (c.address || c.city || c.state || c.postal_code) {
           setShowAddress(true);
         }
-        toast.success('Business card scanned — fields populated!');
+        const tokenInfo = ocrData.tokensUsed ? ` (${ocrData.tokensUsed} AI tokens used)` : '';
+        toast.success(`Business card scanned — fields populated!${tokenInfo}`);
       } else {
         throw new Error(ocrData.error || 'Could not extract contact info');
       }
