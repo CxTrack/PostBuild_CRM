@@ -33,7 +33,7 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: `Give me a brief overview of customer "${customerName}" (ID: ${customerId}). Include their pipeline stage, open tasks, recent notes, upcoming meetings, outstanding invoices, and call history. Keep it concise - 3-5 sentences maximum. Focus on actionable insights. If there is very little data available for this customer, say so briefly.`,
+          message: `Summarize the CRM data for customer "${customerName}" (ID: ${customerId}). ONLY report what appears in the retrieved data — do NOT invent or assume any information. For each category (calls, tasks, pipeline deals, invoices, notes), state what exists or say "none" if the data array is empty. Keep it concise — 3-5 sentences maximum.`,
           conversationHistory: [],
           context: {
             page: 'Customers',

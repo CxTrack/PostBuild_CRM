@@ -32,9 +32,9 @@ const API_SECRETS = [
 ];
 
 const TOKEN_TIERS = [
-  { tier: 'Free', monthly: '5,000', color: 'gray' },
-  { tier: 'Business', monthly: '50,000', color: 'blue' },
-  { tier: 'Elite', monthly: '200,000', color: 'purple' },
+  { tier: 'Free', monthly: '50,000', color: 'gray' },
+  { tier: 'Business', monthly: '500,000', color: 'blue' },
+  { tier: 'Elite', monthly: '1,000,000', color: 'purple' },
   { tier: 'Enterprise', monthly: '1,000,000', color: 'orange' },
 ];
 

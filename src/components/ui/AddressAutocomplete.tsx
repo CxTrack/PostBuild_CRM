@@ -1,7 +1,7 @@
 /**
  * AddressAutocomplete - Google Places API (New) address input with autocomplete
  * Uses AutocompleteSuggestion.fetchAutocompleteSuggestions() + Place.fetchFields()
- * Migrated from deprecated AutocompleteService (March 2025)
+ * Requires "Places API (New)" + "Maps JavaScript API" enabled in GCP
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -77,19 +77,35 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     const [loading, setLoading] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [apiReady, setApiReady] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const sessionTokenRef = useRef<any>(null);
 
-    // Check if Google Places API (New) is loaded
+    // Check if Google Places API (New) is loaded — poll until ready
     const isGoogleLoaded = useCallback(() => {
         return !!(window as any).google?.maps?.places?.AutocompleteSuggestion;
     }, []);
 
+    // Poll for Google Maps API readiness (loads async)
+    useEffect(() => {
+        if (isGoogleLoaded()) {
+            setApiReady(true);
+            return;
+        }
+        const interval = setInterval(() => {
+            if (isGoogleLoaded()) {
+                setApiReady(true);
+                clearInterval(interval);
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [isGoogleLoaded]);
+
     // Get or create a session token for billing optimization
     const getSessionToken = useCallback(() => {
-        if (!sessionTokenRef.current && isGoogleLoaded()) {
+        if (!sessionTokenRef.current && apiReady) {
             try {
                 sessionTokenRef.current = new (window as any).google.maps.places.AutocompleteSessionToken();
             } catch {
@@ -97,7 +113,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             }
         }
         return sessionTokenRef.current;
-    }, [isGoogleLoaded]);
+    }, [apiReady]);
 
     // Reset session token after a place is selected (starts new billing session)
     const resetSessionToken = useCallback(() => {
@@ -120,7 +136,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             return;
         }
 
-        if (!isGoogleLoaded()) {
+        if (!apiReady) {
             return;
         }
 
@@ -165,11 +181,11 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [isGoogleLoaded, searchTypes, getSessionToken]);
+    }, [apiReady, searchTypes, getSessionToken]);
 
     // Get place details using the new Place.fetchFields() API
     const getPlaceDetails = useCallback(async (prediction: PlacePrediction) => {
-        if (!isGoogleLoaded() || !prediction._raw) {
+        if (!apiReady || !prediction._raw) {
             onChange(prediction.text || prediction.mainText);
             setShowDropdown(false);
             return;
@@ -236,7 +252,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         resetSessionToken();
         setShowDropdown(false);
         setPredictions([]);
-    }, [isGoogleLoaded, onChange, onAddressSelect, resetSessionToken]);
+    }, [apiReady, onChange, onAddressSelect, resetSessionToken]);
 
     // Handle input change with debounce
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,10 +406,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             )}
 
             {/* Fallback message when Google API is not loaded */}
-            {showDropdown && predictions.length === 0 && value.length >= 3 && !loading && !isGoogleLoaded() && (
+            {showDropdown && predictions.length === 0 && value.length >= 3 && !loading && !apiReady && (
                 <div className="absolute z-50 w-full mt-1 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                        💡 Address autocomplete requires Google Places API. Add your API key to enable this feature.
+                        Address autocomplete requires Google Places API. Add your API key to enable this feature.
                     </p>
                 </div>
             )}
