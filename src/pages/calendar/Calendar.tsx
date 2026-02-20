@@ -64,7 +64,7 @@ export default function Calendar() {
 
   const getTasksForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return getTasksByDate(dateStr).filter(task => task.show_on_calendar === true);
+    return getTasksByDate(dateStr);
   };
 
   const getCalendarDays = () => {
