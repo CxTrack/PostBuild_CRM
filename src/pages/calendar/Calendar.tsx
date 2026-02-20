@@ -10,6 +10,7 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useCustomerStore } from '@/stores/customerStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useThemeStore } from '@/stores/themeStore';
 import AgendaPanel from './AgendaPanel';
@@ -38,6 +39,7 @@ export default function Calendar() {
 
   const { events, fetchEvents, updateEvent } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
+  const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
   const { fetchTasks, getTasksByDate } = useTaskStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('calendar');
@@ -52,6 +54,7 @@ export default function Calendar() {
     }
     fetchEvents(orgId);
     fetchTasks();
+    if (customers.length === 0) fetchCustomers();
   }, [currentOrganization, fetchEvents, fetchTasks, getOrganizationId]);
 
   const getEventsForDate = (date: Date) => {
@@ -445,22 +448,29 @@ export default function Calendar() {
         />
       )}
 
-      {showAppointmentDetailModal && selectedEvent && (
-        <AppointmentDetailModal
-          appointment={selectedEvent}
-          isOpen={showAppointmentDetailModal}
-          onClose={() => {
-            setShowAppointmentDetailModal(false);
-            setSelectedEvent(null);
-          }}
-          onUpdate={async (id, data) => {
-            await updateEvent(id, data);
-            let orgId;
-            try { orgId = getOrganizationId(); } catch (err) { }
-            fetchEvents(orgId);
-          }}
-        />
-      )}
+      {showAppointmentDetailModal && selectedEvent && (() => {
+        const linkedCustomer = selectedEvent.customer_id ? getCustomerById(selectedEvent.customer_id) : null;
+        const resolvedName = linkedCustomer
+          ? `${linkedCustomer.first_name || ''} ${linkedCustomer.last_name || ''}`.trim()
+          : undefined;
+        return (
+          <AppointmentDetailModal
+            appointment={selectedEvent}
+            isOpen={showAppointmentDetailModal}
+            onClose={() => {
+              setShowAppointmentDetailModal(false);
+              setSelectedEvent(null);
+            }}
+            onUpdate={async (id, data) => {
+              await updateEvent(id, data);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
+            customerName={resolvedName}
+          />
+        );
+      })()}
 
       {showTaskModal && (
         <TaskModal

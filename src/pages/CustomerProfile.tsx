@@ -5,7 +5,7 @@ import {
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
-  AlertTriangle, TicketPlus
+  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -23,6 +23,8 @@ import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import AICustomerSummary from '@/components/customers/AICustomerSummary';
 import RecentCallsSection from '@/components/customers/RecentCallsSection';
+import LogCallModal from '@/components/calls/LogCallModal';
+import { useCallStore } from '@/stores/callStore';
 import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -843,23 +845,188 @@ function OverviewTab({
   );
 }
 
-function CommunicationsTab({ customer: _customer }: { customer: Customer }) {
+function CommunicationsTab({ customer }: { customer: Customer }) {
+  const { currentOrganization } = useOrganizationStore();
+  const { calls, fetchCallsByCustomer, createCall, loading: callsLoading } = useCallStore();
+  const { events, fetchEvents } = useCalendarStore();
+  const navigate = useNavigate();
+  const [showLogCallModal, setShowLogCallModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'meetings'>('all');
+
+  useEffect(() => {
+    if (customer.id && currentOrganization?.id) {
+      fetchCallsByCustomer(customer.id);
+      fetchEvents(currentOrganization.id);
+    }
+  }, [customer.id, currentOrganization?.id]);
+
+  const customerEvents = events.filter(e => e.customer_id === customer.id);
+
+  const timelineItems = [
+    ...calls.map(call => ({
+      id: call.id,
+      type: 'call' as const,
+      date: call.started_at || call.created_at,
+      title: `${call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`,
+      subtitle: call.notes || (call.status === 'completed' ? `Duration: ${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}` : call.status.replace('_', ' ')),
+      status: call.status,
+      direction: call.direction,
+      duration: call.duration_seconds,
+      callId: call.id,
+    })),
+    ...customerEvents.map(event => ({
+      id: event.id,
+      type: 'meeting' as const,
+      date: event.start_time,
+      title: event.title,
+      subtitle: event.event_type.replace('_', ' '),
+      status: event.status,
+      direction: null as string | null,
+      duration: 0,
+      callId: null as string | null,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const filteredItems = activeFilter === 'all'
+    ? timelineItems
+    : activeFilter === 'calls'
+      ? timelineItems.filter(i => i.type === 'call')
+      : timelineItems.filter(i => i.type === 'meeting');
+
+  const handleLogCall = async (callData: any) => {
+    try {
+      await createCall(callData);
+      toast.success('Call logged successfully');
+      fetchCallsByCustomer(customer.id);
+    } catch (error) {
+      toast.error('Failed to log call');
+      throw error;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': case 'confirmed': return 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400';
+      case 'failed': case 'cancelled': return 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400';
+      case 'scheduled': return 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400';
+      case 'no_answer': case 'missed': return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
+      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="text-center py-12">
-          <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No communications yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Emails, calls, and meetings will appear here
-          </p>
-          <button className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            Log Communication
-          </button>
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            {(['all', 'calls', 'meetings'] as const).map(filter => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeFilter === filter
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
+        <button
+          onClick={() => setShowLogCallModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <Phone size={16} />
+          Log Communication
+        </button>
       </div>
+
+      {/* Timeline */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        {callsLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-12 px-6">
+            <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No communications yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Calls and meetings will appear here once recorded
+            </p>
+            <button
+              onClick={() => setShowLogCallModal(true)}
+              className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              Log Communication
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredItems.map(item => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  if (item.type === 'call' && item.callId) {
+                    navigate(`/dashboard/calls/${item.callId}`);
+                  }
+                }}
+                className={`flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                  item.type === 'call' ? 'cursor-pointer' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${
+                    item.type === 'call'
+                      ? item.direction === 'inbound'
+                        ? 'bg-blue-50 dark:bg-blue-500/10'
+                        : 'bg-green-50 dark:bg-green-500/10'
+                      : 'bg-purple-50 dark:bg-purple-500/10'
+                  }`}>
+                    {item.type === 'call' ? (
+                      item.direction === 'inbound'
+                        ? <PhoneIncoming size={16} className="text-blue-600 dark:text-blue-400" />
+                        : <PhoneOutgoing size={16} className="text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Calendar size={16} className="text-purple-600 dark:text-purple-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {format(new Date(item.date), 'MMM d, yyyy · h:mm a')}
+                      {item.type === 'call' && item.duration > 0 && (
+                        <> · {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                  {item.status.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Log Call Modal */}
+      <LogCallModal
+        isOpen={showLogCallModal}
+        onClose={() => {
+          setShowLogCallModal(false);
+          fetchCallsByCustomer(customer.id);
+        }}
+        onSubmit={handleLogCall}
+        preselectedCustomerId={customer.id}
+      />
     </div>
   );
 }

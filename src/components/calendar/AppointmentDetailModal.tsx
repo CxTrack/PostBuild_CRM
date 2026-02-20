@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import {
   X,
@@ -15,12 +15,21 @@ import {
   MapPin,
   Video,
   CheckCircle,
+  RefreshCw,
+  AlertCircle,
+  Info,
+  Trash2,
+  Download,
+  File,
+  Loader2,
 } from 'lucide-react';
 import { CalendarEvent, EventStatus } from '@/types/database.types';
 import { FEATURE_FLAGS } from '@/config/features.config';
+import { useDocumentStore, type CustomerDocument } from '@/stores/documentStore';
 import TimePicker from '../shared/TimePicker';
 import DurationPicker from '../shared/DurationPicker';
 import { convert24HourTo12Hour } from '@/utils/time.utils';
+import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
 import toast from 'react-hot-toast';
 
 interface AppointmentDetailModalProps {
@@ -29,18 +38,6 @@ interface AppointmentDetailModalProps {
   onClose: () => void;
   onUpdate: (id: string, data: Partial<CalendarEvent>) => Promise<void>;
   customerName?: string;
-}
-
-interface AIContext {
-  summary: string;
-  recentActivity: Array<{
-    type: 'call' | 'email' | 'meeting' | 'sms';
-    date: string;
-    duration?: string;
-    summary?: string;
-    subject?: string;
-  }>;
-  keyPoints: string[];
 }
 
 export default function AppointmentDetailModal({
@@ -69,34 +66,66 @@ export default function AppointmentDetailModal({
     meeting_url: appointment.meeting_url || '',
   });
 
-  const aiContext: AIContext = {
-    summary: `Customer has been highly engaged recently. Last meeting went well with positive feedback on product features. They expressed interest in expanding their subscription and are planning a full team rollout.`,
-    recentActivity: [
-      {
-        type: 'meeting',
-        date: format(new Date(appointment.created_at), 'MMM dd, yyyy'),
-        duration: '45 min',
-        summary: 'Product demonstration and feature review',
-      },
-      {
-        type: 'email',
-        date: format(new Date(appointment.created_at), 'MMM dd, yyyy'),
-        subject: 'Following up on pricing discussion',
-      },
-      {
-        type: 'call',
-        date: format(new Date(appointment.created_at), 'MMM dd, yyyy'),
-        duration: '18 min',
-        summary: 'Initial consultation call',
-      },
-    ],
-    keyPoints: [
-      'Budget approved for team expansion',
-      'Current plan expires end of Q1',
-      'Interested in enterprise features',
-      'Wants implementation support included',
-    ],
-  };
+  // AI CoPilot state
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const fetchAiContext = useCallback(async () => {
+    if (!FEATURE_FLAGS.AI_COPILOT_ENABLED || !FEATURE_FLAGS.AI_APPOINTMENT_CONTEXT) return;
+    if (!appointment.customer_id) return;
+
+    setAiLoading(true);
+    setAiError(null);
+
+    const token = await getAuthToken();
+    if (!token) {
+      setAiError('Please sign in to view AI insights');
+      setAiLoading(false);
+      return;
+    }
+
+    try {
+      const appointmentDate = format(new Date(appointment.start_time), 'MMM dd, yyyy h:mm a');
+      const response = await fetch(`${getSupabaseUrl()}/functions/v1/copilot-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: `I have an upcoming ${appointment.event_type} "${appointment.title}" scheduled for ${appointmentDate}${customerName ? ` with ${customerName}` : ''}. Based on the CRM data for this customer (ID: ${appointment.customer_id}), provide a brief meeting preparation summary including: relationship overview, key points to remember, and recent activity highlights. ONLY report what appears in the retrieved data — do NOT invent or assume any information. Keep it concise.`,
+          conversationHistory: [],
+          context: {
+            page: 'Customers',
+            customer_id: appointment.customer_id,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (data.error === 'token_limit_reached') {
+          setAiError('Out of AI tokens this month');
+          return;
+        }
+        throw new Error(data.error || 'Could not generate insights');
+      }
+
+      const data = await response.json();
+      if (data.response) {
+        setAiSummary(data.response);
+      }
+    } catch (err: any) {
+      setAiError(err.message || 'Could not generate insights');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [appointment.customer_id, appointment.title, appointment.event_type, appointment.start_time, customerName]);
+
+  useEffect(() => {
+    fetchAiContext();
+  }, [fetchAiContext]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -186,7 +215,14 @@ export default function AppointmentDetailModal({
 
         <div className="flex-1 overflow-y-auto">
           {mode === 'view' ? (
-            <ViewMode appointment={appointment} aiContext={aiContext} customerName={customerName} />
+            <ViewMode
+              appointment={appointment}
+              aiSummary={aiSummary}
+              aiLoading={aiLoading}
+              aiError={aiError}
+              onRefreshAi={fetchAiContext}
+              customerName={customerName}
+            />
           ) : (
             <EditMode
               appointment={appointment}
@@ -205,13 +241,70 @@ export default function AppointmentDetailModal({
 
 function ViewMode({
   appointment,
-  aiContext,
+  aiSummary,
+  aiLoading,
+  aiError,
+  onRefreshAi,
   customerName,
 }: {
   appointment: CalendarEvent;
-  aiContext: AIContext;
+  aiSummary: string | null;
+  aiLoading: boolean;
+  aiError: string | null;
+  onRefreshAi: () => void;
   customerName?: string;
 }) {
+  const { documents, loading: docsLoading, fetchDocuments, uploadDocument, deleteDocument, getDownloadUrl } = useDocumentStore();
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (appointment.customer_id) {
+      fetchDocuments(appointment.customer_id);
+    }
+  }, [appointment.customer_id]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !appointment.customer_id) return;
+
+    setUploading(true);
+    try {
+      await uploadDocument(appointment.customer_id, file, 'appointment');
+      toast.success('File uploaded successfully');
+      fetchDocuments(appointment.customer_id);
+    } catch (err) {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownload = async (doc: CustomerDocument) => {
+    const url = await getDownloadUrl(doc.file_path);
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      toast.error('Failed to get download link');
+    }
+  };
+
+  const handleDeleteDoc = async (doc: CustomerDocument) => {
+    try {
+      await deleteDocument(doc.id, doc.file_path);
+      toast.success('File deleted');
+    } catch {
+      toast.error('Failed to delete file');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const getStatusColor = (status: EventStatus) => {
     switch (status) {
       case 'confirmed':
@@ -303,69 +396,56 @@ function ViewMode({
         )}
       </div>
 
-      {FEATURE_FLAGS.AI_COPILOT_ENABLED && FEATURE_FLAGS.AI_APPOINTMENT_CONTEXT && (
+      {/* AI CoPilot Section */}
+      {FEATURE_FLAGS.AI_COPILOT_ENABLED && FEATURE_FLAGS.AI_APPOINTMENT_CONTEXT && appointment.customer_id && (
         <div className="p-4 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-              <Sparkles size={16} className="text-white" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                <Sparkles size={16} className="text-white" />
+              </div>
+              <h4 className="font-semibold text-gray-900 dark:text-white">CxTrack Copilot</h4>
+              <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-xs rounded-full font-medium">
+                AI-Powered
+              </span>
             </div>
-            <h4 className="font-semibold text-gray-900 dark:text-white">CxTrack Copilot</h4>
-            <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-xs rounded-full font-medium">
-              AI-Powered
-            </span>
+            <button
+              onClick={onRefreshAi}
+              disabled={aiLoading}
+              className="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={aiLoading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
           </div>
 
-          <div className="mb-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{aiContext.summary}</p>
-          </div>
-
-          <div className="mb-4">
-            <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase mb-2">Key Points</h5>
-            <ul className="space-y-1">
-              {aiContext.keyPoints.map((point, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase mb-2">Recent Activity</h5>
+          {aiLoading ? (
             <div className="space-y-2">
-              {aiContext.recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3 text-sm">
-                  <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                      activity.type === 'call'
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                        : activity.type === 'email'
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                        : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                    }`}
-                  >
-                    {activity.type === 'call' ? (
-                      <Phone size={12} />
-                    ) : activity.type === 'email' ? (
-                      <Mail size={12} />
-                    ) : (
-                      <Calendar size={12} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-gray-900 dark:text-white font-medium">{activity.summary || activity.subject}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {activity.date} {activity.duration && `• ${activity.duration}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              <div className="h-4 bg-purple-100 dark:bg-purple-900/30 rounded animate-pulse w-full" />
+              <div className="h-4 bg-purple-100 dark:bg-purple-900/30 rounded animate-pulse w-5/6" />
+              <div className="h-4 bg-purple-100 dark:bg-purple-900/30 rounded animate-pulse w-4/6" />
             </div>
-          </div>
+          ) : aiError ? (
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg">
+              <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{aiError}</p>
+            </div>
+          ) : aiSummary ? (
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {aiSummary}
+            </p>
+          ) : (
+            <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600 rounded-lg">
+              <Info size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                AI insights will appear once there is customer activity data.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Description */}
       <div>
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
           <FileText size={16} />
@@ -380,18 +460,96 @@ function ViewMode({
         )}
       </div>
 
+      {/* Documentation / File Upload */}
       <div>
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
           <Upload size={16} />
           Documentation
         </h4>
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
-          <Upload size={24} className="mx-auto text-gray-400 dark:text-gray-500 mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No files uploaded yet</p>
-          <button className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">
-            Upload files
-          </button>
-        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
+        {/* Show uploaded documents */}
+        {appointment.customer_id && documents.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {documents.filter(d => d.category === 'appointment' || d.category === 'general').map(doc => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
+                    <File size={16} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{doc.file_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatFileSize(doc.file_size)} · {format(new Date(doc.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDownload(doc)}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                    title="Download"
+                  >
+                    <Download size={14} className="text-gray-500 dark:text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDoc(doc)}
+                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} className="text-red-500" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload area */}
+        {appointment.customer_id ? (
+          <div
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
+            onClick={() => !uploading && fileInputRef.current?.click()}
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={24} className="mx-auto text-primary-500 mb-2 animate-spin" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Uploading...</p>
+              </>
+            ) : (
+              <>
+                <Upload size={24} className="mx-auto text-gray-400 dark:text-gray-500 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  {documents.filter(d => d.category === 'appointment' || d.category === 'general').length > 0
+                    ? 'Upload more files'
+                    : 'No files uploaded yet'}
+                </p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                  className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+                >
+                  Upload files
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
+            <Info size={24} className="mx-auto text-gray-400 dark:text-gray-500 mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Link a customer to this appointment to upload documents
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
