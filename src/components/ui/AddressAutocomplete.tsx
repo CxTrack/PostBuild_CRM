@@ -43,6 +43,8 @@ interface PlacePrediction {
 const predictionCache = new Map<string, PlacePrediction[]>();
 
 // Map legacy searchTypes to new API includedPrimaryTypes
+// Valid types: Table A (e.g. 'locality') + Table B (e.g. 'street_address', 'geocode')
+// Note: 'address' is NOT a valid type — use 'street_address' instead
 function mapSearchTypes(searchTypes: string[]): string[] | undefined {
     const mapped: string[] = [];
     for (const t of searchTypes) {
@@ -54,7 +56,7 @@ function mapSearchTypes(searchTypes: string[]): string[] | undefined {
                 mapped.push('geocode');
                 break;
             case 'address':
-                mapped.push('address');
+                mapped.push('street_address');
                 break;
             default:
                 mapped.push(t);
