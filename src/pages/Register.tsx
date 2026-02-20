@@ -228,10 +228,12 @@ export const Register: React.FC = () => {
           <div className="mt-6 space-y-4">
             <p className="text-center text-white/25 text-xs leading-relaxed">
               By signing up, you agree to our{' '}
+              <Link to="/terms" className="text-white/40 hover:text-[#FFD700] underline underline-offset-2 transition-colors">
+                Terms of Service
+              </Link>{' '}and{' '}
               <Link to="/privacy" className="text-white/40 hover:text-[#FFD700] underline underline-offset-2 transition-colors">
                 Privacy Policy
-              </Link>
-              .
+              </Link>.
             </p>
 
             <p className="text-center text-sm text-white/30">

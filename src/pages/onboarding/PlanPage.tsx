@@ -8,11 +8,17 @@ import PricingTierCard from '@/components/onboarding/PricingTierCard';
 import { pricingTiers, COUNTRY_OPTIONS } from '@/constants/onboarding';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
+// Legal version constants
+const TERMS_VERSION = '1.0.0';
+const PRIVACY_VERSION = '1.0.0';
+
 export default function PlanPage() {
     const navigate = useNavigate();
     const [selectedPlan, setSelectedPlan] = useState<string>('elite_premium');
     const [isProcessing, setIsProcessing] = useState(false);
     const [lead, setLead] = useState<any>(null);
+    const [tosAccepted, setTosAccepted] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
     const countryInfo = COUNTRY_OPTIONS.find(c => c.code === lead?.country) || COUNTRY_OPTIONS[0];
 
@@ -62,6 +68,14 @@ export default function PlanPage() {
             if (refreshData?.session?.access_token) return refreshData.session.access_token;
         } catch { /* ignore */ }
         return null;
+    };
+
+    const handleConfirmWithTerms = () => {
+        if (!tosAccepted || !privacyAccepted) {
+            toast.error('Please accept the Terms of Service and Privacy Policy to continue.');
+            return;
+        }
+        handleConfirmPlan();
     };
 
     const handleConfirmPlan = async () => {
@@ -182,6 +196,29 @@ export default function PlanPage() {
                 }
             }
 
+            // Record terms acceptance
+            try {
+                await fetch(`${supabaseUrl}/rest/v1/terms_acceptance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Prefer': 'return=minimal',
+                    },
+                    body: JSON.stringify({
+                        user_id: lead.userId,
+                        terms_version: TERMS_VERSION,
+                        privacy_version: PRIVACY_VERSION,
+                        ip_address: null,
+                        user_agent: navigator.userAgent,
+                    }),
+                });
+            } catch (termsErr) {
+                // Non-blocking — log but don't prevent onboarding
+                console.error('[Onboarding] Terms acceptance recording failed:', termsErr);
+            }
+
             // Navigate to next step
             if (selectedPlan === 'enterprise') {
                 navigate('/onboarding/success?type=enterprise&plan=enterprise');
@@ -255,7 +292,7 @@ export default function PlanPage() {
                                     tier={tier}
                                     selected={selectedPlan === tier.id}
                                     onClick={() => handleSelectPlan(tier.id)}
-                                    onConfirm={handleConfirmPlan}
+                                    onConfirm={handleConfirmWithTerms}
                                 />
                             </motion.div>
                         ))}
@@ -274,16 +311,60 @@ export default function PlanPage() {
                                     tier={tier}
                                     selected={selectedPlan === tier.id}
                                     onClick={() => handleSelectPlan(tier.id)}
-                                    onConfirm={handleConfirmPlan}
+                                    onConfirm={handleConfirmWithTerms}
                                 />
                             </motion.div>
                         ))}
                     </motion.div>
 
+                    {/* Terms Acceptance */}
+                    <div className="max-w-lg mx-auto space-y-3">
+                        <label className="flex items-start gap-3 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                checked={tosAccepted}
+                                onChange={(e) => setTosAccepted(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-[#FFD700] focus:ring-[#FFD700]/30 focus:ring-offset-0 cursor-pointer accent-[#FFD700]"
+                            />
+                            <span className="text-white/50 text-xs leading-relaxed group-hover:text-white/70 transition-colors">
+                                I agree to the{' '}
+                                <a
+                                    href="/terms"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#FFD700]/70 hover:text-[#FFD700] underline underline-offset-2 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    Terms of Service
+                                </a>
+                            </span>
+                        </label>
+                        <label className="flex items-start gap-3 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                checked={privacyAccepted}
+                                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-[#FFD700] focus:ring-[#FFD700]/30 focus:ring-offset-0 cursor-pointer accent-[#FFD700]"
+                            />
+                            <span className="text-white/50 text-xs leading-relaxed group-hover:text-white/70 transition-colors">
+                                I agree to the{' '}
+                                <a
+                                    href="/privacy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#FFD700]/70 hover:text-[#FFD700] underline underline-offset-2 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    Privacy Policy
+                                </a>
+                            </span>
+                        </label>
+                    </div>
+
                     {/* Footer */}
                     <div className="text-center">
                         <p className="text-white/20 text-[10px] uppercase font-black tracking-widest">
-                            {isProcessing ? 'PROCESSING...' : 'SELECT A PLAN ABOVE TO CONTINUE'}
+                            {isProcessing ? 'PROCESSING...' : !tosAccepted || !privacyAccepted ? 'ACCEPT TERMS ABOVE TO CONTINUE' : 'SELECT A PLAN ABOVE TO CONTINUE'}
                         </p>
                     </div>
                 </div>

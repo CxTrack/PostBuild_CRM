@@ -125,7 +125,13 @@ export default function CheckoutForm({ planId, metadata }: CheckoutFormProps) {
       </button>
 
       <p className="text-center text-[10px] text-white/20 uppercase font-bold tracking-widest">
-        By continuing, you agree to our Terms of Service and Privacy Policy.
+        By continuing, you agree to our{' '}
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-[#FFD700] underline underline-offset-2 transition-colors">
+          Terms of Service
+        </a>{' '}and{' '}
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-[#FFD700] underline underline-offset-2 transition-colors">
+          Privacy Policy
+        </a>.
       </p>
     </div>
   );
