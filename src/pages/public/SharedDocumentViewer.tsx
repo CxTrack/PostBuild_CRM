@@ -44,7 +44,7 @@ export const SharedDocumentViewer = () => {
                     });
                     setOrganization({
                         name: 'CxTrack AI Solutions',
-                        logo_url: '/logo.png'
+                        logo_url: '/cxtrack-logo.png'
                     });
                 }
             } catch (error) {
@@ -92,7 +92,7 @@ export const SharedDocumentViewer = () => {
             <div className="w-full max-w-4xl flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                        <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
+                        <img src="/cxtrack-logo.png" alt="Logo" className="w-6 h-6 object-contain" />
                     </div>
                     <div>
                         <h1 className="font-bold text-gray-900 dark:text-white">{organization?.name}</h1>
@@ -225,7 +225,7 @@ export const SharedDocumentViewer = () => {
             <div className="mt-12 text-center space-y-2">
                 <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-[0.2em]">Powered by</p>
                 <div className="flex items-center justify-center gap-2 grayscale brightness-125 opacity-50">
-                    <img src="/logo.png" alt="CxTrack" className="w-5 h-5" />
+                    <img src="/cxtrack-logo.png" alt="CxTrack" className="w-5 h-5" />
                     <span className="font-black text-gray-900 dark:text-white">CxTrack AI</span>
                 </div>
             </div>

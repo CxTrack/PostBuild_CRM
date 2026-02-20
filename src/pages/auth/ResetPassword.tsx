@@ -120,7 +120,7 @@ const ResetPassword: React.FC = () => {
           <div className="flex flex-col items-center mb-8">
             <Link to="/" className="group">
               <img
-                src="/logo.svg"
+                src="/cxtrack-logo.png"
                 alt="CxTrack"
                 className="h-12 mb-6 opacity-90 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
               />
