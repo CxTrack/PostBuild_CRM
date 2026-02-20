@@ -1313,7 +1313,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {format(activity.date, 'MMM d, yyyy �� h:mm a')}
+                        {format(activity.date, 'MMM d, yyyy')} &middot; {format(activity.date, 'h:mm a')}
                       </p>
                     </div>
                     {activity.status && (
@@ -1510,7 +1510,7 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-lg">
             <Calendar size={16} />
             <span>
-              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} �� {formData.time} - {calculateEndTime()}
+              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} &middot; {formData.time} - {calculateEndTime()}
             </span>
           </div>
 

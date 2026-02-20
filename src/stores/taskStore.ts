@@ -76,6 +76,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const formattedTasks = (data || []).map(task => ({
         ...task,
         customer_name: task.customer?.name || '',
+        // Normalize due_date from timestamp (2026-02-28T00:00:00+00:00) to plain date (2026-02-28)
+        due_date: task.due_date ? task.due_date.split('T')[0].split(' ')[0] : task.due_date,
       }));
 
       set({ tasks: formattedTasks });
@@ -143,6 +145,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         status: taskData.status as TaskStatus,
         show_on_calendar: taskData.show_on_calendar || false,
         customer_name: taskData.customer?.name || '',
+        due_date: taskData.due_date ? taskData.due_date.split('T')[0].split(' ')[0] : taskData.due_date,
       };
 
       set((state) => ({
@@ -212,6 +215,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         status: taskData.status as TaskStatus,
         show_on_calendar: taskData.show_on_calendar || false,
         customer_name: taskData.customer?.name || '',
+        due_date: taskData.due_date ? taskData.due_date.split('T')[0].split(' ')[0] : taskData.due_date,
       };
 
       set((state) => ({
