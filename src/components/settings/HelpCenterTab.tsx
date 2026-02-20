@@ -8,8 +8,9 @@ import {
     Search, Book, Video, FileText, MessageCircle,
     ExternalLink, HelpCircle,
     Lightbulb, Zap, Users, Calendar, DollarSign,
-    BarChart3, Phone, Settings
+    BarChart3, Phone, Settings, Bug, TicketPlus
 } from 'lucide-react';
+import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
 
 // ═══════════════════════════════════════════════════════════════════════
 // HELP ARTICLES DATA
@@ -215,6 +216,8 @@ const helpCategories: HelpCategory[] = [
 export const HelpCenterTab: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
+    const [showTicketModal, setShowTicketModal] = useState(false);
+    const [ticketSource, setTicketSource] = useState<'help_center' | 'bug_report'>('help_center');
 
     // Filter articles based on search
     const filteredCategories = helpCategories.map(category => ({
@@ -251,21 +254,36 @@ export const HelpCenterTab: React.FC = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <a
-                    href="mailto:support@cxtrack.com"
-                    className="p-6 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl hover:shadow-lg transition-all group"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                    onClick={() => { setTicketSource('help_center'); setShowTicketModal(true); }}
+                    className="p-6 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl hover:shadow-lg transition-all group text-left"
                 >
                     <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <MessageCircle className="w-6 h-6 text-white" />
+                        <TicketPlus className="w-6 h-6 text-white" />
                     </div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-                        Contact Support
+                        Submit a Ticket
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Get help from our team
+                        Get help from our support team
                     </p>
-                </a>
+                </button>
+
+                <button
+                    onClick={() => { setTicketSource('bug_report'); setShowTicketModal(true); }}
+                    className="p-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl hover:shadow-lg transition-all group text-left"
+                >
+                    <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Bug className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">
+                        Report a Bug
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Let us know about any issues
+                    </p>
+                </button>
 
                 <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-2xl">
                     <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
@@ -279,6 +297,13 @@ export const HelpCenterTab: React.FC = () => {
                     </p>
                 </div>
             </div>
+
+            {/* Ticket Modal */}
+            <SubmitTicketModal
+                isOpen={showTicketModal}
+                onClose={() => setShowTicketModal(false)}
+                source={ticketSource}
+            />
 
             {/* Articles by Category */}
             {filteredCategories.map((category) => {

@@ -8,23 +8,25 @@ export type TicketCategory = 'billing' | 'technical' | 'feature_request' | 'bug'
 
 export interface Ticket {
     id: string;
-    title: string;
+    subject: string;
     description: string;
     priority: TicketPriority;
     status: TicketStatus;
     category: TicketCategory;
     customer_id?: string;
-    customer_name: string;
+    customer_name?: string;
     customer_email?: string;
     organization_name?: string;
     assigned_to?: string;
     assigned_to_name?: string;
-    labels: string[];
+    labels?: string[];
     due_date?: string;
     resolved_at?: string;
+    source?: string;
     created_at: string;
     updated_at: string;
     organization_id: string;
+    user_id?: string;
 }
 
 export interface TicketMessage {
@@ -331,11 +333,11 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
             if (filters.assignee !== 'all' && ticket.assigned_to !== filters.assignee) return false;
             if (filters.search) {
                 const search = filters.search.toLowerCase();
-                const matchesTitle = ticket.title.toLowerCase().includes(search);
-                const matchesDesc = ticket.description.toLowerCase().includes(search);
-                const matchesCustomer = ticket.customer_name.toLowerCase().includes(search);
+                const matchesSubject = ticket.subject?.toLowerCase().includes(search);
+                const matchesDesc = ticket.description?.toLowerCase().includes(search);
+                const matchesCustomer = ticket.customer_name?.toLowerCase().includes(search);
                 const matchesId = ticket.id.toLowerCase().includes(search);
-                if (!matchesTitle && !matchesDesc && !matchesCustomer && !matchesId) return false;
+                if (!matchesSubject && !matchesDesc && !matchesCustomer && !matchesId) return false;
             }
             return true;
         });

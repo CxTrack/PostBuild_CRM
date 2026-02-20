@@ -128,6 +128,43 @@ export interface PriorityAlerts {
   }>;
 }
 
+export interface AdminTicket {
+  id: string;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  category: string;
+  customer_id?: string;
+  customer_name?: string;
+  customer_email?: string;
+  organization_name?: string;
+  assigned_to?: string;
+  assigned_to_name?: string;
+  source?: string;
+  labels?: string[];
+  due_date?: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at: string;
+  organization_id: string;
+  user_id?: string;
+}
+
+export interface DeletionRequest {
+  id: string;
+  user_id: string;
+  organization_id?: string;
+  user_email: string;
+  user_name?: string;
+  reason?: string;
+  status: 'pending' | 'processing' | 'completed' | 'rejected';
+  requested_at: string;
+  processed_at?: string;
+  processed_by?: string;
+  notes?: string;
+}
+
 interface AdminState {
   // Data
   kpis: PlatformKPIs | null;
@@ -141,6 +178,8 @@ interface AdminState {
   financialSummary: any;
   activityLog: ActivityLogEntry[];
   adminUsers: AdminUser[];
+  allTickets: AdminTicket[];
+  deletionRequests: DeletionRequest[];
 
   // UI State
   loading: Record<string, boolean>;
@@ -161,6 +200,9 @@ interface AdminState {
   fetchFinancialSummary: (days?: number) => Promise<void>;
   fetchActivityLog: (limit?: number, offset?: number, entityType?: string, action?: string) => Promise<void>;
   fetchAdminUsers: () => Promise<void>;
+  fetchAllTickets: () => Promise<void>;
+  fetchDeletionRequests: () => Promise<void>;
+  updateDeletionRequest: (requestId: string, status: string, notes?: string) => Promise<void>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -178,6 +220,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   financialSummary: null,
   activityLog: [],
   adminUsers: [],
+  allTickets: [],
+  deletionRequests: [],
 
   loading: {},
   errors: {},
@@ -326,6 +370,40 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       }
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, adminUsers: false }, errors: { ...s.errors, adminUsers: e.message } }));
+    }
+  },
+
+  fetchAllTickets: async () => {
+    set((s) => ({ loading: { ...s.loading, tickets: true }, errors: { ...s.errors, tickets: null } }));
+    try {
+      const data = await supabaseRpc<AdminTicket[]>('admin_get_all_support_tickets');
+      set((s) => ({ allTickets: data || [], loading: { ...s.loading, tickets: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, tickets: false }, errors: { ...s.errors, tickets: e.message } }));
+    }
+  },
+
+  fetchDeletionRequests: async () => {
+    set((s) => ({ loading: { ...s.loading, deletionRequests: true }, errors: { ...s.errors, deletionRequests: null } }));
+    try {
+      const data = await supabaseRpc<DeletionRequest[]>('admin_get_deletion_requests');
+      set((s) => ({ deletionRequests: data || [], loading: { ...s.loading, deletionRequests: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, deletionRequests: false }, errors: { ...s.errors, deletionRequests: e.message } }));
+    }
+  },
+
+  updateDeletionRequest: async (requestId: string, status: string, notes?: string) => {
+    try {
+      await supabaseRpc('admin_update_deletion_request', {
+        p_request_id: requestId,
+        p_status: status,
+        p_notes: notes || null,
+      });
+      // Refresh the list
+      await get().fetchDeletionRequests();
+    } catch (e: any) {
+      throw new Error(e.message || 'Failed to update deletion request');
     }
   },
 

@@ -4,7 +4,8 @@ import {
   ArrowLeft, Edit, Mail, Phone, Calendar,
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
-  TrendingUp, Upload, Download, File, Image, FileSpreadsheet
+  TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
+  AlertTriangle, TicketPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -22,6 +23,8 @@ import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import AICustomerSummary from '@/components/customers/AICustomerSummary';
 import RecentCallsSection from '@/components/customers/RecentCallsSection';
+import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -376,9 +379,31 @@ function OverviewTab({
   onSendSMS: () => void;
 }) {
   const navigate = useNavigate();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, currentMembership } = useOrganizationStore();
+  const { deleteCustomer } = useCustomerStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
   const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+
+  const handleDeleteCustomer = async () => {
+    const confirmed = await confirm({
+      title: 'Permanently Delete Contact',
+      message: `Are you sure you want to permanently delete "${customer.first_name} ${customer.last_name}"? This will remove all associated data including notes, tasks, pipeline items, and files. This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      confirmVariant: 'danger',
+    });
+    if (confirmed) {
+      try {
+        await deleteCustomer(customer.id);
+        toast.success('Contact permanently deleted');
+        navigate('/dashboard/customers');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to delete contact');
+      }
+    }
+  };
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -749,6 +774,71 @@ function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* Danger Zone — full width below grid */}
+      <div className="lg:col-span-3 mt-2">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle size={18} className="text-red-500" />
+            <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
+              Danger Zone
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            {/* Submit Support Ticket */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Submit Support Ticket
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Need help with this contact? Submit a ticket to CxTrack support.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTicketModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 rounded-lg transition-colors"
+              >
+                <TicketPlus size={16} />
+                Submit Ticket
+              </button>
+            </div>
+
+            {/* Permanently Delete Contact */}
+            {isOwnerOrAdmin && (
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Permanently Delete Contact
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    This action cannot be undone. All data associated with this contact will be permanently removed.
+                  </p>
+                </div>
+                <button
+                  onClick={handleDeleteCustomer}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                  Delete Contact
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      <DialogComponent />
+      <SubmitTicketModal
+        isOpen={showTicketModal}
+        onClose={() => setShowTicketModal(false)}
+        source="customer_profile"
+        customerId={customer.id}
+        customerName={`${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
+        customerEmail={customer.email}
+      />
     </div>
   );
 }

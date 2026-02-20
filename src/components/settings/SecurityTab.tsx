@@ -6,9 +6,13 @@
 import React, { useState } from 'react';
 import {
     Shield, Key, Smartphone, Monitor, Globe,
-    AlertTriangle, Check, Lock, Trash2, LogOut
+    AlertTriangle, Check, Lock, Trash2, LogOut, Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
+import { supabaseUrl } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 
 interface Session {
     id: string;
@@ -316,20 +320,213 @@ export const SecurityTab: React.FC = () => {
                 </div>
             </div>
 
-            {/* Danger Zone */}
-            <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border-2 border-red-200 dark:border-red-800 p-6">
+            {/* Account Deletion */}
+            <AccountDeletionSection />
+        </div>
+    );
+};
+
+const AccountDeletionSection: React.FC = () => {
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [confirmText, setConfirmText] = useState('');
+    const [reason, setReason] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    const { user } = useAuthStore();
+    const { currentOrganization } = useOrganizationStore();
+
+    const handleRequestDeletion = async () => {
+        if (confirmText !== 'DELETE') return;
+        if (!user) return;
+
+        setSubmitting(true);
+        try {
+            // Insert deletion request
+            const { error } = await supabase
+                .from('account_deletion_requests')
+                .insert({
+                    user_id: user.id,
+                    organization_id: currentOrganization?.id || null,
+                    user_email: user.email || '',
+                    user_name: user.user_metadata?.full_name || user.email || '',
+                    reason: reason || null,
+                    status: 'pending',
+                });
+
+            if (error) throw error;
+
+            // Fire notification email (fire-and-forget)
+            try {
+                const ref = supabaseUrl?.split('//')[1]?.split('.')[0] || '';
+                const tokenKey = `sb-${ref}-auth-token`;
+                const stored = localStorage.getItem(tokenKey);
+                const parsed = stored ? JSON.parse(stored) : null;
+                const accessToken = parsed?.access_token;
+
+                if (accessToken) {
+                    fetch(`${supabaseUrl}/functions/v1/send-ticket-notification`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify({
+                            type: 'account_deletion',
+                            subject: 'Account Deletion Request',
+                            description: reason || 'No reason provided',
+                            userName: user.user_metadata?.full_name || user.email || '',
+                            userEmail: user.email || '',
+                            organizationName: currentOrganization?.name || 'N/A',
+                        }),
+                    }).catch(() => {});
+                }
+            } catch {
+                // Non-blocking
+            }
+
+            setSubmitted(true);
+            setShowConfirm(false);
+            toast.success('Deletion request submitted');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to submit request';
+            toast.error(msg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (submitted) {
+        return (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                    <h3 className="text-lg font-bold text-red-800 dark:text-red-200">Danger Zone</h3>
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center">
+                        <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Deletion Request Submitted</h3>
+                        <p className="text-sm text-gray-500">We received your request</p>
+                    </div>
                 </div>
-                <p className="text-sm text-red-700 dark:text-red-300 mb-4">
-                    Once you delete your account, there is no going back. Please be certain.
+                <p className="text-gray-600 dark:text-gray-400">
+                    Your account deletion request has been submitted. Our team will review and process it within 30 days
+                    in accordance with applicable privacy regulations (PIPEDA, GDPR, CCPA). You will receive a
+                    confirmation email once your request has been processed.
                 </p>
-                <button className="px-4 py-2 border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 font-medium transition-colors">
-                    Delete Account
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-red-200 dark:border-red-900/50 p-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-red-600 dark:text-red-400">Delete Account</h3>
+                        <p className="text-sm text-gray-500">Permanently remove your account and data</p>
+                    </div>
+                </div>
+
+                <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30 mb-4">
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                        Requesting account deletion will permanently remove your account, all associated data, and
+                        organization membership. This action is irreversible and will be processed within 30 days.
+                    </p>
+                </div>
+
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                    Under PIPEDA, GDPR, and CCPA, you have the right to request deletion of your personal data.
+                    Once submitted, our team will review and process your request.
+                </p>
+
+                <button
+                    onClick={() => setShowConfirm(true)}
+                    className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
+                >
+                    <Trash2 className="w-5 h-5" />
+                    Request Account Deletion
                 </button>
             </div>
-        </div>
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                Confirm Account Deletion
+                            </h3>
+                        </div>
+
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                            This will submit a request to permanently delete your account and all associated data.
+                            This cannot be undone.
+                        </p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Reason for leaving (optional)
+                                </label>
+                                <textarea
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    placeholder="Tell us why you're leaving..."
+                                    rows={3}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Type <span className="font-bold text-red-600">DELETE</span> to confirm
+                                </label>
+                                <input
+                                    type="text"
+                                    value={confirmText}
+                                    onChange={(e) => setConfirmText(e.target.value)}
+                                    placeholder="DELETE"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-lg tracking-widest focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleRequestDeletion}
+                                    disabled={confirmText !== 'DELETE' || submitting}
+                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        'Confirm Deletion Request'
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowConfirm(false);
+                                        setConfirmText('');
+                                        setReason('');
+                                    }}
+                                    className="px-4 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
