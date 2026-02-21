@@ -291,7 +291,6 @@ export const useDealStore = create<DealStore>((set, get) => ({
 
       await get().fetchDeals();
       await get().fetchPipelineStats();
-      toast.success('Deal updated successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       toast.error(message);
