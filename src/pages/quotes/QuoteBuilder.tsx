@@ -40,6 +40,7 @@ export default function QuoteBuilder() {
   const [savedQuote, setSavedQuote] = useState<any>(null);
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [catalogPromptItem, setCatalogPromptItem] = useState<{ index: number; name: string } | null>(null);
   const { user } = useAuthContext();
   const [organizationInfo, setOrganizationInfo] = useState<any>(null);
   const [orgTaxRate, setOrgTaxRate] = useState<number>(0);
@@ -264,30 +265,34 @@ export default function QuoteBuilder() {
     setShowProductCatalog(false);
   };
 
-  const handleItemBlur = async (index: number) => {
+  const handleItemBlur = (index: number) => {
     const item = formData.items[index];
 
-    if (!item.product_type) {
-      return;
-    }
+    if (!item.product_type) return;
+    if (!item.product_name || !item.product_name.trim()) return;
+    if (!item.unit_price || item.unit_price <= 0) return;
+    if (item.product_id) return;
 
-    if (!item.product_name || !item.product_name.trim()) {
-      return;
-    }
+    // Check if a product with this name already exists in the catalog
+    const existsInCatalog = products.some(
+      p => p.name.toLowerCase() === item.product_name.trim().toLowerCase()
+    );
+    if (existsInCatalog) return;
 
-    if (!item.unit_price || item.unit_price <= 0) {
-      return;
-    }
+    // Show prompt asking if user wants to save to catalog
+    setCatalogPromptItem({ index, name: item.product_name.trim() });
+  };
 
-    if (item.product_id) {
+  const handleSaveToCatalog = async () => {
+    if (!catalogPromptItem) return;
+    const item = formData.items[catalogPromptItem.index];
+    if (!item) {
+      setCatalogPromptItem(null);
       return;
     }
 
     try {
-      
-
       const organizationId = getOrganizationId();
-
       const newProduct = await createProduct({
         organization_id: organizationId,
         name: item.product_name.trim(),
@@ -300,16 +305,18 @@ export default function QuoteBuilder() {
         tax_rate: item.tax_rate || 0,
         is_taxable: (item.tax_rate || 0) > 0,
         track_inventory: item.product_type === 'product',
-        quantity_on_hand: item.product_type === 'product' ? 0 : 0,
+        quantity_on_hand: 0,
         requires_approval: false,
       });
 
       if (newProduct) {
-        updateLineItem(index, 'product_id', newProduct.id);
-        toast.success(`"${item.product_name}" saved to catalog`);
+        updateLineItem(catalogPromptItem.index, 'product_id', newProduct.id);
+        toast.success(`"${item.product_name}" added to your catalog`);
       }
     } catch (error: any) {
       toast.error(getSafeErrorMessage(error, 'create'));
+    } finally {
+      setCatalogPromptItem(null);
     }
   };
 
@@ -1304,6 +1311,42 @@ export default function QuoteBuilder() {
             }
           ]}
         />
+
+        {/* Save to Catalog Prompt */}
+        {catalogPromptItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <Package size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Save to Catalog?</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">For quick access next time</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                <span className="font-medium text-gray-900 dark:text-white">"{catalogPromptItem.name}"</span> isn't in your catalog yet. Would you like to save it for quick access on future proposals?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCatalogPromptItem(null)}
+                >
+                  No Thanks
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveToCatalog}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Save to Catalog
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

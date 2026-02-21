@@ -1102,26 +1102,6 @@ export default function Settings() {
         {activeTab === 'payment' && (
           <div className="max-w-4xl space-y-6">
             <StripeConnectSettings organizationId={currentOrganization?.id} />
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Methods</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Select which payment methods you accept
-              </p>
-
-              <div className="space-y-3">
-                {['Credit Card', 'Debit Card', 'Bank Transfer', 'Check', 'Cash', 'PayPal'].map((method) => (
-                  <label key={method} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-                    />
-                    <span className="ml-3 text-sm text-gray-900 dark:text-white">{method}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 

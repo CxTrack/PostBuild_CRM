@@ -41,7 +41,7 @@ const FILTER_OPTIONS: Record<ReportType, { id: string; label: string; options: s
         { id: 'customer_type', label: 'Customer Type', options: ['All', 'Business', 'Personal'] },
     ],
     quotes: [
-        { id: 'status', label: 'Status', options: ['All', 'Draft', 'Sent', 'Accepted', 'Declined'] },
+        { id: 'status', label: 'Status', options: ['All', 'draft', 'sent', 'accepted', 'declined'] },
         { id: 'customer_type', label: 'Customer Type', options: ['All', 'Business', 'Personal'] },
     ],
     customers: [
