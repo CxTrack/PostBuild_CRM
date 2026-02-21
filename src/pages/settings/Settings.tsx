@@ -4,7 +4,7 @@ import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, X, Settings as SettingsIcon, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles } from 'lucide-react';
+import { Building2, FileText, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Upload, Save, Palette, Sun, Moon, Zap, Users, UserPlus, TrendingUp, CheckCircle, Link, Copy, Code, Key, Info, MoreVertical, X, Settings as SettingsIcon, Smartphone, Package, DollarSign, Phone, CheckSquare, LayoutGrid, HelpCircle, Mic, MessageSquare, LogOut, Sparkles, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -20,6 +20,7 @@ import HelpCenterTab from '@/components/settings/HelpCenterTab';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import SMSSettingsTab from '@/components/settings/SMSSettingsTab';
 import StripeConnectSettings from '@/components/settings/StripeConnectSettings';
+import EmailConnectionSettings from '@/components/settings/EmailConnectionSettings';
 import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -40,7 +41,13 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'mobile' | 'business' | 'billing' | 'templates' | 'payment' | 'twilio' | 'calendar' | 'sharing' | 'notifications' | 'security' | 'help' | 'voiceagent'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'mobile' | 'business' | 'billing' | 'templates' | 'payment' | 'twilio' | 'calendar' | 'sharing' | 'notifications' | 'security' | 'help' | 'voiceagent' | 'email'>(() => {
+    // Check URL params for tab= (used by OAuth callback redirect)
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'email') return 'email';
+    return 'profile';
+  });
   const [settings, setSettings] = useState<BusinessSettingsType | null>(null);
   const [quoteTemplates, setQuoteTemplates] = useState<DocumentTemplate[]>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<DocumentTemplate[]>([]);
@@ -491,6 +498,7 @@ export default function Settings() {
               { id: 'templates', label: 'Templates', icon: FileText },
               { id: 'payment', label: 'Payment', icon: Zap },
               { id: 'twilio', label: 'Communications', icon: MessageSquare },
+              { id: 'email', label: 'Email', icon: Mail },
               { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
               { id: 'sharing', label: 'Sharing', icon: Share2 },
               { id: 'voiceagent', label: 'Voice Agent', icon: Sparkles, premium: true },
@@ -1563,6 +1571,7 @@ export default function Settings() {
         {activeTab === 'security' && <SecurityTab />}
         {activeTab === 'voiceagent' && <VoiceAgentSetup />}
         {activeTab === 'help' && <HelpCenterTab />}
+        {activeTab === 'email' && <EmailConnectionSettings />}
 
         {/* Logout Section */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
