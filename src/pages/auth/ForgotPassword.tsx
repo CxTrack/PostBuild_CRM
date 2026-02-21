@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { toast } from 'react-hot-toast';
-import { Mail, AlertTriangle } from 'lucide-react';
+import { Mail, AlertTriangle, Sun, Moon } from 'lucide-react';
 
 interface ForgotPasswordFormData {
   email: string;
@@ -13,7 +13,7 @@ interface ForgotPasswordFormData {
 
 const ForgotPassword: React.FC = () => {
   const { resetPassword, loading, error, clearError } = useAuthStore();
-  const { theme } = useThemeStore();
+  const { theme, toggleTheme } = useThemeStore();
   const isDark = theme === 'dark' || theme === 'midnight';
   const navigate = useNavigate();
   const [emailSent, setEmailSent] = useState(false);
@@ -36,6 +36,16 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Theme Toggle */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-5 right-5 z-20 p-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.07] border border-gray-200 dark:border-white/[0.1] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-all text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80"
+        aria-label="Toggle theme"
+        title={`Current: ${theme}`}
+      >
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
