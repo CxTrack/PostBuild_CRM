@@ -7,23 +7,32 @@ import OpportunitiesTable from '@/components/crm/OpportunitiesTable';
 import Tasks from '@/pages/Tasks';
 import {
     Users, CheckCircle, DollarSign,
-    Target, Plus, Search
+    Target, Plus, Search, X
 } from 'lucide-react';
 import { PageContainer, Card, IconBadge } from '@/components/theme/ThemeComponents';
+import toast from 'react-hot-toast';
 
 export default function CRM() {
     const { theme } = useThemeStore();
     const { currentOrganization } = useOrganizationStore();
-    const { fetchLeads, fetchOpportunities, leads, opportunities } = useCRMStore();
+    const { fetchLeads, fetchOpportunities, leads, opportunities, createLead, createOpportunity } = useCRMStore();
     const [activeTab, setActiveTab] = useState<'leads' | 'opportunities' | 'tasks'>('leads');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [creating, setCreating] = useState(false);
+
+    const [leadForm, setLeadForm] = useState({
+        name: '', company: '', email: '', phone: '', source: 'direct', estimated_value: 0,
+    });
+    const [oppForm, setOppForm] = useState({
+        name: '', value: 0, stage: 'discovery', probability: 0.1,
+    });
 
     useEffect(() => {
         fetchLeads();
         fetchOpportunities();
     }, [currentOrganization?.id]);
 
-    // Show loading while waiting for organization
     if (!currentOrganization) {
         return (
             <PageContainer className="items-center justify-center">
@@ -35,7 +44,6 @@ export default function CRM() {
         );
     }
 
-    // Calculate stats
     const totalLeads = leads.length;
     const qualifiedLeads = leads.filter(l => l.status === 'qualified').length;
     const activeOpps = opportunities.filter(o => !['won', 'lost'].includes(o.stage)).length;
@@ -56,6 +64,59 @@ export default function CRM() {
 
     const actionConfig = getActionButton();
 
+    const handleCreateLead = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!leadForm.name.trim()) {
+            toast.error('Name is required');
+            return;
+        }
+        setCreating(true);
+        const result = await createLead({
+            name: leadForm.name.trim(),
+            company: leadForm.company.trim() || null,
+            email: leadForm.email.trim() || null,
+            phone: leadForm.phone.trim() || null,
+            source: leadForm.source,
+            estimated_value: leadForm.estimated_value || 0,
+            status: 'new',
+        } as any);
+        setCreating(false);
+        if (result) {
+            setShowCreateModal(false);
+            setLeadForm({ name: '', company: '', email: '', phone: '', source: 'direct', estimated_value: 0 });
+        }
+    };
+
+    const handleCreateOpportunity = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!oppForm.name.trim()) {
+            toast.error('Name is required');
+            return;
+        }
+        setCreating(true);
+        const result = await createOpportunity({
+            name: oppForm.name.trim(),
+            value: oppForm.value || 0,
+            stage: oppForm.stage,
+            probability: oppForm.probability,
+        } as any);
+        setCreating(false);
+        if (result) {
+            setShowCreateModal(false);
+            setOppForm({ name: '', value: 0, stage: 'discovery', probability: 0.1 });
+        }
+    };
+
+    const handleActionClick = () => {
+        if (activeTab === 'tasks') {
+            // Tasks component handles its own creation
+            const addTaskBtn = document.querySelector('[data-add-task-trigger]') as HTMLButtonElement;
+            if (addTaskBtn) addTaskBtn.click();
+            return;
+        }
+        setShowCreateModal(true);
+    };
+
     return (
         <PageContainer className="gap-6">
             {/* Header */}
@@ -70,6 +131,7 @@ export default function CRM() {
                 </div>
 
                 <button
+                    onClick={handleActionClick}
                     className={`flex items-center px-4 py-2 ${actionConfig.color} text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95`}
                 >
                     <Plus size={18} className="mr-2" />
@@ -165,6 +227,156 @@ export default function CRM() {
                 {activeTab === 'opportunities' && <OpportunitiesTable />}
                 {activeTab === 'tasks' && <Tasks embedded={true} />}
             </Card>
+
+            {/* Create Lead/Opportunity Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {activeTab === 'leads' ? 'New Lead' : 'New Opportunity'}
+                            </h2>
+                            <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+
+                        {activeTab === 'leads' ? (
+                            <form onSubmit={handleCreateLead} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={leadForm.name}
+                                        onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
+                                        placeholder="Lead name"
+                                        className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company</label>
+                                    <input
+                                        type="text"
+                                        value={leadForm.company}
+                                        onChange={(e) => setLeadForm({ ...leadForm, company: e.target.value })}
+                                        placeholder="Company name"
+                                        className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            value={leadForm.email}
+                                            onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
+                                            placeholder="email@example.com"
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                                        <input
+                                            type="tel"
+                                            value={leadForm.phone}
+                                            onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })}
+                                            placeholder="+1 (555) 000-0000"
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source</label>
+                                        <select
+                                            value={leadForm.source}
+                                            onChange={(e) => setLeadForm({ ...leadForm, source: e.target.value })}
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="direct">Direct</option>
+                                            <option value="website">Website</option>
+                                            <option value="referral">Referral</option>
+                                            <option value="social">Social Media</option>
+                                            <option value="cold_call">Cold Call</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estimated Value</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={leadForm.estimated_value || ''}
+                                            onChange={(e) => setLeadForm({ ...leadForm, estimated_value: parseFloat(e.target.value) || 0 })}
+                                            placeholder="0.00"
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={creating} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 font-medium">
+                                        {creating ? 'Creating...' : 'Create Lead'}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleCreateOpportunity} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={oppForm.name}
+                                        onChange={(e) => setOppForm({ ...oppForm, name: e.target.value })}
+                                        placeholder="Opportunity name"
+                                        className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Value ($)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={oppForm.value || ''}
+                                            onChange={(e) => setOppForm({ ...oppForm, value: parseFloat(e.target.value) || 0 })}
+                                            placeholder="0.00"
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stage</label>
+                                        <select
+                                            value={oppForm.stage}
+                                            onChange={(e) => setOppForm({ ...oppForm, stage: e.target.value })}
+                                            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="discovery">Discovery</option>
+                                            <option value="proposal">Proposal</option>
+                                            <option value="negotiation">Negotiation</option>
+                                            <option value="closing">Closing</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={creating} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 font-medium">
+                                        {creating ? 'Creating...' : 'Create Opportunity'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
         </PageContainer>
     );
 }

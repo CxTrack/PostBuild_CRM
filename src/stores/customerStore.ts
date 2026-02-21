@@ -189,10 +189,16 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     const organizationId = useOrganizationStore.getState().currentOrganization?.id;
     if (!organizationId) {
       set({ error: 'No organization selected', loading: false });
-      return;
+      throw new Error('No organization selected');
     }
 
     try {
+      // Delete related records first to avoid FK constraint errors
+      await supabase.from('customer_notes').delete().eq('customer_id', id);
+      await supabase.from('customer_contacts').delete().eq('customer_id', id);
+      await supabase.from('tasks').delete().eq('customer_id', id);
+      await supabase.from('pipeline_items').delete().eq('customer_id', id);
+
       const { error } = await supabase
         .from('customers')
         .delete()
@@ -205,8 +211,9 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customers: state.customers.filter((c) => c.id !== id),
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
-      set({ error: message });
+      const message = error instanceof Error ? error.message : 'Failed to delete customer. It may have associated quotes or invoices.';
+      set({ error: message, loading: false });
+      throw new Error(message);
     } finally {
       set({ loading: false });
     }

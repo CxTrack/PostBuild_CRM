@@ -239,6 +239,9 @@ export default function QuoteDetail() {
               {quote.customer_email && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">{quote.customer_email}</p>
               )}
+              {quote.customer_phone && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">{quote.customer_phone}</p>
+              )}
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Quote Date</h3>

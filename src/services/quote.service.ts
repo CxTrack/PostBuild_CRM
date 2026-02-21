@@ -43,6 +43,7 @@ export interface QuoteFormData {
   customer_id: string;
   customer_name: string;
   customer_email?: string;
+  customer_phone?: string;
   customer_address?: any;
   quote_date: string;
   expiry_date?: string;
@@ -108,6 +109,7 @@ export const quoteService = {
       customer_id: quoteData.customer_id,
       customer_name: quoteData.customer_name,
       customer_email: quoteData.customer_email,
+      customer_phone: quoteData.customer_phone || null,
       customer_address: quoteData.customer_address,
       quote_date: quoteData.quote_date,
       expiry_date: quoteData.expiry_date,
@@ -216,6 +218,7 @@ export const quoteService = {
         customer_id: updates.customer_id,
         customer_name: updates.customer_name,
         customer_email: updates.customer_email,
+        customer_phone: updates.customer_phone || null,
         customer_address: updates.customer_address,
         quote_date: updates.quote_date,
         expiry_date: updates.expiry_date,

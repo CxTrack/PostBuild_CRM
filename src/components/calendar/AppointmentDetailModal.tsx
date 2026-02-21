@@ -229,7 +229,7 @@ export default function AppointmentDetailModal({
               formData={editFormData}
               setFormData={setEditFormData}
               onSave={handleSave}
-              onCancel={() => setMode('view')}
+              onCancel={onClose}
               saving={saving}
             />
           )}

@@ -457,16 +457,34 @@ function OverviewTab({
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
               <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
+            {customer.company && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Company</p>
+                <p className="text-gray-900 dark:text-white">{customer.company}</p>
+              </div>
+            )}
             <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Type</p>
+              <p className="text-gray-900 dark:text-white">{customer.customer_type || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not set</span>}</p>
+            </div>
+            <div className="col-span-2">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
-              {customer.address ? (
-                <p className="text-gray-900 dark:text-white">{customer.address}</p>
+              {customer.address || customer.city || customer.state ? (
+                <p className="text-gray-900 dark:text-white">
+                  {[customer.address, customer.city, customer.state, customer.postal_code, customer.country].filter(Boolean).join(', ')}
+                </p>
               ) : (
                 <button onClick={onEditCustomer} className="text-sm text-primary-600 dark:text-primary-400 hover:underline italic">
                   + Add address
                 </button>
               )}
             </div>
+            {customer.website && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Website</p>
+                <a href={customer.website.startsWith('http') ? customer.website : `https://${customer.website}`} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline">{customer.website}</a>
+              </div>
+            )}
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer Since</p>
               <p className="text-gray-900 dark:text-white">

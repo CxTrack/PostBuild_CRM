@@ -71,17 +71,28 @@ export const UsersTab = () => {
       const token = getAuthToken();
       if (!token) return;
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/user_profiles?select=*,organizations(name,plan,status)&order=created_at.desc&limit=100`,
+        `${SUPABASE_URL}/rest/v1/rpc/admin_get_user_list`,
         {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${token}`,
           },
+          body: JSON.stringify({ p_limit: 100 }),
         }
       );
       if (res.ok) {
         const data = await res.json();
-        setUsers(data || []);
+        // Map RPC response to expected shape for UI compatibility
+        const mapped = (Array.isArray(data) ? data : []).map((u: any) => ({
+          ...u,
+          id: u.user_id,
+          organizations: u.org_name ? { name: u.org_name, plan: u.plan } : null,
+          last_seen_at: u.last_sign_in_at,
+          is_active: u.status === 'active',
+        }));
+        setUsers(mapped);
       }
     } catch {
       // silently fail

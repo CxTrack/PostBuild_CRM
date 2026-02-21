@@ -51,6 +51,7 @@ export default function QuoteBuilder() {
     customer_id: '',
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     customer_address: null,
     quote_date: new Date().toISOString().split('T')[0],
     expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -120,7 +121,14 @@ export default function QuoteBuilder() {
           customer_id: customer.id,
           customer_name: getCustomerFullName(customer),
           customer_email: customer.email || '',
-          customer_address: customer.address || null,
+          customer_phone: customer.phone || '',
+          customer_address: {
+            street: customer.address,
+            city: customer.city,
+            state: customer.state,
+            postal_code: customer.postal_code,
+            country: customer.country,
+          },
         }));
       }
     }
@@ -162,6 +170,7 @@ export default function QuoteBuilder() {
           customer_id: quote.customer_id,
           customer_name: quote.customer_name,
           customer_email: quote.customer_email || '',
+          customer_phone: quote.customer_phone || '',
           customer_address: quote.customer_address,
           quote_date: quote.quote_date,
           expiry_date: quote.expiry_date || '',
@@ -194,6 +203,7 @@ export default function QuoteBuilder() {
         customer_id: customer.id,
         customer_name: getCustomerFullName(customer),
         customer_email: customer.email || '',
+        customer_phone: customer.phone || '',
         customer_address: {
           street: customer.address,
           city: customer.city,
@@ -211,6 +221,7 @@ export default function QuoteBuilder() {
       customer_id: newCustomer.id,
       customer_name: getCustomerFullName(newCustomer),
       customer_email: newCustomer.email || '',
+      customer_phone: newCustomer.phone || '',
       customer_address: {
         street: newCustomer.address,
         city: newCustomer.city,

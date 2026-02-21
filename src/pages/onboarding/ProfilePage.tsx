@@ -19,7 +19,24 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const initProfile = async () => {
-      // Always try to get fresh user data from auth (handles OAuth sign-in)
+      // Process OAuth tokens from URL hash/query params if present
+      // This page is the OAuth redirect target — tokens arrive here after Google/Microsoft sign-in
+      // With detectSessionInUrl: false, the Supabase SDK won't process them automatically
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+      const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        // Clean tokens from URL to prevent reprocessing on refresh
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Now get fresh user data from auth (session is established if tokens were present)
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {

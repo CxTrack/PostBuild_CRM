@@ -40,28 +40,59 @@ const ResetPassword: React.FC = () => {
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
-      }).then(({ error }) => {
+      }).then(async ({ error }) => {
         if (error) {
           setIsValidToken(false);
           toast.error('This reset link has expired. Please request a new one.');
           setTimeout(() => navigate('/forgot-password'), 2000);
-        } else {
-          setIsValidToken(true);
-          // Clean the URL hash
-          window.history.replaceState({}, '', window.location.pathname);
+          return;
         }
+
+        // Validate the session is truly active by verifying with the server
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          setIsValidToken(false);
+          toast.error('This reset link has expired. Please request a new one.');
+          setTimeout(() => navigate('/forgot-password'), 2000);
+          return;
+        }
+
+        setIsValidToken(true);
+        // Clean the URL hash
+        window.history.replaceState({}, '', window.location.pathname);
       });
     } else {
-      // No token in URL — check if there's already an active session (authStore may have set it)
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          setIsValidToken(true);
-        } else {
-          setIsValidToken(false);
-          toast.error('Invalid or expired reset link. Please request a new one.');
-          setTimeout(() => navigate('/forgot-password'), 2000);
-        }
-      });
+      // No token in URL — check for PKCE token_hash in query params
+      const queryParams = new URLSearchParams(window.location.search);
+      const tokenHash = queryParams.get('token_hash');
+      const queryType = queryParams.get('type');
+
+      if (tokenHash && queryType === 'recovery') {
+        supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        }).then(({ error }) => {
+          if (error) {
+            setIsValidToken(false);
+            toast.error('This reset link has expired. Please request a new one.');
+            setTimeout(() => navigate('/forgot-password'), 2000);
+          } else {
+            setIsValidToken(true);
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        });
+      } else {
+        // No token in URL — check if there's already an active session (authStore may have set it)
+        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+          if (user && !userError) {
+            setIsValidToken(true);
+          } else {
+            setIsValidToken(false);
+            toast.error('Invalid or expired reset link. Please request a new one.');
+            setTimeout(() => navigate('/forgot-password'), 2000);
+          }
+        });
+      }
     }
   }, [navigate]);
 

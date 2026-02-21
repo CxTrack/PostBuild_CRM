@@ -42,14 +42,16 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
 
         // Check for tokens in URL query params or hash fragment (OAuth redirect)
-        // Skip on /reset-password — that page handles its own recovery tokens
-        const isResetPage = window.location.pathname === '/reset-password';
+        // Skip on pages that handle their own tokens
+        const currentPath = window.location.pathname;
+        const selfHandledPaths = ['/reset-password', '/auth/callback'];
+        const isSelfHandledPage = selfHandledPaths.includes(currentPath);
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
 
-        if (accessToken && refreshToken && !isResetPage) {
+        if (accessToken && refreshToken && !isSelfHandledPage) {
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,

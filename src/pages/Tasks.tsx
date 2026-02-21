@@ -16,6 +16,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { PageContainer } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
 import TaskModal from '@/components/tasks/TaskModal';
@@ -70,7 +71,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const { currentOrganization } = useOrganizationStore();
-  const { canAccessSharedModule } = usePermissions();
+  const { canAccessSharedModule, role } = usePermissions();
+  const { user } = useAuthContext();
   const labels = usePageLabels('tasks');
 
   const hasAccess = canAccessSharedModule('tasks');
@@ -79,11 +81,17 @@ export default function Tasks({ embedded = false }: TasksProps) {
     const fetchTasks = async () => {
       if (!currentOrganization?.id) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select('*')
-        .eq('organization_id', currentOrganization.id)
-        .order('due_date', { ascending: true });
+        .eq('organization_id', currentOrganization.id);
+
+      // Regular users only see their own tasks (created by them or assigned to them)
+      if (role === 'user' && user?.id) {
+        query = query.or(`created_by.eq.${user.id},assigned_to.eq.${user.id}`);
+      }
+
+      const { data, error } = await query.order('due_date', { ascending: true });
 
       if (error) {
         return;
@@ -112,7 +120,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
     };
 
     fetchTasks();
-  }, [currentOrganization?.id]);
+  }, [currentOrganization?.id, user?.id, role]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -458,7 +466,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               type="checkbox"
                               checked={selectAll}
                               onChange={handleSelectAll}
-                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                             />
                           </th>
                           <th className="w-12 text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -494,16 +502,12 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700 ${overdue ? 'border-l-4 border-l-rose-500' : ''
                                 }`}
                             >
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   checked={selectedTasks.has(task.id)}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectTask(task.id);
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  onChange={() => handleSelectTask(task.id)}
+                                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                                 />
                               </td>
                               <td className="text-center px-3 py-3">
@@ -625,12 +629,12 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 e.stopPropagation();
                                 handleSelectTask(task.id);
                               }}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedTasks.has(task.id)
+                              className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedTasks.has(task.id)
                                 ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'border-gray-300 dark:border-gray-600'
+                                : 'border-gray-400 dark:border-gray-500'
                                 }`}
                             >
-                              {selectedTasks.has(task.id) && <CheckCircle2 size={12} />}
+                              {selectedTasks.has(task.id) && <CheckCircle2 size={14} />}
                             </button>
                             <h3 className="font-semibold text-gray-900 dark:text-white truncate pr-2">
                               {task.title}
