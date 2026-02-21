@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
@@ -86,6 +86,98 @@ export default function Settings() {
 
   // Filter to only show modules enabled for this industry
   const MOBILE_NAV_OPTIONS = ALL_MOBILE_NAV_OPTIONS.filter(opt => enabledModuleIds.includes(opt.moduleId));
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentOrganization) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2MB');
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const storageKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
+      const stored = localStorage.getItem(storageKey);
+      const token = stored ? JSON.parse(stored)?.access_token : null;
+      if (!token) throw new Error('Not authenticated');
+
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const filePath = `${currentOrganization.id}/logo.${ext}`;
+
+      // Upload to Supabase Storage (upsert)
+      const uploadRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/logos/${filePath}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'x-upsert': 'true',
+          },
+          body: file,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        throw new Error(err.message || 'Upload failed');
+      }
+
+      // Get public URL
+      const logoUrl = `${supabaseUrl}/storage/v1/object/public/logos/${filePath}`;
+
+      // Save to organization settings
+      await settingsService.updateBusinessSettings(currentOrganization.id, { logo_url: logoUrl });
+      setSettings(prev => prev ? { ...prev, logo_url: logoUrl } : null);
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!currentOrganization || !settings?.logo_url) return;
+    try {
+      setUploadingLogo(true);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const storageKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
+      const stored = localStorage.getItem(storageKey);
+      const token = stored ? JSON.parse(stored)?.access_token : null;
+      if (!token) throw new Error('Not authenticated');
+
+      // Extract file path from URL
+      const pathMatch = settings.logo_url.match(/\/logos\/(.+)$/);
+      if (pathMatch) {
+        await fetch(
+          `${supabaseUrl}/storage/v1/object/logos/${pathMatch[1]}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+          }
+        );
+      }
+
+      await settingsService.updateBusinessSettings(currentOrganization.id, { logo_url: null });
+      setSettings(prev => prev ? { ...prev, logo_url: null } : null);
+      toast.success('Logo removed');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to remove logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -606,10 +698,36 @@ export default function Settings() {
                         <Building2 className="w-8 h-8 text-gray-400" />
                       </div>
                     )}
-                    <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <Upload className="w-4 h-4 inline mr-2" />
-                      Upload Logo
-                    </button>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50"
+                      >
+                        {uploadingLogo ? (
+                          <Loader2 className="w-4 h-4 inline mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 inline mr-2" />
+                        )}
+                        {settings.logo_url ? 'Change Logo' : 'Upload Logo'}
+                      </button>
+                      {settings.logo_url && (
+                        <button
+                          onClick={handleRemoveLogo}
+                          disabled={uploadingLogo}
+                          className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          Remove Logo
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 

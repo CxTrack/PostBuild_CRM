@@ -101,7 +101,7 @@ export default function InvoiceBuilder() {
     try {
       const [settings, orgInfo] = await Promise.all([
         settingsService.getBusinessSettings(currentOrganization.id),
-        settingsService.getOrganizationForPDF(currentOrganization.id)
+        settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'invoice')
       ]);
       setOrganizationInfo(orgInfo);
       if (settings) {
@@ -169,6 +169,7 @@ export default function InvoiceBuilder() {
           terms: invoice.terms || '',
           status: invoice.status,
         });
+        setSavedInvoice(invoice);
       }
     } catch (error) {
       toast.error('Failed to load invoice');
@@ -477,9 +478,9 @@ export default function InvoiceBuilder() {
       }
       try {
 
-        const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
+        const organizationInfo = await settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'invoice');
 
-        pdfService.generateInvoicePDF(savedInvoice, organizationInfo);
+        await pdfService.generateInvoicePDF(savedInvoice, organizationInfo, (savedInvoice as any).stripe_payment_link_url || undefined);
         toast.success('Invoice PDF downloaded');
       } catch (error) {
         toast.error('Failed to generate PDF');
@@ -505,7 +506,7 @@ export default function InvoiceBuilder() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id ? `Edit ${labels.entitySingular}` : labels.newButton}
+              {id ? `Edit ${labels.entitySingular}` : `New ${labels.entitySingular}`}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Build a professional {labels.entitySingular} for your {fieldLabels.customerLabel.toLowerCase()}
@@ -522,7 +523,7 @@ export default function InvoiceBuilder() {
             </Button>
             <ShareDropdown
               onSelect={handleShareOption}
-              disabled={!savedInvoice || savedInvoice?.status === 'draft'}
+              disabled={!savedInvoice}
               buttonText="Share"
               variant="secondary"
             />
@@ -546,7 +547,7 @@ export default function InvoiceBuilder() {
                   {id ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                id ? `Update ${labels.entitySingular}` : labels.newButton
+                id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`
               )}
             </Button>
           </div>
@@ -864,6 +865,21 @@ export default function InvoiceBuilder() {
           </div>
 
           <div className="space-y-6">
+            {/* Logo & Branding Preview */}
+            {organizationInfo?.logo_url && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex items-center gap-3">
+                <img
+                  src={organizationInfo.logo_url}
+                  alt="Company logo"
+                  className="w-10 h-10 object-contain rounded"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{organizationInfo.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Logo will appear on PDF</p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.sectionTitle}</h2>
               <div className="space-y-4">
@@ -1024,35 +1040,7 @@ export default function InvoiceBuilder() {
           </div>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pb-8">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Draft
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={
-              saving ||
-              !formData.customer_id ||
-              formData.items.length === 0 ||
-              formData.total_amount <= 0
-            }
-            className="px-6"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {id ? 'Updating...' : 'Creating...'}
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                {id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`}
-              </>
-            )}
-          </Button>
-        </div>
+        <div className="pb-8" />
 
         {savedInvoice && currentOrganization && user && organizationInfo && (
           <ShareModal
