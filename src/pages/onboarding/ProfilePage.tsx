@@ -18,35 +18,37 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    // Check if we already have onboarding data with profile filled
-    const leadData = sessionStorage.getItem('onboarding_lead');
-    if (leadData) {
-      const parsed = JSON.parse(leadData);
-      // If profile already filled (has company), skip to select-service
-      if (parsed.company) {
-        navigate('/onboarding/select-service');
-        return;
-      }
-      // Pre-fill from existing lead data
-      if (parsed.firstName) setFormData(prev => ({ ...prev, firstName: parsed.firstName }));
-      if (parsed.lastName) setFormData(prev => ({ ...prev, lastName: parsed.lastName }));
-      if (parsed.phone) setFormData(prev => ({ ...prev, phone: parsed.phone }));
-      return;
-    }
+    const initProfile = async () => {
+      // Always try to get fresh user data from auth (handles OAuth sign-in)
+      const { data: { user } } = await supabase.auth.getUser();
 
-    // For OAuth users: create lead from auth session
-    const initOAuthLead = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const meta = session.user.user_metadata || {};
+      if (user) {
+        const meta = user.user_metadata || {};
         const fullName = meta.full_name || meta.name || '';
         const nameParts = fullName.split(' ');
-        const first = nameParts[0] || '';
-        const last = nameParts.slice(1).join(' ') || '';
+        const authFirst = nameParts[0] || '';
+        const authLast = nameParts.slice(1).join(' ') || '';
+
+        // Check if we have existing onboarding data
+        const leadData = sessionStorage.getItem('onboarding_lead');
+        if (leadData) {
+          const parsed = JSON.parse(leadData);
+          // If profile already filled (has company), skip to select-service
+          if (parsed.company) {
+            navigate('/onboarding/select-service');
+            return;
+          }
+        }
+
+        // OAuth user data takes priority, then fallback to session storage
+        const existingLead = leadData ? JSON.parse(leadData) : {};
+        const first = authFirst || existingLead.firstName || '';
+        const last = authLast || existingLead.lastName || '';
 
         const lead = {
-          userId: session.user.id,
-          email: session.user.email || '',
+          ...existingLead,
+          userId: user.id,
+          email: user.email || existingLead.email || '',
           firstName: first,
           lastName: last,
         };
@@ -56,14 +58,28 @@ export default function ProfilePage() {
           ...prev,
           firstName: first,
           lastName: last,
+          ...(existingLead.phone ? { phone: existingLead.phone } : {}),
         }));
       } else {
-        // No session and no lead data — send to register
-        navigate('/register');
+        // No authenticated user — check session storage as fallback
+        const leadData = sessionStorage.getItem('onboarding_lead');
+        if (leadData) {
+          const parsed = JSON.parse(leadData);
+          if (parsed.company) {
+            navigate('/onboarding/select-service');
+            return;
+          }
+          if (parsed.firstName) setFormData(prev => ({ ...prev, firstName: parsed.firstName }));
+          if (parsed.lastName) setFormData(prev => ({ ...prev, lastName: parsed.lastName }));
+          if (parsed.phone) setFormData(prev => ({ ...prev, phone: parsed.phone }));
+        } else {
+          // No session and no lead data — send to register
+          navigate('/register');
+        }
       }
     };
 
-    initOAuthLead();
+    initProfile();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
