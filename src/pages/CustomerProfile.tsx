@@ -424,20 +424,26 @@ function OverviewTab({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-              <p className="text-gray-900 dark:text-white">{customer.email || '�'}</p>
+              <p className="text-gray-900 dark:text-white">{customer.email || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
-              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || '�'}</p>
+              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
-              <p className="text-gray-900 dark:text-white">{customer.address || '�'}</p>
+              {customer.address ? (
+                <p className="text-gray-900 dark:text-white">{customer.address}</p>
+              ) : (
+                <button onClick={onEditCustomer} className="text-sm text-primary-600 dark:text-primary-400 hover:underline italic">
+                  + Add address
+                </button>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer Since</p>
               <p className="text-gray-900 dark:text-white">
-                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : '�'}
+                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : <span className="text-gray-400 dark:text-gray-500 italic text-sm">—</span>}
               </p>
             </div>
           </div>
