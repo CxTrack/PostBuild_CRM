@@ -5,9 +5,11 @@ import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
 interface AICustomerSummaryProps {
   customerId: string;
   customerName: string;
+  /** Increment this value to trigger an auto-refresh of the summary */
+  refreshTrigger?: number;
 }
 
-const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, customerName }) => {
+const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, customerName, refreshTrigger = 0 }) => {
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +79,15 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
   useEffect(() => {
     generateSummary();
   }, [generateSummary]);
+
+  // Auto-refresh when external actions occur (SMS sent, email sent, note added, etc.)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      // Small delay to let the DB write settle before re-querying
+      const timer = setTimeout(() => generateSummary(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">

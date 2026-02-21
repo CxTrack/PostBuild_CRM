@@ -21,6 +21,7 @@ import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
 import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
+import SendEmailModal from '@/components/email/SendEmailModal';
 import AICustomerSummary from '@/components/customers/AICustomerSummary';
 import RecentCallsSection from '@/components/customers/RecentCallsSection';
 import LogCallModal from '@/components/calls/LogCallModal';
@@ -70,7 +71,9 @@ export const CustomerProfile: React.FC = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [showSMSModal, setShowSMSModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -266,6 +269,8 @@ export const CustomerProfile: React.FC = () => {
             invoicesLabels={invoicesLabels}
             onEditCustomer={() => setShowEditModal(true)}
             onSendSMS={() => setShowSMSModal(true)}
+            onSendEmail={() => setShowEmailModal(true)}
+            summaryRefreshTrigger={summaryRefreshTrigger}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
@@ -314,14 +319,29 @@ export const CustomerProfile: React.FC = () => {
             }
             setShowNoteModal(false);
             setEditingNote(null);
+            setSummaryRefreshTrigger(t => t + 1);
           }}
         />
       )}
 
       <SendSMSModal
         isOpen={showSMSModal}
-        onClose={() => setShowSMSModal(false)}
+        onClose={() => {
+          setShowSMSModal(false);
+          setSummaryRefreshTrigger(t => t + 1);
+        }}
         customerPhone={currentCustomer.phone || ''}
+        customerName={currentCustomer.name}
+        customerId={currentCustomer.id}
+      />
+
+      <SendEmailModal
+        isOpen={showEmailModal}
+        onClose={() => {
+          setShowEmailModal(false);
+          setSummaryRefreshTrigger(t => t + 1);
+        }}
+        customerEmail={currentCustomer.email || ''}
         customerName={currentCustomer.name}
         customerId={currentCustomer.id}
       />
@@ -360,6 +380,8 @@ function OverviewTab({
   invoicesLabels,
   onEditCustomer,
   onSendSMS,
+  onSendEmail,
+  summaryRefreshTrigger,
 }: {
   customer: any;
   quotes: any[];
@@ -380,6 +402,8 @@ function OverviewTab({
   invoicesLabels: any;
   onEditCustomer: () => void;
   onSendSMS: () => void;
+  onSendEmail: () => void;
+  summaryRefreshTrigger: number;
 }) {
   const navigate = useNavigate();
   const { currentOrganization, currentMembership } = useOrganizationStore();
@@ -453,7 +477,7 @@ function OverviewTab({
         </div>
 
         {/* AI Customer Summary */}
-        <AICustomerSummary customerId={customer.id} customerName={customer.name} />
+        <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
 
         {/* Recent Calls */}
         {enabledModuleIds.includes('calls') && (
@@ -647,13 +671,13 @@ function OverviewTab({
               </button>
             )}
 
-            {/* Send Email — mortgage_broker only */}
-            {isMortgage && customer.email && (
+            {/* Send Email — all industries */}
+            {customer.email && (
               <button
-                onClick={() => window.open(`mailto:${customer.email}`, '_blank')}
+                onClick={onSendEmail}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
               >
-                <Mail size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <Mail size={16} className="mr-3 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm text-gray-900 dark:text-white">Send Email</span>
               </button>
             )}
@@ -1431,6 +1455,38 @@ function ActivityTab({ customer }: { customer: Customer }) {
   const { getTasksByCustomer } = useTaskStore();
   const { quotes } = useQuoteStore();
   const { invoices } = useInvoiceStore();
+  const [smsLogs, setSmsLogs] = useState<any[]>([]);
+
+  // Fetch SMS logs for this customer via direct REST API (AbortController-safe)
+  useEffect(() => {
+    const fetchSmsLogs = async () => {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+        const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const tokenKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+        const raw = tokenKey ? localStorage.getItem(tokenKey) : null;
+        const token = raw ? JSON.parse(raw)?.access_token : null;
+        if (!token) return;
+
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/sms_log?customer_id=eq.${customer.id}&select=id,recipient_phone,message_body,status,template_key,sent_at,created_at&order=created_at.desc&limit=50`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': SUPABASE_ANON_KEY,
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSmsLogs(data || []);
+        }
+      } catch {
+        // Silent — SMS logs are supplementary
+      }
+    };
+    fetchSmsLogs();
+  }, [customer.id]);
 
   const customerEvents = getEventsByCustomer(customer.id);
   const customerTasks = getTasksByCustomer(customer.id);
@@ -1478,6 +1534,13 @@ function ActivityTab({ customer }: { customer: Customer }) {
       date: new Date(invoice.created_at),
       status: invoice.status,
     })),
+    ...smsLogs.map(sms => ({
+      type: 'sms',
+      title: `SMS ${sms.status === 'sent' || sms.status === 'delivered' ? 'sent' : sms.status === 'failed' ? 'failed' : 'sent'}`,
+      description: sms.message_body ? (sms.message_body.length > 100 ? sms.message_body.substring(0, 100) + '...' : sms.message_body) : null,
+      date: new Date(sms.sent_at || sms.created_at),
+      status: sms.status,
+    })),
     {
       type: 'created',
       title: 'Customer created',
@@ -1506,6 +1569,8 @@ function ActivityTab({ customer }: { customer: Customer }) {
                   return { icon: FileText, bg: 'bg-purple-100 dark:bg-purple-900/20', color: 'text-purple-600 dark:text-purple-400' };
                 case 'invoice':
                   return { icon: DollarSign, bg: 'bg-green-100 dark:bg-green-900/20', color: 'text-green-600 dark:text-green-400' };
+                case 'sms':
+                  return { icon: MessageSquare, bg: 'bg-emerald-100 dark:bg-emerald-900/20', color: 'text-emerald-600 dark:text-emerald-400' };
                 default:
                   return { icon: Activity, bg: 'bg-primary-100 dark:bg-primary-900/20', color: 'text-primary-600 dark:text-primary-400' };
               }
