@@ -1,4 +1,11 @@
-export type ActionType = 'create_customer' | 'create_deal' | 'create_task' | 'add_note';
+export type ActionType =
+  | 'create_customer'
+  | 'create_deal'
+  | 'create_task'
+  | 'add_note'
+  | 'send_email'
+  | 'send_sms'
+  | 'draft_call_script';
 
 export type ActionStatus = 'proposed' | 'executing' | 'completed' | 'failed' | 'cancelled';
 
@@ -6,7 +13,7 @@ export interface ActionField {
   key: string;
   label: string;
   value: any;
-  type: 'text' | 'number' | 'date' | 'select';
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea';
   required: boolean;
   options?: string[];
   editable: boolean;

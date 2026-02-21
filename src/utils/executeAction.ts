@@ -4,12 +4,18 @@ import { useDealStore } from '@/stores/dealStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { DEFAULT_PERMISSIONS } from '@/config/modules.config';
+import { getAuthToken } from '@/utils/auth.utils';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
 
 const PERMISSION_MAP: Record<ActionType, string> = {
   create_customer: 'customers.write',
   create_deal: 'pipeline.write',
   create_task: 'tasks.write',
   add_note: 'customers.write',
+  send_email: 'customers.read',
+  send_sms: 'customers.read',
+  draft_call_script: 'customers.read',
 };
 
 export function checkActionPermission(actionType: ActionType): boolean {
@@ -147,6 +153,101 @@ export async function executeAction(
           success: true,
           message: `Note added to ${customerName}`,
           recordType: 'note',
+        };
+      }
+
+      case 'send_email': {
+        const toEmail = editedFields.to_email || '';
+        const subject = editedFields.subject || '';
+        const body = editedFields.body || '';
+
+        if (!toEmail || !subject || !body) {
+          return { success: false, message: 'Email requires a recipient, subject, and body.' };
+        }
+
+        const token = await getAuthToken();
+        if (!token) {
+          return { success: false, message: 'Authentication required. Please refresh and try again.' };
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/send-user-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to_email: toEmail,
+            subject,
+            body_text: body,
+            body_html: `<div style="font-family: sans-serif; line-height: 1.6;">${body.replace(/\n/g, '<br>')}</div>`,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Special case: no email connected
+          if (data.error === 'no_email_connected') {
+            return {
+              success: false,
+              message: 'No email account connected. Go to Settings > Email to connect your Gmail or Outlook.',
+            };
+          }
+          return { success: false, message: data.error || 'Failed to send email. Please try again.' };
+        }
+
+        return {
+          success: true,
+          message: `Email sent to ${toEmail}`,
+          recordType: 'email',
+        };
+      }
+
+      case 'send_sms': {
+        const toPhone = editedFields.to_phone || '';
+        const messageBody = editedFields.message_body || '';
+
+        if (!toPhone || !messageBody) {
+          return { success: false, message: 'SMS requires a phone number and message body.' };
+        }
+
+        const smsToken = await getAuthToken();
+        if (!smsToken) {
+          return { success: false, message: 'Authentication required. Please refresh and try again.' };
+        }
+
+        const smsResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${smsToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: toPhone,
+            body: messageBody,
+          }),
+        });
+
+        const smsData = await smsResponse.json();
+
+        if (!smsResponse.ok) {
+          return { success: false, message: smsData.error || 'Failed to send SMS. Please try again.' };
+        }
+
+        return {
+          success: true,
+          message: `SMS sent to ${toPhone}`,
+          recordType: 'sms',
+        };
+      }
+
+      case 'draft_call_script': {
+        // Call scripts are display-only — confirming just acknowledges the user has the script
+        return {
+          success: true,
+          message: `Call script for ${editedFields.customer_name || 'customer'} is ready. Good luck on the call!`,
+          recordType: 'call_script',
         };
       }
 
