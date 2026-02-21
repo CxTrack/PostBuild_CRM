@@ -5,7 +5,7 @@ import {
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
-  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock
+  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -388,22 +388,25 @@ function OverviewTab({
   const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showDsarModal, setShowDsarModal] = useState(false);
   const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
 
-  const handleDeleteCustomer = async () => {
+  const customerFullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+
+  const handleRemoveClient = async () => {
     const confirmed = await confirm({
-      title: 'Permanently Delete Contact',
-      message: `Are you sure you want to permanently delete "${customer.first_name} ${customer.last_name}"? This will remove all associated data including notes, tasks, pipeline items, and files. This action cannot be undone.`,
-      confirmText: 'Delete Permanently',
+      title: 'Remove Client',
+      message: `Are you sure you want to remove "${customerFullName}" from your CRM? This will remove the client record and associated data from your workspace.`,
+      confirmText: 'Remove Client',
       confirmVariant: 'danger',
     });
     if (confirmed) {
       try {
         await deleteCustomer(customer.id);
-        toast.success('Contact permanently deleted');
+        toast.success('Client removed from CRM');
         navigate('/dashboard/customers');
       } catch (error: any) {
-        toast.error(error.message || 'Failed to delete contact');
+        toast.error(error.message || 'Failed to remove client');
       }
     }
   };
@@ -784,17 +787,18 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Danger Zone — full width below grid */}
-      <div className="lg:col-span-3 mt-2">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-6">
+      {/* Actions & Danger Zone — full width below grid */}
+      <div className="lg:col-span-3 mt-2 space-y-4">
+        {/* Support & Data Requests */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={18} className="text-red-500" />
-            <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
-              Danger Zone
+            <TicketPlus size={18} className="text-primary-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Support & Data Requests
             </h3>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Submit Support Ticket */}
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
               <div>
@@ -814,28 +818,56 @@ function OverviewTab({
               </button>
             </div>
 
-            {/* Permanently Delete Contact */}
-            {isOwnerOrAdmin && (
-              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Permanently Delete Contact
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    This action cannot be undone. All data associated with this contact will be permanently removed.
-                  </p>
-                </div>
-                <button
-                  onClick={handleDeleteCustomer}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                  Delete Contact
-                </button>
+            {/* Request Data Deletion / DSAR */}
+            <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/30">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Request Data Deletion
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Submit a formal data deletion or access request on behalf of this client. Processed within 30 days per PIPEDA, GDPR, and CCPA.
+                </p>
               </div>
-            )}
+              <button
+                onClick={() => setShowDsarModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 hover:bg-amber-200 dark:hover:bg-amber-900/30 border border-amber-300 dark:border-amber-800/30 rounded-lg transition-colors"
+              >
+                <ShieldAlert size={16} />
+                Data Request
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Danger Zone */}
+        {isOwnerOrAdmin && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={18} className="text-red-500" />
+              <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
+                Danger Zone
+              </h3>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Remove Client
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Remove this client from your CRM. For formal data erasure requests, use the Data Request option above.
+                </p>
+              </div>
+              <button
+                onClick={handleRemoveClient}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors"
+              >
+                <Trash2 size={16} />
+                Remove Client
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -845,8 +877,19 @@ function OverviewTab({
         onClose={() => setShowTicketModal(false)}
         source="customer_profile"
         customerId={customer.id}
-        customerName={`${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
+        customerName={customerFullName}
         customerEmail={customer.email}
+      />
+      <SubmitTicketModal
+        isOpen={showDsarModal}
+        onClose={() => setShowDsarModal(false)}
+        source="customer_profile"
+        customerId={customer.id}
+        customerName={customerFullName}
+        customerEmail={customer.email}
+        defaultCategory="data_request"
+        defaultSubject={`Data Deletion Request - ${customerFullName}`}
+        defaultDescription={`Formal request for data deletion/erasure for client: ${customerFullName}${customer.email ? ` (${customer.email})` : ''}.\n\nReason: `}
       />
     </div>
   );

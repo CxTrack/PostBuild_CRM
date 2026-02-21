@@ -507,15 +507,16 @@ const DSARSection = () => {
                         <RefreshCw className={`w-4 h-4 text-gray-500 ${loading.deletionRequests ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">User</th>
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Email</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Type</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Requested By</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Client</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Reason</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Status</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Requested</th>
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Notes</th>
                             <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Actions</th>
                         </tr>
                     </thead>
@@ -530,10 +531,27 @@ const DSARSection = () => {
                             deletionRequests.map((req) => (
                                 <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                     <td className="px-4 py-3">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{req.user_name || 'Unknown'}</p>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                            req.request_type === 'customer_data_deletion' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                            : req.request_type === 'dsar_access' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                        }`}>
+                                            {req.request_type === 'customer_data_deletion' ? 'Client Data' : req.request_type === 'dsar_access' ? 'DSAR Access' : 'Account'}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{req.user_email}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{req.user_name || 'Unknown'}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{req.user_email}</p>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {req.customer_name ? (
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">{req.customer_name}</p>
+                                                {req.customer_email && <p className="text-xs text-gray-500 dark:text-gray-400">{req.customer_email}</p>}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">N/A (account level)</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3">
                                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[200px]">
@@ -547,9 +565,6 @@ const DSARSection = () => {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                                         {new Date(req.requested_at).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-xs text-gray-500 truncate max-w-[150px]">{req.notes || '—'}</p>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         {processingId === req.id ? (
@@ -596,6 +611,7 @@ const DSARSection = () => {
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {/* Reject Notes Modal */}

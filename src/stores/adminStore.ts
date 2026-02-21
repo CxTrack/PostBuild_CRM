@@ -159,6 +159,10 @@ export interface DeletionRequest {
   user_name?: string;
   reason?: string;
   status: 'pending' | 'processing' | 'completed' | 'rejected';
+  request_type?: 'account_deletion' | 'customer_data_deletion' | 'dsar_access';
+  customer_id?: string;
+  customer_name?: string;
+  customer_email?: string;
   requested_at: string;
   processed_at?: string;
   processed_by?: string;

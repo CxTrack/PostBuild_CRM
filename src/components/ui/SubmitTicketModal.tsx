@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Loader2, Send, TicketCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, Send, TicketCheck, ShieldAlert } from 'lucide-react';
 import { Modal, Input, Select, Button } from '../theme/ThemeComponents';
 import { useTicketStore } from '@/stores/ticketStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useAuthStore } from '@/stores/authStore';
-import { supabaseUrl } from '@/lib/supabase';
+import { supabase, supabaseUrl } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 interface SubmitTicketModalProps {
@@ -14,6 +14,9 @@ interface SubmitTicketModalProps {
   customerId?: string;
   customerName?: string;
   customerEmail?: string;
+  defaultCategory?: string;
+  defaultSubject?: string;
+  defaultDescription?: string;
 }
 
 const CATEGORY_OPTIONS = [
@@ -51,10 +54,19 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
   customerId,
   customerName,
   customerEmail,
+  defaultCategory,
+  defaultSubject,
+  defaultDescription,
 }) => {
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState(source === 'bug_report' ? 'bug_report' : 'general');
+  const getInitialCategory = () => {
+    if (defaultCategory) return defaultCategory;
+    if (source === 'bug_report') return 'bug_report';
+    return 'general';
+  };
+
+  const [subject, setSubject] = useState(defaultSubject || '');
+  const [description, setDescription] = useState(defaultDescription || '');
+  const [category, setCategory] = useState(getInitialCategory());
   const [priority, setPriority] = useState('normal');
   const [loading, setLoading] = useState(false);
 
@@ -63,10 +75,20 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
 
+  // Sync defaults when modal opens or defaults change
+  useEffect(() => {
+    if (isOpen) {
+      setSubject(defaultSubject || '');
+      setDescription(defaultDescription || '');
+      setCategory(getInitialCategory());
+      setPriority(defaultCategory === 'data_request' ? 'high' : 'normal');
+    }
+  }, [isOpen, defaultSubject, defaultDescription, defaultCategory]);
+
   const resetForm = () => {
     setSubject('');
     setDescription('');
-    setCategory(source === 'bug_report' ? 'bug_report' : 'general');
+    setCategory(getInitialCategory());
     setPriority('normal');
   };
 
@@ -95,6 +117,28 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
         organization_name: currentOrganization?.name,
       });
 
+      // If this is a data_request with customer info, also create a DSAR record
+      if (category === 'data_request' && user) {
+        try {
+          await supabase
+            .from('account_deletion_requests')
+            .insert({
+              user_id: user.id,
+              organization_id: currentOrganization?.id || null,
+              user_email: user.email || '',
+              user_name: profile?.full_name || user.email || '',
+              reason: description.trim(),
+              status: 'pending',
+              request_type: 'customer_data_deletion',
+              customer_id: customerId || null,
+              customer_name: customerName || null,
+              customer_email: customerEmail || null,
+            });
+        } catch {
+          // Non-blocking: DSAR record is supplementary to the ticket
+        }
+      }
+
       // Fire-and-forget email notification
       const token = getAuthToken();
       if (token) {
@@ -106,7 +150,7 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            type: 'support_ticket',
+            type: category === 'data_request' ? 'data_request' : 'support_ticket',
             ticketId: ticket.id,
             subject: subject.trim(),
             description: description.trim(),
@@ -116,11 +160,15 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
             category,
             priority,
             customerName,
+            customerEmail,
           }),
         }).catch(() => { /* non-blocking */ });
       }
 
-      toast.success('Support ticket submitted successfully');
+      const successMsg = category === 'data_request'
+        ? 'Data request submitted. Processing may take up to 30 days.'
+        : 'Support ticket submitted successfully';
+      toast.success(successMsg);
       resetForm();
       onClose();
     } catch (error: any) {
@@ -132,9 +180,11 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
 
   const modalTitle = source === 'bug_report'
     ? 'Report a Bug'
-    : source === 'customer_profile'
-      ? 'Submit Support Ticket'
-      : 'Submit a Support Ticket';
+    : category === 'data_request'
+      ? 'Data Deletion / Access Request'
+      : source === 'customer_profile'
+        ? 'Submit Support Ticket'
+        : 'Submit a Support Ticket';
 
   return (
     <Modal
@@ -155,17 +205,31 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
           </div>
         )}
 
+        {/* DSAR compliance banner */}
+        {category === 'data_request' && (
+          <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-800/20 rounded-xl">
+            <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Privacy Compliance Notice</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Data requests are processed within 30 days in accordance with PIPEDA, GDPR, and CCPA regulations.
+                You will receive a confirmation once your request has been processed.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <Input
             label="Subject"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="Brief summary of your issue"
+            placeholder={category === 'data_request' ? 'e.g. Data Deletion Request - Client Name' : 'Brief summary of your issue'}
             required
             className="w-full"
           />
 
-          {/* Textarea — no ThemeComponent for this, use manual styling matching Input */}
+          {/* Textarea */}
           <div className="w-full">
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Description <span className="text-red-500">*</span>
@@ -173,7 +237,9 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your issue in detail..."
+              placeholder={category === 'data_request'
+                ? 'Please describe the data deletion or access request. Include any relevant details about what data should be removed or provided...'
+                : 'Describe your issue in detail...'}
               required
               rows={5}
               className="
@@ -228,7 +294,7 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Submit Ticket
+            {category === 'data_request' ? 'Submit Request' : 'Submit Ticket'}
           </Button>
         </div>
       </form>
