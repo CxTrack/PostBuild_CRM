@@ -24,6 +24,7 @@ import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
 import { useThemeStore } from '@/stores/themeStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 type ViewMode = 'table' | 'kanban';
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -132,6 +133,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { confirm: confirmDialog, DialogComponent } = useConfirmDialog();
 
   const isOverdue = (dueDate: Date, status: Status): boolean => {
     const today = new Date();
@@ -214,8 +216,14 @@ export default function Tasks({ embedded = false }: TasksProps) {
     setSelectAll(false);
   };
 
-  const bulkArchive = () => {
-    if (!confirm(`Archive ${selectedTasks.size} ${labels.entityPlural}?`)) return;
+  const bulkArchive = async () => {
+    const confirmed = await confirmDialog({
+      title: `Archive ${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}`,
+      message: `Are you sure you want to archive ${selectedTasks.size} ${labels.entityPlural}?`,
+      variant: 'warning',
+      confirmText: 'Archive',
+    });
+    if (!confirmed) return;
     setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
     setSelectedTasks(new Set());
     setSelectAll(false);
@@ -229,8 +237,14 @@ export default function Tasks({ embedded = false }: TasksProps) {
     toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
   };
 
-  const deleteTask = (taskId: string) => {
-    if (!confirm(`Are you sure you want to delete this ${labels.entitySingular}?`)) return;
+  const deleteTask = async (taskId: string) => {
+    const confirmed = await confirmDialog({
+      title: `Delete ${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}`,
+      message: `Are you sure you want to delete this ${labels.entitySingular}? This action cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
     toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
   };
@@ -829,6 +843,8 @@ export default function Tasks({ embedded = false }: TasksProps) {
           }}
         />
       )}
+
+      {DialogComponent}
     </>
   );
 }
