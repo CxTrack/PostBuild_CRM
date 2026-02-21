@@ -493,14 +493,14 @@ export default function InvoiceBuilder() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-screen min-h-screen bg-gray-50 dark:bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 py-6">
       <div className="max-w-[1920px] mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
