@@ -151,12 +151,12 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
     refreshInsights();
   }, [refreshInsights]);
 
-  // Don't render while loading or if there are no insights
+  // Hide only during initial load
   if (loading && insights.length === 0) return null;
-  if (!loading && insights.length === 0) return null;
 
   const isMidnight = theme === 'midnight';
   const isSoftModern = theme === 'soft-modern';
+  const isEmpty = !loading && insights.length === 0;
 
   return (
     <div className={compact ? 'mb-4' : 'mt-6'}>
@@ -207,10 +207,12 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
               {/* Insight count badge */}
               <span className={`
                 text-xs font-semibold px-3 py-1 rounded-full
-                bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700
-                dark:from-purple-900/40 dark:to-blue-900/40 dark:text-purple-300
+                ${isEmpty
+                  ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 dark:from-green-900/40 dark:to-emerald-900/40 dark:text-green-300'
+                  : 'bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 dark:from-purple-900/40 dark:to-blue-900/40 dark:text-purple-300'
+                }
               `}>
-                {insightCount} insight{insightCount !== 1 ? 's' : ''}
+                {isEmpty ? 'All clear' : `${insightCount} insight${insightCount !== 1 ? 's' : ''}`}
               </span>
 
               {/* Refresh button */}
@@ -231,65 +233,84 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
           </div>
         </div>
 
-        {/* Insight rows */}
+        {/* Insight rows or empty state */}
         <div className={`${compact ? 'px-4 pb-4' : 'px-6 pb-6'} space-y-2`}>
-          {insights.map((insight, index) => {
-            const config = INSIGHT_CONFIG[insight.type] || INSIGHT_CONFIG.overdue_task;
-            const Icon = config.icon;
-
-            return (
-              <div
-                key={`${insight.id}-${index}`}
-                onClick={() => handleInsightClick(insight)}
-                className={`
-                  flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 group
-                  border ${config.borderColor} ${config.rowBg}
-                  hover:shadow-md hover:scale-[1.005]
-                  ${isMidnight
-                    ? 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.12]'
-                    : isSoftModern
-                      ? 'bg-gray-50/50 shadow-[2px_2px_4px_rgba(0,0,0,0.04),-2px_-2px_4px_rgba(255,255,255,0.8)] hover:shadow-[4px_4px_8px_rgba(0,0,0,0.06),-4px_-4px_8px_rgba(255,255,255,0.9)]'
-                      : 'bg-gray-50/50 dark:bg-gray-700/30'
-                  }
-                `}
-              >
-                {/* Type icon */}
-                <div className={`p-2 rounded-lg ${config.iconBg} shrink-0`}>
-                  <Icon className={`w-4 h-4 ${config.accentColor}`} />
-                </div>
-
-                {/* Message content */}
-                <div className="flex-1 min-w-0">
-                  <p className={`${compact ? 'text-xs' : 'text-sm'} text-gray-800 dark:text-gray-200 font-medium leading-snug`}>
-                    {insight.message}
-                  </p>
-                  <span className={`text-[10px] uppercase tracking-wider font-semibold mt-0.5 inline-block ${config.accentColor}`}>
-                    {config.label}
-                  </span>
-                </div>
-
-                {/* Click indicator + Dismiss button */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* Arrow indicator on hover */}
-                  <span className="text-xs text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mr-1">
-                    Ask AI
-                  </span>
-
-                  {/* Dismiss X */}
-                  <button
-                    onClick={(e) => handleDismiss(e, insight.id)}
-                    className={`
-                      p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all
-                      hover:bg-gray-200 dark:hover:bg-gray-600
-                    `}
-                    title="Dismiss this insight"
-                  >
-                    <X className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                  </button>
-                </div>
+          {isEmpty ? (
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl border border-dashed
+              ${isMidnight
+                ? 'border-white/[0.08] bg-white/[0.01]'
+                : 'border-gray-200 dark:border-gray-600 bg-gray-50/30 dark:bg-gray-700/20'
+              }
+            `}>
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 shrink-0">
+                <Sparkles className="w-4 h-4 text-green-600 dark:text-green-400" />
               </div>
-            );
-          })}
+              <div className="flex-1">
+                <p className={`${compact ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-snug`}>
+                  You're all caught up. No stale deals, overdue tasks, or follow-ups needed right now.
+                </p>
+              </div>
+            </div>
+          ) : (
+            insights.map((insight, index) => {
+              const config = INSIGHT_CONFIG[insight.type] || INSIGHT_CONFIG.overdue_task;
+              const Icon = config.icon;
+
+              return (
+                <div
+                  key={`${insight.id}-${index}`}
+                  onClick={() => handleInsightClick(insight)}
+                  className={`
+                    flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 group
+                    border ${config.borderColor} ${config.rowBg}
+                    hover:shadow-md hover:scale-[1.005]
+                    ${isMidnight
+                      ? 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.12]'
+                      : isSoftModern
+                        ? 'bg-gray-50/50 shadow-[2px_2px_4px_rgba(0,0,0,0.04),-2px_-2px_4px_rgba(255,255,255,0.8)] hover:shadow-[4px_4px_8px_rgba(0,0,0,0.06),-4px_-4px_8px_rgba(255,255,255,0.9)]'
+                        : 'bg-gray-50/50 dark:bg-gray-700/30'
+                    }
+                  `}
+                >
+                  {/* Type icon */}
+                  <div className={`p-2 rounded-lg ${config.iconBg} shrink-0`}>
+                    <Icon className={`w-4 h-4 ${config.accentColor}`} />
+                  </div>
+
+                  {/* Message content */}
+                  <div className="flex-1 min-w-0">
+                    <p className={`${compact ? 'text-xs' : 'text-sm'} text-gray-800 dark:text-gray-200 font-medium leading-snug`}>
+                      {insight.message}
+                    </p>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold mt-0.5 inline-block ${config.accentColor}`}>
+                      {config.label}
+                    </span>
+                  </div>
+
+                  {/* Click indicator + Dismiss button */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Arrow indicator on hover */}
+                    <span className="text-xs text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mr-1">
+                      Ask AI
+                    </span>
+
+                    {/* Dismiss X */}
+                    <button
+                      onClick={(e) => handleDismiss(e, insight.id)}
+                      className={`
+                        p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all
+                        hover:bg-gray-200 dark:hover:bg-gray-600
+                      `}
+                      title="Dismiss this insight"
+                    >
+                      <X className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
