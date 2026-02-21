@@ -54,9 +54,9 @@ const priorityColors: Record<Priority, string> = {
 };
 
 const statusStyles: Record<Status, string> = {
-  'To Do': 'bg-gray-50 text-gray-700 border-gray-200',
-  'In Progress': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'To Do': 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+  'In Progress': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
 };
 
 

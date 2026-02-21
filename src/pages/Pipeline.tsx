@@ -888,7 +888,7 @@ const Pipeline: React.FC = () => {
                       }}
                       className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                     >
-                      View Details
+                      {selectedItem.type === 'deal' ? 'Customer Details' : selectedItem.type === 'quote' ? 'Quote Details' : 'Invoice Details'}
                     </button>
                     <button
                       onClick={() => {

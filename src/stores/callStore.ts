@@ -198,7 +198,7 @@ export const useCallStore = create<CallStore>((set, get) => ({
 
   createCall: async (call: Partial<Call>) => {
     const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-    if (!organizationId) return null;
+    if (!organizationId) throw new Error('No organization selected');
 
     set({ loading: true, error: null });
     try {
@@ -223,8 +223,8 @@ export const useCallStore = create<CallStore>((set, get) => ({
       return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
-      set({ error: message });
-      return null;
+      set({ error: message, loading: false });
+      throw error;
     } finally {
       set({ loading: false });
     }

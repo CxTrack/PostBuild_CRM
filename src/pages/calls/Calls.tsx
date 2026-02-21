@@ -131,14 +131,9 @@ export default function Calls() {
   };
 
   const handleLogCall = async (callData: any) => {
-    try {
-      await createCall(callData);
-      toast.success('Call logged successfully');
-      fetchCallStats();
-    } catch (error) {
-      toast.error('Failed to log call');
-      throw error;
-    }
+    await createCall(callData);
+    toast.success('Call logged successfully');
+    fetchCallStats();
   };
 
   // Premium AI feature glow styles
