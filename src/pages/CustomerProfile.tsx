@@ -27,6 +27,7 @@ import LogCallModal from '@/components/calls/LogCallModal';
 import { useCallStore } from '@/stores/callStore';
 import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
@@ -1516,6 +1517,8 @@ function ActivityTab({ customer }: { customer: Customer }) {
 
 function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; onClose: () => void; customer: Customer }) {
   const { createEvent } = useCalendarStore();
+  const { user } = useAuthContext();
+  const { currentOrganization } = useOrganizationStore();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -1579,6 +1582,8 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
       const endDateTime = `${formData.date}T${endTime24}:00`;
 
       const eventData = {
+        organization_id: currentOrganization?.id,
+        user_id: user?.id,
         title: formData.title,
         description: `Meeting with ${customer.name}`,
         event_type: 'meeting' as const,
@@ -1677,7 +1682,7 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-lg">
             <Calendar size={16} />
             <span>
-              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} &middot; {formData.time} - {calculateEndTime()}
+              {formData.date ? format(new Date(formData.date + 'T00:00:00'), 'MMM d, yyyy') : 'Select a date'} &middot; {formData.time} - {calculateEndTime()}
             </span>
           </div>
 
