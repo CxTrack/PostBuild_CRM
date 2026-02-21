@@ -773,7 +773,7 @@ export default function Settings() {
                   </label>
                   <Input
                     type="text"
-                    value={settings.business_name ?? currentOrganization?.name || devOrgName || ''}
+                    value={settings.business_name ?? (currentOrganization?.name || devOrgName || '')}
                     onChange={(e) => setSettings({ ...settings, business_name: e.target.value })}
                     placeholder="Your business name"
                   />
