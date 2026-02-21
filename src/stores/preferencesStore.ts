@@ -152,6 +152,12 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     },
 
     saveQuickActionsOrder: async (order: string[]) => {
+        // Optimistically update Zustand state BEFORE async DB call
+        // so the Dashboard sees the new selection immediately
+        set(state => ({
+            preferences: { ...state.preferences, quickActionsOrder: order }
+        }));
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -171,10 +177,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                     onConflict: 'user_id,organization_id,preference_type'
                 });
 
-            set(state => ({
-                preferences: { ...state.preferences, quickActionsOrder: order }
-            }));
-            toast.success('Quick actions updated');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to save quick actions';
             toast.error(message);

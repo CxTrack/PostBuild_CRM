@@ -4,7 +4,7 @@ import {
   Users, Calendar, FileText, DollarSign, TrendingUp,
   UserPlus, CalendarPlus, FilePlus, Phone,
   ArrowRight, Activity, Package, GripVertical, CheckCircle, User,
-  ArrowUpRight, Clock, ChevronRight, Plus
+  ArrowUpRight, Clock, ChevronRight, Plus, SlidersHorizontal
 } from 'lucide-react';
 import {
   DndContext,
@@ -45,6 +45,7 @@ import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import AIQuarterback from '@/components/dashboard/AIQuarterback';
+import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -286,13 +287,6 @@ export const Dashboard: React.FC = () => {
 
   const [quickActions, setQuickActions] = useState<QuickAction[]>([]);
 
-  // Update quick actions when filtered actions change
-  useEffect(() => {
-    if (filteredQuickActions.length > 0) {
-      setQuickActions(filteredQuickActions);
-    }
-  }, [filteredQuickActions]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -335,96 +329,101 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0 && enabledModuleIds.length > 0) {
-      const defaultActions: (QuickAction & { moduleId: string })[] = [
-        {
-          id: 'add-customer',
-          moduleId: 'crm',
-          label: crmLabels.newButton,
-          icon: UserPlus,
-          onClick: handleAddCustomer,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'schedule',
-          moduleId: 'calendar',
-          label: calendarLabels.newButton,
-          icon: CalendarPlus,
-          onClick: handleSchedule,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'create-quote',
-          moduleId: 'quotes',
-          label: quotesLabels.newButton,
-          icon: FilePlus,
-          onClick: handleCreateQuote,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'new-invoice',
-          moduleId: 'invoices',
-          label: invoicesLabels.newButton,
-          icon: FileText,
-          onClick: handleNewInvoice,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'create-task',
-          moduleId: 'tasks',
-          label: tasksLabels.newButton,
-          icon: CheckCircle,
-          onClick: handleCreateTask,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'add-product',
-          moduleId: 'products',
-          label: productsLabels.newButton,
-          icon: Package,
-          onClick: () => navigate('/dashboard/products'),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'new-expense',
-          moduleId: 'financials',
-          label: financialsLabels.newButton,
-          icon: DollarSign,
-          onClick: () => navigate('/dashboard/financials'),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'log-call',
-          moduleId: 'calls',
-          label: callsLabels.newButton,
-          icon: Phone,
-          onClick: () => setShowLogCallModal(true),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-      ];
+    if (enabledModuleIds.length === 0) return;
 
-      // Filter to only include actions for enabled modules
-      const enabledActions = defaultActions.filter(a => enabledModuleIds.includes(a.moduleId));
+    const defaultActions: (QuickAction & { moduleId: string })[] = [
+      {
+        id: 'add-customer',
+        moduleId: 'crm',
+        label: crmLabels.newButton,
+        icon: UserPlus,
+        onClick: handleAddCustomer,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'schedule',
+        moduleId: 'calendar',
+        label: calendarLabels.newButton,
+        icon: CalendarPlus,
+        onClick: handleSchedule,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'create-quote',
+        moduleId: 'quotes',
+        label: quotesLabels.newButton,
+        icon: FilePlus,
+        onClick: handleCreateQuote,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'new-invoice',
+        moduleId: 'invoices',
+        label: invoicesLabels.newButton,
+        icon: FileText,
+        onClick: handleNewInvoice,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'create-task',
+        moduleId: 'tasks',
+        label: tasksLabels.newButton,
+        icon: CheckCircle,
+        onClick: handleCreateTask,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'add-product',
+        moduleId: 'products',
+        label: productsLabels.newButton,
+        icon: Package,
+        onClick: () => navigate('/dashboard/products'),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'new-expense',
+        moduleId: 'financials',
+        label: financialsLabels.newButton,
+        icon: DollarSign,
+        onClick: () => navigate('/dashboard/financials'),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'log-call',
+        moduleId: 'calls',
+        label: callsLabels.newButton,
+        icon: Phone,
+        onClick: () => setShowLogCallModal(true),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+    ];
 
-      const orderedActions = preferences.quickActionsOrder
+    // Filter to only include actions for enabled modules
+    const enabledActions = defaultActions.filter(a => enabledModuleIds.includes(a.moduleId));
+
+    const savedOrder = preferences.quickActionsOrder;
+
+    if (savedOrder && savedOrder.length > 0) {
+      // Build ordered list from saved preference — ONLY saved items, no appending extras
+      const orderedActions = savedOrder
         .map((id: string) => enabledActions.find(a => a.id === id))
-        .filter((a): a is (QuickAction & { moduleId: string }) => a !== undefined);
+        .filter((a): a is (QuickAction & { moduleId: string }) => a !== undefined)
+        .slice(0, 5); // Hard cap at 5
 
-      // Add any missing enabled actions
-      const existingIds = new Set(preferences.quickActionsOrder);
-      const missingActions = enabledActions.filter(a => !existingIds.has(a.id));
-
-      // Strip moduleId before setting state
-      const finalActions = [...orderedActions, ...missingActions].map(({ moduleId, ...action }) => action as QuickAction);
+      const finalActions = orderedActions.map(({ moduleId, ...action }) => action as QuickAction);
       setQuickActions(finalActions);
+    } else {
+      // No saved preference — use first 5 enabled actions as default
+      const defaultSelection = enabledActions.slice(0, 5).map(({ moduleId, ...action }) => action as QuickAction);
+      setQuickActions(defaultSelection);
     }
   }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, productsLabels.newButton, financialsLabels.newButton, callsLabels.newButton, enabledModuleIds]);
 
@@ -665,84 +664,40 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="px-4 mb-4">
-          <div className="grid grid-cols-2 gap-4">
-            {enabledModuleIds.includes('crm') && (
-              <button
-                onClick={handleAddCustomer}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <UserPlus size={24} className="text-blue-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{crmLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create new {crmLabels.entitySingular}</p>
-              </button>
-            )}
+          {/* Mobile Quick Actions Header */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Quick Actions
+            </h3>
+            <QuickActionsConfigPopover
+              allAvailableActions={filteredQuickActions.map(a => ({
+                id: a.id,
+                label: a.label,
+                icon: a.icon,
+              }))}
+              selectedActionIds={quickActions.map(a => a.id)}
+              onSelectionChange={(selectedIds) => {
+                saveQuickActionsOrder(selectedIds);
+              }}
+            />
+          </div>
 
-            {enabledModuleIds.includes('calendar') && (
-              <button
-                onClick={handleSchedule}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <CalendarPlus size={24} className="text-green-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{calendarLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Book {calendarLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('quotes') && (
-              <button
-                onClick={handleCreateQuote}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <FilePlus size={24} className="text-purple-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{quotesLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">New {quotesLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('invoices') && (
-              <button
-                onClick={handleNewInvoice}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <FileText size={24} className="text-orange-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{invoicesLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create {invoicesLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('tasks') && (
-              <button
-                onClick={handleCreateTask}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-teal-100 dark:bg-teal-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <CheckCircle size={24} className="text-teal-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{tasksLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create {tasksLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('calls') && (
-              <button
-                onClick={() => setShowLogCallModal(true)}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <Phone size={24} className="text-emerald-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{callsLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Log {callsLabels.entitySingular}</p>
-              </button>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  onClick={action.onClick}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+                >
+                  <div className={`w-12 h-12 ${action.bgColor} rounded-xl flex items-center justify-center mb-3`}>
+                    <Icon size={24} className={action.iconColor} />
+                  </div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">{action.label}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1116,6 +1071,30 @@ export const Dashboard: React.FC = () => {
                 boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)'
               } : undefined}
             >
+
+              {/* Quick Actions Header */}
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className={theme === 'soft-modern'
+                    ? "text-sm font-semibold uppercase tracking-wider"
+                    : "text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  }
+                  style={theme === 'soft-modern' ? { color: '#8B8680' } : undefined}
+                >
+                  Quick Actions
+                </h3>
+                <QuickActionsConfigPopover
+                  allAvailableActions={filteredQuickActions.map(a => ({
+                    id: a.id,
+                    label: a.label,
+                    icon: a.icon,
+                  }))}
+                  selectedActionIds={quickActions.map(a => a.id)}
+                  onSelectionChange={(selectedIds) => {
+                    saveQuickActionsOrder(selectedIds);
+                  }}
+                />
+              </div>
 
               <DndContext
                 sensors={sensors}
