@@ -198,6 +198,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       await supabase.from('customer_contacts').delete().eq('customer_id', id);
       await supabase.from('tasks').delete().eq('customer_id', id);
       await supabase.from('pipeline_items').delete().eq('customer_id', id);
+      await supabase.from('calendar_events').delete().eq('customer_id', id);
 
       const { error } = await supabase
         .from('customers')
