@@ -44,6 +44,7 @@ import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import AIQuarterback from '@/components/dashboard/AIQuarterback';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -799,6 +800,11 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
+        {/* AI Quarterback - Mobile */}
+        <div className="px-4">
+          <AIQuarterback compact />
+        </div>
+
         <div className="px-4 pb-24">
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -1425,6 +1431,10 @@ export const Dashboard: React.FC = () => {
                 </div>
               </Card>
             </div>
+
+            {/* AI Quarterback - Proactive Business Insights */}
+            <AIQuarterback />
+
           </div>
         </div>
       </div>

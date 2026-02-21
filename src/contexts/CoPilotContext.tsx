@@ -229,6 +229,12 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             orgName: org?.name || 'Your Organization',
             userRole: membership?.role || 'user',
             ...(isAdminPage && { isAdmin: true }),
+            // AI Quarterback mode: forward insight data for hyper business-savvy responses
+            ...(currentContext?.data?.quarterbackMode && {
+              quarterbackMode: true,
+              insightType: currentContext.data.insightType,
+              insightData: currentContext.data.insightData,
+            }),
           },
         }),
       });
