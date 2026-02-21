@@ -151,9 +151,6 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
     refreshInsights();
   }, [refreshInsights]);
 
-  // Hide only during initial load
-  if (loading && insights.length === 0) return null;
-
   const isMidnight = theme === 'midnight';
   const isSoftModern = theme === 'soft-modern';
   const isEmpty = !loading && insights.length === 0;
@@ -233,9 +230,25 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
           </div>
         </div>
 
-        {/* Insight rows or empty state */}
+        {/* Insight rows, loading state, or empty state */}
         <div className={`${compact ? 'px-4 pb-4' : 'px-6 pb-6'} space-y-2`}>
-          {isEmpty ? (
+          {loading && insights.length === 0 ? (
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl border border-dashed animate-pulse
+              ${isMidnight
+                ? 'border-white/[0.08] bg-white/[0.01]'
+                : 'border-gray-200 dark:border-gray-600 bg-gray-50/30 dark:bg-gray-700/20'
+              }
+            `}>
+              <div className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0">
+                <div className="w-4 h-4" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+              </div>
+            </div>
+          ) : isEmpty ? (
             <div className={`
               flex items-center gap-3 p-4 rounded-xl border border-dashed
               ${isMidnight

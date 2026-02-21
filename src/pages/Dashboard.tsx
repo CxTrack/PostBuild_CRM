@@ -1114,6 +1114,9 @@ export const Dashboard: React.FC = () => {
               </DndContext>
             </div>
 
+            {/* AI Quarterback - Proactive Business Insights */}
+            <AIQuarterback />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
               <Card className="flex flex-col h-[600px] overflow-hidden">
                 <div className="flex items-center justify-between mb-6">
@@ -1410,9 +1413,6 @@ export const Dashboard: React.FC = () => {
                 </div>
               </Card>
             </div>
-
-            {/* AI Quarterback - Proactive Business Insights */}
-            <AIQuarterback />
 
           </div>
         </div>

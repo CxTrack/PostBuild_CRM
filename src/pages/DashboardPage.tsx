@@ -37,6 +37,7 @@ import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import SendSMSModal from '@/components/sms/SendSMSModal';
+import AIQuarterback from '@/components/dashboard/AIQuarterback';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -341,13 +342,21 @@ export const DashboardPage = () => {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const todaysCalls = calls.filter(c => new Date(c.created_at) >= startOfDay);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    const todaysAppointments = events
+        .filter(event => {
+            const date = new Date(event.start_time);
+            return date >= startOfDay && date <= endOfDay;
+        })
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     const upcomingAppointments = events
         .filter(event => {
             const date = new Date(event.start_time);
-            return date >= startOfDay;
+            return date > endOfDay;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 10);
+        .slice(0, 5);
 
     return (
         <PageContainer className="gap-4">
@@ -438,6 +447,9 @@ export const DashboardPage = () => {
                 </DndContext>
             </div>
 
+            {/* AI Quarterback - Proactive Business Insights */}
+            <AIQuarterback compact />
+
             {/* Main Grid Layout */}
             <div className="flex flex-col gap-4">
 
@@ -516,14 +528,14 @@ export const DashboardPage = () => {
                         }
                     >
                         <div className="h-full overflow-y-auto scrollbar-thin">
-                            {upcomingAppointments.length === 0 ? (
+                            {todaysAppointments.length === 0 && upcomingAppointments.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
-                                    No upcoming appointments
+                                    No appointments today
                                 </div>
                             ) : (
                                 <>
-                                    {upcomingAppointments.map(event => (
+                                    {todaysAppointments.length > 0 && todaysAppointments.map(event => (
                                         <div key={event.id} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                             <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
                                                 <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
@@ -547,7 +559,42 @@ export const DashboardPage = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    {/* Bottom padding spacer */}
+                                    {todaysAppointments.length === 0 && (
+                                        <div className="px-4 py-3 text-xs text-gray-400 text-center border-b border-gray-100 dark:border-gray-800">
+                                            Nothing scheduled for today
+                                        </div>
+                                    )}
+                                    {upcomingAppointments.length > 0 && (
+                                        <>
+                                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Upcoming</span>
+                                            </div>
+                                            {upcomingAppointments.map(event => (
+                                                <div key={event.id} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors opacity-70">
+                                                    <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
+                                                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
+                                                            {format(new Date(event.start_time), 'MMM')}
+                                                        </span>
+                                                        <span className="text-lg font-bold text-primary-600">
+                                                            {format(new Date(event.start_time), 'dd')}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 py-0.5">
+                                                        <div className="flex justify-between items-start">
+                                                            <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
+                                                            <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2">
+                                                                {format(new Date(event.start_time), 'HH:mm')}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                            <Users size={12} />
+                                                            {event.customer_id ? (customers.find(c => c.id === event.customer_id)?.name || 'Unknown User') : 'No Customer'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
                                     <div className="h-4" />
                                 </>
                             )}
