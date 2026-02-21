@@ -1,8 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -14,6 +15,8 @@ interface ResetPasswordFormData {
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
   const { loading, error, clearError } = useAuthStore();
+  const { theme } = useThemeStore();
+  const isDark = theme === 'dark' || theme === 'midnight';
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
@@ -70,11 +73,9 @@ const ResetPassword: React.FC = () => {
       if (error) throw error;
 
       toast.success('Password reset successfully!', {
-        style: {
-          background: '#1a1a1a',
-          color: '#FFD700',
-          border: '1px solid rgba(255,215,0,0.2)'
-        }
+        style: isDark
+          ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
+          : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
       });
 
       // Sign out so user logs in with new password
@@ -101,22 +102,22 @@ const ResetPassword: React.FC = () => {
   // Show loading while validating token
   if (isValidToken === null) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center">
+      <main className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
+        <div className="bg-gray-50/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-xl dark:shadow-2xl">
           <div className="flex flex-col items-center mb-8">
             <Link to="/" className="group">
               <img
@@ -125,16 +126,16 @@ const ResetPassword: React.FC = () => {
                 className="h-12 mb-6 opacity-90 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
               />
             </Link>
-            <h1 className="text-3xl font-bold text-white tracking-tight text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight text-center">
               Reset Your Password
             </h1>
-            <p className="text-white/40 text-sm mt-2 text-center max-w-[280px]">
+            <p className="text-gray-500 dark:text-white/40 text-sm mt-2 text-center max-w-[280px]">
               Enter your new password below
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
               {error}
             </div>
           )}
@@ -149,7 +150,7 @@ const ResetPassword: React.FC = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
@@ -160,7 +161,7 @@ const ResetPassword: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-white/30 dark:hover:text-white/60 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                 >
@@ -168,7 +169,7 @@ const ResetPassword: React.FC = () => {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.password.message}</p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400 ml-1">{errors.password.message}</p>
               )}
             </div>
 
@@ -181,7 +182,7 @@ const ResetPassword: React.FC = () => {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('confirmPassword', {
                     required: 'Please confirm your password',
                     validate: value => value === password || 'Passwords do not match'
@@ -189,7 +190,7 @@ const ResetPassword: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-white/30 dark:hover:text-white/60 transition-colors"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   tabIndex={-1}
                 >
@@ -197,14 +198,14 @@ const ResetPassword: React.FC = () => {
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.confirmPassword.message}</p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400 ml-1">{errors.confirmPassword.message}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
+              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-lg dark:shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
             >
               {submitting ? (
                 <span className="flex items-center justify-center">
@@ -221,7 +222,7 @@ const ResetPassword: React.FC = () => {
           </form>
         </div>
 
-        <p className="text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
+        <p className="text-gray-300 dark:text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
           &copy; 2026 CxTrack Intelligent Systems. Proprietary Access Only.
         </p>
       </div>

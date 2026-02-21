@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useThemeStore } from '../stores/themeStore';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
@@ -13,6 +14,8 @@ export const Login: React.FC = () => {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'microsoft' | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signInWithGoogle, signInWithMicrosoft } = useAuthStore();
+  const { theme } = useThemeStore();
+  const isDark = theme === 'dark' || theme === 'midnight';
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,11 +39,9 @@ export const Login: React.FC = () => {
 
       await signIn(email, password);
       toast.success('Welcome back!', {
-        style: {
-          background: '#1a1a1a',
-          color: '#FFD700',
-          border: '1px solid rgba(255,215,0,0.2)'
-        }
+        style: isDark
+          ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
+          : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
       });
       navigate('/dashboard');
     } catch (error: any) {
@@ -73,11 +74,11 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -92,13 +93,13 @@ export const Login: React.FC = () => {
           </a>
         </div>
 
-        <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
+        <div className="bg-gray-50/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-xl dark:shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
               Welcome back
             </h1>
-            <p className="text-white/40 text-sm mt-2">
+            <p className="text-gray-500 dark:text-white/40 text-sm mt-2">
               Sign in to your workspace
             </p>
           </div>
@@ -109,7 +110,7 @@ export const Login: React.FC = () => {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={!!oauthLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white font-medium transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 bg-gray-50 dark:bg-white/[0.07] hover:bg-gray-100 dark:hover:bg-white/[0.12] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 text-gray-900 dark:text-white font-medium transition-all disabled:opacity-50"
             >
               {oauthLoading === 'google' ? (
                 <Loader2 size={20} className="animate-spin" />
@@ -128,7 +129,7 @@ export const Login: React.FC = () => {
               type="button"
               onClick={handleMicrosoftSignIn}
               disabled={!!oauthLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white font-medium transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 bg-gray-50 dark:bg-white/[0.07] hover:bg-gray-100 dark:hover:bg-white/[0.12] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 text-gray-900 dark:text-white font-medium transition-all disabled:opacity-50"
             >
               {oauthLoading === 'microsoft' ? (
                 <Loader2 size={20} className="animate-spin" />
@@ -146,9 +147,9 @@ export const Login: React.FC = () => {
 
           {/* OR Divider */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/[0.1]" />
-            <span className="text-white/30 text-xs font-bold uppercase tracking-widest">OR</span>
-            <div className="flex-1 h-px bg-white/[0.1]" />
+            <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.1]" />
+            <span className="text-gray-400 dark:text-white/30 text-xs font-bold uppercase tracking-widest">OR</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.1]" />
           </div>
 
           {/* Email + Password Form */}
@@ -163,7 +164,7 @@ export const Login: React.FC = () => {
                 placeholder="name@business.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                 required
               />
             </div>
@@ -179,12 +180,12 @@ export const Login: React.FC = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3.5 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   required
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-white/30 dark:hover:text-white/60 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                 >
@@ -196,7 +197,7 @@ export const Login: React.FC = () => {
             <div className="flex items-center justify-end px-1 pt-1">
               <Link
                 to="/forgot-password"
-                className="text-[#FFD700]/60 hover:text-[#FFD700] text-xs transition-colors"
+                className="text-[#B8860B] dark:text-[#FFD700]/60 hover:text-[#FFD700] text-xs transition-colors"
               >
                 Forgot Password?
               </Link>
@@ -205,7 +206,7 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-lg dark:shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -219,9 +220,9 @@ export const Login: React.FC = () => {
           </form>
 
           {/* Footer */}
-          <p className="mt-8 text-center text-sm text-white/30">
+          <p className="mt-8 text-center text-sm text-gray-400 dark:text-white/30">
             Don't have an account?{' '}
-            <Link to="/register" className="text-[#FFD700]/70 hover:text-[#FFD700] font-medium transition-colors">
+            <Link to="/register" className="text-[#B8860B] dark:text-[#FFD700]/70 hover:text-[#FFD700] font-medium transition-colors">
               Sign up
             </Link>
           </p>
@@ -229,7 +230,7 @@ export const Login: React.FC = () => {
 
         {/* Bottom footer */}
         <div className="flex items-center justify-center mt-8 px-2">
-          <p className="text-white/10 text-[10px] uppercase tracking-widest font-bold">
+          <p className="text-gray-300 dark:text-white/10 text-[10px] uppercase tracking-widest font-bold">
             &copy; 2026 CxTrack
           </p>
         </div>
