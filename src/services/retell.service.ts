@@ -8,6 +8,7 @@ export interface ProvisionVoiceAgentParams {
   greetingScript?: string;
   areaCode?: number;
   countryCode?: string;
+  regionCode?: string;  // Province/state code (e.g., 'AB', 'ON', 'NY') for fallback search
   ownerPhone: string;
   ownerName: string;
   agentInstructions?: string;

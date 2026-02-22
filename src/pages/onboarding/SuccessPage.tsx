@@ -101,6 +101,7 @@ export default function SuccessPage() {
         voiceId: lead.voiceConfig.voiceId || undefined,
         countryCode: lead.country === 'CA' ? 'CA' : 'US',
         areaCode: lead.voiceConfig?.areaCode || undefined,
+        regionCode: lead.voiceConfig?.regionCode || undefined,
       });
 
       clearTimeout(stepTimer1);

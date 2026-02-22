@@ -288,6 +288,9 @@ export const VoiceAgentSetup = () => {
 
             // If not yet provisioned with Retell, trigger provisioning
             if (!config?.retell_agent_id) {
+                // Pull regionCode/countryCode from org metadata if available (set during onboarding)
+                const orgMeta = currentOrganization?.metadata as Record<string, any> | undefined;
+                const voiceConfig = orgMeta?.voice_config;
                 const result = await provisionAgent({
                     agentName: formData.agent_name || 'AI Assistant',
                     businessName: formData.business_name || 'My Business',
@@ -295,6 +298,9 @@ export const VoiceAgentSetup = () => {
                     ownerPhone: formData.broker_phone,
                     ownerName: formData.broker_name || formData.agent_name,
                     agentInstructions: formData.business_description,
+                    countryCode: currentOrganization?.country || voiceConfig?.countryCode || undefined,
+                    areaCode: voiceConfig?.areaCode || undefined,
+                    regionCode: voiceConfig?.regionCode || undefined,
                 });
 
                 if (result.success) {
