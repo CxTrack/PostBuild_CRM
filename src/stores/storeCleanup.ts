@@ -33,6 +33,7 @@ async function resetAllStores(): Promise<void> {
     { usePreferencesStore },
     { useQuoteStore },
     { useTaskStore },
+    { useImpersonationStore },
   ] = await Promise.all([
     import('./calendarStore'),
     import('./callStore'),
@@ -42,7 +43,19 @@ async function resetAllStores(): Promise<void> {
     import('./preferencesStore'),
     import('./quoteStore'),
     import('./taskStore'),
+    import('./impersonationStore'),
   ]);
+
+  // If actively impersonating, end the session before clearing stores
+  const impersonationState = useImpersonationStore.getState();
+  if (impersonationState.isImpersonating) {
+    try {
+      await impersonationState.endImpersonation();
+    } catch {
+      // Force-reset even if RPC fails (e.g. during logout)
+      impersonationState.reset();
+    }
+  }
 
   const stores = [
     useCalendarStore,

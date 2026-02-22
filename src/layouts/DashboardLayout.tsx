@@ -58,6 +58,8 @@ import { BroadcastBanner } from '../components/BroadcastBanner';
 import { CoPilotIntro } from '../components/tour/SubtleHints';
 import CoPilotPanel from '../components/copilot/CoPilotPanel';
 import CoPilotButton from '../components/copilot/CoPilotButton';
+import { useImpersonationStore } from '../stores/impersonationStore';
+import { ImpersonationBanner } from '../components/admin/ImpersonationBanner';
 
 
 
@@ -264,6 +266,7 @@ export const DashboardLayout = () => {
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences, saveSidebarOrder } = usePreferencesStore();
+  const { isImpersonating, restoreFromSession } = useImpersonationStore();
 
   // DnD sensors — require 8px movement before dragging starts to avoid accidental drags on clicks
   const sensors = useSensors(
@@ -323,6 +326,13 @@ export const DashboardLayout = () => {
       loadPreferences();
     }
   }, [user, loadPreferences]);
+
+  // Restore impersonation session on page refresh
+  useEffect(() => {
+    if (user) {
+      restoreFromSession();
+    }
+  }, [user, restoreFromSession]);
 
   useEffect(() => {
     if (currentOrganization) {
@@ -457,7 +467,8 @@ export const DashboardLayout = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
+    <div className={`h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900 ${isImpersonating ? 'pt-10' : ''}`}>
+      <ImpersonationBanner />
       <BroadcastBanner />
       {/* Desktop Sidebar - Hidden on Mobile */}
       <aside
@@ -618,13 +629,13 @@ export const DashboardLayout = () => {
                   <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
                     {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                   </p>
-                  {isSuperAdmin && (
+                  {isSuperAdmin && !isImpersonating && (
                     <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
                   )}
                 </div>
               )}
             </div>
-            {!sidebarCollapsed && isSuperAdmin && (
+            {!sidebarCollapsed && isSuperAdmin && !isImpersonating && (
               <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400 stroke-[2.5px]" />
             )}
           </button>

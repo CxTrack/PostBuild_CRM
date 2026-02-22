@@ -218,7 +218,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           if (!token) return;
 
           const res = await fetch(
-            `${supabaseUrl}/rest/v1/organization_members?organization_id=eq.${currentOrganization.id}&select=role,user:user_profiles(*)`,
+            `${supabaseUrl}/rest/v1/organization_members?organization_id=eq.${currentOrganization.id}&is_impersonation=eq.false&select=role,user:user_profiles(*)`,
             {
               headers: {
                 'apikey': supabaseAnonKey,
