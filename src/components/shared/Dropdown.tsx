@@ -52,7 +52,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-primary-500 dark:hover:border-primary-500 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-primary-500 dark:hover:border-primary-500 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
       >
         <div className="flex items-center gap-3">
           {selectedOption?.icon && (

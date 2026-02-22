@@ -138,7 +138,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
                   No email account connected
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                  Connect your Gmail or Outlook in Settings to send emails directly from the CRM.
+                  Connect your Gmail, Outlook, or configure custom SMTP in Settings to send emails directly from the CRM.
                 </p>
                 <button
                   onClick={handleGoToSettings}
