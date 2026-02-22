@@ -38,6 +38,7 @@ import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import AIQuarterback from '@/components/dashboard/AIQuarterback';
+import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -299,19 +300,22 @@ export const DashboardPage = () => {
     };
 
     // Update quick actions when filtered actions or preferences change
+    // Hard cap at 5 visible quick actions
+    const MAX_QUICK_ACTIONS = 5;
+
     useEffect(() => {
         if (filteredQuickActions.length > 0) {
-            if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0) {
-                // Reorder based on saved preferences, but only include enabled modules
-                const ordered = preferences.quickActionsOrder
-                    .map(id => filteredQuickActions.find(a => a.id === id))
-                    .filter((a): a is typeof filteredQuickActions[0] => a !== undefined);
-
-                const existingIds = new Set(preferences.quickActionsOrder);
-                const missing = filteredQuickActions.filter(a => !existingIds.has(a.id));
-                setQuickActions([...ordered, ...missing]);
+            const savedOrder = preferences.quickActionsOrder;
+            if (savedOrder && savedOrder.length > 0) {
+                // Build ordered list from saved preference - ONLY saved items, no appending extras
+                const ordered = savedOrder
+                    .map((id: string) => filteredQuickActions.find(a => a.id === id))
+                    .filter((a): a is typeof filteredQuickActions[0] => a !== undefined)
+                    .slice(0, MAX_QUICK_ACTIONS);
+                setQuickActions(ordered);
             } else {
-                setQuickActions(filteredQuickActions);
+                // No saved preference - use first 5 enabled actions as default
+                setQuickActions(filteredQuickActions.slice(0, MAX_QUICK_ACTIONS));
             }
         }
     }, [filteredQuickActions.length, enabledModuleIds.length, preferences.quickActionsOrder]);
@@ -427,6 +431,24 @@ export const DashboardPage = () => {
                 />
             </div>
 
+            {/* Quick Actions Header + Config */}
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Quick Actions
+                </h3>
+                <QuickActionsConfigPopover
+                    allAvailableActions={filteredQuickActions.map(a => ({
+                        id: a.id,
+                        label: a.label,
+                        icon: a.icon,
+                    }))}
+                    selectedActionIds={quickActions.map(a => a.id)}
+                    onSelectionChange={(selectedIds) => {
+                        saveQuickActionsOrder(selectedIds);
+                    }}
+                />
+            </div>
+
             {/* Draggable Quick Actions */}
             <div className="mb-2">
                 <DndContext
@@ -438,7 +460,7 @@ export const DashboardPage = () => {
                         items={quickActions.map(a => a.id)}
                         strategy={rectSortingStrategy}
                     >
-                        <div className={`grid grid-cols-2 gap-3 ${quickActions.length <= 5 ? 'md:grid-cols-5' : quickActions.length <= 6 ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-4 lg:grid-cols-7'}`}>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             {quickActions.map((action) => (
                                 <SortableQuickAction key={action.id} action={action} />
                             ))}
