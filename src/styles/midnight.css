@@ -263,8 +263,11 @@
   color: var(--mn-text-tertiary) !important;
 }
 
-/* Native <select> elements — force dark rendering for dropdown options */
-.midnight select {
+/* Native form controls — force dark rendering for dropdown options, date pickers, etc. */
+.midnight select,
+.midnight input[type="date"],
+.midnight input[type="time"],
+.midnight input[type="datetime-local"] {
   color-scheme: dark !important;
 }
 
