@@ -31,3 +31,15 @@ export interface ActionResult {
   recordId?: string;
   recordType?: string;
 }
+
+// Quarterback choice system
+export type QuarterbackChoiceType = 'draft_email' | 'draft_sms' | 'draft_call_script' | 'other';
+
+export interface ChoiceOption {
+  id: QuarterbackChoiceType;
+  label: string;
+  description: string;
+  icon: string;
+  disabled?: boolean;
+  disabledReason?: string;
+}

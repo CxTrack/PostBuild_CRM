@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useCoPilot } from '@/contexts/CoPilotContext';
 import { useThemeStore } from '@/stores/themeStore';
 import ActionCard from '@/components/copilot/ActionCard';
+import ChoiceCard from '@/components/copilot/ChoiceCard';
 import {
   X,
   ChevronLeft,
@@ -32,6 +33,7 @@ const CoPilotPanel: React.FC = () => {
     clearMessages,
     confirmAction,
     cancelAction,
+    markChoiceSelected,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
@@ -39,6 +41,32 @@ const CoPilotPanel: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handle Quarterback choice selection
+  const handleChoiceSelect = useCallback(async (messageId: string, choiceId: string) => {
+    markChoiceSelected(messageId, choiceId);
+
+    // "Other" lets the user type freely
+    if (choiceId === 'other') {
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
+
+    const insightData = currentContext?.data?.insightData;
+    const insightType = currentContext?.data?.insightType;
+    if (!insightData) return;
+
+    const choiceLabel: Record<string, string> = {
+      draft_email: 'email',
+      draft_sms: 'text message',
+      draft_call_script: 'call script',
+    };
+    const label = choiceLabel[choiceId] || choiceId;
+
+    const prompt = `[QUARTERBACK_MODE] The user chose to draft a ${label}. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Days inactive: ${insightData.days_inactive || insightData.days_stale || insightData.days_overdue || insightData.days_past_followup || 'N/A'}. Draft the ${label} now and include the ACTION_PROPOSAL block so the user can review and send it.`;
+
+    await sendMessage(prompt);
+  }, [currentContext, sendMessage, markChoiceSelected]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -159,6 +187,7 @@ const CoPilotPanel: React.FC = () => {
               message={message}
               onConfirmAction={confirmAction}
               onCancelAction={cancelAction}
+              onChoiceSelect={handleChoiceSelect}
             />
           ))
         )}
@@ -357,8 +386,21 @@ const MessageBubble: React.FC<{
   message: any;
   onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
   onCancelAction?: (messageId: string) => void;
-}> = ({ message, onConfirmAction, onCancelAction }) => {
+  onChoiceSelect?: (messageId: string, choiceId: string) => void;
+}> = ({ message, onConfirmAction, onCancelAction, onChoiceSelect }) => {
   const isUser = message.role === 'user';
+
+  // Render markdown-like bold text (**text**) in assistant messages
+  const renderContent = (text: string) => {
+    if (isUser) return text;
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
 
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
@@ -371,7 +413,7 @@ const MessageBubble: React.FC<{
           }
         `}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap">{renderContent(message.content)}</p>
         <p
           className={`text-xs mt-1 ${isUser
             ? 'text-purple-100'
@@ -381,6 +423,17 @@ const MessageBubble: React.FC<{
           {new Date(message.timestamp).toLocaleTimeString()}
         </p>
       </div>
+      {/* Choice Card - Quarterback options */}
+      {message.choices && onChoiceSelect && (
+        <div className="max-w-[85%] w-full">
+          <ChoiceCard
+            choices={message.choices}
+            selectedChoice={message.choiceSelected}
+            onSelect={(choiceId) => onChoiceSelect(message.id, choiceId)}
+          />
+        </div>
+      )}
+      {/* Action Card - AI-proposed action */}
       {message.action && onConfirmAction && onCancelAction && (
         <div className="max-w-[85%] w-full">
           <ActionCard

@@ -3,7 +3,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
+import type { ActionProposal, ActionStatus, ActionResult, ChoiceOption } from '@/types/copilot-actions.types';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import { getAuthToken } from '@/utils/auth.utils';
@@ -16,6 +16,8 @@ export interface Message {
   action?: ActionProposal;
   actionStatus?: ActionStatus;
   actionResult?: ActionResult;
+  choices?: ChoiceOption[];
+  choiceSelected?: string;
 }
 
 interface ContextData {
@@ -53,6 +55,8 @@ interface CoPilotContextType {
   setConfig: (config: CoPilotConfig) => void;
   confirmAction: (messageId: string, editedFields: Record<string, any>) => Promise<void>;
   cancelAction: (messageId: string) => void;
+  addAssistantMessage: (msg: Omit<Message, 'id' | 'timestamp'>) => void;
+  markChoiceSelected: (messageId: string, choiceId: string) => void;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -81,6 +85,21 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+  }, []);
+
+  const addAssistantMessage = useCallback((msg: Omit<Message, 'id' | 'timestamp'>) => {
+    const message: Message = {
+      ...msg,
+      id: Date.now().toString(),
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, message]);
+  }, []);
+
+  const markChoiceSelected = useCallback((messageId: string, choiceId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, choiceSelected: choiceId } : m
+    ));
   }, []);
 
   const setContext = useCallback((context: ContextData) => {
@@ -325,6 +344,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setConfig,
         confirmAction,
         cancelAction,
+        addAssistantMessage,
+        markChoiceSelected,
       }}
     >
       {children}

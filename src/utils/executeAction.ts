@@ -5,6 +5,7 @@ import { useTaskStore } from '@/stores/taskStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { DEFAULT_PERMISSIONS } from '@/config/modules.config';
 import { getAuthToken } from '@/utils/auth.utils';
+import { supabase } from '@/lib/supabase';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
 
@@ -52,6 +53,54 @@ async function resolveCustomerId(customerName: string): Promise<string | null> {
   }
 
   return null;
+}
+
+/**
+ * Log a Quarterback action as a customer note so it appears in the
+ * customer profile timeline and feeds into the AICustomerSummary RAG.
+ * Fire-and-forget: failures are silently logged to console.
+ */
+async function logQuarterbackActivity(
+  actionType: ActionType,
+  customerName: string,
+  details: string
+): Promise<void> {
+  try {
+    const customerId = await resolveCustomerId(customerName);
+    if (!customerId) return;
+
+    const orgId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!orgId) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const noteTypeMap: Record<string, string> = {
+      send_email: 'email',
+      send_sms: 'general',
+      draft_call_script: 'call',
+    };
+
+    const labelMap: Record<string, string> = {
+      send_email: 'Email Sent',
+      send_sms: 'SMS Sent',
+      draft_call_script: 'Call Script Prepared',
+    };
+
+    const noteContent = `[AI Quarterback - ${labelMap[actionType] || 'Action'}] ${details}`;
+
+    await supabase
+      .from('customer_notes')
+      .insert({
+        customer_id: customerId,
+        organization_id: orgId,
+        user_id: user?.id || null,
+        note_type: noteTypeMap[actionType] || 'general',
+        content: noteContent,
+        is_pinned: false,
+      });
+  } catch (err) {
+    console.error('[QB Activity Log] Failed to log activity:', err);
+  }
 }
 
 export async function executeAction(
@@ -197,6 +246,10 @@ export async function executeAction(
           return { success: false, message: data.error || 'Failed to send email. Please try again.' };
         }
 
+        // Log quarterback activity (fire-and-forget)
+        logQuarterbackActivity('send_email', editedFields.customer_name || toEmail,
+          `Subject: "${subject}" - sent to ${toEmail}`);
+
         return {
           success: true,
           message: `Email sent to ${toEmail}`,
@@ -235,6 +288,10 @@ export async function executeAction(
           return { success: false, message: smsData.error || 'Failed to send SMS. Please try again.' };
         }
 
+        // Log quarterback activity (fire-and-forget)
+        logQuarterbackActivity('send_sms', editedFields.customer_name || toPhone,
+          `SMS sent to ${toPhone}`);
+
         return {
           success: true,
           message: `SMS sent to ${toPhone}`,
@@ -243,7 +300,10 @@ export async function executeAction(
       }
 
       case 'draft_call_script': {
-        // Call scripts are display-only — confirming just acknowledges the user has the script
+        // Log quarterback activity (fire-and-forget)
+        logQuarterbackActivity('draft_call_script', editedFields.customer_name || 'customer',
+          `Call script prepared for ${editedFields.customer_name || 'customer'}`);
+
         return {
           success: true,
           message: `Call script for ${editedFields.customer_name || 'customer'} is ready. Good luck on the call!`,

@@ -21,6 +21,8 @@ import {
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
 import { useQuarterbackInsights, QuarterbackInsight } from '@/hooks/useQuarterbackInsights';
+import { useVisibleModules } from '@/hooks/useVisibleModules';
+import { buildQuarterbackChoices, buildQuarterbackIntro } from '@/config/quarterback-choices.config';
 import { format } from 'date-fns';
 
 // Type-based visual config for each insight category
@@ -119,11 +121,12 @@ interface AIQuarterbackProps {
 
 const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
   const { theme } = useThemeStore();
-  const { openPanel, setContext, clearMessages, sendMessage } = useCoPilot();
+  const { openPanel, setContext, clearMessages, addAssistantMessage } = useCoPilot();
   const { insights, loading, lastUpdated, dismissInsight, refreshInsights, insightCount } = useQuarterbackInsights();
+  const { planTier } = useVisibleModules();
 
   const handleInsightClick = useCallback((insight: QuarterbackInsight) => {
-    // Clear previous conversation, set quarterback context, open panel, send prompt
+    // Clear previous conversation, set quarterback context, open panel
     clearMessages();
     setContext({
       page: 'Quarterback',
@@ -135,11 +138,19 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
     });
     openPanel();
 
-    // Small delay to let panel open before sending message
+    // Build deterministic choices and intro (no AI tokens consumed)
+    const choices = buildQuarterbackChoices(insight, planTier);
+    const introText = buildQuarterbackIntro(insight);
+
+    // Small delay to let panel open before adding the choice message
     setTimeout(() => {
-      sendMessage(buildQuarterbackPrompt(insight));
+      addAssistantMessage({
+        role: 'assistant',
+        content: introText,
+        choices,
+      });
     }, 100);
-  }, [clearMessages, setContext, openPanel, sendMessage]);
+  }, [clearMessages, setContext, openPanel, addAssistantMessage, planTier]);
 
   const handleDismiss = useCallback((e: React.MouseEvent, insightId: string) => {
     e.stopPropagation();
