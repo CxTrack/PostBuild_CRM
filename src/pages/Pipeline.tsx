@@ -56,6 +56,10 @@ const Pipeline: React.FC = () => {
   const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('pipeline');
   const quotesLabels = usePageLabels('quotes');
+  const invoicesLabels = usePageLabels('invoices');
+
+  // Capitalize first letter helper
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   const hasAccess = canAccessSharedModule('pipeline');
 
@@ -88,6 +92,19 @@ const Pipeline: React.FC = () => {
   const getStageColor = (stage: string) => {
     const colors = getStageColorFromStore(stage);
     return `${colors.bg} ${colors.text}`;
+  };
+
+  // Find the best-matching stage by target probability (handles custom stages)
+  const findStageByProbability = (targetProb: number): string => {
+    if (targetProb === 100) {
+      const wonStage = STAGES.find(s => s.isTerminal && s.probability === 100);
+      return wonStage?.id || 'closed_won';
+    }
+    const nonTerminal = STAGES.filter(s => !s.isTerminal);
+    if (nonTerminal.length === 0) return STAGES[0]?.id || 'lead';
+    return nonTerminal.reduce((prev, curr) =>
+      Math.abs(curr.probability - targetProb) < Math.abs(prev.probability - targetProb) ? curr : prev
+    ).id;
   };
 
   const [items, setItems] = useState<PipelineItem[]>([]);
@@ -217,7 +234,7 @@ const Pipeline: React.FC = () => {
             total_amount: quote.total_amount,
             status: quote.status,
             created_at: quote.created_at,
-            stage: 'proposal',
+            stage: findStageByProbability(50),
             probability: 50,
           });
         }
@@ -235,7 +252,7 @@ const Pipeline: React.FC = () => {
             total_amount: invoice.total_amount,
             status: invoice.status,
             created_at: invoice.created_at,
-            stage: 'negotiation',
+            stage: findStageByProbability(75),
             probability: 75,
           });
         } else if (invoice.status === 'paid') {
@@ -249,7 +266,7 @@ const Pipeline: React.FC = () => {
             total_amount: invoice.total_amount,
             status: invoice.status,
             created_at: invoice.created_at,
-            stage: 'won',
+            stage: findStageByProbability(100),
             probability: 100,
           });
         }
@@ -261,7 +278,7 @@ const Pipeline: React.FC = () => {
 
       setItems(pipelineItems);
     }
-  }, [quotes, invoices, deals, customers]);
+  }, [quotes, invoices, deals, customers, STAGES]);
 
   const filteredItems = items.filter(item => {
     const matchesSearch =
@@ -353,7 +370,7 @@ const Pipeline: React.FC = () => {
   const pipelineColumns: ColumnDef<PipelineItem>[] = [
     {
       id: 'deal',
-      header: labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1),
+      header: cap(labels.entitySingular),
       defaultWidth: 250,
       minWidth: 200,
       render: (item) => (
@@ -405,7 +422,7 @@ const Pipeline: React.FC = () => {
       render: (item) => (
         <div className="flex justify-center">
           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getStageColor(item.stage)}`}>
-            {item.stage}
+            {getStageLabel(item.stage)}
           </span>
         </div>
       ),
@@ -721,7 +738,7 @@ const Pipeline: React.FC = () => {
               } : undefined}
             >
               <Zap size={18} />
-              Quick Add {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
+              Quick Add {cap(labels.entitySingular)}
             </button>
             <button
               onClick={() => navigate('/dashboard/pipeline/new')}
@@ -758,7 +775,7 @@ const Pipeline: React.FC = () => {
         <div className="grid grid-cols-12 gap-3 lg:gap-4" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
           <div className="col-span-12 lg:col-span-5 xl:col-span-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
             <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 lg:px-4 lg:py-3">
-              <h3 className="font-semibold text-gray-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">All {cap(labels.entityPlural)} ({filteredItems.length})</h3>
             </div>
             <div className="overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
               {sortedItems.map(item => (
@@ -803,7 +820,7 @@ const Pipeline: React.FC = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
+                        {selectedItem.type === 'invoice' ? cap(invoicesLabels.entitySingular) : selectedItem.type === 'deal' ? cap(labels.entitySingular) : cap(quotesLabels.entitySingular)}
                       </p>
                       <h2 className="text-lg font-bold lg:text-xl xl:text-2xl text-gray-900 dark:text-white mb-1">
                         {selectedItem.customer_name}
@@ -840,7 +857,7 @@ const Pipeline: React.FC = () => {
                 <div className="p-4 space-y-5 lg:p-5 lg:space-y-6">
                   <div>
                     <h3 className="text-base font-bold lg:text-lg text-gray-900 dark:text-white mb-3">
-                      {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Information
+                      {cap(labels.entitySingular)} Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3 lg:gap-4">
                       <div>
@@ -864,7 +881,7 @@ const Pipeline: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Type</p>
                         <p className="font-semibold text-gray-900 dark:text-white">
-                          {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
+                          {selectedItem.type === 'invoice' ? cap(invoicesLabels.entitySingular) : selectedItem.type === 'deal' ? cap(labels.entitySingular) : cap(quotesLabels.entitySingular)}
                         </p>
                       </div>
                     </div>
@@ -872,7 +889,7 @@ const Pipeline: React.FC = () => {
 
                   <div>
                     <h3 className="text-base font-bold lg:text-lg text-gray-900 dark:text-white mb-3">
-                      {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Timeline
+                      {cap(labels.entitySingular)} Timeline
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-start gap-4">
@@ -880,7 +897,7 @@ const Pipeline: React.FC = () => {
                           <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-white">{labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Created</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">{cap(labels.entitySingular)} Created</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             {new Date(selectedItem.created_at).toLocaleString()}
                           </p>
@@ -922,15 +939,15 @@ const Pipeline: React.FC = () => {
                       {selectedItem.type === 'deal'
                         ? 'Customer Details'
                         : selectedItem.type === 'quote'
-                          ? `Edit ${quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}`
-                          : 'Edit Invoice'}
+                          ? `Edit ${cap(quotesLabels.entitySingular)}`
+                          : `Edit ${cap(invoicesLabels.entitySingular)}`}
                     </button>
                     {selectedItem.type === 'deal' && (
                       <button
                         onClick={() => navigate(`/dashboard/pipeline/new?edit=${selectedItem.id}`)}
                         className="px-4 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-white text-sm"
                       >
-                        Edit {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
+                        Edit {cap(labels.entitySingular)}
                       </button>
                     )}
                     <div className="relative">
@@ -1000,21 +1017,39 @@ const Pipeline: React.FC = () => {
                               Move to {stage.name}
                             </button>
                           ))}
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Delete this ${selectedItem.type === 'quote' ? quotesLabels.entitySingular : selectedItem.type === 'invoice' ? 'invoice' : labels.entitySingular}?`)) {
-                                if (selectedItem.type === 'deal') {
-                                  await deleteDeal(selectedItem.id);
+                          {/* Edit navigation for quotes/invoices */}
+                          {selectedItem.type !== 'deal' && (
+                            <button
+                              onClick={() => {
+                                if (selectedItem.type === 'quote') {
+                                  navigate(`/quotes/builder/${selectedItem.id}`);
+                                } else {
+                                  navigate(`/invoices/builder/${selectedItem.id}`);
                                 }
-                                setSelectedItem(null);
                                 setShowItemMenu(false);
-                              }
-                            }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
-                          >
-                            <Trash2 size={14} />
-                            Delete
-                          </button>
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
+                            >
+                              <FileText size={14} />
+                              Edit {selectedItem.type === 'quote' ? cap(quotesLabels.entitySingular) : cap(invoicesLabels.entitySingular)}
+                            </button>
+                          )}
+                          {/* Delete - deals only */}
+                          {selectedItem.type === 'deal' && (
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Delete this ${labels.entitySingular}?`)) {
+                                  await deleteDeal(selectedItem.id);
+                                  setSelectedItem(null);
+                                  setShowItemMenu(false);
+                                }
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1104,7 +1139,7 @@ const Pipeline: React.FC = () => {
                                 item.type === 'invoice' ? '#7A6050' :
                                   '#6366F1'
                             } : undefined}>
-                            {item.type === 'quote' ? quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1) : item.type === 'invoice' ? 'Invoice' : labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
+                            {item.type === 'quote' ? cap(quotesLabels.entitySingular) : item.type === 'invoice' ? cap(invoicesLabels.entitySingular) : cap(labels.entitySingular)}
                           </span>
                           <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>
                             {item.number}

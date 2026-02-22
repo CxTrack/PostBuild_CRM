@@ -178,8 +178,8 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
             if (oppData.stage === 'demo_scheduled') probability = 0.50;
             if (oppData.stage === 'proposal') probability = 0.60;
             if (oppData.stage === 'negotiation') probability = 0.75;
-            if (oppData.stage === 'won') probability = 1.0;
-            if (oppData.stage === 'lost') probability = 0.0;
+            if (oppData.stage === 'closed_won') probability = 1.0;
+            if (oppData.stage === 'closed_lost') probability = 0.0;
 
             const { data, error } = await supabase
                 .from('opportunities')
@@ -217,8 +217,8 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
                 if (updates.stage === 'demo_scheduled') updates.probability = 0.50;
                 if (updates.stage === 'proposal') updates.probability = 0.60;
                 if (updates.stage === 'negotiation') updates.probability = 0.75;
-                if (updates.stage === 'won') updates.probability = 1.0;
-                if (updates.stage === 'lost') updates.probability = 0.0;
+                if (updates.stage === 'closed_won') updates.probability = 1.0;
+                if (updates.stage === 'closed_lost') updates.probability = 0.0;
             }
 
             const { error } = await supabase
@@ -332,7 +332,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
             // 2. Update Opportunity
             await get().updateOpportunity(oppId, {
-                stage: 'won',
+                stage: 'closed_won',
                 probability: 1.0,
                 actual_close_date: new Date().toISOString(),
                 invoice_id: invoice?.id
@@ -347,7 +347,7 @@ export const useCRMStore = create<CRMStore>((set, get) => ({
 
     markOpportunityLost: async (oppId, reason) => {
         await get().updateOpportunity(oppId, {
-            stage: 'lost',
+            stage: 'closed_lost',
             probability: 0.0,
             actual_close_date: new Date().toISOString(),
             lost_reason: reason
