@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { X, User, Building2 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { CustomerStatus } from '@/types/database.types';
@@ -12,12 +12,14 @@ interface QuickAddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCustomerCreated: (customer: any) => void;
+  initialPhone?: string;
 }
 
 export default function QuickAddCustomerModal({
   isOpen,
   onClose,
   onCustomerCreated,
+  initialPhone,
 }: QuickAddCustomerModalProps) {
   const { createCustomer } = useCustomerStore();
   const crmLabels = usePageLabels('crm');
@@ -31,9 +33,15 @@ export default function QuickAddCustomerModal({
     middle_name: '',
     last_name: '',
     email: '',
-    phone: '',
+    phone: initialPhone || '',
     company: '',
   });
+
+  useEffect(() => {
+    if (isOpen && initialPhone) {
+      setFormData(prev => ({ ...prev, phone: initialPhone }));
+    }
+  }, [isOpen, initialPhone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

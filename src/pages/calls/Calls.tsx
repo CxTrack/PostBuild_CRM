@@ -12,6 +12,7 @@ import {
   Filter,
   Download,
   User,
+  UserPlus,
   Bot,
   MoreVertical,
   Users,
@@ -25,6 +26,7 @@ import { Call } from '@/types/database.types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import LogCallModal from '@/components/calls/LogCallModal';
+import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import { PageContainer, Card, IconBadge } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 
@@ -47,6 +49,7 @@ export default function Calls() {
     setFilters,
     subscribeToLiveCalls,
     createCall,
+    updateCall,
   } = useCallStore();
 
   const navigate = useNavigate();
@@ -55,6 +58,8 @@ export default function Calls() {
   const [showFilters, setShowFilters] = useState(false);
   const [showLogCallModal, setShowLogCallModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickAddCallId, setQuickAddCallId] = useState<string | null>(null);
+  const [quickAddPhone, setQuickAddPhone] = useState('');
 
   useEffect(() => {
     const loadCallsData = async () => {
@@ -134,6 +139,24 @@ export default function Calls() {
     await createCall(callData);
     toast.success('Call logged successfully');
     fetchCallStats();
+  };
+
+  const handleQuickAddCustomer = (callId: string, phone: string) => {
+    setQuickAddCallId(callId);
+    setQuickAddPhone(phone);
+  };
+
+  const handleCustomerCreatedFromCall = async (newCustomer: any) => {
+    if (quickAddCallId && newCustomer?.id) {
+      await updateCall(quickAddCallId, {
+        customer_id: newCustomer.id,
+        customer_phone: newCustomer.phone || quickAddPhone,
+      });
+      await fetchCalls();
+      toast.success('Customer created and linked to call');
+    }
+    setQuickAddCallId(null);
+    setQuickAddPhone('');
   };
 
   // Premium AI feature glow styles
@@ -387,8 +410,24 @@ export default function Calls() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{getCustomerName(call)}</p>
-                    <p className="text-xs text-gray-500">{call.customer_phone || call.phone_number}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{getCustomerName(call)}</p>
+                        <p className="text-xs text-gray-500">{call.customer_phone || call.phone_number}</p>
+                      </div>
+                      {!call.customer_id && (call.customer_phone || call.phone_number) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAddCustomer(call.id, call.customer_phone || call.phone_number || '');
+                          }}
+                          className="flex-shrink-0 p-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                          title="Add as new customer"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -447,6 +486,13 @@ export default function Calls() {
         isOpen={showLogCallModal}
         onClose={() => setShowLogCallModal(false)}
         onSubmit={handleLogCall}
+      />
+
+      <QuickAddCustomerModal
+        isOpen={!!quickAddCallId}
+        onClose={() => { setQuickAddCallId(null); setQuickAddPhone(''); }}
+        onCustomerCreated={handleCustomerCreatedFromCall}
+        initialPhone={quickAddPhone}
       />
     </PageContainer>
   );
