@@ -335,10 +335,9 @@ export default function QuoteBuilder() {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
 
-    if (field === 'quantity' || field === 'unit_price' || field === 'discount_amount' || field === 'tax_rate') {
+    if (field === 'quantity' || field === 'unit_price') {
       const item = updatedItems[index];
-      const lineTotal = (item.quantity * item.unit_price) - (item.discount_amount || 0);
-      updatedItems[index].line_total = lineTotal;
+      updatedItems[index].line_total = item.quantity * item.unit_price;
     }
 
     setFormData(prev => ({ ...prev, items: updatedItems }));
@@ -1017,19 +1016,19 @@ export default function QuoteBuilder() {
                           </div>
                         </div>
 
-                        <div className="col-span-2">
+                        <div className="col-span-3">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Unit Price *
                           </label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                            <Input
+                            <input
                               type="number"
                               value={item.unit_price}
                               onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                               onBlur={() => handleItemBlur(index)}
                               placeholder="0.00"
-                              className="text-sm text-right pl-7"
+                              className="w-full px-2 py-2 rounded-lg border-2 text-sm text-right pl-7 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               min="0"
                               step="0.01"
                               disabled={!item.product_type}
@@ -1038,22 +1037,6 @@ export default function QuoteBuilder() {
                         </div>
 
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Discount ($)
-                          </label>
-                          <Input
-                            type="number"
-                            value={item.discount_amount || 0}
-                            onChange={(e) => updateLineItem(index, 'discount_amount', parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
-                            className="text-sm text-center"
-                            min="0"
-                            step="0.01"
-                            disabled={!item.product_type}
-                          />
-                        </div>
-
-                        <div className="col-span-1">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Total
                           </label>
@@ -1225,7 +1208,7 @@ export default function QuoteBuilder() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Discount</span>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <input
                       type="number"
                       value={formData.discount_amount}
                       onChange={(e) => {
@@ -1233,7 +1216,7 @@ export default function QuoteBuilder() {
                         setFormData(prev => ({ ...prev, discount_amount: discount }));
                         calculateTotals(formData.items);
                       }}
-                      className="w-24 text-sm"
+                      className="w-24 px-2 py-2 rounded-lg border-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       min="0"
                       step="0.01"
                     />
@@ -1243,7 +1226,7 @@ export default function QuoteBuilder() {
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600 dark:text-gray-400">{orgTaxLabel || 'Tax'}</span>
                     <div className="flex items-center gap-1">
-                      <Input
+                      <input
                         type="number"
                         value={quoteTaxRate}
                         onChange={(e) => {
@@ -1253,7 +1236,7 @@ export default function QuoteBuilder() {
                           setFormData(prev => ({ ...prev, items: updatedItems }));
                           calculateTotals(updatedItems);
                         }}
-                        className="w-20 text-sm"
+                        className="w-20 px-2 py-2 rounded-lg border-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         min="0"
                         max="100"
                         step="0.01"
