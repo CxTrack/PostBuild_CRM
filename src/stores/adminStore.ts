@@ -266,14 +266,24 @@ interface AdminState {
   smsAuditLog: any[];
   adminNotifications: any[];
   marketingSubscriptions: any[];
+  orgDetail: any | null;
 
   // UI State
   loading: Record<string, boolean>;
   errors: Record<string, string | null>;
   lastRefreshed: Date | null;
   dateRangeDays: number;
+  activeTab: string;
+  selectedOrgId: string | null;
+  selectedOrgContext: { title: string; alertType: string } | null;
 
   // Actions
+  setActiveTab: (tab: string) => void;
+  setSelectedOrg: (orgId: string | null, context?: { title: string; alertType: string }) => void;
+  fetchOrgDetail: (orgId: string) => Promise<void>;
+  sendAdminNotification: (userIds: string[], title: string, message: string) => Promise<void>;
+  sendAdminEmail: (toEmail: string, subject: string, bodyHtml: string, bodyText: string, orgId?: string, userId?: string) => Promise<any>;
+  sendAdminSms: (toPhone: string, body: string, orgId?: string, userId?: string) => Promise<any>;
   setDateRange: (days: number) => void;
   fetchKPIs: () => Promise<void>;
   fetchUserGrowth: (months?: number) => Promise<void>;
@@ -329,11 +339,71 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   smsAuditLog: [],
   adminNotifications: [],
   marketingSubscriptions: [],
+  orgDetail: null,
 
   loading: {},
   errors: {},
   lastRefreshed: null,
   dateRangeDays: 30,
+  activeTab: 'command-center',
+  selectedOrgId: null,
+  selectedOrgContext: null,
+
+  setActiveTab: (tab) => set({ activeTab: tab, selectedOrgId: null, selectedOrgContext: null }),
+  setSelectedOrg: (orgId, context) => set({ selectedOrgId: orgId, selectedOrgContext: context || null }),
+
+  fetchOrgDetail: async (orgId: string) => {
+    set((s) => ({ loading: { ...s.loading, orgDetail: true }, errors: { ...s.errors, orgDetail: null } }));
+    try {
+      const data = await supabaseRpc('admin_get_org_detail', { p_org_id: orgId });
+      set((s) => ({ orgDetail: data, loading: { ...s.loading, orgDetail: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, orgDetail: false }, errors: { ...s.errors, orgDetail: e.message } }));
+    }
+  },
+
+  sendAdminNotification: async (userIds: string[], title: string, message: string) => {
+    await supabaseRpc('admin_send_notification', {
+      p_user_ids: userIds,
+      p_title: title,
+      p_message: message,
+      p_type: 'admin_notification',
+    });
+  },
+
+  sendAdminEmail: async (toEmail: string, subject: string, bodyHtml: string, bodyText: string, orgId?: string, userId?: string) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${supabaseUrl}/functions/v1/admin-send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ to_email: toEmail, subject, body_html: bodyHtml, body_text: bodyText, organization_id: orgId, target_user_id: userId }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to send email');
+    return data;
+  },
+
+  sendAdminSms: async (toPhone: string, body: string, orgId?: string, userId?: string) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${supabaseUrl}/functions/v1/admin-send-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ to_phone: toPhone, body, organization_id: orgId, target_user_id: userId }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to send SMS');
+    return data;
+  },
 
   setDateRange: (days) => set({ dateRangeDays: days }),
 

@@ -3,7 +3,7 @@ import {
   Users, Building2, DollarSign, TrendingUp,
   Brain, Phone, AlertTriangle, AlertCircle,
   FileText, CheckSquare, ShoppingCart, Clock,
-  ArrowUpRight, ArrowDownRight
+  ArrowUpRight, ArrowDownRight, ChevronRight
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -25,10 +25,21 @@ const formatCurrency = (n: number) => {
   return `$${n.toLocaleString()}`;
 };
 
+// KPI card -> tab navigation mapping
+const KPI_TAB_MAP: Record<string, string> = {
+  'Total Users': 'users',
+  'Organizations': 'users',
+  'Pipeline Value': 'financial',
+  'Invoiced (30d)': 'financial',
+  'AI Tokens (MTD)': 'ai',
+  'Voice Minutes': 'voice',
+};
+
 export const CommandCenterTab = () => {
   const {
     kpis, userGrowth, orgBreakdown, priorityAlerts,
-    loading, fetchKPIs, fetchUserGrowth, fetchOrgBreakdown, fetchPriorityAlerts
+    loading, fetchKPIs, fetchUserGrowth, fetchOrgBreakdown, fetchPriorityAlerts,
+    setActiveTab, setSelectedOrg
   } = useAdminStore();
 
   useEffect(() => {
@@ -37,6 +48,34 @@ export const CommandCenterTab = () => {
     fetchOrgBreakdown();
     fetchPriorityAlerts();
   }, []);
+
+  const handleAlertClick = (alert: { alert_type: string; entity_id: string; title: string }) => {
+    switch (alert.alert_type) {
+      case 'inactive_org':
+        setSelectedOrg(alert.entity_id, { title: alert.title, alertType: alert.alert_type });
+        break;
+      case 'urgent_ticket':
+      case 'stale_ticket':
+        setActiveTab('support');
+        break;
+      case 'overdue_invoice':
+        setActiveTab('financial');
+        break;
+      case 'orphaned_phone_number':
+      case 'unused_phone_number':
+        setActiveTab('phone-lifecycle');
+        break;
+      case 'api_error':
+        setActiveTab('api-monitoring');
+        break;
+      default:
+        // For unknown alert types with an entity_id that looks like a UUID, try org detail
+        if (alert.entity_id && alert.entity_id.length === 36 && alert.entity_id.includes('-')) {
+          setSelectedOrg(alert.entity_id, { title: alert.title, alertType: alert.alert_type });
+        }
+        break;
+    }
+  };
 
   // Aggregate org breakdown for pie chart
   const industryData = orgBreakdown.reduce<{ name: string; value: number }[]>((acc, item) => {
@@ -72,6 +111,7 @@ export const CommandCenterTab = () => {
           icon={Users}
           color="purple"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['Total Users'])}
         />
         <KPICard
           label="Organizations"
@@ -80,6 +120,7 @@ export const CommandCenterTab = () => {
           icon={Building2}
           color="blue"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['Organizations'])}
         />
         <KPICard
           label="Pipeline Value"
@@ -88,6 +129,7 @@ export const CommandCenterTab = () => {
           icon={TrendingUp}
           color="green"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['Pipeline Value'])}
         />
         <KPICard
           label="Invoiced (30d)"
@@ -96,6 +138,7 @@ export const CommandCenterTab = () => {
           icon={DollarSign}
           color="emerald"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['Invoiced (30d)'])}
         />
         <KPICard
           label="AI Tokens (MTD)"
@@ -104,6 +147,7 @@ export const CommandCenterTab = () => {
           icon={Brain}
           color="orange"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['AI Tokens (MTD)'])}
         />
         <KPICard
           label="Voice Minutes"
@@ -112,6 +156,7 @@ export const CommandCenterTab = () => {
           icon={Phone}
           color="teal"
           loading={loading.kpis}
+          onClick={() => setActiveTab(KPI_TAB_MAP['Voice Minutes'])}
         />
       </div>
 
@@ -126,15 +171,20 @@ export const CommandCenterTab = () => {
                   <AlertTriangle className="w-4 h-4" />
                   High Priority ({priorityAlerts.high_priority.length})
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {priorityAlerts.high_priority.map((alert, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
+                    <button
+                      key={i}
+                      onClick={() => handleAlertClick(alert)}
+                      className="w-full flex items-start gap-2 text-sm text-left rounded-lg px-2 py-1.5 -mx-1 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors cursor-pointer group"
+                    >
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-red-800 dark:text-red-300">{alert.title}</p>
                         <p className="text-xs text-red-600 dark:text-red-400/70">{alert.description}</p>
                       </div>
-                    </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-red-400 dark:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0" />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -147,15 +197,20 @@ export const CommandCenterTab = () => {
                   <AlertCircle className="w-4 h-4" />
                   Needs Attention ({priorityAlerts.medium_priority.length})
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {priorityAlerts.medium_priority.map((alert, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
+                    <button
+                      key={i}
+                      onClick={() => handleAlertClick(alert)}
+                      className="w-full flex items-start gap-2 text-sm text-left rounded-lg px-2 py-1.5 -mx-1 hover:bg-yellow-100 dark:hover:bg-yellow-900/20 transition-colors cursor-pointer group"
+                    >
                       <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-yellow-800 dark:text-yellow-300">{alert.title}</p>
                         <p className="text-xs text-yellow-600 dark:text-yellow-400/70">{alert.description}</p>
                       </div>
-                    </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-yellow-400 dark:text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0" />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -295,6 +350,7 @@ interface KPICardProps {
   icon: any;
   color: string;
   loading?: boolean;
+  onClick?: () => void;
 }
 
 const colorMap: Record<string, string> = {
@@ -306,13 +362,21 @@ const colorMap: Record<string, string> = {
   teal: 'from-teal-500 to-teal-600',
 };
 
-const KPICard = ({ label, value, subValue, icon: Icon, color, loading }: KPICardProps) => (
-  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 md:p-4">
+const KPICard = ({ label, value, subValue, icon: Icon, color, loading, onClick }: KPICardProps) => (
+  <button
+    onClick={onClick}
+    className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 md:p-4 text-left transition-all ${
+      onClick ? 'cursor-pointer hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md group' : ''
+    }`}
+  >
     <div className="flex items-center gap-2 mb-2">
       <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${colorMap[color] || colorMap.purple} flex items-center justify-center`}>
         <Icon className="w-3.5 h-3.5 text-white" />
       </div>
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex-1">{label}</span>
+      {onClick && (
+        <ChevronRight className="w-3 h-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
     </div>
     {loading ? (
       <div className="h-7 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -322,7 +386,7 @@ const KPICard = ({ label, value, subValue, icon: Icon, color, loading }: KPICard
         {subValue && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{subValue}</p>}
       </>
     )}
-  </div>
+  </button>
 );
 
 interface StatCardProps {

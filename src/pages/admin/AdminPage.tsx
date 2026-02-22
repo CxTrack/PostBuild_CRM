@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   Users, CreditCard, BarChart2, MessageSquare,
   Settings, Shield, LayoutDashboard,
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug, Mail
+  FileBarChart, Plug, Mail, Building2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -32,6 +32,7 @@ import { MCPConnectionPanel } from '../../components/admin/MCPConnectionPanel';
 import { PhoneLifecycleTab } from './PhoneLifecycleTab';
 import { SmsComplianceTab } from '../../components/admin/SmsComplianceTab';
 import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
+import { OrgDetailView } from './OrgDetailView';
 
 interface TabItem {
   id: string;
@@ -89,8 +90,8 @@ const TAB_GROUPS: TabGroup[] = [
 const ALL_TABS = TAB_GROUPS.flatMap((g) => g.tabs);
 
 export const AdminPage = () => {
-  const [activeTab, setActiveTab] = useState('command-center');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { activeTab, setActiveTab, selectedOrgId, selectedOrgContext } = useAdminStore();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const { user } = useAuthContext();
   const { lastRefreshed, fetchAll } = useAdminStore();
 
@@ -246,8 +247,17 @@ export const AdminPage = () => {
                 <Menu className="w-5 h-5" />
               </button>
               <h2 className="text-lg md:text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                {activeTabData && <activeTabData.icon className="w-5 h-5 text-gray-400 hidden sm:block" />}
-                {activeTabData?.label || 'Command Center'}
+                {selectedOrgId ? (
+                  <>
+                    <Building2 className="w-5 h-5 text-purple-500 hidden sm:block" />
+                    <span>Organization Detail</span>
+                  </>
+                ) : (
+                  <>
+                    {activeTabData && <activeTabData.icon className="w-5 h-5 text-gray-400 hidden sm:block" />}
+                    {activeTabData?.label || 'Command Center'}
+                  </>
+                )}
               </h2>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
@@ -280,7 +290,7 @@ export const AdminPage = () => {
 
         {/* Tab Content */}
         <div className="p-4 md:p-6 lg:p-8 w-full">
-          <ActiveComponent />
+          {selectedOrgId ? <OrgDetailView /> : <ActiveComponent />}
         </div>
       </main>
     </div>

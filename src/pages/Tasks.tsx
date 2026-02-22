@@ -56,9 +56,9 @@ const priorityColors: Record<Priority, string> = {
 };
 
 const statusStyles: Record<Status, string> = {
-  'To Do': 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
-  'In Progress': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
-  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
+  'To Do': 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+  'In Progress': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+  'Completed': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
 };
 
 
@@ -83,7 +83,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
     let query = supabase
       .from('tasks')
-      .select('*')
+      .select('*, customer:customers(id, name)')
       .eq('organization_id', currentOrganization.id);
 
     // Regular users only see their own tasks (created by them or assigned to them)
@@ -106,7 +106,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
       priority: t.priority || 'medium',
       status: t.status || 'To Do',
       dueDate: new Date(t.due_date),
-      customer: t.customer_name,
+      customer: t.customer?.name || '',
       showOnCalendar: t.show_on_calendar,
       startTime: t.start_time,
       created_at: t.created_at,
@@ -600,9 +600,15 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               </td>
 
                               <td className="px-3 py-3">
-                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
-                                  {task.customer || '—'}
-                                </span>
+                                {task.customer ? (
+                                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer}>
+                                    {task.customer}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-amber-600 dark:text-amber-400 italic truncate block">
+                                    No customer
+                                  </span>
+                                )}
                               </td>
 
                               <td className="px-3 py-3">
@@ -674,7 +680,11 @@ export default function Tasks({ embedded = false }: TasksProps) {
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Customer</span>
-                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || '—'}</span>
+                            {task.customer ? (
+                              <span className="font-medium text-gray-900 dark:text-white">{task.customer}</span>
+                            ) : (
+                              <span className="font-medium text-amber-600 dark:text-amber-400 italic">No customer</span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Due Date</span>

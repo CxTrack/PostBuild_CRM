@@ -36,6 +36,9 @@
 
   --mn-transition: 200ms cubic-bezier(0.2, 0, 0, 1);
 
+  /* Force dark rendering for ALL native form controls (select dropdowns, date pickers, etc.) */
+  color-scheme: dark;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -260,10 +263,43 @@
   color: var(--mn-text-tertiary) !important;
 }
 
-/* Native <select> <option> elements — use solid dark bg for readability */
+/* Native <select> elements — force dark rendering for dropdown options */
+.midnight select {
+  color-scheme: dark !important;
+}
+
 .midnight select option {
   background-color: #1a1a1a !important;
+  color: #e5e5e5 !important;
+}
+
+/* Selects with bg-white that need midnight override */
+.midnight select.bg-white,
+.midnight select[class*="bg-white"],
+.midnight .bg-white > select {
+  background-color: var(--mn-bg-elevated) !important;
   color: var(--mn-text-primary) !important;
+  border-color: var(--mn-border-default) !important;
+}
+
+/* Selects with bg-gray-50 that need midnight override */
+.midnight select.bg-gray-50,
+.midnight select[class*="bg-gray-50"] {
+  background-color: var(--mn-bg-elevated) !important;
+  color: var(--mn-text-primary) !important;
+}
+
+/* Inline status selects (Tasks table) — ensure text is readable */
+.midnight select[class*="text-gray-700"] {
+  color: var(--mn-text-secondary) !important;
+}
+
+.midnight select[class*="text-blue-700"] {
+  color: #93c5fd !important;
+}
+
+.midnight select[class*="text-emerald-700"] {
+  color: #6ee7b7 !important;
 }
 
 /* Dropdown menus / suggestion popups — solid dark bg instead of glass */
