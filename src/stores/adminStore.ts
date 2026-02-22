@@ -169,6 +169,81 @@ export interface DeletionRequest {
   notes?: string;
 }
 
+// Phone Number Lifecycle Types
+export interface PhoneOrphanEntry {
+  phone_number_id: string;
+  phone_number: string;
+  phone_number_pretty: string;
+  twilio_sid: string;
+  retell_agent_id?: string;
+  organization_id: string;
+  monthly_cost_cents: number;
+  provisioned_at: string;
+  last_call_at: string | null;
+  org_name: string;
+  subscription_tier?: string;
+  subscription_status?: string;
+  canceled_at?: string;
+  days_since_canceled?: number;
+  last_login?: string;
+  days_since_login?: number;
+  agent_active?: boolean;
+  agent_last_updated?: string;
+  days_since_agent_update?: number;
+  grace_period_ends_at?: string;
+  days_remaining?: number;
+  release_reason?: string;
+}
+
+export interface PhoneOrphanData {
+  canceled_subscription: PhoneOrphanEntry[];
+  inactive_org: PhoneOrphanEntry[];
+  deactivated_agent: PhoneOrphanEntry[];
+  grace_period: PhoneOrphanEntry[];
+  summary: {
+    total_active: number;
+    total_pooled: number;
+    total_released: number;
+    total_grace_period: number;
+    monthly_cost_active_cents: number;
+    monthly_cost_pooled_cents: number;
+  };
+}
+
+export interface PhoneAssignmentEvent {
+  id: string;
+  phone_number_id: string;
+  phone_number: string;
+  organization_id: string | null;
+  org_name: string | null;
+  event_type: string;
+  reason: string | null;
+  metadata: Record<string, any>;
+  performed_by: string | null;
+  performed_by_name: string | null;
+  created_at: string;
+}
+
+export interface PhoneCostSummary {
+  total_numbers: number;
+  active_numbers: number;
+  pooled_numbers: number;
+  grace_period_numbers: number;
+  released_numbers: number;
+  monthly_cost_active_cents: number;
+  monthly_cost_pooled_cents: number;
+  monthly_cost_grace_cents: number;
+  total_monthly_cost_cents: number;
+  potential_savings_cents: number;
+  cost_by_org: Array<{
+    org_name: string;
+    subscription_tier: string;
+    number_count: number;
+    monthly_cost_cents: number;
+    last_call_at: string | null;
+  }>;
+}
+
 interface AdminState {
   // Data
   kpis: PlatformKPIs | null;
@@ -184,6 +259,9 @@ interface AdminState {
   adminUsers: AdminUser[];
   allTickets: AdminTicket[];
   deletionRequests: DeletionRequest[];
+  phoneLifecycle: PhoneOrphanData | null;
+  phoneAssignmentHistory: PhoneAssignmentEvent[];
+  phoneCostSummary: PhoneCostSummary | null;
 
   // UI State
   loading: Record<string, boolean>;
@@ -207,6 +285,13 @@ interface AdminState {
   fetchAllTickets: () => Promise<void>;
   fetchDeletionRequests: () => Promise<void>;
   updateDeletionRequest: (requestId: string, status: string, notes?: string) => Promise<void>;
+  fetchPhoneLifecycle: () => Promise<void>;
+  fetchPhoneAssignmentHistory: (phoneNumberId?: string) => Promise<void>;
+  fetchPhoneCostSummary: () => Promise<void>;
+  flagNumberForRelease: (phoneNumberId: string, reason: string, graceDays?: number) => Promise<void>;
+  releaseNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  poolNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  reassignNumber: (phoneNumberId: string, targetOrgId: string) => Promise<{ success: boolean; error?: string }>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -226,6 +311,9 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   adminUsers: [],
   allTickets: [],
   deletionRequests: [],
+  phoneLifecycle: null,
+  phoneAssignmentHistory: [],
+  phoneCostSummary: null,
 
   loading: {},
   errors: {},
@@ -408,6 +496,124 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       await get().fetchDeletionRequests();
     } catch (e: any) {
       throw new Error(e.message || 'Failed to update deletion request');
+    }
+  },
+
+  fetchPhoneLifecycle: async () => {
+    set((s) => ({ loading: { ...s.loading, phoneLifecycle: true }, errors: { ...s.errors, phoneLifecycle: null } }));
+    try {
+      const data = await supabaseRpc<PhoneOrphanData>('admin_get_orphaned_phone_numbers');
+      set((s) => ({ phoneLifecycle: data, loading: { ...s.loading, phoneLifecycle: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, phoneLifecycle: false }, errors: { ...s.errors, phoneLifecycle: e.message } }));
+    }
+  },
+
+  fetchPhoneAssignmentHistory: async (phoneNumberId?: string) => {
+    set((s) => ({ loading: { ...s.loading, phoneHistory: true }, errors: { ...s.errors, phoneHistory: null } }));
+    try {
+      const params: Record<string, any> = { p_limit: 100, p_offset: 0 };
+      if (phoneNumberId) params.p_phone_number_id = phoneNumberId;
+      const data = await supabaseRpc<PhoneAssignmentEvent[]>('admin_get_phone_assignment_history', params);
+      set((s) => ({ phoneAssignmentHistory: data || [], loading: { ...s.loading, phoneHistory: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, phoneHistory: false }, errors: { ...s.errors, phoneHistory: e.message } }));
+    }
+  },
+
+  fetchPhoneCostSummary: async () => {
+    set((s) => ({ loading: { ...s.loading, phoneCost: true }, errors: { ...s.errors, phoneCost: null } }));
+    try {
+      const data = await supabaseRpc<PhoneCostSummary>('admin_get_phone_cost_summary');
+      set((s) => ({ phoneCostSummary: data, loading: { ...s.loading, phoneCost: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, phoneCost: false }, errors: { ...s.errors, phoneCost: e.message } }));
+    }
+  },
+
+  flagNumberForRelease: async (phoneNumberId: string, reason: string, graceDays?: number) => {
+    try {
+      await supabaseRpc('admin_flag_number_for_release', {
+        p_phone_number_id: phoneNumberId,
+        p_reason: reason,
+        p_grace_days: graceDays || 30,
+      });
+      await get().fetchPhoneLifecycle();
+      await get().fetchPhoneCostSummary();
+    } catch (e: any) {
+      throw new Error(e.message || 'Failed to flag number for release');
+    }
+  },
+
+  releaseNumber: async (phoneNumberId: string, reason?: string) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/manage-phone-numbers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ action: 'release_number', phoneNumberId, reason: reason || 'admin_manual' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await get().fetchPhoneLifecycle();
+        await get().fetchPhoneCostSummary();
+      }
+      return data;
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  poolNumber: async (phoneNumberId: string, reason?: string) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/manage-phone-numbers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ action: 'pool_number', phoneNumberId, reason: reason || 'admin_manual' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await get().fetchPhoneLifecycle();
+        await get().fetchPhoneCostSummary();
+      }
+      return data;
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  reassignNumber: async (phoneNumberId: string, targetOrgId: string) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/manage-phone-numbers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ action: 'reassign_number', phoneNumberId, targetOrganizationId: targetOrgId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await get().fetchPhoneLifecycle();
+        await get().fetchPhoneCostSummary();
+      }
+      return data;
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   },
 

@@ -29,6 +29,7 @@ import { SettingsTab } from './SettingsTab';
 import { BroadcastPanel } from '../../components/admin/BroadcastPanel';
 import { ReportingEngine } from '../../components/admin/ReportingEngine';
 import { MCPConnectionPanel } from '../../components/admin/MCPConnectionPanel';
+import { PhoneLifecycleTab } from './PhoneLifecycleTab';
 
 interface TabItem {
   id: string;
@@ -64,6 +65,7 @@ const TAB_GROUPS: TabGroup[] = [
     tabs: [
       { id: 'billing', label: 'Billing & Revenue', icon: CreditCard, component: BillingTab },
       { id: 'plans', label: 'Subscription Plans', icon: DollarSign, component: PlansTab },
+      { id: 'phone-lifecycle', label: 'Phone Numbers', icon: Phone, component: PhoneLifecycleTab },
       { id: 'support', label: 'Support Tickets', icon: MessageSquare, component: SupportTab },
       { id: 'reports', label: 'Reports', icon: FileBarChart, component: ReportingEngine },
     ],
