@@ -321,6 +321,14 @@ export const DashboardLayout = () => {
     });
   };
 
+  // Auto-collapse sidebar when CoPilot opens (desktop only) for better UX
+  useEffect(() => {
+    if (isCoPilotOpen && !sidebarCollapsed && window.innerWidth >= 768) {
+      setSidebarCollapsed(true);
+      try { localStorage.setItem('cxtrack_sidebar_collapsed', 'true'); } catch {}
+    }
+  }, [isCoPilotOpen]);
+
   useEffect(() => {
     if (user) {
       loadPreferences();
