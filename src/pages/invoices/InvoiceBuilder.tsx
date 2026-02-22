@@ -7,7 +7,7 @@ import { useInvoiceStore } from '@/stores/invoiceStore';
 import { invoiceService, InvoiceLineItem, InvoiceFormData } from '@/services/invoice.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check } from 'lucide-react';
+import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ProductSelector from '@/components/products/ProductSelector';
@@ -994,6 +994,18 @@ export default function InvoiceBuilder() {
                     ${formData.tax_amount.toFixed(2)}
                   </span>
                 </div>
+                {!id && invoiceTaxRate === 0 && orgTaxRate === 0 && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      No default tax rate configured.{' '}
+                      <button type="button" onClick={() => navigate('/settings')} className="underline hover:no-underline font-medium">
+                        Set it in Business Settings
+                      </button>{' '}
+                      to auto-apply on new documents.
+                    </p>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>

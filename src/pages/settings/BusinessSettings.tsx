@@ -10,6 +10,7 @@ import { validateEmail, validatePhone } from '@/utils/validation';
 import toast from 'react-hot-toast';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { PAYMENT_TERMS_OPTIONS } from '@/config/paymentTerms';
+import { COUNTRY_OPTIONS, getStatesForCountry, getTaxConfigForLocation, isSupportedCountry } from '@/config/taxRates';
 import StripeConnectSettings from '@/components/settings/StripeConnectSettings';
 
 export default function BusinessSettings() {
@@ -196,14 +197,20 @@ export default function BusinessSettings() {
                 value={settings.business_address || ''}
                 onChange={(value) => setSettings({ ...settings, business_address: value })}
                 onAddressSelect={(components: AddressComponents) => {
-                  setSettings({
+                  const newSettings: any = {
                     ...settings,
                     business_address: components.address,
                     business_city: components.city,
                     business_state: components.state,
                     business_postal_code: components.postal_code,
                     business_country: components.country,
-                  });
+                  };
+                  const taxConfig = getTaxConfigForLocation(components.country, components.state);
+                  if (taxConfig) {
+                    newSettings.default_tax_rate = taxConfig.rate;
+                    newSettings.tax_label = taxConfig.label;
+                  }
+                  setSettings(newSettings);
                 }}
                 placeholder="Start typing an address..."
               />
@@ -225,12 +232,43 @@ export default function BusinessSettings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 State/Province
               </label>
-              <Input
-                type="text"
-                value={settings.business_state || ''}
-                onChange={(e) => setSettings({ ...settings, business_state: e.target.value })}
-                placeholder="CA"
-              />
+              {(() => {
+                const stateOptions = getStatesForCountry(settings.business_country || '');
+                if (stateOptions.length > 0) {
+                  return (
+                    <select
+                      value={settings.business_state || ''}
+                      onChange={(e) => {
+                        const newState = e.target.value;
+                        const newSettings: any = { ...settings, business_state: newState };
+                        const taxConfig = getTaxConfigForLocation(settings.business_country || '', newState);
+                        if (taxConfig) {
+                          newSettings.default_tax_rate = taxConfig.rate;
+                          newSettings.tax_label = taxConfig.label;
+                        }
+                        setSettings(newSettings);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select state/province...</option>
+                      {stateOptions.map(s => (
+                        <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                      ))}
+                      {settings.business_state && !stateOptions.find(s => s.code === settings.business_state) && (
+                        <option value={settings.business_state}>{settings.business_state}</option>
+                      )}
+                    </select>
+                  );
+                }
+                return (
+                  <Input
+                    type="text"
+                    value={settings.business_state || ''}
+                    onChange={(e) => setSettings({ ...settings, business_state: e.target.value })}
+                    placeholder="CA"
+                  />
+                );
+              })()}
             </div>
 
             <div>
@@ -249,12 +287,21 @@ export default function BusinessSettings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Country
               </label>
-              <Input
-                type="text"
+              <select
                 value={settings.business_country || ''}
-                onChange={(e) => setSettings({ ...settings, business_country: e.target.value })}
-                placeholder="United States"
-              />
+                onChange={(e) => {
+                  setSettings({ ...settings, business_country: e.target.value, business_state: '' });
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select country...</option>
+                {COUNTRY_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+                {settings.business_country && !COUNTRY_OPTIONS.find(c => c.value === settings.business_country) && (
+                  <option value={settings.business_country}>{settings.business_country}</option>
+                )}
+              </select>
             </div>
 
             <div className="md:col-span-2">
@@ -338,49 +385,42 @@ export default function BusinessSettings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Default Tax Rate (%)
                 </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    value={settings.default_tax_rate ?? 0}
-                    onChange={(e) => setSettings({ ...settings, default_tax_rate: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    className="flex-1"
-                  />
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const [rate, label] = e.target.value.split('|');
-                        setSettings({ ...settings, default_tax_rate: parseFloat(rate), tax_label: label });
-                      }
-                    }}
-                    className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-                  >
-                    <option value="">Presets...</option>
-                    <optgroup label="Canada">
-                      <option value="13|HST">HST 13% (Ontario)</option>
-                      <option value="15|HST">HST 15% (Atlantic)</option>
-                      <option value="5|GST">GST 5%</option>
-                      <option value="12|GST+PST">GST+PST 12% (BC)</option>
-                      <option value="11|GST+PST">GST+PST 11% (SK)</option>
-                      <option value="14.975|GST+QST">GST+QST 14.975% (QC)</option>
-                    </optgroup>
-                    <optgroup label="United States">
-                      <option value="0|Sales Tax">No Sales Tax</option>
-                      <option value="6|Sales Tax">Sales Tax 6%</option>
-                      <option value="7|Sales Tax">Sales Tax 7%</option>
-                      <option value="8|Sales Tax">Sales Tax 8%</option>
-                      <option value="8.875|Sales Tax">Sales Tax 8.875% (NYC)</option>
-                      <option value="10|Sales Tax">Sales Tax 10%</option>
-                    </optgroup>
-                  </select>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Applied to new invoices and quotes by default. Can be overridden per document.
-                </p>
+                <Input
+                  type="number"
+                  value={settings.default_tax_rate ?? 0}
+                  onChange={(e) => setSettings({ ...settings, default_tax_rate: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                />
+                {(() => {
+                  const taxConfig = getTaxConfigForLocation(settings.business_country || '', settings.business_state || '');
+                  if (taxConfig) {
+                    const isMatch = settings.default_tax_rate === taxConfig.rate && settings.tax_label === taxConfig.label;
+                    return (
+                      <p className="text-xs mt-1 text-green-600 dark:text-green-400">
+                        Auto-detected: {taxConfig.description} for {settings.business_state}, {settings.business_country}
+                        {!isMatch && (
+                          <button
+                            type="button"
+                            onClick={() => setSettings({ ...settings, default_tax_rate: taxConfig.rate, tax_label: taxConfig.label })}
+                            className="ml-2 text-blue-600 dark:text-blue-400 underline hover:no-underline"
+                          >
+                            Reset to suggested
+                          </button>
+                        )}
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {isSupportedCountry(settings.business_country || '')
+                        ? 'Select your state/province above to auto-detect the tax rate.'
+                        : 'Applied to new invoices and quotes by default. Can be overridden per document.'}
+                    </p>
+                  );
+                })()}
               </div>
 
               <div>
