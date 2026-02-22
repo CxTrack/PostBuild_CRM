@@ -283,12 +283,6 @@ export default function PublicInvoiceView() {
                       {new Date(invoice.due_date).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                    <span className={`inline - flex items - center px - 2.5 py - 0.5 rounded - full text - xs font - medium ${getStatusColor(invoice.status || 'draft')} `}>
-                      {(invoice.status || 'draft').toUpperCase()}
-                    </span>
-                  </div>
                 </div>
               </div>
 

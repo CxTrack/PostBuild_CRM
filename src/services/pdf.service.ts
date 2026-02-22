@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Quote } from './quote.service';
 import { Invoice } from './invoice.service';
 import { formatPhoneDisplay } from '../utils/phone.utils';
+import { getTermsLabel } from '../config/paymentTerms';
 
 interface OrganizationInfo {
   name: string;
@@ -341,16 +342,6 @@ export const pdfService = {
       doc.setFont('helvetica', 'normal');
       doc.text(new Date(invoice.due_date).toLocaleDateString(), 55, yPos);
 
-      yPos += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Status:', 15, yPos);
-      doc.setFont('helvetica', 'normal');
-      const statusColor = invoice.status === 'paid' ? [34, 197, 94] :
-                         invoice.status === 'overdue' ? [239, 68, 68] : [251, 191, 36];
-      doc.setTextColor(...statusColor);
-      doc.text(invoice.status.toUpperCase(), 55, yPos);
-      doc.setTextColor(0);
-
       yPos = 45;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -463,7 +454,7 @@ export const pdfService = {
           doc.text('Payment Terms:', 15, totalsY);
           totalsY += 5;
           doc.setFont('helvetica', 'normal');
-          doc.text(invoice.payment_terms, 15, totalsY);
+          doc.text(getTermsLabel(invoice.payment_terms), 15, totalsY);
           totalsY += 10;
         }
 
@@ -503,8 +494,19 @@ export const pdfService = {
   },
 
   formatAddress(address: any): string[] {
+    if (!address) return [];
+
+    // Handle JSON string
     if (typeof address === 'string') {
-      return [address];
+      try {
+        const parsed = JSON.parse(address);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return this.formatAddress(parsed);
+        }
+      } catch {
+        // Not JSON, treat as plain string
+        return [address];
+      }
     }
 
     const lines: string[] = [];

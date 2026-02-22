@@ -328,7 +328,19 @@ export const SharedDocumentViewer = () => {
             <p className="font-bold text-gray-900">{doc.customer_name || 'Customer'}</p>
             <div className="text-sm text-gray-600 mt-1 space-y-0.5">
               {doc.customer_email && <p>{doc.customer_email}</p>}
-              {doc.customer_address && <p>{doc.customer_address}</p>}
+              {doc.customer_address && (() => {
+                const addr = typeof doc.customer_address === 'string'
+                  ? (() => { try { return JSON.parse(doc.customer_address); } catch { return doc.customer_address; } })()
+                  : doc.customer_address;
+                if (typeof addr === 'string') return <p>{addr}</p>;
+                const parts: string[] = [];
+                if (addr.street) parts.push(addr.street);
+                if (addr.street2) parts.push(addr.street2);
+                const cityLine = [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ');
+                if (cityLine) parts.push(cityLine);
+                if (addr.country) parts.push(addr.country);
+                return parts.length > 0 ? <>{parts.map((p: string, i: number) => <p key={i}>{p}</p>)}</> : null;
+              })()}
             </div>
             <div className="mt-3 text-sm text-gray-500 space-y-0.5">
               {docDate && (
