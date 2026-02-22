@@ -39,6 +39,7 @@ import { useVisibleModules } from '@/hooks/useVisibleModules';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import AIQuarterback from '@/components/dashboard/AIQuarterback';
 import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
+import { useCoPilot } from '@/contexts/CoPilotContext';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -170,6 +171,7 @@ export const DashboardPage = () => {
     const { tasks, fetchTasks } = useTaskStore();
     const { fetchPipelineStats } = useDealStore();
     const { preferences, saveQuickActionsOrder } = usePreferencesStore();
+    const { isOpen: isCoPilotOpen } = useCoPilot();
 
     // Industry-specific labels
     const crmLabels = usePageLabels('crm');
@@ -379,8 +381,8 @@ export const DashboardPage = () => {
                 </div>
             </div>
 
-            {/* Mini Stat Cards Row (6 Columns) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Mini Stat Cards Row (responsive to CoPilot panel) */}
+            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${isCoPilotOpen ? 'xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
                 <CompactStatCard
                     label={crmLabels.entityPlural}
                     value={customers.length}
