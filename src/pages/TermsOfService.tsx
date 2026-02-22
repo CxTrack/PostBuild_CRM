@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Scale, Shield, Info, Users, CreditCard, Ban, Copyright, Phone, Brain,
   Mic, Server, Database, Lock, AlertTriangle, FileWarning, Trash2, Zap,
-  Gavel, RefreshCw, ArrowLeft, ChevronDown, ExternalLink
+  Gavel, RefreshCw, ArrowLeft, ChevronDown, ExternalLink, MessageSquare, Mail
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -15,6 +15,8 @@ const TOC_ITEMS = [
   { id: 'acceptable-use', label: 'Acceptable Use', icon: Ban },
   { id: 'intellectual-property', label: 'Intellectual Property', icon: Copyright },
   { id: 'phone-numbers', label: 'Phone Numbers', icon: Phone },
+  { id: 'sms-consent', label: 'SMS Communications', icon: MessageSquare },
+  { id: 'marketing-email', label: 'Marketing Email', icon: Mail },
   { id: 'ai-disclosure', label: 'AI & Automation', icon: Brain },
   { id: 'voice-recording', label: 'Voice Recording', icon: Mic },
   { id: 'third-party', label: 'Third-Party Services', icon: Server },
@@ -231,9 +233,47 @@ export const TermsOfService: React.FC = () => {
                   <P><Strong>Telephony Use.</Strong> You agree to use telephony services in compliance with all applicable telecommunications regulations, including the Canadian Radio-television and Telecommunications Commission (CRTC) regulations, the Telephone Consumer Protection Act (TCPA), and any applicable do-not-call legislation.</P>
                 </section>
 
-                {/* 7. AI & Automation */}
+                {/* 7. SMS Communications & Consent */}
                 <section>
-                  <SectionHeader icon={Brain} title="7. AI & Automation Disclosure" id="ai-disclosure" />
+                  <SectionHeader icon={MessageSquare} title="7. SMS Communications & Consent" id="sms-consent" />
+                  <div className="bg-[#FFD700]/[0.04] rounded-xl p-5 border border-[#FFD700]/10 mb-4">
+                    <p className="text-sm text-white/60"><Strong>User Responsibility for SMS Consent.</Strong> By using CxTrack&apos;s SMS features, you (the User) confirm that you have obtained express written consent from each end-customer before sending them SMS messages through the platform. You are solely responsible for complying with all applicable SMS marketing laws, including TCPA (United States), CASL (Canada), and any other jurisdiction-specific regulations governing commercial electronic messages.</p>
+                  </div>
+                  <P><Strong>Opt-Out Rights.</Strong> Every SMS sent through CxTrack includes an opt-out instruction (&quot;Reply STOP to opt out&quot;). When an end-customer opts out:</P>
+                  <BulletList items={[
+                    'Their opt-out is recorded immediately and SMS sending to that customer is blocked.',
+                    'The CRM User who manages that customer is notified via their inbox.',
+                    'The customer\'s profile is marked as "SMS Disabled" in the CRM.',
+                    'Only a CxTrack platform Administrator can re-enable SMS for an opted-out customer.',
+                  ]} />
+                  <P><Strong>Re-Opt-In Process.</Strong> To request SMS re-enablement for an opted-out customer, the CRM User must:</P>
+                  <BulletList items={[
+                    'Submit a support ticket to CxTrack Admin requesting re-enablement.',
+                    'Provide proof that the end-customer has agreed to re-receive SMS (e.g., screenshot, signed form, or completed opt-in link).',
+                    'The end-customer must independently confirm via a verification link sent to their email.',
+                    'Admin reviews both the ticket and the customer\'s confirmation before approving.',
+                  ]} />
+                  <P><Strong>No Circumvention.</Strong> You agree not to attempt to circumvent opt-out requests by contacting opted-out customers via SMS through alternate channels, importing opted-out numbers into other systems, or any other means. Repeated violations may result in immediate account suspension.</P>
+                  <P><Strong>Indemnification for SMS Violations.</Strong> You agree to indemnify and hold CxTrack harmless from any claims, fines, or penalties arising from your failure to comply with SMS consent requirements or your violation of any end-customer&apos;s opt-out request.</P>
+                </section>
+
+                {/* 8. Marketing Email Communications */}
+                <section>
+                  <SectionHeader icon={Mail} title="8. Marketing Email Communications" id="marketing-email" />
+                  <P>CxTrack may send marketing and product-related emails to registered Users and leads who have provided their email address. By creating an account or submitting an inquiry on the CxTrack website, you consent to receiving such communications.</P>
+                  <P><Strong>Unsubscribe Rights.</Strong> All marketing emails from CxTrack include an unsubscribe link. You may opt out of marketing communications at any time by:</P>
+                  <BulletList items={[
+                    'Clicking the unsubscribe link in any marketing email.',
+                    'Visiting your email preferences page via the link in any email.',
+                    'Contacting us at privacy@cxtrack.com.',
+                  ]} />
+                  <P><Strong>Transactional Emails.</Strong> Opting out of marketing emails does not affect transactional emails, which include account verification, password resets, billing notifications, and other service-critical communications. Transactional emails cannot be unsubscribed from while your account is active.</P>
+                  <P><Strong>CAN-SPAM &amp; CASL Compliance.</Strong> All marketing emails from CxTrack comply with the CAN-SPAM Act (United States) and Canada&apos;s Anti-Spam Legislation (CASL), including identification of the sender, a valid physical address, and a functional unsubscribe mechanism honored within 10 business days.</P>
+                </section>
+
+                {/* 9. AI & Automation */}
+                <section>
+                  <SectionHeader icon={Brain} title="10. AI & Automation Disclosure" id="ai-disclosure" />
                   <P>CxTrack incorporates artificial intelligence features including:</P>
                   <BulletList items={[
                     'CoPilot AI — An AI-powered assistant that helps you manage your CRM data, answer questions, and perform actions.',

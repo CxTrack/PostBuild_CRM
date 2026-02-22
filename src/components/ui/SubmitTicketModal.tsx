@@ -26,6 +26,7 @@ const CATEGORY_OPTIONS = [
   { value: 'billing', label: 'Billing' },
   { value: 'data_request', label: 'Data Request (DSAR)' },
   { value: 'account_issue', label: 'Account Issue' },
+  { value: 'sms_reenable', label: 'SMS Re-enable Request' },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -167,7 +168,9 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
 
       const successMsg = category === 'data_request'
         ? 'Data request submitted. Processing may take up to 30 days.'
-        : 'Support ticket submitted successfully';
+        : category === 'sms_reenable'
+          ? 'SMS re-enable request submitted. Admin will review and respond.'
+          : 'Support ticket submitted successfully';
       toast.success(successMsg);
       resetForm();
       onClose();
@@ -182,9 +185,11 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
     ? 'Report a Bug'
     : category === 'data_request'
       ? 'Data Deletion / Access Request'
-      : source === 'customer_profile'
-        ? 'Submit Support Ticket'
-        : 'Submit a Support Ticket';
+      : category === 'sms_reenable'
+        ? 'Request SMS Re-enable'
+        : source === 'customer_profile'
+          ? 'Submit Support Ticket'
+          : 'Submit a Support Ticket';
 
   return (
     <Modal
@@ -214,6 +219,21 @@ export const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                 Data requests are processed within 30 days in accordance with PIPEDA, GDPR, and CCPA regulations.
                 You will receive a confirmation once your request has been processed.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* SMS Re-enable notice */}
+        {category === 'sms_reenable' && (
+          <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border-2 border-blue-200 dark:border-blue-800/20 rounded-xl">
+            <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">SMS Re-enable Requirements</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                To re-enable SMS for a customer who has opted out, you must provide proof that the customer has agreed to receive SMS again.
+                Acceptable proof includes: a screenshot of written consent, a signed form, or a confirmed re-opt-in link sent to the customer's email.
+                Admin will also require the customer to confirm via email before approving.
               </p>
             </div>
           </div>

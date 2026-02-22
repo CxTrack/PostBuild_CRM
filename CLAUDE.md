@@ -31,75 +31,27 @@ URL:        crm.easyaicrm.com
 ## Rules
 1. **NO LYING** - Do not claim you can't do something if you can
 2. **ONLY change what is explicitly requested** - nothing else
-3. **USE the Supabase credentials below** - never ask user to run queries
+3. **USE Supabase MCP** for all DB queries - never ask user to run queries manually
 4. **VERIFY directory** before any file operation
+5. **Use MCP/CLI first** - never ask user to do something manually when tools are available
+6. **No em dashes** in any copywriting
 
 ---
 
 ## Supabase Database
 
-**Project:** zkpfzrbbupgiqkzqydji
-**URL:** https://zkpfzrbbupgiqkzqydji.supabase.co
+**Project:** `zkpfzrbbupgiqkzqydji`
+**URL:** `https://zkpfzrbbupgiqkzqydji.supabase.co`
 **Dashboard:** https://supabase.com/dashboard/project/zkpfzrbbupgiqkzqydji
 
-### Service Role Key (USE THIS - DO NOT ASK USER)
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ
-```
-
-### YOU CAN DELETE AUTH USERS - USE THIS API
-
-**DELETE a user from auth.users (YES, YOU CAN DO THIS):**
-```bash
-curl -X DELETE "https://zkpfzrbbupgiqkzqydji.supabase.co/auth/v1/admin/users/USER_UUID_HERE" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
-```
-
-**LIST all auth users:**
-```bash
-curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/auth/v1/admin/users" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
-```
-
-### REST API Query Examples
-
-**Get all organization_members:**
-```bash
-curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
-```
-
-**Get all organizations:**
-```bash
-curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organizations?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
-```
-
-**Get user_profiles:**
-```bash
-curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/user_profiles?select=*" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ"
-```
-
-**INSERT organization_member:**
-```bash
-curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members" -X POST -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcGZ6cmJidXBnaXFrenF5ZGppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIyNjU2NiwiZXhwIjoyMDg1ODAyNTY2fQ.7GFcwHDR6zAZBnh74vVJke40unovy3xE0Wygbwh79iQ" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"user_id": "UUID", "organization_id": "UUID", "role": "owner"}'
-```
-
-### API Capabilities Summary
-| Action | API | Endpoint | CAN DO? |
-|--------|-----|----------|---------|
-| List auth users | Auth Admin | `/auth/v1/admin/users` | **YES** |
-| Delete auth user | Auth Admin | `/auth/v1/admin/users/{id}` | **YES** |
-| Query tables | REST | `/rest/v1/{table}` | **YES** |
-| Insert records | REST | `/rest/v1/{table}` | **YES** |
-| Update records | REST | `/rest/v1/{table}?id=eq.{id}` | **YES** |
-| Delete records | REST | `/rest/v1/{table}?id=eq.{id}` | **YES** |
+> ⚠️ Service role key is in Netlify env vars and `.env` only. NEVER hardcode it here.
+> Use the Supabase MCP server for authenticated DB access.
 
 ### Key Tables
 | Table | Purpose |
 |-------|---------|
-| `auth.users` | User accounts - USE Auth Admin API above |
-| `user_profiles` | Extended user info (REST API accessible) |
+| `auth.users` | User accounts — use Auth Admin API via MCP |
+| `user_profiles` | Extended user info |
 | `organizations` | Companies, industry_template, subscription_tier |
 | `organization_members` | Links users to orgs (user_id, organization_id, role) |
 | `team_invitations` | Token-based team invitations (7-day expiry) |
@@ -107,34 +59,13 @@ curl -s "https://zkpfzrbbupgiqkzqydji.supabase.co/rest/v1/organization_members" 
 ### Supabase Edge Function Secrets
 | Secret | Purpose |
 |--------|---------|
-| `RESEND_API_KEY` | Resend email API (send-invitation edge function) |
+| `RESEND_API_KEY` | Resend email API |
 | `OPENROUTER_API_KEY` | AI models (copilot-chat v12, receipt-scan) |
-| `RETELL_API_KEY` | Voice agent (provision, list-voices, update, manage-kb, webhook) |
-| `GOOGLE_CLOUD_VISION_API_KEY` | Business card OCR (ocr-extract) |
+| `RETELL_API_KEY` | Voice agent |
+| `GOOGLE_CLOUD_VISION_API_KEY` | Business card OCR |
 | `TWILIO_MASTER_ACCOUNT_SID` | Phone numbers + SMS |
 | `TWILIO_MASTER_AUTH_TOKEN` | Twilio auth |
-| `TWILIO_SIP_TRUNK_*` | SIP trunk (SID, TERMINATION_URI, AUTH_USERNAME, AUTH_PASSWORD) |
-
----
-
-## Two Production Repositories
-
-### CRM Application (THIS REPO)
-| Property | Value |
-|----------|-------|
-| Path | `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
-| GitHub | `https://github.com/CxTrack/PostBuild_CRM.git` |
-| URL | crm.easyaicrm.com |
-| Branch | CRM-Template-Configuration |
-| Framework | React 18 + Vite |
-
-### Marketing Website
-| Property | Value |
-|----------|-------|
-| Path | `c:\AntiGravity\CxTrack_Manik_Website_Production_02` |
-| GitHub | `https://github.com/CxTrack/CxTrack_Official_Website.git` |
-| URL | easyaicrm.com |
-| Branch | main |
+| `TWILIO_SIP_TRUNK_*` | SIP trunk credentials |
 
 ---
 
@@ -146,17 +77,9 @@ cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
 npm run build && git add . && git commit -m "Description" && git push origin CRM-Template-Configuration
 ```
 
-**Marketing Website:**
-```bash
-cd "c:\AntiGravity\CxTrack_Manik_Website_Production_02"
-npm run build && git add . && git commit -m "Description" && git push origin main
-```
-
 ---
 
 ## Industry Template System
-
-CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 
 **Config:** `src/config/modules.config.ts`
 **Hook:** `src/hooks/useIndustryLabel.ts` and `src/hooks/usePageLabels.ts`
@@ -179,25 +102,47 @@ CxTrack is multi-industry. ALL user-facing text must use dynamic labels.
 
 ---
 
+## Critical Patterns
+
+### Supabase AbortController Issue
+Supabase JS v2.57.4 kills in-flight requests during auth transitions. Use direct `fetch()` instead of `supabase.from()` or `supabase.functions.invoke()`. Read tokens from localStorage `sb-{ref}-auth-token`.
+
+### Theme (Midnight)
+- Root element: `class="dark midnight"`
+- Use `gray-*` NOT `slate-*` — midnight.css only intercepts `gray-*`
+- `dark:bg-gray-800` = glass effect, `dark:bg-gray-900` = void black
+- JS check: `theme === 'dark' || theme === 'midnight'`
+
+### Bug Learnings
+- **Vite TDZ**: Variables in useEffect/useCallback dependency arrays must be defined ABOVE the hook
+- **Edge 401s**: Set `verify_jwt: false` + auth via `getUser()`; read tokens from localStorage
+- **No hardcoded Supabase refs**: Derive from `SUPABASE_URL.split('//')[1].split('.')[0]`
+
+### User Preferences Store
+- Table: `user_preferences (user_id, organization_id, preference_type, preference_value JSONB)`
+- Types: `sidebar_order`, `dashboard_layout`, `quick_actions_order`, `mobile_nav_items`
+
+### Drag-and-Drop Sidebar
+- `@dnd-kit` libraries; `DashboardLayout.tsx` + `SortableNavItem`
+- Home pinned first, Settings last; order saved to `user_preferences`
+- Desktop only (8px activation distance)
+
+---
+
 ## Common Issues
 
 ### Pages stuck on loading / Back button causes infinite loading
 
 **Root Cause:** Race condition between page mounting and organization store hydration.
 
-The `organizationStore` uses Zustand's `persist` middleware which rehydrates asynchronously from localStorage. Pages that fetch data need to wait for `currentOrganization` to be available.
-
 **The Pattern That Works:**
 ```typescript
-// 1. Get currentOrganization from the store
 const { currentOrganization } = useOrganizationStore();
 
-// 2. Add currentOrganization?.id to useEffect dependencies
 useEffect(() => {
-  fetchData();  // Let fetchData handle the missing org case internally
-}, [currentOrganization?.id]);  // Re-runs when org becomes available
+  fetchData();
+}, [currentOrganization?.id]);
 
-// 3. Show loading state while waiting for organization
 if (!currentOrganization || (loading && data.length === 0)) {
   return <LoadingSpinner />;
 }
@@ -205,41 +150,22 @@ if (!currentOrganization || (loading && data.length === 0)) {
 
 **What NOT to do:**
 ```typescript
-// DON'T use early return guard in useEffect - it prevents loading state
+// DON'T use early return guard in useEffect
 useEffect(() => {
   if (!currentOrganization?.id) return;  // BAD - breaks loading UI
   fetchData();
 }, [currentOrganization?.id]);
-
-// DON'T use empty dependency array - won't re-fetch when org loads
-useEffect(() => {
-  fetchData();
-}, []);  // BAD - only runs once on mount
 ```
-
-**Key Files:**
-- `src/stores/organizationStore.ts` - Zustand store with persist middleware
-- `src/layouts/DashboardLayout.tsx` - Fetches organizations using `getState()` to avoid loops
-- Individual pages (`Calls.tsx`, `CRM.tsx`, etc.) - Must wait for org before showing content
-
-**Diagnosis:** Check browser console for `[OrgStore]` and `[DashboardLayout]` logs. If org is being set but page still loading, the page component isn't properly waiting for org.
-
----
 
 ### "No Organization Found"
 1. User exists in `auth.users` but NOT in `organization_members`
-2. Query `organization_members` to verify
+2. Query `organization_members` via Supabase MCP to verify
 3. INSERT the missing record linking user to org
 
 ### Login not working
 1. Clear storage: `localStorage.clear(); sessionStorage.clear(); location.reload();`
 2. Check browser console for `[Auth]` messages
-3. Check AuthContext.tsx
-
-### Navigation redirects to dashboard
-1. Check route exists in `src/App.tsx`
-2. Check component is imported
-3. Fallback `<Route path="*">` catches unmatched routes
+3. Check `AuthContext.tsx`
 
 ### Build failing
 1. Run `npm run build` locally
@@ -248,109 +174,21 @@ useEffect(() => {
 
 ---
 
-## RESOLVED ERRORS (Summary)
+## Historical Mistakes (DO NOT REPEAT)
 
-> Full details in memory/debugging.md. All resolved 2026-02-13.
-
-| Error | Root Cause | Fix |
-|-------|-----------|-----|
-| AbortError during onboarding | Fragile 4-step chain + RLS blocking | Single atomic `supabase.rpc('create_organization_with_owner')` |
-| 403 on organizations table | Chicken-and-egg RLS — new users can't INSERT | `SECURITY DEFINER` RPC bypasses RLS atomically |
-| Auth session not establishing | `handle_new_user()` trigger missing records | Trigger now creates `public.users` + `user_profiles` |
-
-### Key Migrations Applied (2026-02-13)
-- RLS enabled on all unprotected tables, dev bypass policies removed
-- Stripe key columns dropped from organizations
-- `create_organization_with_owner()` RPC + fixed RLS policies
-- `handle_new_user()` trigger updated
-
-### Recent Fixes (2026-02-14 to 2026-02-16)
-| Commit | Fix |
-|--------|-----|
-| `46b120a` | CoPilot 401 — redeployed with `verify_jwt: false`, localStorage token reading |
-| `41f11f8` | TDZ crash — moved `visibleNavItems` above `useCallback` dependency |
-| `dc9f311` | Sidebar DnD snap-back — optimistic Zustand update before async DB save |
-| `eb0e146` | IP-based country detection + trial fallback to `created_at` |
-| `656d04c` | Admin Command Center — 16-tab dashboard with real analytics, admin RPCs, API monitoring |
-| `7dd27f0` | Action system in Sparky AI chat + copilot-chat v12 with admin context |
-
-### Cross-Industry Review Fixes (2026-02-16)
-| Change | Details |
-|--------|---------|
-| Midnight theme: `slate-*` → `gray-*` | 77 files, 459 occurrences — midnight.css only intercepts `gray-*` classes |
-| `software_development` → `agency` | Renamed template key in config, DB, onboarding, marketing site. No existing orgs affected |
-| `calls` module → ALL 11 industries | Was missing from tax_accounting, distribution_logistics, software_development (now agency) |
-| Receipt scanning on Invoices page | `ExpenseModal` now accessible from Invoices (all 11 industries), not just Financials (3 industries) |
-| Voice agent industry guard | `VoiceAgentSetup.tsx` checks `INDUSTRY_TEMPLATES` for `calls` — shows "Not Available" if missing |
-| Lender store industry guard | `lenderStore.fetchLenders()` returns early if `industry_template !== 'mortgage_broker'` |
-
-### Admin Command Center (2026-02-16)
-- **Route**: `/admin` — protected by `RequireAdmin` component
-- **3 Admin Users**: `abdullah.nassar@cxtrack.com`, `cto@cxtrack.com`, `info@cxtrack.com` (in `admin_settings` table)
-- **Sidebar**: DashboardLayout shows Shield icon + "SUPER ADMIN" label → click navigates to `/admin`
-- **16 tabs** in 4 groups: Overview, Analytics, Operations, System
-- **adminStore.ts**: Zustand store using direct `fetch()` for admin RPC calls
-- **9 admin RPC functions**: `admin_get_platform_kpis()`, `admin_get_user_growth()`, `admin_get_org_breakdown()`, `admin_get_module_usage()`, `admin_get_api_usage_summary()`, `admin_get_priority_alerts()`, `admin_get_ai_analytics()`, `admin_get_voice_analytics()`, `admin_get_financial_summary()`, `admin_get_activity_log()`
-- **api_usage_log table**: All 10 edge functions instrumented with `logApiCall()` helper
-- **ReportingEngine**: 7 report types with CSV export + print-to-PDF
-- **MCPConnectionPanel**: Claude MCP connection reference for admin power users
-- **CoPilot admin context**: `isAdmin: true` flag → verified server-side → admin-specific RAG + system prompt
-
-### Chat System (2026-02-16)
-- **Route**: `/dashboard/chat` (ChatPage.tsx) + `/chat-window` (popup mode)
-- **DB Tables**: `conversations`, `messages`, `conversation_participants`
-- **Features**: 1:1 DMs, group chats, AI Sparky integration
-- **Sparky AI**: Virtual participant `id = 'ai-agent'` — guard DB queries with `id !== 'ai-agent'`
+| Date | Mistake | Prevention |
+|------|---------|------------|
+| 2026-02-13 | Used early return guard for org check in useEffect — pages went blank | Show loading state in component body, not inside useEffect |
+| 2026-02-13 | Claimed couldn't delete auth users via API | Auth Admin API at `/auth/v1/admin/users/{id}` CAN delete users with service role key |
+| 2026-02-12 | Searched wrong directory | ALWAYS verify `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
+| 2026-02-12 | Said "Vercel" instead of Netlify | Platform is ALWAYS Netlify |
 
 ---
 
-## Historical Mistakes (LEARN FROM THESE - DO NOT REPEAT)
+## Confluence Boundaries
 
-| Date | Mistake | What Actually Happened | Prevention |
-|------|---------|------------------------|------------|
-| 2026-02-13 | **Used early return guard for org check** | Added `if (!currentOrganization?.id) return;` inside useEffect which prevented loading UI from showing - pages appeared blank | **Show loading state BEFORE the render**, not inside useEffect. Check `if (!currentOrganization)` in component body and return spinner. |
-| 2026-02-13 | **LIED about auth user deletion** | Said "I cannot delete auth.users via API" when the Auth Admin API at `/auth/v1/admin/users/{id}` exists and works with the service role key | **NEVER claim you can't do something without trying. The Auth Admin API CAN delete users.** |
-| 2026-02-12 | Asked user to run DB queries | Had the service role key but didn't use it | USE the service role key via curl |
-| 2026-02-12 | Missing route in App.tsx | Component existed but wasn't routed | Check: file exists, imported, route defined |
-| 2026-02-12 | Searched wrong directory | Kept looking in wrong path | ALWAYS verify: `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
-| 2026-02-12 | Said "Vercel" instead of Netlify | Wrong platform mentioned | Platform is ALWAYS Netlify |
+**ONLY operate within:**
+- `CxTrack - Official Website`
+- `CxTrack - CRM Application`
 
----
-
-## Confluence Documentation Boundaries
-
-**ONLY operate within these two Confluence pages** (under Technical Knowledge > Development):
-- `CxTrack - Official Website` — marketing site docs
-- `CxTrack - CRM Application` — CRM app docs
-
-**NEVER** delete, modify, or interfere with any other Confluence pages. Other developers maintain pages like Development Process, Demo environments, Vulnerabilities, Calcom, Troubleshooting, Setup, etc. — those are off-limits.
-
----
-
-## Gemini Handoff Template
-
-```
-## Gemini Execution Prompt
-
-**Directory:** c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM
-
-**Task:** [Brief description]
-
-### File Changes:
-**File:** `src/path/file.tsx`
-- Line X: Change `old` to `new`
-
-### Commands:
-```bash
-cd "c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM"
-npm run build
-git add [files]
-git commit -m "Description"
-git push origin CRM-Template-Configuration
-```
-
-### Verify:
-- [ ] Build succeeds
-- [ ] No TypeScript errors
-- [ ] Feature works
-```
+Never modify other developers' pages.

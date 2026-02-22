@@ -56,6 +56,8 @@ import SuccessPage from './pages/onboarding/SuccessPage';
 import CustomConfigPage from './pages/onboarding/CustomConfigPage';
 import { BookingPage } from './pages/public/BookingPage';
 import { SharedDocumentViewer } from './pages/public/SharedDocumentViewer';
+import { SmsOptOut } from './pages/public/SmsOptOut';
+import { SmsReoptIn } from './pages/public/SmsReoptIn';
 import { AcceptInvite } from './pages/AcceptInvite';
 
 // Legal & Auth Pages
@@ -141,6 +143,9 @@ export default function App() {
           <Route path="/book/:slug" element={<BookingPage />} />
           <Route path="/share/:type/:token" element={<SharedDocumentViewer />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
+          {/* SMS Compliance - Public Pages (no auth required) */}
+          <Route path="/sms-opt-out" element={<SmsOptOut />} />
+          <Route path="/sms-reopt-in/:token" element={<SmsReoptIn />} />
 
           {/* Dashboard Layout & Protected Routes - Require Authentication */}
           <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>

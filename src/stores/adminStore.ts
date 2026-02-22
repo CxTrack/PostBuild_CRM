@@ -262,6 +262,10 @@ interface AdminState {
   phoneLifecycle: PhoneOrphanData | null;
   phoneAssignmentHistory: PhoneAssignmentEvent[];
   phoneCostSummary: PhoneCostSummary | null;
+  smsConsentList: any[];
+  smsAuditLog: any[];
+  adminNotifications: any[];
+  marketingSubscriptions: any[];
 
   // UI State
   loading: Record<string, boolean>;
@@ -292,6 +296,13 @@ interface AdminState {
   releaseNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   poolNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   reassignNumber: (phoneNumberId: string, targetOrgId: string) => Promise<{ success: boolean; error?: string }>;
+  fetchSmsConsentList: () => Promise<void>;
+  fetchSmsAuditLog: (consentId: string) => Promise<void>;
+  adminReenableSms: (consentId: string) => Promise<void>;
+  adminDenySmsReopt: (consentId: string) => Promise<void>;
+  fetchAdminNotifications: (type?: string) => Promise<void>;
+  markAdminNotificationRead: (id: string) => Promise<void>;
+  fetchMarketingSubscriptions: () => Promise<void>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -314,6 +325,10 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   phoneLifecycle: null,
   phoneAssignmentHistory: [],
   phoneCostSummary: null,
+  smsConsentList: [],
+  smsAuditLog: [],
+  adminNotifications: [],
+  marketingSubscriptions: [],
 
   loading: {},
   errors: {},
@@ -614,6 +629,186 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       return data;
     } catch (e: any) {
       return { success: false, error: e.message };
+    }
+  },
+
+  fetchSmsConsentList: async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    set((s) => ({ loading: { ...s.loading, smsConsent: true }, errors: { ...s.errors, smsConsent: null } }));
+    try {
+      // Join sms_consent with customer and org names via RPC or direct query
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/sms_consent?select=*,customers(first_name,last_name,email),organizations(name)&status=neq.opted_in&order=updated_at.desc&limit=200`,
+        { headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` } }
+      );
+      const raw = res.ok ? await res.json() : [];
+      const mapped = raw.map((r: any) => ({
+        ...r,
+        customer_name: [r.customers?.first_name, r.customers?.last_name].filter(Boolean).join(' ') || 'Unknown',
+        customer_email: r.customers?.email || '',
+        organization_name: r.organizations?.name || 'Unknown',
+      }));
+      set((s) => ({ smsConsentList: mapped, loading: { ...s.loading, smsConsent: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, smsConsent: false }, errors: { ...s.errors, smsConsent: e.message } }));
+    }
+  },
+
+  fetchSmsAuditLog: async (consentId: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/sms_consent_audit_log?sms_consent_id=eq.${consentId}&order=created_at.desc`,
+        { headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` } }
+      );
+      const data = res.ok ? await res.json() : [];
+      set((s) => ({ smsAuditLog: data }));
+    } catch { /* ignore */ }
+  },
+
+  adminReenableSms: async (consentId: string) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const now = new Date().toISOString();
+    // Get current user
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` },
+    });
+    const userData = userRes.ok ? await userRes.json() : {};
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/sms_consent?id=eq.${consentId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        status: 'opted_in',
+        admin_reenabled_by: userData.id || null,
+        admin_reenabled_at: now,
+        reopt_token: null,
+        updated_at: now,
+      }),
+    });
+
+    if (!res.ok) throw new Error('Failed to re-enable SMS');
+
+    // Audit log
+    await fetch(`${supabaseUrl}/rest/v1/sms_consent_audit_log`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sms_consent_id: consentId,
+        action: 'admin_reenabled',
+        performed_by: userData.id || 'admin',
+        metadata: { admin_email: userData.email },
+      }),
+    });
+
+    await get().fetchSmsConsentList();
+  },
+
+  adminDenySmsReopt: async (consentId: string) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const now = new Date().toISOString();
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` },
+    });
+    const userData = userRes.ok ? await userRes.json() : {};
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/sms_consent?id=eq.${consentId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        status: 'opted_out',
+        reopt_token: null,
+        reopt_completed_at: null,
+        updated_at: now,
+      }),
+    });
+
+    if (!res.ok) throw new Error('Failed to deny re-opt-in');
+
+    // Audit log
+    await fetch(`${supabaseUrl}/rest/v1/sms_consent_audit_log`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sms_consent_id: consentId,
+        action: 'admin_denied',
+        performed_by: userData.id || 'admin',
+        metadata: { admin_email: userData.email },
+      }),
+    });
+
+    await get().fetchSmsConsentList();
+  },
+
+  fetchAdminNotifications: async (type?: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      let url = `${supabaseUrl}/rest/v1/admin_notifications?order=created_at.desc&limit=100`;
+      if (type) url += `&type=eq.${type}`;
+      const res = await fetch(url, {
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` },
+      });
+      const data = res.ok ? await res.json() : [];
+      set((s) => ({ adminNotifications: data }));
+    } catch { /* ignore */ }
+  },
+
+  markAdminNotificationRead: async (id: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+    await fetch(`${supabaseUrl}/rest/v1/admin_notifications?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ is_read: true }),
+    });
+    set((s) => ({
+      adminNotifications: s.adminNotifications.map((n) => n.id === id ? { ...n, is_read: true } : n),
+    }));
+  },
+
+  fetchMarketingSubscriptions: async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    set((s) => ({ loading: { ...s.loading, marketingSubs: true } }));
+    try {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/marketing_email_subscriptions?order=created_at.desc&limit=500`,
+        { headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${token}` } }
+      );
+      const data = res.ok ? await res.json() : [];
+      set((s) => ({ marketingSubscriptions: data, loading: { ...s.loading, marketingSubs: false } }));
+    } catch {
+      set((s) => ({ loading: { ...s.loading, marketingSubs: false } }));
     }
   },
 

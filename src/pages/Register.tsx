@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Loader2, Sun, Moon, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,12 +16,18 @@ export const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [smsConsent, setSmsConsent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password.length < 8) {
       toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    if (!smsConsent) {
+      toast.error('You must agree to the SMS communications policy to continue');
       return;
     }
 
@@ -219,9 +225,30 @@ export const Register: React.FC = () => {
               </div>
             </div>
 
+            {/* SMS Consent Checkbox */}
+            <div className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl">
+              <input
+                type="checkbox"
+                id="sms-consent"
+                checked={smsConsent}
+                onChange={(e) => setSmsConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[#FFD700] shrink-0 cursor-pointer"
+              />
+              <label htmlFor="sms-consent" className="text-xs text-gray-500 dark:text-white/40 leading-relaxed cursor-pointer">
+                <span className="flex items-center gap-1.5 text-gray-700 dark:text-white/70 font-medium mb-1">
+                  <MessageSquare size={13} className="text-[#FFD700]" />
+                  SMS Communications Agreement
+                </span>
+                I understand that my business may send SMS messages to customers through CxTrack, and I agree to obtain express written consent from each customer before sending them SMS. I understand that customers have the right to opt out at any time, and that I must honor all opt-out requests immediately. See our{' '}
+                <Link to="/terms#sms-consent" className="text-[#FFD700]/70 hover:text-[#FFD700] underline underline-offset-2">
+                  SMS Policy
+                </Link>.
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !smsConsent}
               className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-lg dark:shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
             >
               {loading ? (

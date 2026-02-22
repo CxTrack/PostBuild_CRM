@@ -17,7 +17,6 @@ import {
   X,
   Moon,
   Sun,
-  Bell,
   Package,
   TrendingUp,
   Shield,
@@ -60,6 +59,7 @@ import CoPilotPanel from '../components/copilot/CoPilotPanel';
 import CoPilotButton from '../components/copilot/CoPilotButton';
 import { useImpersonationStore } from '../stores/impersonationStore';
 import { ImpersonationBanner } from '../components/admin/ImpersonationBanner';
+import { NotificationBell } from '../components/ui/NotificationBell';
 
 
 
@@ -669,10 +669,7 @@ export const DashboardLayout = () => {
             <Link to="/dashboard/calendar" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
               <Calendar size={18} />
             </Link>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative text-gray-500 dark:text-gray-400">
-              <Bell size={18} />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-            </button>
+            <NotificationBell />
             <button
               onClick={toggleTheme}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400"

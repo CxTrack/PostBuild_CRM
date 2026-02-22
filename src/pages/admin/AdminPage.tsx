@@ -5,7 +5,7 @@ import {
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug
+  FileBarChart, Plug, Mail
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -30,6 +30,8 @@ import { BroadcastPanel } from '../../components/admin/BroadcastPanel';
 import { ReportingEngine } from '../../components/admin/ReportingEngine';
 import { MCPConnectionPanel } from '../../components/admin/MCPConnectionPanel';
 import { PhoneLifecycleTab } from './PhoneLifecycleTab';
+import { SmsComplianceTab } from '../../components/admin/SmsComplianceTab';
+import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
 
 interface TabItem {
   id: string;
@@ -67,6 +69,8 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'plans', label: 'Subscription Plans', icon: DollarSign, component: PlansTab },
       { id: 'phone-lifecycle', label: 'Phone Numbers', icon: Phone, component: PhoneLifecycleTab },
       { id: 'support', label: 'Support Tickets', icon: MessageSquare, component: SupportTab },
+      { id: 'sms-compliance', label: 'SMS Compliance', icon: MessageSquare, component: SmsComplianceTab },
+      { id: 'marketing-emails', label: 'Marketing Emails', icon: Mail, component: MarketingEmailsTab },
       { id: 'reports', label: 'Reports', icon: FileBarChart, component: ReportingEngine },
     ],
   },

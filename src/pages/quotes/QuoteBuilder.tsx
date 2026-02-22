@@ -591,11 +591,11 @@ export default function QuoteBuilder() {
                 <select
                   value={formData.customer_id}
                   onChange={(e) => handleCustomerChange(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                 >
-                  <option value="" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{customerFieldLabels.customerPlaceholder}</option>
+                  <option value="">{customerFieldLabels.customerPlaceholder}</option>
                   {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    <option key={customer.id} value={customer.id}>
                       {getCustomerFullName(customer)}
                     </option>
                   ))}
@@ -691,7 +691,7 @@ export default function QuoteBuilder() {
                       <select
                         value={propertyFields.property_type || ''}
                         onChange={(e) => updatePropertyField('property_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                       >
                         <option value="">Select...</option>
                         <option value="single_family">Single Family</option>
@@ -810,7 +810,7 @@ export default function QuoteBuilder() {
                       <select
                         value={propertyFields.listing_type || ''}
                         onChange={(e) => updatePropertyField('listing_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                       >
                         <option value="">Select...</option>
                         <option value="exclusive">Exclusive Right to Sell</option>
@@ -1185,7 +1185,7 @@ export default function QuoteBuilder() {
                         const selectedKey = e.target.value;
                         setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
                       }}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                     >
                       <option value="">Select payment terms...</option>
                       {PAYMENT_TERMS_OPTIONS.map(option => (

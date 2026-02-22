@@ -37,6 +37,8 @@ import { useVisibleModules } from '@/hooks/useVisibleModules';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
+import { SmsConsentBadge } from '@/components/customer/SmsConsentBadge';
+import { useSmsConsentStore } from '@/stores/smsConsentStore';
 
 type TabType = 'overview' | 'communications' | 'documents' | 'tasks' | 'activity';
 
@@ -65,6 +67,8 @@ export const CustomerProfile: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { fetchTasks } = useTaskStore();
+  const { currentOrganization } = useOrganizationStore();
+  const { consentCache, fetchConsent } = useSmsConsentStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -88,6 +92,12 @@ export const CustomerProfile: React.FC = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (id && currentOrganization?.id) {
+      fetchConsent(id, currentOrganization.id);
+    }
+  }, [id, currentOrganization?.id]);
+
   if (loading || !currentCustomer) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -98,6 +108,8 @@ export const CustomerProfile: React.FC = () => {
 
   const customerQuotes = quotes.filter((q: Quote) => q.customer_id === id);
   const customerInvoices = invoices.filter((inv: Invoice) => inv.customer_id === id);
+  const smsConsentKey = currentOrganization?.id ? `${id}:${currentOrganization.id}` : '';
+  const smsOptedOut = smsConsentKey ? consentCache[smsConsentKey]?.status === 'opted_out' : false;
   const totalValue = customerInvoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
   const pendingInvoices = customerInvoices.filter((inv: Invoice) => inv.status !== 'paid').reduce((sum: number, inv: Invoice) => sum + inv.amount_due, 0);
 
@@ -191,9 +203,10 @@ export const CustomerProfile: React.FC = () => {
               <div className="flex items-center space-x-2">
                 {currentCustomer.phone && (
                   <button
-                    onClick={() => setShowSMSModal(true)}
-                    className="p-2 text-gray-500 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors"
-                    title="Send SMS"
+                    onClick={() => !smsOptedOut && setShowSMSModal(true)}
+                    disabled={smsOptedOut}
+                    className={`p-2 rounded-lg transition-colors ${smsOptedOut ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400'}`}
+                    title={smsOptedOut ? 'SMS disabled - customer has opted out' : 'Send SMS'}
                   >
                     <MessageSquare size={18} />
                   </button>
@@ -279,6 +292,8 @@ export const CustomerProfile: React.FC = () => {
             onSendSMS={() => setShowSMSModal(true)}
             onSendEmail={() => setShowEmailModal(true)}
             summaryRefreshTrigger={summaryRefreshTrigger}
+            smsOptedOut={smsOptedOut}
+            organizationId={currentOrganization?.id}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
@@ -392,6 +407,8 @@ function OverviewTab({
   onSendSMS,
   onSendEmail,
   summaryRefreshTrigger,
+  smsOptedOut = false,
+  organizationId,
 }: {
   customer: any;
   quotes: any[];
@@ -414,6 +431,8 @@ function OverviewTab({
   onSendSMS: () => void;
   onSendEmail: () => void;
   summaryRefreshTrigger: number;
+  smsOptedOut?: boolean;
+  organizationId?: string;
 }) {
   const navigate = useNavigate();
   const { currentOrganization, currentMembership } = useOrganizationStore();
@@ -503,6 +522,16 @@ function OverviewTab({
             </div>
           </div>
         </div>
+
+        {/* SMS Consent Status */}
+        {customer.phone && organizationId && (
+          <SmsConsentBadge
+            customerId={customer.id}
+            organizationId={organizationId}
+            customerName={customer.name || customer.email || ''}
+            customerEmail={customer.email}
+          />
+        )}
 
         {/* AI Customer Summary */}
         <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
@@ -720,11 +749,14 @@ function OverviewTab({
             {/* Send SMS — all industries */}
             {customer.phone && (
               <button
-                onClick={onSendSMS}
-                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+                onClick={!smsOptedOut ? onSendSMS : undefined}
+                disabled={smsOptedOut}
+                title={smsOptedOut ? 'SMS disabled - customer has opted out' : undefined}
+                className={`w-full flex items-center px-4 py-2 rounded-lg transition-colors text-left ${smsOptedOut ? 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-50' : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
               >
-                <MessageSquare size={16} className="mr-3 text-green-600 dark:text-green-400" />
+                <MessageSquare size={16} className={`mr-3 ${smsOptedOut ? 'text-gray-400 dark:text-gray-600' : 'text-green-600 dark:text-green-400'}`} />
                 <span className="text-sm text-gray-900 dark:text-white">Send SMS</span>
+                {smsOptedOut && <span className="ml-auto text-xs text-red-500 dark:text-red-400">Opted out</span>}
               </button>
             )}
 
