@@ -508,42 +508,73 @@ export const OrgDetailView = () => {
               <Send className="w-4 h-4 text-purple-500" />
               Reach Out
             </h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setCommMode('notification')}
-                disabled={!owner?.user_id}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg bg-purple-50 dark:bg-purple-900/10 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 border border-purple-200 dark:border-purple-800/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Bell className="w-4 h-4" />
-                Send In-App Notification
-              </button>
-              <button
-                onClick={() => setCommMode('email')}
-                disabled={!ownerEmail}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Mail className="w-4 h-4" />
-                <div className="min-w-0">
-                  <span>Send Email</span>
-                  {ownerEmail && <p className="text-[10px] opacity-70 truncate">{ownerEmail}</p>}
-                </div>
-              </button>
-              <button
-                onClick={() => setCommMode('sms')}
-                disabled={!ownerPhone}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 border border-green-200 dark:border-green-800/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Phone className="w-4 h-4" />
-                <div className="min-w-0">
-                  <span>Send SMS</span>
-                  {ownerPhone ? (
-                    <p className="text-[10px] opacity-70">{ownerPhone}</p>
-                  ) : (
-                    <p className="text-[10px] opacity-70">No phone on file</p>
-                  )}
-                </div>
-              </button>
-            </div>
+            {!owner?.user_id && !ownerEmail && !ownerPhone ? (
+              <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/30">
+                <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  No contact info available
+                </p>
+                <p className="text-[10px] text-yellow-600 dark:text-yellow-500 mt-1 ml-5">
+                  This organization has no owner, members, or contact details on file.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button
+                  onClick={() => setCommMode('notification')}
+                  disabled={!owner?.user_id}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg border transition-colors ${
+                    owner?.user_id
+                      ? 'bg-purple-50 dark:bg-purple-900/10 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 border-purple-200 dark:border-purple-800/30 cursor-pointer'
+                      : 'bg-gray-50 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                  <div className="min-w-0">
+                    <span>Send In-App Notification</span>
+                    {!owner?.user_id && <p className="text-[10px] opacity-70">No owner found</p>}
+                  </div>
+                </button>
+                <button
+                  onClick={() => setCommMode('email')}
+                  disabled={!ownerEmail}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg border transition-colors ${
+                    ownerEmail
+                      ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-800/30 cursor-pointer'
+                      : 'bg-gray-50 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  <Mail className="w-4 h-4" />
+                  <div className="min-w-0">
+                    <span>Send Email</span>
+                    {ownerEmail ? (
+                      <p className="text-[10px] opacity-70 truncate">{ownerEmail}</p>
+                    ) : (
+                      <p className="text-[10px] opacity-70">No email on file</p>
+                    )}
+                  </div>
+                </button>
+                <button
+                  onClick={() => setCommMode('sms')}
+                  disabled={!ownerPhone}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left rounded-lg border transition-colors ${
+                    ownerPhone
+                      ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 border-green-200 dark:border-green-800/30 cursor-pointer'
+                      : 'bg-gray-50 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  <Phone className="w-4 h-4" />
+                  <div className="min-w-0">
+                    <span>Send SMS</span>
+                    {ownerPhone ? (
+                      <p className="text-[10px] opacity-70">{ownerPhone}</p>
+                    ) : (
+                      <p className="text-[10px] opacity-70">No phone on file</p>
+                    )}
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
