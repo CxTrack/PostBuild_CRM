@@ -120,6 +120,31 @@ export const quoteService = {
     userId: string,
     quoteData: QuoteFormData
   ): Promise<Quote> {
+    // Retry up to 3 times in case of number conflict (safety net for race conditions)
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        return await this._insertQuote(organizationId, userId, quoteData);
+      } catch (err: any) {
+        lastError = err;
+        const msg = (err?.message || err?.code || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('23505') || err?.code === '23505') {
+          // Number conflict -- retry with a fresh number
+          continue;
+        }
+        throw err; // Non-conflict error, don't retry
+      }
+    }
+    throw lastError;
+  },
+
+  async _insertQuote(
+    organizationId: string,
+    userId: string,
+    quoteData: QuoteFormData
+  ): Promise<Quote> {
     const quoteNumber = await this.generateQuoteNumber(organizationId);
 
     const quoteInsertData: any = {

@@ -405,6 +405,7 @@ export default function QuoteBuilder() {
   };
 
   const handleSaveDraft = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -447,6 +448,7 @@ export default function QuoteBuilder() {
   };
 
   const handleCreate = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;

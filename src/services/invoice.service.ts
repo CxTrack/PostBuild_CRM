@@ -96,6 +96,30 @@ export const invoiceService = {
     userId: string,
     invoiceData: InvoiceFormData
   ): Promise<Invoice> {
+    // Retry up to 3 times in case of number conflict (safety net for race conditions)
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        return await this._insertInvoice(organizationId, userId, invoiceData);
+      } catch (err: any) {
+        lastError = err;
+        const msg = (err?.message || err?.code || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('23505') || err?.code === '23505') {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  },
+
+  async _insertInvoice(
+    organizationId: string,
+    userId: string,
+    invoiceData: InvoiceFormData
+  ): Promise<Invoice> {
     const invoiceNumber = await this.generateInvoiceNumber(organizationId);
 
     const invoiceInsertData: any = {

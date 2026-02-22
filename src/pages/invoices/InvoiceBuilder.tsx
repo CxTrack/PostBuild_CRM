@@ -366,6 +366,7 @@ export default function InvoiceBuilder() {
   };
 
   const handleSaveDraft = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -413,6 +414,7 @@ export default function InvoiceBuilder() {
   };
 
   const handleCreate = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
