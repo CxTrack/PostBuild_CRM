@@ -52,7 +52,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-primary-500 dark:hover:border-primary-500 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-primary-500 dark:hover:border-primary-500 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
       >
         <div className="flex items-center gap-3">
           {selectedOption?.icon && (
@@ -71,7 +71,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl py-2 max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-2 w-full bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl py-2 max-h-64 overflow-y-auto">
           {options.map((option) => {
             const isSelected = option.value === value;
 
@@ -87,7 +87,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                   w-full flex items-center justify-between px-4 py-3 text-left transition-colors
                   ${isSelected
                     ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white'
                   }
                 `}
               >
