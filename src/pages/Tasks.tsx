@@ -538,13 +538,13 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                       e.stopPropagation();
                                       updateTaskStatus(task.id, task.status === 'Completed' ? 'To Do' : 'Completed');
                                     }}
-                                    className="flex-shrink-0 hover:scale-110 transition-transform"
+                                    className="flex-shrink-0 p-1.5 -m-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 transition-all"
                                     title={task.status === 'Completed' ? 'Mark as incomplete' : 'Mark as complete'}
                                   >
                                     {task.status === 'Completed' ? (
                                       <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                                     ) : (
-                                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-emerald-400 transition-colors" />
+                                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-400 hover:text-emerald-400 transition-colors" />
                                     )}
                                   </button>
                                   <div className="min-w-0">
