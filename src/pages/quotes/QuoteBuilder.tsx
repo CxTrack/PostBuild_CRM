@@ -212,6 +212,21 @@ export default function QuoteBuilder() {
           country: customer.country,
         },
       }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        customer_id: '',
+        customer_name: '',
+        customer_email: '',
+        customer_phone: '',
+        customer_address: {
+          street: '',
+          city: '',
+          state: '',
+          postal_code: '',
+          country: '',
+        },
+      }));
     }
   };
 

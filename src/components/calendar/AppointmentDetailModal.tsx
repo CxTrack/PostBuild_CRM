@@ -156,7 +156,7 @@ export default function AppointmentDetailModal({
       });
 
       toast.success('Appointment updated successfully');
-      setMode('view');
+      onClose();
     } catch (error) {
       toast.error('Failed to update appointment');
     } finally {

@@ -372,7 +372,12 @@ export default function Calendar() {
           <AgendaPanel
             selectedDate={selectedDate}
             events={getEventsForDate(selectedDate)}
+            tasks={getTasksByDate(format(selectedDate, 'yyyy-MM-dd'))}
             onEventClick={handleEventClick}
+            onTaskClick={(task) => {
+              setSelectedTask(task);
+              setShowTaskDetailModal(true);
+            }}
             onScheduleEvent={() => {
               setSelectedEvent(null);
               setShowEventModal(true);

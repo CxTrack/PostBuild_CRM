@@ -19,6 +19,7 @@ import { formatPhoneDisplay } from '@/utils/phone.utils';
 import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
+import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import SendEmailModal from '@/components/email/SendEmailModal';
@@ -566,8 +567,15 @@ function OverviewTab({
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        if (confirm('Remove this contact?')) {
+                      onClick={async () => {
+                        const contactName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact';
+                        const confirmed = await confirm({
+                          title: 'Remove Contact',
+                          message: `Are you sure you want to remove "${contactName}"? This action cannot be undone.`,
+                          confirmText: 'Remove',
+                          confirmVariant: 'danger',
+                        });
+                        if (confirmed) {
                           onDeleteContact(contact.id, customer.id);
                         }
                       }}
@@ -1134,6 +1142,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
 
 function DocumentsTab({ customer }: { customer: Customer }) {
   const { documents, loading, fetchDocuments, uploadDocument, deleteDocument, getDownloadUrl } = useDocumentStore();
+  const { confirm: confirmDeleteDoc, DialogComponent: DeleteDocDialog } = useConfirmDialog();
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1175,7 +1184,13 @@ function DocumentsTab({ customer }: { customer: Customer }) {
   };
 
   const handleDelete = async (doc: CustomerDocument) => {
-    if (confirm(`Delete "${doc.file_name}"?`)) {
+    const confirmed = await confirmDeleteDoc({
+      title: 'Delete Document',
+      message: `Are you sure you want to delete "${doc.file_name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    });
+    if (confirmed) {
       await deleteDocument(doc.id, doc.file_path);
     }
   };
@@ -1269,15 +1284,15 @@ function DocumentsTab({ customer }: { customer: Customer }) {
           </div>
         )}
       </div>
+      <DeleteDocDialog />
     </div>
   );
 }
 
 function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () => void }) {
-  const { getTasksByCustomer } = useTaskStore();
+  const { getTasksByCustomer, fetchTasks, updateTask } = useTaskStore();
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const { fetchTasks } = useTaskStore();
 
   const customerTasks = getTasksByCustomer(customer.id);
   const pendingTasks = customerTasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
@@ -1460,17 +1475,19 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
         )}
       </div>
 
-      {showTaskModal && (
-        <TaskModal
+      {showTaskModal && selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
           isOpen={showTaskModal}
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
             fetchTasks();
           }}
-          task={selectedTask}
-          customerId={customer.id}
-          customerName={customer.name}
+          onUpdate={async (id, data) => {
+            await updateTask(id, data);
+            fetchTasks();
+          }}
         />
       )}
     </div>
