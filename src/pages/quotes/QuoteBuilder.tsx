@@ -13,6 +13,7 @@ import ProductSelector from '@/components/products/ProductSelector';
 import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
+import { Dropdown } from '@/components/shared/Dropdown';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import { User, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -588,18 +589,17 @@ export default function QuoteBuilder() {
                 {customerFieldLabels.customerLabel}
               </h2>
               <div className="flex gap-2">
-                <select
-                  value={formData.customer_id}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
-                >
-                  <option value="">{customerFieldLabels.customerPlaceholder}</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {getCustomerFullName(customer)}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <Dropdown
+                    options={customers.map((customer) => ({
+                      value: customer.id,
+                      label: getCustomerFullName(customer),
+                    }))}
+                    value={formData.customer_id}
+                    onChange={handleCustomerChange}
+                    placeholder={customerFieldLabels.customerPlaceholder}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowQuickAddCustomer(true)}
@@ -688,20 +688,20 @@ export default function QuoteBuilder() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Property Type
                       </label>
-                      <select
+                      <Dropdown
+                        options={[
+                          { value: 'single_family', label: 'Single Family' },
+                          { value: 'condo', label: 'Condo' },
+                          { value: 'townhouse', label: 'Townhouse' },
+                          { value: 'multi_family', label: 'Multi-Family' },
+                          { value: 'land', label: 'Land' },
+                          { value: 'commercial', label: 'Commercial' },
+                          { value: 'other', label: 'Other' },
+                        ]}
                         value={propertyFields.property_type || ''}
-                        onChange={(e) => updatePropertyField('property_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
-                      >
-                        <option value="">Select...</option>
-                        <option value="single_family">Single Family</option>
-                        <option value="condo">Condo</option>
-                        <option value="townhouse">Townhouse</option>
-                        <option value="multi_family">Multi-Family</option>
-                        <option value="land">Land</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="other">Other</option>
-                      </select>
+                        onChange={(val) => updatePropertyField('property_type', val as any)}
+                        placeholder="Select..."
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -807,16 +807,16 @@ export default function QuoteBuilder() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Listing Type
                       </label>
-                      <select
+                      <Dropdown
+                        options={[
+                          { value: 'exclusive', label: 'Exclusive Right to Sell' },
+                          { value: 'open', label: 'Open Listing' },
+                          { value: 'net', label: 'Net Listing' },
+                        ]}
                         value={propertyFields.listing_type || ''}
-                        onChange={(e) => updatePropertyField('listing_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
-                      >
-                        <option value="">Select...</option>
-                        <option value="exclusive">Exclusive Right to Sell</option>
-                        <option value="open">Open Listing</option>
-                        <option value="net">Net Listing</option>
-                      </select>
+                        onChange={(val) => updatePropertyField('listing_type', val as any)}
+                        placeholder="Select..."
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1179,19 +1179,17 @@ export default function QuoteBuilder() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {fieldLabels.termsLabel}
                     </label>
-                    <select
+                    <Dropdown
+                      options={PAYMENT_TERMS_OPTIONS.map(option => ({
+                        value: option.key,
+                        label: option.label,
+                      }))}
                       value={PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) ? formData.payment_terms : (formData.payment_terms ? 'custom' : '')}
-                      onChange={(e) => {
-                        const selectedKey = e.target.value;
+                      onChange={(selectedKey) => {
                         setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
                       }}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:[color-scheme:dark]"
-                    >
-                      <option value="">Select payment terms...</option>
-                      {PAYMENT_TERMS_OPTIONS.map(option => (
-                        <option key={option.key} value={option.key}>{option.label}</option>
-                      ))}
-                    </select>
+                      placeholder="Select payment terms..."
+                    />
                     {formData.payment_terms === 'custom' && (
                       <Input
                         type="text"
