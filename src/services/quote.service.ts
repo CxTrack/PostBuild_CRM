@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 
 export interface QuoteLineItem {
   id?: string;
@@ -78,22 +78,41 @@ export interface Quote extends QuoteFormData {
 
 export const quoteService = {
   async generateQuoteNumber(organizationId: string, prefix: string = 'QT'): Promise<string> {
-    const { data, error } = await supabase
-      .from('quotes')
-      .select('quote_number')
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Use DB-level atomic RPC via direct fetch to avoid AbortController + race conditions
+    const token = (() => {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          try {
+            const stored = JSON.parse(localStorage.getItem(key) || '');
+            if (stored?.access_token) return stored.access_token;
+          } catch { /* skip */ }
+        }
+      }
+      return null;
+    })();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (!token) throw new Error('Not authenticated');
 
-    if (!data) {
-      return `${prefix}-0001`;
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/generate_next_document_number`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        p_org_id: organizationId,
+        p_table_name: 'quotes',
+        p_prefix: prefix,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to generate quote number: ${err}`);
     }
 
-    const lastNumber = parseInt(data.quote_number.split('-')[1] || '0');
-    return `${prefix}-${String(lastNumber + 1).padStart(4, '0')}`;
+    return (await res.json()) as string;
   },
 
   async createQuote(
