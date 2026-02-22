@@ -378,6 +378,16 @@ export default function Calendar() {
               setSelectedTask(task);
               setShowTaskDetailModal(true);
             }}
+            onDeleteEvent={async (id) => {
+              await deleteEvent(id);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
+            onDeleteTask={async (id) => {
+              await deleteTask(id);
+              fetchTasks();
+            }}
             onScheduleEvent={() => {
               setSelectedEvent(null);
               setShowEventModal(true);
