@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { supabase } from '@/lib/supabase';
 import {
@@ -78,50 +78,50 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
   const hasAccess = canAccessSharedModule('tasks');
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      if (!currentOrganization?.id) return;
+  const fetchTasks = useCallback(async () => {
+    if (!currentOrganization?.id) return;
 
-      let query = supabase
-        .from('tasks')
-        .select('*')
-        .eq('organization_id', currentOrganization.id);
+    let query = supabase
+      .from('tasks')
+      .select('*')
+      .eq('organization_id', currentOrganization.id);
 
-      // Regular users only see their own tasks (created by them or assigned to them)
-      if (role === 'user' && user?.id) {
-        query = query.or(`created_by.eq.${user.id},assigned_to.eq.${user.id}`);
-      }
+    // Regular users only see their own tasks (created by them or assigned to them)
+    if (role === 'user' && user?.id) {
+      query = query.or(`created_by.eq.${user.id},assigned_to.eq.${user.id}`);
+    }
 
-      const { data, error } = await query.order('due_date', { ascending: true });
+    const { data, error } = await query.order('due_date', { ascending: true });
 
-      if (error) {
-        return;
-      }
+    if (error) {
+      return;
+    }
 
-      // Map database fields to component's expected format
-      const mappedTasks = (data || []).map(t => ({
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        type: t.type || 'other',
-        priority: t.priority || 'medium',
-        status: t.status || 'To Do',
-        dueDate: new Date(t.due_date),
-        customer: t.customer_name,
-        showOnCalendar: t.show_on_calendar,
-        startTime: t.start_time,
-        created_at: t.created_at,
-        due_date: t.due_date,
-        start_time: t.start_time,
-        duration: t.duration,
-        show_on_calendar: t.show_on_calendar,
-      }));
+    // Map database fields to component's expected format
+    const mappedTasks = (data || []).map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      type: t.type || 'other',
+      priority: t.priority || 'medium',
+      status: t.status || 'To Do',
+      dueDate: new Date(t.due_date),
+      customer: t.customer_name,
+      showOnCalendar: t.show_on_calendar,
+      startTime: t.start_time,
+      created_at: t.created_at,
+      due_date: t.due_date,
+      start_time: t.start_time,
+      duration: t.duration,
+      show_on_calendar: t.show_on_calendar,
+    }));
 
-      setTasks(mappedTasks);
-    };
-
-    fetchTasks();
+    setTasks(mappedTasks);
   }, [currentOrganization?.id, user?.id, role]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -532,11 +532,21 @@ export default function Tasks({ embedded = false }: TasksProps) {
 
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                  {task.status === 'Completed' ? (
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                                  ) : (
-                                    <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateTaskStatus(task.id, task.status === 'Completed' ? 'To Do' : 'Completed');
+                                    }}
+                                    className="flex-shrink-0 hover:scale-110 transition-transform"
+                                    title={task.status === 'Completed' ? 'Mark as incomplete' : 'Mark as complete'}
+                                  >
+                                    {task.status === 'Completed' ? (
+                                      <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    ) : (
+                                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-emerald-400 transition-colors" />
+                                    )}
+                                  </button>
                                   <div className="min-w-0">
                                     <div className="font-medium text-gray-900 dark:text-white truncate">{task.title}</div>
                                     {task.description && (
@@ -820,6 +830,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
+            fetchTasks();
           }}
           task={selectedTask as any}
           defaultShowOnCalendar={false}
@@ -833,13 +844,12 @@ export default function Tasks({ embedded = false }: TasksProps) {
           onClose={() => {
             setShowTaskDetailModal(false);
             setSelectedTask(null);
+            fetchTasks();
           }}
           onUpdate={async (id, data) => {
-            setTasks((prev) =>
-              prev.map((task) => (task.id === id ? { ...task, ...data } as any : task))
-            );
             setShowTaskDetailModal(false);
             setSelectedTask(null);
+            fetchTasks();
           }}
         />
       )}
