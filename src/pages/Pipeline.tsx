@@ -1018,7 +1018,7 @@ const Pipeline: React.FC = () => {
                         onClick={() => navigate(`/${item.type === 'quote' ? 'quotes' : item.type === 'invoice' ? 'invoices' : 'dashboard/pipeline'}/${item.id}`)}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${theme === 'soft-modern'
                           ? ''
-                          : theme === 'dark'
+                          : (theme === 'dark' || theme === 'midnight')
                             ? 'bg-gray-700 border-gray-600 hover:border-blue-500'
                             : 'bg-white border-gray-200 hover:border-blue-500'
                           }`}

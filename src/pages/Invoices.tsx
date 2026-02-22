@@ -207,8 +207,8 @@ export default function Invoices() {
       <div
         className="absolute right-0 top-full mt-2 w-48 rounded-xl border-2 shadow-lg z-50"
         style={{
-          background: theme === 'dark' ? '#1e293b' : 'white',
-          borderColor: theme === 'dark' ? '#334155' : '#e2e8f0'
+          background: (theme === 'dark' || theme === 'midnight') ? '#1e293b' : 'white',
+          borderColor: (theme === 'dark' || theme === 'midnight') ? '#334155' : '#e2e8f0'
         }}
         onClick={(e) => e.stopPropagation()}
       >

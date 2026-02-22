@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Phone, ArrowLeft, Download, Share2, Play, Pause,
-    User, TrendingUp, TrendingDown, Minus,
+    User, UserPlus, TrendingUp, TrendingDown, Minus,
     MessageSquare, CheckCircle, Volume2, FileText, HelpCircle
 } from 'lucide-react';
 import { useCallStore } from '@/stores/callStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { Call, CallSummary } from '@/types/database.types';
 import toast from 'react-hot-toast';
+import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 
 // Tooltip Component for explanatory hints
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => (
@@ -25,10 +26,11 @@ export const CallDetail = () => {
     const { callId } = useParams();
     const navigate = useNavigate();
     const { theme } = useThemeStore();
-    const { currentCall, currentCallSummary, loading, error, fetchCallById, fetchCallSummary } = useCallStore();
+    const { currentCall, currentCallSummary, loading, error, fetchCallById, fetchCallSummary, updateCall } = useCallStore();
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1);
+    const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
 
     useEffect(() => {
@@ -62,6 +64,18 @@ export const CallDetail = () => {
         toast.success('Link copied to clipboard!');
     };
 
+    const handleCustomerCreated = async (newCustomer: any) => {
+        if (callId && newCustomer?.id) {
+            await updateCall(callId, {
+                customer_id: newCustomer.id,
+                customer_phone: newCustomer.phone || displayPhone,
+            });
+            await fetchCallById(callId);
+            toast.success('Customer linked to this call');
+        }
+        setShowQuickAddCustomer(false);
+    };
+
     const handleExport = () => {
         if (!call) return;
 
@@ -89,7 +103,7 @@ export const CallDetail = () => {
         toast.success('Call details exported!');
     };
 
-    const isDark = theme === 'dark';
+    const isDark = theme === 'dark' || theme === 'midnight';
 
     if (loading) {
         return (
@@ -176,6 +190,19 @@ export const CallDetail = () => {
                                             {customerName}
                                         </span>
                                     )
+                                )}
+                                {!call.customer_id && displayPhone && (
+                                    <button
+                                        onClick={() => setShowQuickAddCustomer(true)}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all hover:ring-2 ${isDark
+                                            ? 'bg-green-500/10 text-green-400 border border-green-500/20 hover:ring-green-400/50 hover:bg-green-500/20'
+                                            : 'bg-green-50 text-green-700 border border-green-100 hover:ring-green-400 hover:bg-green-100'
+                                        }`}
+                                        title="Save this phone number as a new customer"
+                                    >
+                                        <UserPlus className="w-3.5 h-3.5" />
+                                        Add as Customer
+                                    </button>
                                 )}
                                 {call.call_type === 'ai_agent' && (
                                     <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${isDark ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
@@ -540,6 +567,13 @@ export const CallDetail = () => {
                     </div>
                 </div>
             </div>
+
+            <QuickAddCustomerModal
+                isOpen={showQuickAddCustomer}
+                onClose={() => setShowQuickAddCustomer(false)}
+                onCustomerCreated={handleCustomerCreated}
+                initialPhone={displayPhone}
+            />
         </div>
     );
 };

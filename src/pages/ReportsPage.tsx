@@ -93,7 +93,7 @@ export const ReportsPage = () => {
     const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
     const [subsLoading, setSubsLoading] = useState(false);
 
-    const isDark = theme === 'dark';
+    const isDark = theme === 'dark' || theme === 'midnight';
 
     // --- Date-filtered data ---
     const rangeStart = new Date(dateRange.start + 'T00:00:00');
