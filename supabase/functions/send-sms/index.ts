@@ -10,6 +10,7 @@ interface SMSRequest {
     to: string;
     body: string;
     organizationId: string;
+    customerId?: string;
     documentType?: 'quote' | 'invoice';
     documentId?: string;
 }
@@ -44,10 +45,57 @@ Deno.serve(async (req: Request) => {
         }
 
         // Parse request body
-        const { to, body, organizationId, documentType, documentId }: SMSRequest = await req.json()
+        const { to, body, organizationId, customerId, documentType, documentId }: SMSRequest = await req.json()
 
         if (!to || !body || !organizationId) {
             throw new Error('Missing required fields: to, body, organizationId')
+        }
+
+        // --- SMS CONSENT CHECK ---
+        if (customerId) {
+            const { data: consent } = await supabaseClient
+                .from('sms_consent')
+                .select('id, status')
+                .eq('customer_id', customerId)
+                .eq('organization_id', organizationId)
+                .maybeSingle()
+
+            if (consent && (consent.status === 'opted_out' || consent.status === 'pending_reopt')) {
+                return new Response(
+                    JSON.stringify({
+                        success: false,
+                        error: 'This customer has opted out of SMS messages. You cannot send SMS to them.',
+                        opted_out: true,
+                    }),
+                    {
+                        status: 403,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    }
+                )
+            }
+
+            // If no consent record exists, create initial consent (opted_in)
+            if (!consent) {
+                const { data: newConsent } = await supabaseClient
+                    .from('sms_consent')
+                    .insert({
+                        customer_id: customerId,
+                        organization_id: organizationId,
+                        status: 'opted_in',
+                        consent_given_at: new Date().toISOString(),
+                    })
+                    .select('id')
+                    .single()
+
+                if (newConsent) {
+                    await supabaseClient.from('sms_consent_audit_log').insert({
+                        sms_consent_id: newConsent.id,
+                        action: 'initial_consent',
+                        performed_by: user.id,
+                        metadata: { triggered_by: 'first_sms_send' },
+                    })
+                }
+            }
         }
 
         // Fetch Twilio credentials from sms_settings
@@ -79,6 +127,10 @@ Deno.serve(async (req: Request) => {
             formattedTo = `+${formattedTo}`
         }
 
+        // Append opt-out message to every SMS
+        const optOutSuffix = '\n\nReply STOP to opt out of SMS messages.'
+        const fullBody = body.includes('STOP') ? body : body + optOutSuffix
+
         // Call Twilio API
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilio_account_sid}/Messages.json`
         const twilioAuth = btoa(`${twilio_account_sid}:${twilio_auth_token}`)
@@ -92,7 +144,7 @@ Deno.serve(async (req: Request) => {
             body: new URLSearchParams({
                 To: formattedTo,
                 From: twilio_phone_number,
-                Body: body,
+                Body: fullBody,
             }),
         })
 
@@ -109,7 +161,7 @@ Deno.serve(async (req: Request) => {
             document_type: documentType || null,
             document_id: documentId || null,
             recipient_phone: formattedTo,
-            message_body: body,
+            message_body: fullBody,
             message_sid: twilioData.sid,
             status: twilioData.status || 'queued',
             sent_at: new Date().toISOString(),

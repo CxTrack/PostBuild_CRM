@@ -55,12 +55,30 @@ export const usePermissions = () => {
     return currentOrganization?.metadata?.sharing?.[moduleKey] ?? true;
   };
 
+  // SMS Permissions
+  const canSendSms = (): boolean => hasPermission('sms_send');
+  const canViewSmsConsent = (): boolean => hasPermission('sms_view_consent');
+  const canRequestReoptIn = (): boolean => hasPermission('sms_request_reopt');
+  const canAdminManageSms = (): boolean => {
+    if (!currentMembership) return false;
+    return ['owner', 'admin'].includes(currentMembership.role);
+  };
+  const canAdminManageMarketing = (): boolean => {
+    if (!currentMembership) return false;
+    return ['owner', 'admin'].includes(currentMembership.role);
+  };
+
   return {
     hasPermission,
     canViewTeamCalendars,
     canViewUserCalendar,
     canEditUserCalendar,
     canAccessSharedModule,
+    canSendSms,
+    canViewSmsConsent,
+    canRequestReoptIn,
+    canAdminManageSms,
+    canAdminManageMarketing,
     role: currentMembership?.role,
   };
 };
