@@ -69,19 +69,19 @@ export default function TaskModal({
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
 
   const taskTypeOptions = [
-    { value: 'call', label: 'Call', icon: <Phone size={16} />, color: 'text-blue-600' },
-    { value: 'email', label: 'Email', icon: <Mail size={16} />, color: 'text-purple-600' },
-    { value: 'sms', label: 'SMS', icon: <MessageSquare size={16} />, color: 'text-green-600' },
-    { value: 'follow_up', label: 'Follow Up', icon: <RefreshCw size={16} />, color: 'text-orange-600' },
-    { value: 'meeting', label: 'Meeting Prep', icon: <Users size={16} />, color: 'text-indigo-600' },
-    { value: 'other', label: 'Other', icon: <FileText size={16} />, color: 'text-gray-600' },
+    { value: 'call', label: 'Call', icon: <Phone size={16} />, color: 'text-blue-600 dark:text-blue-400' },
+    { value: 'email', label: 'Email', icon: <Mail size={16} />, color: 'text-purple-600 dark:text-purple-400' },
+    { value: 'sms', label: 'SMS', icon: <MessageSquare size={16} />, color: 'text-green-600 dark:text-green-400' },
+    { value: 'follow_up', label: 'Follow Up', icon: <RefreshCw size={16} />, color: 'text-orange-600 dark:text-orange-400' },
+    { value: 'meeting', label: 'Meeting Prep', icon: <Users size={16} />, color: 'text-indigo-600 dark:text-indigo-400' },
+    { value: 'other', label: 'Other', icon: <FileText size={16} />, color: 'text-gray-600 dark:text-gray-400' },
   ];
 
   const priorityOptions = [
-    { value: 'low', label: 'Low', icon: <div className="w-2 h-2 bg-green-500 rounded-full" />, color: 'text-green-600' },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2 h-2 bg-yellow-500 rounded-full" />, color: 'text-yellow-600' },
-    { value: 'high', label: 'High', icon: <div className="w-2 h-2 bg-orange-500 rounded-full" />, color: 'text-orange-600' },
-    { value: 'urgent', label: 'Urgent', icon: <div className="w-2 h-2 bg-red-500 rounded-full" />, color: 'text-red-600' },
+    { value: 'low', label: 'Low', icon: <div className="w-2 h-2 bg-green-500 rounded-full" />, color: 'text-green-600 dark:text-green-400' },
+    { value: 'medium', label: 'Medium', icon: <div className="w-2 h-2 bg-yellow-500 rounded-full" />, color: 'text-yellow-600 dark:text-yellow-400' },
+    { value: 'high', label: 'High', icon: <div className="w-2 h-2 bg-orange-500 rounded-full" />, color: 'text-orange-600 dark:text-orange-400' },
+    { value: 'urgent', label: 'Urgent', icon: <div className="w-2 h-2 bg-red-500 rounded-full" />, color: 'text-red-600 dark:text-red-400' },
   ];
 
   const statusOptions = [

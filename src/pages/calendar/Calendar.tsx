@@ -17,6 +17,7 @@ import AgendaPanel from './AgendaPanel';
 import EventModal from '@/components/calendar/EventModal';
 import AppointmentDetailModal from '@/components/calendar/AppointmentDetailModal';
 import TaskModal from '@/components/tasks/TaskModal';
+import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import WeekView from '@/components/calendar/WeekView';
 import DayView from '@/components/calendar/DayView';
 import AgendaView from '@/components/calendar/AgendaView';
@@ -36,11 +37,12 @@ export default function Calendar() {
   const [showEventTypeModal, setShowEventTypeModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
 
   const { events, fetchEvents, updateEvent } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
   const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
-  const { fetchTasks, getTasksByDate } = useTaskStore();
+  const { fetchTasks, getTasksByDate, updateTask } = useTaskStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('calendar');
   const taskLabels = usePageLabels('tasks');
@@ -293,7 +295,7 @@ export default function Calendar() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedTask(task);
-                              setShowTaskModal(true);
+                              setShowTaskDetailModal(true);
                             }}
                             className="px-2 py-1 text-xs rounded truncate hover:opacity-80 transition-opacity cursor-pointer bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-l-3 border-orange-500"
                             style={{
@@ -483,6 +485,22 @@ export default function Calendar() {
           task={selectedTask}
           preselectedDate={selectedDate}
           defaultShowOnCalendar={true}
+        />
+      )}
+
+      {showTaskDetailModal && selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          isOpen={showTaskDetailModal}
+          onClose={() => {
+            setShowTaskDetailModal(false);
+            setSelectedTask(null);
+            fetchTasks();
+          }}
+          onUpdate={async (id, data) => {
+            await updateTask(id, data);
+            fetchTasks();
+          }}
         />
       )}
     </PageContainer>

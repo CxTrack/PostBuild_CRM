@@ -74,6 +74,7 @@ export const CustomerProfile: React.FC = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
+  const { confirm: confirmDeleteNote, DialogComponent: DeleteNoteDialog } = useConfirmDialog();
 
   useEffect(() => {
     if (id) {
@@ -255,7 +256,13 @@ export const CustomerProfile: React.FC = () => {
               setShowNoteModal(true);
             }}
             onDeleteNote={async (id) => {
-              if (confirm('Are you sure you want to delete this note?')) {
+              const confirmed = await confirmDeleteNote({
+                title: 'Delete Note',
+                message: 'Are you sure you want to delete this note? This action cannot be undone.',
+                confirmText: 'Delete',
+                variant: 'danger',
+              });
+              if (confirmed) {
                 await deleteNoteStore(id);
                 toast.success('Note deleted');
               }
@@ -356,6 +363,8 @@ export const CustomerProfile: React.FC = () => {
           customer={currentCustomer}
         />
       )}
+
+      <DeleteNoteDialog />
     </div>
   );
 };

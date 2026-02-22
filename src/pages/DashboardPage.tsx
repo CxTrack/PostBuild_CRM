@@ -558,7 +558,7 @@ export const DashboardPage = () => {
                             ) : (
                                 <>
                                     {todaysAppointments.length > 0 && todaysAppointments.map(event => (
-                                        <div key={event.id} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <div key={event.id} onClick={() => navigate('/dashboard/calendar')} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                                             <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
                                                 <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
                                                     {format(new Date(event.start_time), 'MMM')}
@@ -592,7 +592,7 @@ export const DashboardPage = () => {
                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Upcoming</span>
                                             </div>
                                             {upcomingAppointments.map(event => (
-                                                <div key={event.id} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors opacity-70">
+                                                <div key={event.id} onClick={() => navigate('/dashboard/calendar')} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors opacity-70 cursor-pointer">
                                                     <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
                                                         <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
                                                             {format(new Date(event.start_time), 'MMM')}
@@ -643,7 +643,7 @@ export const DashboardPage = () => {
                         ) : (
                             <>
                                 {pendingTasks.map(task => (
-                                    <div key={task.id} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                    <div key={task.id} onClick={() => navigate('/dashboard/tasks')} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm ${task.priority === 'urgent' ? 'bg-red-500' :
                                             task.priority === 'high' ? 'bg-orange-500' : 'bg-green-500'
                                             }`} />

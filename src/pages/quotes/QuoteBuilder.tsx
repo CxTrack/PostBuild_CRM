@@ -6,7 +6,7 @@ import { useProductStore } from '@/stores/productStore';
 import { quoteService, QuoteLineItem, QuoteFormData, RealEstateProposalFields } from '@/services/quote.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, Home, MapPin, DollarSign, Percent } from 'lucide-react';
+import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, Home, MapPin, DollarSign, Percent, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ProductSelector from '@/components/products/ProductSelector';
@@ -576,11 +576,11 @@ export default function QuoteBuilder() {
                 <select
                   value={formData.customer_id}
                   onChange={(e) => handleCustomerChange(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 >
-                  <option value="">{customerFieldLabels.customerPlaceholder}</option>
+                  <option value="" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{customerFieldLabels.customerPlaceholder}</option>
                   {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
+                    <option key={customer.id} value={customer.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                       {getCustomerFullName(customer)}
                     </option>
                   ))}
@@ -1249,6 +1249,18 @@ export default function QuoteBuilder() {
                     ${formData.tax_amount.toFixed(2)}
                   </span>
                 </div>
+                {!id && quoteTaxRate === 0 && orgTaxRate === 0 && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      No default tax rate configured.{' '}
+                      <button type="button" onClick={() => navigate('/settings')} className="underline hover:no-underline font-medium">
+                        Set it in Business Settings
+                      </button>{' '}
+                      to auto-apply on new documents.
+                    </p>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
