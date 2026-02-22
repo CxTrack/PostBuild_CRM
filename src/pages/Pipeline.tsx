@@ -94,7 +94,9 @@ const Pipeline: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStage, setSelectedStage] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'kanban' : 'split'
+  );
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -136,6 +138,17 @@ const Pipeline: React.FC = () => {
     if (!el) return;
     el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
   };
+
+  // Auto-switch to kanban on small screens where split/table are hidden
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && viewMode !== 'kanban') {
+        setViewMode('kanban');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [viewMode]);
 
   useEffect(() => {
     let mounted = true;
@@ -440,7 +453,13 @@ const Pipeline: React.FC = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/${item.type === 'quote' ? 'quotes' : 'invoices'}/${item.id}`);
+              if (item.type === 'deal') {
+                navigate(`/dashboard/pipeline/new?edit=${item.id}`);
+              } else if (item.type === 'quote') {
+                navigate(`/quotes/builder/${item.id}`);
+              } else {
+                navigate(`/invoices/builder/${item.id}`);
+              }
             }}
             className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-400 hover:text-blue-600"
           >
@@ -490,99 +509,99 @@ const Pipeline: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all flex items-center gap-2 ${viewMode === 'kanban'
+              className={`px-2 py-1.5 lg:px-3 lg:py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all flex items-center gap-1.5 ${viewMode === 'kanban'
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Kanban</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`hidden md:flex px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-2 ${viewMode === 'table'
+              className={`hidden md:flex px-2 py-1.5 lg:px-3 lg:py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-1.5 ${viewMode === 'table'
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
-              <List className="w-4 h-4" />
+              <List className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Table</span>
             </button>
             <button
               onClick={() => setViewMode('split')}
-              className={`hidden md:flex px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-2 ${viewMode === 'split'
+              className={`hidden md:flex px-2 py-1.5 lg:px-3 lg:py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all items-center gap-1.5 ${viewMode === 'split'
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
-              <Columns className="w-4 h-4" />
+              <Columns className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Split</span>
             </button>
           </div>
 
           <button
             onClick={() => setShowQuickAdd(true)}
-            className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+            className="flex items-center px-3 py-1.5 lg:px-4 lg:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm active:scale-95"
           >
-            <Zap className="w-4 h-4 mr-2" />
+            <Zap className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline">Quick Add</span>
           </button>
 
           <button
             onClick={() => navigate('/dashboard/pipeline/new')}
-            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+            className="flex items-center px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm active:scale-95"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline">{labels.newButton}</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card hover className="flex items-center gap-4 p-4 h-24">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card hover className="flex items-center gap-3 p-3 lg:p-4 h-auto min-h-[64px]">
           <IconBadge
-            icon={<FileText size={20} className="text-blue-600" />}
+            icon={<FileText size={18} className="text-blue-600" />}
             gradient="bg-blue-50"
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.total || 'Total Items'}</p>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{filteredItems.length}</h3>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.total || 'Total Items'}</p>
+            <h3 className="text-lg font-bold lg:text-xl text-gray-900 dark:text-white">{filteredItems.length}</h3>
           </div>
         </Card>
 
-        <Card hover className="flex items-center gap-4 p-4 h-24">
+        <Card hover className="flex items-center gap-3 p-3 lg:p-4 h-auto min-h-[64px]">
           <IconBadge
-            icon={<DollarSign size={20} className="text-green-600" />}
+            icon={<DollarSign size={18} className="text-green-600" />}
             gradient="bg-green-50"
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.totalRevenue || 'Total Value'}</p>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">${totalValue.toLocaleString()}</h3>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.totalRevenue || 'Total Value'}</p>
+            <h3 className="text-lg font-bold lg:text-xl text-gray-900 dark:text-white">${totalValue.toLocaleString()}</h3>
           </div>
         </Card>
 
-        <Card hover className="flex items-center gap-4 p-4 h-24">
+        <Card hover className="flex items-center gap-3 p-3 lg:p-4 h-auto min-h-[64px]">
           <IconBadge
-            icon={<TrendingUp size={20} className="text-purple-600" />}
+            icon={<TrendingUp size={18} className="text-purple-600" />}
             gradient="bg-purple-50"
             size="md"
           />
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.outstanding || 'Weighted Value'}</p>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">${Math.round(weightedValue).toLocaleString()}</h3>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{labels.stats?.outstanding || 'Weighted Value'}</p>
+            <h3 className="text-lg font-bold lg:text-xl text-gray-900 dark:text-white">${Math.round(weightedValue).toLocaleString()}</h3>
           </div>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white dark:bg-gray-800 p-2.5 lg:p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div className="relative flex items-center max-w-full min-w-0">
           {canScrollLeft && (
             <button
@@ -599,7 +618,7 @@ const Pipeline: React.FC = () => {
           >
             <button
               onClick={() => setSelectedStage('all')}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === 'all'
+              className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-md text-[11px] lg:text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === 'all'
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
@@ -610,7 +629,7 @@ const Pipeline: React.FC = () => {
               <button
                 key={stage.id}
                 onClick={() => setSelectedStage(stage.id)}
-                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === stage.id
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-md text-[11px] lg:text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${selectedStage === stage.id
                   ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -721,16 +740,24 @@ const Pipeline: React.FC = () => {
         <ResizableTable
           columns={pipelineColumns}
           data={sortedItems}
-          onRowClick={(item) => navigate(`/${item.type === 'quote' ? 'quotes' : 'invoices'}/${item.id}`)}
+          onRowClick={(item) => {
+            if (item.type === 'deal') {
+              navigate(`/dashboard/pipeline/new?edit=${item.id}`);
+            } else if (item.type === 'quote') {
+              navigate(`/quotes/builder/${item.id}`);
+            } else {
+              navigate(`/invoices/builder/${item.id}`);
+            }
+          }}
           onSort={(id) => handleSort(id as any)}
           sortColumn={sortField}
           sortDirection={sortDirection}
           storageKey="pipeline-table-v1"
         />
       ) : viewMode === 'split' ? (
-        <div className="grid grid-cols-12 gap-6" style={{ height: 'calc(100vh - 400px)' }}>
-          <div className="col-span-12 lg:col-span-4 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
-            <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="grid grid-cols-12 gap-3 lg:gap-4" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
+          <div className="col-span-12 lg:col-span-5 xl:col-span-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+            <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 lg:px-4 lg:py-3">
               <h3 className="font-semibold text-gray-900 dark:text-white">All {labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} ({filteredItems.length})</h3>
             </div>
             <div className="overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
@@ -738,21 +765,21 @@ const Pipeline: React.FC = () => {
                 <div
                   key={`${item.type}-${item.id}`}
                   onClick={() => setSelectedItem(item)}
-                  className={`px-6 py-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-all ${selectedItem?.id === item.id
+                  className={`px-3 py-2.5 lg:px-4 lg:py-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-all ${selectedItem?.id === item.id
                     ? 'bg-gray-100 dark:bg-gray-700 border-l-4 border-l-blue-600 dark:border-l-blue-500'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-900 dark:text-white mb-0.5 truncate">
                         {item.customer_name}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {item.number}
                       </p>
                     </div>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    <p className="text-base font-bold lg:text-lg text-gray-900 dark:text-white ml-2 flex-shrink-0">
                       ${item.total_amount.toLocaleString()}
                     </p>
                   </div>
@@ -769,25 +796,25 @@ const Pipeline: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-8 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+          <div className="col-span-12 lg:col-span-7 xl:col-span-8 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
             {selectedItem ? (
               <div className="h-full overflow-y-auto">
-                <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-8 py-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:px-5 lg:py-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                         {selectedItem.type === 'invoice' ? 'Invoice' : selectedItem.type === 'deal' ? labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1) : quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}
                       </p>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      <h2 className="text-lg font-bold lg:text-xl xl:text-2xl text-gray-900 dark:text-white mb-1">
                         {selectedItem.customer_name}
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {selectedItem.customer_email}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{labels.columns?.value || 'Value'}</p>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{labels.columns?.value || 'Value'}</p>
+                      <p className="text-xl font-bold lg:text-2xl xl:text-3xl text-gray-900 dark:text-white">
                         ${selectedItem.total_amount.toLocaleString()}
                       </p>
                     </div>
@@ -810,12 +837,12 @@ const Pipeline: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-8 space-y-8">
+                <div className="p-4 space-y-5 lg:p-5 lg:space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-base font-bold lg:text-lg text-gray-900 dark:text-white mb-3">
                       {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Information
                     </h3>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-3 lg:gap-4">
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Number</p>
                         <p className="font-semibold text-gray-900 dark:text-white">
@@ -844,7 +871,7 @@ const Pipeline: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-base font-bold lg:text-lg text-gray-900 dark:text-white mb-3">
                       {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} Timeline
                     </h3>
                     <div className="space-y-4">
@@ -875,51 +902,85 @@ const Pipeline: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        if (selectedItem.type === 'deal' && selectedItem.customer_id) {
-                          navigate(`/dashboard/customers/${selectedItem.customer_id}`);
-                        } else if (selectedItem.type === 'quote') {
-                          navigate(`/quotes/${selectedItem.id}`);
-                        } else {
-                          navigate(`/invoices/${selectedItem.id}`);
-                        }
-                      }}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      {selectedItem.type === 'deal' ? 'Customer Details' : selectedItem.type === 'quote' ? 'Quote Details' : 'Invoice Details'}
-                    </button>
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
                         if (selectedItem.type === 'deal') {
-                          navigate(`/dashboard/pipeline/new?edit=${selectedItem.id}`);
+                          if (selectedItem.customer_id) {
+                            navigate(`/dashboard/customers/${selectedItem.customer_id}`);
+                          } else {
+                            navigate(`/dashboard/pipeline/new?edit=${selectedItem.id}`);
+                          }
                         } else if (selectedItem.type === 'quote') {
                           navigate(`/quotes/builder/${selectedItem.id}`);
                         } else {
                           navigate(`/invoices/builder/${selectedItem.id}`);
                         }
                       }}
-                      className="px-6 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-white"
+                      className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors text-sm"
                     >
-                      Edit
+                      {selectedItem.type === 'deal'
+                        ? 'Customer Details'
+                        : selectedItem.type === 'quote'
+                          ? `Edit ${quotesLabels.entitySingular.charAt(0).toUpperCase() + quotesLabels.entitySingular.slice(1)}`
+                          : 'Edit Invoice'}
                     </button>
+                    {selectedItem.type === 'deal' && (
+                      <button
+                        onClick={() => navigate(`/dashboard/pipeline/new?edit=${selectedItem.id}`)}
+                        className="px-4 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-white text-sm"
+                      >
+                        Edit {labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}
+                      </button>
+                    )}
                     <div className="relative">
                       <button
                         onClick={() => setShowItemMenu(!showItemMenu)}
-                        className="p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <MoreVertical className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                       </button>
                       {showItemMenu && (
-                        <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
-                          {selectedItem.type === 'deal' && STAGES.filter(s => s.id !== selectedItem.stage).slice(0, 4).map(stage => (
+                        <div className="absolute right-0 bottom-full mb-2 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                          {/* Quick advance to next stage */}
+                          {selectedItem.type === 'deal' && (() => {
+                            const currentIndex = STAGES.findIndex(s => s.id === selectedItem.stage);
+                            const currentStageObj = STAGES[currentIndex];
+                            if (currentStageObj?.isTerminal) return null;
+                            const nextStage = STAGES.slice(currentIndex + 1).find(s => !s.isTerminal);
+                            if (!nextStage) return null;
+                            return (
+                              <button
+                                onClick={async () => {
+                                  await moveDealToStage(selectedItem.id, nextStage.id as any);
+                                  setShowItemMenu(false);
+                                  try {
+                                    const settings = await smsService.getSMSSettings(currentOrganization!.id);
+                                    if (settings?.pipeline_sms_enabled) {
+                                      const stages = settings.pipeline_stages_to_notify || [];
+                                      if (stages.length === 0 || stages.includes(nextStage.id)) {
+                                        const customer = customers.find(c => c.id === selectedItem.customer_id);
+                                        if (customer?.phone) {
+                                          setSmsTarget({ phone: customer.phone, name: customer.name, customerId: customer.id, stageName: nextStage.name });
+                                        }
+                                      }
+                                    }
+                                  } catch { /* SMS check failed silently */ }
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
+                              >
+                                <ArrowRightCircle size={14} />
+                                Advance to {nextStage.name}
+                              </button>
+                            );
+                          })()}
+                          {/* All stage options */}
+                          {selectedItem.type === 'deal' && STAGES.filter(s => s.id !== selectedItem.stage).map(stage => (
                             <button
                               key={stage.id}
                               onClick={async () => {
-                                moveDealToStage(selectedItem.id, stage.id as any);
+                                await moveDealToStage(selectedItem.id, stage.id as any);
                                 setShowItemMenu(false);
-                                // Check if pipeline SMS is enabled and trigger SMS modal
                                 try {
                                   const settings = await smsService.getSMSSettings(currentOrganization!.id);
                                   if (settings?.pipeline_sms_enabled) {
@@ -927,12 +988,7 @@ const Pipeline: React.FC = () => {
                                     if (stages.length === 0 || stages.includes(stage.id)) {
                                       const customer = customers.find(c => c.id === selectedItem.customer_id);
                                       if (customer?.phone) {
-                                        setSmsTarget({
-                                          phone: customer.phone,
-                                          name: customer.name,
-                                          customerId: customer.id,
-                                          stageName: stage.name,
-                                        });
+                                        setSmsTarget({ phone: customer.phone, name: customer.name, customerId: customer.id, stageName: stage.name });
                                       }
                                     }
                                   }
@@ -946,7 +1002,7 @@ const Pipeline: React.FC = () => {
                           ))}
                           <button
                             onClick={async () => {
-                              if (confirm(`Delete this ${labels.entitySingular}?`)) {
+                              if (confirm(`Delete this ${selectedItem.type === 'quote' ? quotesLabels.entitySingular : selectedItem.type === 'invoice' ? 'invoice' : labels.entitySingular}?`)) {
                                 if (selectedItem.type === 'deal') {
                                   await deleteDeal(selectedItem.id);
                                 }
@@ -981,11 +1037,11 @@ const Pipeline: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3">
           {groupedByStage.map(stage => (
             <div key={stage.id}>
-              <Card className="p-4 min-h-[400px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
+              <Card className="p-3 min-h-[250px] max-h-[calc(100vh-340px)] flex flex-col">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <h3 className={`font-semibold ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
                       {stage.name}
@@ -1002,7 +1058,7 @@ const Pipeline: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="flex-1 space-y-3 overflow-y-auto">
+                <div className="flex-1 space-y-2 overflow-y-auto">
                   {stage.items.length === 0 ? (
                     <div className={`text-center py-8 border-2 border-dashed rounded-lg ${theme === 'soft-modern' ? '' : 'border-gray-200 dark:border-gray-700'}`} style={theme === 'soft-modern' ? {
                       borderColor: 'rgba(203, 213, 225, 0.3)'
@@ -1015,8 +1071,16 @@ const Pipeline: React.FC = () => {
                     stage.items.map(item => (
                       <div
                         key={`${item.type}-${item.id}`}
-                        onClick={() => navigate(`/${item.type === 'quote' ? 'quotes' : item.type === 'invoice' ? 'invoices' : 'dashboard/pipeline'}/${item.id}`)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${theme === 'soft-modern'
+                        onClick={() => {
+                          if (item.type === 'deal') {
+                            navigate(`/dashboard/pipeline/new?edit=${item.id}`);
+                          } else if (item.type === 'quote') {
+                            navigate(`/quotes/builder/${item.id}`);
+                          } else {
+                            navigate(`/invoices/builder/${item.id}`);
+                          }
+                        }}
+                        className={`p-2.5 lg:p-3 rounded-lg border-2 cursor-pointer transition-all ${theme === 'soft-modern'
                           ? ''
                           : (theme === 'dark' || theme === 'midnight')
                             ? 'bg-gray-700 border-gray-600 hover:border-blue-500'
@@ -1047,15 +1111,15 @@ const Pipeline: React.FC = () => {
                           </span>
                         </div>
 
-                        <h4 className={`font-semibold mb-1 ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
+                        <h4 className={`font-semibold text-sm mb-0.5 truncate ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
                           {item.customer_name}
                         </h4>
-                        <p className={`text-sm mb-3 ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
+                        <p className={`text-xs mb-2 truncate ${theme === 'soft-modern' ? '' : 'text-gray-600 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#6B6B6B' } : undefined}>
                           {item.customer_email}
                         </p>
 
                         <div className="flex items-center justify-between">
-                          <span className={`text-lg font-bold ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
+                          <span className={`text-sm font-bold lg:text-base ${theme === 'soft-modern' ? '' : 'text-gray-900 dark:text-white'}`} style={theme === 'soft-modern' ? { color: '#2D2D2D' } : undefined}>
                             ${item.total_amount.toLocaleString()}
                           </span>
                           <span className={`text-xs ${theme === 'soft-modern' ? '' : 'text-gray-500 dark:text-gray-400'}`} style={theme === 'soft-modern' ? { color: '#9CA3AF' } : undefined}>

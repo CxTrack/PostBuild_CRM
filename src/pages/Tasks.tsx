@@ -851,6 +851,11 @@ export default function Tasks({ embedded = false }: TasksProps) {
             setSelectedTask(null);
             fetchTasks();
           }}
+          onDelete={async (id) => {
+            const { error } = await supabase.from('tasks').delete().eq('id', id);
+            if (error) throw error;
+            setTasks((prev) => prev.filter((t) => t.id !== id));
+          }}
         />
       )}
 

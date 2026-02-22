@@ -1322,7 +1322,7 @@ function DocumentsTab({ customer }: { customer: Customer }) {
 }
 
 function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () => void }) {
-  const { getTasksByCustomer, fetchTasks, updateTask } = useTaskStore();
+  const { getTasksByCustomer, fetchTasks, updateTask, deleteTask } = useTaskStore();
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -1518,6 +1518,10 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
           }}
           onUpdate={async (id, data) => {
             await updateTask(id, data);
+            fetchTasks();
+          }}
+          onDelete={async (id) => {
+            await deleteTask(id);
             fetchTasks();
           }}
         />

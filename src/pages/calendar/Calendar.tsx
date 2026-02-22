@@ -39,10 +39,10 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
 
-  const { events, fetchEvents, updateEvent } = useCalendarStore();
+  const { events, fetchEvents, updateEvent, deleteEvent } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
   const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
-  const { fetchTasks, getTasksByDate, updateTask } = useTaskStore();
+  const { fetchTasks, getTasksByDate, updateTask, deleteTask } = useTaskStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('calendar');
   const taskLabels = usePageLabels('tasks');
@@ -474,6 +474,12 @@ export default function Calendar() {
               try { orgId = getOrganizationId(); } catch (err) { }
               fetchEvents(orgId);
             }}
+            onDelete={async (id) => {
+              await deleteEvent(id);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
             customerName={resolvedName}
           />
         );
@@ -504,6 +510,10 @@ export default function Calendar() {
           }}
           onUpdate={async (id, data) => {
             await updateTask(id, data);
+            fetchTasks();
+          }}
+          onDelete={async (id) => {
+            await deleteTask(id);
             fetchTasks();
           }}
         />
