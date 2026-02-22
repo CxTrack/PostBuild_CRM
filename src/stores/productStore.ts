@@ -1,7 +1,19 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { Product } from '../types/app.types';
 import { useOrganizationStore } from './organizationStore';
+
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* skip */ }
+    }
+  }
+  return null;
+};
 
 interface ProductState {
   products: Product[];
@@ -27,15 +39,26 @@ export const useProductStore = create<ProductState>((set, get) => ({
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      set({ loading: false, error: 'Not authenticated' });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      // Use direct fetch to avoid Supabase AbortController issue
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/products?organization_id=eq.${orgId}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
+      const data = await res.json();
       set({ products: data || [] });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
