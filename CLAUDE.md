@@ -25,7 +25,7 @@
 Directory:  c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM
 Hosting:    Netlify (NOT Vercel/AWS/Heroku)
 Branch:     CRM-Template-Configuration (NOT main/master)
-URL:        crm.easyaicrm.com
+URL:        crm.cxtrack.com
 ```
 
 ## Rules

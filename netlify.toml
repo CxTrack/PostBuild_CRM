@@ -9,6 +9,14 @@
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
+# Domain migration: redirect crm.easyaicrm.com -> crm.cxtrack.com
+[[redirects]]
+  from = "https://crm.easyaicrm.com/*"
+  to = "https://crm.cxtrack.com/:splat"
+  status = 301
+  force = true
+
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"

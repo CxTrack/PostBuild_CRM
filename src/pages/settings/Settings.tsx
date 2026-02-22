@@ -63,7 +63,7 @@ export default function Settings() {
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
   const [loadingApiKeys, setLoadingApiKeys] = useState(false);
   const bookingUrl = currentOrganization?.slug
-    ? `https://crm.easyaicrm.com/book/${currentOrganization.slug}`
+    ? `https://crm.cxtrack.com/book/${currentOrganization.slug}`
     : '';
   const navigate = useNavigate();
 

@@ -116,7 +116,7 @@ export const Register: React.FC = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo top-left */}
         <div className="mb-8">
-          <a href="https://easyaicrm.com">
+          <a href="https://cxtrack.com">
             <img
               src="/cxtrack-logo.png"
               alt="CxTrack"

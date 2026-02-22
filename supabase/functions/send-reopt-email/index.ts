@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     const resendKey = Deno.env.get('RESEND_API_KEY')
     if (!resendKey) throw new Error('RESEND_API_KEY not configured')
 
-    const crmUrl = 'https://crm.easyaicrm.com'
+    const crmUrl = 'https://crm.cxtrack.com'
     const reoptLink = `${crmUrl}/sms-reopt-in/${reoptToken}`
     const customerName = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || 'Valued Customer'
 
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'CxTrack <noreply@easyaicrm.com>',
+        from: 'CxTrack <noreply@notifications.cxtrack.com>',
         to: [customer.email],
         subject: `${orgName} would like to send you SMS messages`,
         html: `
