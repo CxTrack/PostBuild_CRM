@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft, Building2, Users, Mail, Phone, Globe, MapPin,
-  Brain, PhoneCall, FileText, TrendingUp, CheckSquare, UserCheck,
+  Brain, PhoneCall, FileText, UserCheck, Activity, Layers,
   MessageSquare, Send, Bell, Clock, Shield, Crown, Loader2, X,
-  AlertCircle, ExternalLink, Calendar
+  AlertCircle, Calendar, Zap
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
 
@@ -251,15 +251,26 @@ export const OrgDetailView = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Left Column - 2/3 */}
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
-          {/* Usage Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <MiniStat icon={Users} label="Customers" value={stats?.customer_count || 0} />
-            <MiniStat icon={TrendingUp} label="Pipeline Deals" value={stats?.deal_count || 0} subValue={formatCurrency(stats?.pipeline_value || 0)} />
-            <MiniStat icon={FileText} label="Invoices" value={stats?.invoice_count || 0} subValue={formatCurrency(stats?.total_invoiced || 0)} />
-            <MiniStat icon={PhoneCall} label="Calls" value={stats?.call_count || 0} subValue={`${stats?.active_phones || 0} numbers`} />
-            <MiniStat icon={CheckSquare} label="Tasks" value={stats?.task_count || 0} subValue={stats?.overdue_tasks ? `${stats.overdue_tasks} overdue` : undefined} alert={stats?.overdue_tasks > 0} />
-            <MiniStat icon={Brain} label="Voice Minutes" value={org?.voice_minutes_used || 0} subValue={org?.voice_minutes_cap ? `/ ${org.voice_minutes_cap} cap` : undefined} />
-          </div>
+          {/* Engagement & Adoption */}
+          {(() => {
+            const lastLogin = stats?.last_any_login;
+            const daysSinceLogin = lastLogin ? Math.floor((Date.now() - new Date(lastLogin).getTime()) / (1000 * 60 * 60 * 24)) : null;
+            const loginStatus = daysSinceLogin === null ? 'Never' : daysSinceLogin === 0 ? 'Today' : `${daysSinceLogin}d ago`;
+            const loginAlert = daysSinceLogin === null || daysSinceLogin > 14;
+            const accountAge = stats?.account_age_days || 0;
+            const accountAgeLabel = accountAge < 7 ? `${accountAge}d (new)` : accountAge < 30 ? `${accountAge}d` : `${Math.floor(accountAge / 30)}mo`;
+
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <MiniStat icon={Activity} label="Last Login" valueStr={loginStatus} alert={loginAlert} subValue={accountAge < 14 && loginAlert ? 'New account - no login yet' : undefined} />
+                <MiniStat icon={Clock} label="Account Age" valueStr={accountAgeLabel} subValue={`Created ${formatDate(org?.created_at)}`} />
+                <MiniStat icon={Layers} label="Modules" value={stats?.modules_enabled || 0} subValue={`of ${org?.max_users || '?'} max users`} />
+                <MiniStat icon={Users} label="Customers" value={stats?.customers_created || 0} subValue={`${stats?.invoices_created || 0} invoices, ${stats?.quotes_created || 0} quotes`} />
+                <MiniStat icon={Zap} label="AI Tokens" value={stats?.ai_tokens_used || 0} subValue={stats?.ai_tokens_allocated ? `/ ${formatNumber(stats.ai_tokens_allocated)} allocated` : undefined} />
+                <MiniStat icon={PhoneCall} label="Voice" value={org?.voice_minutes_used || 0} subValue={`${stats?.active_phones || 0} numbers, ${stats?.calls_made || 0} calls`} />
+              </div>
+            );
+          })()}
 
           {/* Members Table */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -667,15 +678,17 @@ export const OrgDetailView = () => {
 
 // --- Sub-components ---
 
-const MiniStat = ({ icon: Icon, label, value, subValue, alert }: {
-  icon: any; label: string; value: number; subValue?: string; alert?: boolean;
+const MiniStat = ({ icon: Icon, label, value, valueStr, subValue, alert }: {
+  icon: any; label: string; value?: number; valueStr?: string; subValue?: string; alert?: boolean;
 }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
     <div className="flex items-center gap-2 mb-1">
       <Icon className={`w-3.5 h-3.5 ${alert ? 'text-red-500' : 'text-gray-400'}`} />
       <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">{label}</span>
     </div>
-    <p className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(value)}</p>
+    <p className={`text-lg font-bold ${alert ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>
+      {valueStr ?? formatNumber(value ?? 0)}
+    </p>
     {subValue && <p className={`text-[10px] mt-0.5 ${alert ? 'text-red-500 font-medium' : 'text-gray-400'}`}>{subValue}</p>}
   </div>
 );
