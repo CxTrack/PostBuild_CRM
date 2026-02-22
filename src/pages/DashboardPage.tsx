@@ -382,7 +382,7 @@ export const DashboardPage = () => {
             </div>
 
             {/* Mini Stat Cards Row (responsive to CoPilot panel) */}
-            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${isCoPilotOpen ? 'xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
+            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${isCoPilotOpen ? '2xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
                 <CompactStatCard
                     label={crmLabels.entityPlural}
                     value={customers.length}
