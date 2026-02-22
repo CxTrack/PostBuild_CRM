@@ -95,6 +95,7 @@ const TicketsSection = () => {
             case 'help_center': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Help Center</span>;
             case 'customer_profile': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">Customer</span>;
             case 'bug_report': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Bug Report</span>;
+            case 'copilot_feedback': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">CoPilot</span>;
             default: return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">Direct</span>;
         }
     };
@@ -210,6 +211,7 @@ const TicketsSection = () => {
                     <option value="bug_report">Bug Report</option>
                     <option value="data_request">Data Request</option>
                     <option value="account_issue">Account Issue</option>
+                    <option value="copilot_feedback">CoPilot Feedback</option>
                 </select>
                 <button
                     onClick={() => fetchAllTickets()}
@@ -319,6 +321,7 @@ const TicketDetailModal = ({
             case 'help_center': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Help Center</span>;
             case 'customer_profile': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">Customer Profile</span>;
             case 'bug_report': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Bug Report</span>;
+            case 'copilot_feedback': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">CoPilot Feedback</span>;
             default: return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">Direct</span>;
         }
     };

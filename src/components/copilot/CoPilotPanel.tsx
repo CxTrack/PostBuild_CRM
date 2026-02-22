@@ -3,6 +3,8 @@ import { useCoPilot } from '@/contexts/CoPilotContext';
 import { useThemeStore } from '@/stores/themeStore';
 import ActionCard from '@/components/copilot/ActionCard';
 import ChoiceCard from '@/components/copilot/ChoiceCard';
+import FeedbackButtons from '@/components/copilot/FeedbackButtons';
+import { useAuthStore } from '@/stores/authStore';
 import {
   X,
   ChevronLeft,
@@ -16,6 +18,7 @@ import {
   Zap,
   Info,
   Paperclip,
+  UserCog,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -34,6 +37,7 @@ const CoPilotPanel: React.FC = () => {
     confirmAction,
     cancelAction,
     markChoiceSelected,
+    setMessageFeedback,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
@@ -181,15 +185,24 @@ const CoPilotPanel: React.FC = () => {
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
-          messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              onConfirmAction={confirmAction}
-              onCancelAction={cancelAction}
-              onChoiceSelect={handleChoiceSelect}
-            />
-          ))
+          messages.map((message, idx) => {
+            // Find the previous user message for feedback context
+            const prevUserMsg = message.role === 'assistant'
+              ? messages.slice(0, idx).reverse().find(m => m.role === 'user')?.content
+              : undefined;
+            return (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                previousUserMessage={prevUserMsg}
+                contextPage={currentContext?.page}
+                onConfirmAction={confirmAction}
+                onCancelAction={cancelAction}
+                onChoiceSelect={handleChoiceSelect}
+                onFeedbackGiven={setMessageFeedback}
+              />
+            );
+          })
         )}
 
         {isLoading && (
@@ -343,17 +356,50 @@ const CoPilotPanel: React.FC = () => {
 };
 
 const EmptyState: React.FC = () => {
+  const profile = useAuthStore.getState().profile;
+  const profileMeta = profile?.profile_metadata || {};
+  const hasAIContext = !!(
+    profileMeta.work_style?.length ||
+    profileMeta.communication_preference?.length ||
+    profileMeta.goals?.length
+  );
+  const firstName = profile?.full_name?.split(' ')[0];
+
   return (
     <div className="text-center py-12">
       <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-900/30">
         <Sparkles className="w-8 h-8 text-purple-600 dark:text-purple-400" />
       </div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-        Hi! I'm your CoPilot
+        {firstName ? `Hey ${firstName}, I'm your CoPilot` : "Hi! I'm your CoPilot"}
       </h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-xs mx-auto">
-        I can help you analyze data, generate reports, find customers, and more.
+        I can help you analyze data, spot trends, draft messages, and keep your business on track.
       </p>
+
+      {/* Profile nudge */}
+      {!hasAIContext && (
+        <div className="mx-4 mb-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+          <div className="flex items-start gap-2">
+            <UserCog className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+            <div className="text-left">
+              <p className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                Personalize your CoPilot
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                Set up your work style, goals, and expertise in{' '}
+                <a
+                  href="/dashboard/settings?tab=profile"
+                  className="underline font-medium hover:text-purple-800 dark:hover:text-purple-200"
+                >
+                  Settings &gt; Profile
+                </a>{' '}
+                for more tailored advice.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -384,10 +430,13 @@ const SuggestedPrompt: React.FC<{ text: string }> = ({ text }) => {
 
 const MessageBubble: React.FC<{
   message: any;
+  previousUserMessage?: string;
+  contextPage?: string;
   onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
   onCancelAction?: (messageId: string) => void;
   onChoiceSelect?: (messageId: string, choiceId: string) => void;
-}> = ({ message, onConfirmAction, onCancelAction, onChoiceSelect }) => {
+  onFeedbackGiven?: (messageId: string, rating: 'positive' | 'negative') => void;
+}> = ({ message, previousUserMessage, contextPage, onConfirmAction, onCancelAction, onChoiceSelect, onFeedbackGiven }) => {
   const isUser = message.role === 'user';
 
   // Render markdown-like bold text (**text**) in assistant messages
@@ -423,6 +472,17 @@ const MessageBubble: React.FC<{
           {new Date(message.timestamp).toLocaleTimeString()}
         </p>
       </div>
+      {/* Feedback buttons for assistant messages */}
+      {!isUser && onFeedbackGiven && (
+        <FeedbackButtons
+          messageId={message.id}
+          messageContent={message.content}
+          userMessage={previousUserMessage}
+          contextPage={contextPage}
+          feedbackRating={message.feedbackRating}
+          onFeedbackGiven={onFeedbackGiven}
+        />
+      )}
       {/* Choice Card - Quarterback options */}
       {message.choices && onChoiceSelect && (
         <div className="max-w-[85%] w-full">

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import type { ActionProposal, ActionStatus, ActionResult, ChoiceOption } from '@/types/copilot-actions.types';
@@ -18,6 +19,7 @@ export interface Message {
   actionResult?: ActionResult;
   choices?: ChoiceOption[];
   choiceSelected?: string;
+  feedbackRating?: 'positive' | 'negative';
 }
 
 interface ContextData {
@@ -57,6 +59,7 @@ interface CoPilotContextType {
   cancelAction: (messageId: string) => void;
   addAssistantMessage: (msg: Omit<Message, 'id' | 'timestamp'>) => void;
   markChoiceSelected: (messageId: string, choiceId: string) => void;
+  setMessageFeedback: (messageId: string, rating: 'positive' | 'negative') => void;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -99,6 +102,12 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const markChoiceSelected = useCallback((messageId: string, choiceId: string) => {
     setMessages(prev => prev.map(m =>
       m.id === messageId ? { ...m, choiceSelected: choiceId } : m
+    ));
+  }, []);
+
+  const setMessageFeedback = useCallback((messageId: string, rating: 'positive' | 'negative') => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, feedbackRating: rating } : m
     ));
   }, []);
 
@@ -230,6 +239,23 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const org = useOrganizationStore.getState().currentOrganization;
       const membership = useOrganizationStore.getState().currentMembership;
 
+      // Read AI CoPilot Context from user profile
+      const profile = useAuthStore.getState().profile;
+      const profileMeta = profile?.profile_metadata || {};
+      const userPreferences = {
+        full_name: profile?.full_name || '',
+        work_style: profileMeta.work_style || [],
+        communication_preference: profileMeta.communication_preference || [],
+        goals: profileMeta.goals || [],
+        expertise: profileMeta.expertise || [],
+        interests: profileMeta.interests || [],
+      };
+      const hasAIContext = !!(
+        profileMeta.work_style?.length ||
+        profileMeta.communication_preference?.length ||
+        profileMeta.goals?.length
+      );
+
       const isAdminPage = currentContext?.page?.startsWith('Admin') ||
         window.location.pathname.startsWith('/admin');
 
@@ -242,6 +268,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         body: JSON.stringify({
           message: content,
           conversationHistory,
+          userPreferences,
+          hasUserProfile: hasAIContext,
           context: {
             page: currentContext?.page || 'Dashboard',
             industry: org?.industry_template || 'general_business',
@@ -346,6 +374,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         cancelAction,
         addAssistantMessage,
         markChoiceSelected,
+        setMessageFeedback,
       }}
     >
       {children}

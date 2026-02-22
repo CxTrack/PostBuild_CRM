@@ -4,7 +4,7 @@ import { useOrganizationStore } from './organizationStore';
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-export type TicketCategory = 'billing' | 'technical' | 'feature_request' | 'bug' | 'general';
+export type TicketCategory = 'billing' | 'technical' | 'feature_request' | 'bug' | 'general' | 'copilot_feedback';
 
 export interface Ticket {
     id: string;
