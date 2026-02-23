@@ -258,7 +258,7 @@ export const DashboardLayout = () => {
 
   const { theme, toggleTheme } = useThemeStore();
   const { preferences } = usePreferencesStore();
-  const { currentOrganization, teamMembers } = useOrganizationStore();
+  const { currentOrganization, teamMembers, allOrgsDeactivated } = useOrganizationStore();
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -472,6 +472,41 @@ export const DashboardLayout = () => {
   // Ensure Settings is in More if not selected
   if (!selectedPaths.has('/dashboard/settings') && !moreNavItems.some((i: NavItem) => i.path === '/dashboard/settings')) {
     moreNavItems.push(SETTINGS_ITEM);
+  }
+
+  // Account Deactivated Screen - blocks access when all orgs are deactivated
+  if (allOrgsDeactivated) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Account Deactivated</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+            Your organization's account has been deactivated. Your data has been preserved.
+            If you believe this is an error, please contact our support team.
+          </p>
+          <a
+            href="mailto:support@cxtrack.com"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors mb-4"
+          >
+            Contact support@cxtrack.com
+          </a>
+          <div>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate('/auth');
+              }}
+              className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -95,6 +95,7 @@ export const UsersTab = () => {
           id: u.user_id,
           organization_id: u.organization_id,
           organizations: u.org_name ? { name: u.org_name, plan: u.plan } : null,
+          org_deactivated_at: u.org_deactivated_at || null,
           last_seen_at: u.last_sign_in_at,
           is_active: u.status === 'active',
         }));
@@ -335,34 +336,44 @@ export const UsersTab = () => {
                 <tr>
                   <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No users found</td>
                 </tr>
-              ) : filteredUsers.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+              ) : filteredUsers.map(user => {
+                const isOrgDeactivated = !!user.org_deactivated_at;
+                return (
+                <tr key={user.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 ${isOrgDeactivated ? 'bg-red-50/50 dark:bg-red-500/5' : ''}`}>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 ${isOrgDeactivated ? 'bg-gradient-to-br from-red-500 to-red-700' : 'bg-gradient-to-br from-purple-600 to-blue-600'}`}>
                         {user.full_name?.charAt(0) || 'U'}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.full_name || 'Unknown'}</p>
+                        <p className={`text-sm font-medium truncate ${isOrgDeactivated ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>{user.full_name || 'Unknown'}</p>
                         <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 hidden md:table-cell">
                     {user.organization_id && user.organizations?.name ? (
-                      <button
-                        onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
-                        className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:underline truncate block text-left font-medium transition-colors max-w-full"
-                        title="View organization details"
-                      >
-                        {user.organizations.name}
-                      </button>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <button
+                          onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
+                          className={`text-sm hover:underline truncate block text-left font-medium transition-colors ${isOrgDeactivated ? 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300' : 'text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300'}`}
+                          title={isOrgDeactivated ? `View deactivated organization (${new Date(user.org_deactivated_at).toLocaleDateString()})` : 'View organization details'}
+                        >
+                          {user.organizations.name}
+                        </button>
+                        {isOrgDeactivated && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 whitespace-nowrap shrink-0">
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-400">{'\u2014'}</p>
                     )}
                   </td>
                   <td className="px-3 py-2.5 hidden md:table-cell">
                     <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                      isOrgDeactivated ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500 line-through' :
                       user.organizations?.plan === 'elite' || user.organizations?.plan === 'elite_premium' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                       user.organizations?.plan === 'business' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       user.organizations?.plan === 'enterprise' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
@@ -375,13 +386,19 @@ export const UsersTab = () => {
                     {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                      user.is_active !== false
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {user.is_active !== false ? 'Active' : 'Inactive'}
-                    </span>
+                    {isOrgDeactivated ? (
+                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        Deactivated
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                        user.is_active !== false
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {user.is_active !== false ? 'Active' : 'Inactive'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-right hidden md:table-cell">
                     {user.organization_id && user.organizations?.name ? (
@@ -393,21 +410,25 @@ export const UsersTab = () => {
                         >
                           <Building2 className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => setConfirmUser(user)}
-                          className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
-                          title="Impersonate user"
-                        >
-                          <UserCheck className="w-3.5 h-3.5" />
-                        </button>
+                        {!isOrgDeactivated && (
+                          <button
+                            onClick={() => setConfirmUser(user)}
+                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
+                            title="Impersonate user"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <span className="text-[10px] text-gray-400">No org</span>
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
+
           </table>
         </div>
       </div>

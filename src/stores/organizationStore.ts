@@ -25,6 +25,7 @@ interface OrganizationState {
   teamMembers: Array<UserProfile & { role: string; color: string }>;
   loading: boolean;
   demoMode: boolean;
+  allOrgsDeactivated: boolean;
   _hasHydrated: boolean;
   fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
@@ -61,6 +62,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       teamMembers: [],
       loading: false,
       demoMode: false,
+      allOrgsDeactivated: false,
       _hasHydrated: false,
 
       setHasHydrated: (state: boolean) => {
@@ -159,20 +161,24 @@ export const useOrganizationStore = create<OrganizationState>()(
               },
             }));
 
-          console.log('[OrgStore] Valid organizations after filtering:', orgs.length);
-          set({ organizations: orgs });
+          // Filter out deactivated organizations
+          const activeOrgs = orgs.filter((o: { organization: Organization }) => !(o.organization as any).deactivated_at);
+          const hadOrgsButAllDeactivated = orgs.length > 0 && activeOrgs.length === 0;
 
-          if (orgs.length === 0) {
+          console.log('[OrgStore] Valid organizations after filtering:', activeOrgs.length, hadOrgsButAllDeactivated ? '(all deactivated)' : '');
+          set({ organizations: activeOrgs, allOrgsDeactivated: hadOrgsButAllDeactivated });
+
+          if (activeOrgs.length === 0 && !hadOrgsButAllDeactivated) {
             console.warn('[OrgStore] No organizations found for user:', userId);
           }
 
           // If no current org selected or cached org doesn't belong to this user, select the first one
           const currentOrg = get().currentOrganization;
-          const orgBelongsToUser = orgs.some(o => o.organization.id === currentOrg?.id);
+          const orgBelongsToUser = activeOrgs.some((o: { organization: Organization }) => o.organization.id === currentOrg?.id);
 
-          if ((!currentOrg || !orgBelongsToUser) && orgs.length > 0) {
-            console.log('[OrgStore] Setting current organization to:', orgs[0].organization.name);
-            await get().setCurrentOrganization(orgs[0].organization.id);
+          if ((!currentOrg || !orgBelongsToUser) && activeOrgs.length > 0) {
+            console.log('[OrgStore] Setting current organization to:', activeOrgs[0].organization.name);
+            await get().setCurrentOrganization(activeOrgs[0].organization.id);
           }
         } catch (error) {
           console.error('[OrgStore] fetchUserOrganizations failed:', error);

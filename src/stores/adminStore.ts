@@ -267,6 +267,7 @@ interface AdminState {
   adminNotifications: any[];
   marketingSubscriptions: any[];
   orgDetail: any | null;
+  usageOverview: any | null;
 
   // UI State
   loading: Record<string, boolean>;
@@ -312,7 +313,17 @@ interface AdminState {
   adminDenySmsReopt: (consentId: string) => Promise<void>;
   fetchAdminNotifications: (type?: string) => Promise<void>;
   markAdminNotificationRead: (id: string) => Promise<void>;
+  fetchUsageOverview: (days?: number) => Promise<void>;
   fetchMarketingSubscriptions: () => Promise<void>;
+  deactivateOrganization: (params: {
+    organizationId: string;
+    reason: string;
+    cancelSubscription: boolean;
+    refundLastInvoice: boolean;
+    refundAmountCents?: number | null;
+    releasePhoneNumbers: boolean;
+    sendNotificationEmail: boolean;
+  }) => Promise<{ success: boolean; actions?: any; errors?: string[]; error?: string }>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -340,6 +351,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   adminNotifications: [],
   marketingSubscriptions: [],
   orgDetail: null,
+  usageOverview: null,
 
   loading: {},
   errors: {},
@@ -866,6 +878,16 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     }));
   },
 
+  fetchUsageOverview: async (days?: number) => {
+    set((s) => ({ loading: { ...s.loading, usageOverview: true }, errors: { ...s.errors, usageOverview: null } }));
+    try {
+      const data = await supabaseRpc('admin_get_usage_overview', { p_days: days || get().dateRangeDays });
+      set((s) => ({ usageOverview: data, loading: { ...s.loading, usageOverview: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, usageOverview: false }, errors: { ...s.errors, usageOverview: e.message } }));
+    }
+  },
+
   fetchMarketingSubscriptions: async () => {
     const token = getAuthToken();
     if (!token) return;
@@ -879,6 +901,30 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set((s) => ({ marketingSubscriptions: data, loading: { ...s.loading, marketingSubs: false } }));
     } catch {
       set((s) => ({ loading: { ...s.loading, marketingSubs: false } }));
+    }
+  },
+
+  deactivateOrganization: async (params) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-deactivate-org`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify(params),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Refresh org detail to reflect deactivated state
+        await get().fetchOrgDetail(params.organizationId);
+      }
+      return data;
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   },
 

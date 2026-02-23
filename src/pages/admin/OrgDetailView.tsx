@@ -3,7 +3,8 @@ import {
   ArrowLeft, Building2, Users, Mail, Phone, Globe, MapPin,
   Brain, PhoneCall, FileText, UserCheck, Activity, Layers,
   MessageSquare, Send, Bell, Clock, Shield, Crown, Loader2, X,
-  AlertCircle, Calendar, Zap
+  AlertCircle, Calendar, Zap, ArrowUpDown, Trash2, ShieldOff,
+  CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
 
@@ -72,7 +73,8 @@ export const OrgDetailView = () => {
   const {
     selectedOrgId, selectedOrgContext, setSelectedOrg, setActiveTab,
     orgDetail, loading, errors, fetchOrgDetail,
-    sendAdminNotification, sendAdminEmail, sendAdminSms
+    sendAdminNotification, sendAdminEmail, sendAdminSms,
+    deactivateOrganization
   } = useAdminStore();
 
   const [commMode, setCommMode] = useState<CommMode>(null);
@@ -80,6 +82,22 @@ export const OrgDetailView = () => {
   const [commBody, setCommBody] = useState('');
   const [commSending, setCommSending] = useState(false);
   const [commResult, setCommResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Deactivation modal state
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateStep, setDeactivateStep] = useState<1 | 2>(1);
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const [deactivateOptions, setDeactivateOptions] = useState({
+    cancelSubscription: true,
+    releasePhoneNumbers: true,
+    sendNotificationEmail: true,
+    refundLastInvoice: false,
+  });
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [confirmOrgName, setConfirmOrgName] = useState('');
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivateResult, setDeactivateResult] = useState<{ success: boolean; message: string; actions?: any } | null>(null);
 
   useEffect(() => {
     if (selectedOrgId) {
@@ -154,6 +172,62 @@ export const OrgDetailView = () => {
     setCommResult(null);
   };
 
+  const isDeactivated = !!org?.deactivated_at;
+
+  const openDeactivateModal = () => {
+    setShowDeactivateModal(true);
+    setDeactivateStep(1);
+    setDeactivateReason('');
+    setConfirmOrgName('');
+    setDeactivating(false);
+    setDeactivateResult(null);
+    setDeactivateOptions({
+      cancelSubscription: true,
+      releasePhoneNumbers: true,
+      sendNotificationEmail: true,
+      refundLastInvoice: false,
+    });
+    setRefundType('full');
+    setRefundAmount('');
+  };
+
+  const handleDeactivate = async () => {
+    if (!selectedOrgId) return;
+    setDeactivating(true);
+    try {
+      const result = await deactivateOrganization({
+        organizationId: selectedOrgId,
+        reason: deactivateReason.trim(),
+        cancelSubscription: deactivateOptions.cancelSubscription,
+        refundLastInvoice: deactivateOptions.refundLastInvoice,
+        refundAmountCents: deactivateOptions.refundLastInvoice && refundType === 'partial' && refundAmount
+          ? Math.round(parseFloat(refundAmount) * 100)
+          : null,
+        releasePhoneNumbers: deactivateOptions.releasePhoneNumbers,
+        sendNotificationEmail: deactivateOptions.sendNotificationEmail,
+      });
+      if (result.success) {
+        setDeactivateResult({
+          success: true,
+          message: result.message || 'Organization deactivated successfully.',
+          actions: result.actions,
+        });
+      } else {
+        setDeactivateResult({
+          success: false,
+          message: result.error || 'Failed to deactivate organization.',
+        });
+      }
+    } catch (e: any) {
+      setDeactivateResult({
+        success: false,
+        message: e.message || 'An unexpected error occurred.',
+      });
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   // Loading state
   if (isLoading && !orgDetail) {
     return (
@@ -208,6 +282,44 @@ export const OrgDetailView = () => {
           </span>
         )}
       </div>
+
+      {/* Deactivation Banner */}
+      {isDeactivated && (
+        <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <ShieldOff className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-red-700 dark:text-red-400">
+                This organization was deactivated on {formatDate(org.deactivated_at)}
+              </p>
+              {org.deactivation_reason && (
+                <p className="text-xs text-red-600 dark:text-red-400/80 mt-1">
+                  <span className="font-medium">Reason:</span> {org.deactivation_reason}
+                </p>
+              )}
+              {orgDetail?.deactivation_log?.[0] && (
+                <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                  {orgDetail.deactivation_log[0].stripe_subscription_canceled && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">Subscription canceled</span>
+                  )}
+                  {orgDetail.deactivation_log[0].phone_numbers_released > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">{orgDetail.deactivation_log[0].phone_numbers_released} phone(s) released</span>
+                  )}
+                  {orgDetail.deactivation_log[0].stripe_refund_amount_cents > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">${(orgDetail.deactivation_log[0].stripe_refund_amount_cents / 100).toFixed(2)} refunded</span>
+                  )}
+                  {orgDetail.deactivation_log[0].notification_sent && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">Owner notified</span>
+                  )}
+                  {orgDetail.deactivation_log[0].admin_name && (
+                    <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">by {orgDetail.deactivation_log[0].admin_name}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Org Header */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
@@ -487,6 +599,13 @@ export const OrgDetailView = () => {
             ) : (
               <p className="text-xs text-gray-400">No subscription data</p>
             )}
+            <button
+              onClick={() => setActiveTab('billing')}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              Change Plan
+            </button>
           </div>
 
           {/* Stripe Status */}
@@ -602,10 +721,296 @@ export const OrgDetailView = () => {
                 <MessageSquare className="w-3.5 h-3.5" />
                 View Support Tickets
               </button>
+              {/* Deactivate / Reactivate */}
+              <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                {isDeactivated ? (
+                  <div className="w-full text-left px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500 rounded-lg flex items-center gap-2 cursor-not-allowed">
+                    <ShieldOff className="w-3.5 h-3.5" />
+                    <div>
+                      <span>Reactivate Organization</span>
+                      <p className="text-[10px] opacity-70">Coming soon</p>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={openDeactivateModal}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors flex items-center gap-2 border border-transparent hover:border-red-200 dark:hover:border-red-800/30"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Deactivate Organization
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Deactivation Confirmation Modal */}
+      {showDeactivateModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={() => !deactivating && setShowDeactivateModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Deactivate Organization
+              </h3>
+              {!deactivating && (
+                <button onClick={() => setShowDeactivateModal(false)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Success Result */}
+            {deactivateResult?.success ? (
+              <div className="text-center py-6">
+                <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{deactivateResult.message}</p>
+                {deactivateResult.actions && (
+                  <div className="mt-3 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    {deactivateResult.actions.subscriptionCanceled && (
+                      <p className="flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Subscription canceled</p>
+                    )}
+                    {deactivateResult.actions.phonesReleased > 0 && (
+                      <p className="flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> {deactivateResult.actions.phonesReleased} phone number(s) released</p>
+                    )}
+                    {deactivateResult.actions.refundAmountCents > 0 && (
+                      <p className="flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> ${(deactivateResult.actions.refundAmountCents / 100).toFixed(2)} refunded</p>
+                    )}
+                    {deactivateResult.actions.emailSent && (
+                      <p className="flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Owner notified via email</p>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowDeactivateModal(false)}
+                  className="mt-6 px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ) : deactivateStep === 1 ? (
+              /* Step 1: Options */
+              <div>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg">
+                  <p className="text-xs font-medium text-red-700 dark:text-red-400">
+                    You are about to deactivate <strong>{org?.name}</strong>.
+                    {members.length > 0 && ` This will affect ${members.length} member(s).`}
+                  </p>
+                  <p className="text-[10px] text-red-600 dark:text-red-400/70 mt-1">
+                    All data will be preserved but users will be blocked from accessing the CRM.
+                  </p>
+                </div>
+
+                {/* Options */}
+                <div className="space-y-3 mb-4">
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deactivateOptions.cancelSubscription}
+                      onChange={(e) => setDeactivateOptions(prev => ({ ...prev, cancelSubscription: e.target.checked }))}
+                      className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Cancel Stripe subscription</p>
+                      <p className="text-xs text-gray-500">Stop billing immediately</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deactivateOptions.releasePhoneNumbers}
+                      onChange={(e) => setDeactivateOptions(prev => ({ ...prev, releasePhoneNumbers: e.target.checked }))}
+                      className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Release all phone numbers</p>
+                      <p className="text-xs text-gray-500">{stats?.active_phones || 0} active number(s) will be removed from Twilio</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deactivateOptions.sendNotificationEmail}
+                      onChange={(e) => setDeactivateOptions(prev => ({ ...prev, sendNotificationEmail: e.target.checked }))}
+                      className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Send notification email to owner</p>
+                      <p className="text-xs text-gray-500">{ownerEmail || 'No email on file'}</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deactivateOptions.refundLastInvoice}
+                      onChange={(e) => setDeactivateOptions(prev => ({ ...prev, refundLastInvoice: e.target.checked }))}
+                      className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Refund last invoice</p>
+                      <p className="text-xs text-gray-500">Issue a refund for the most recent paid invoice</p>
+                    </div>
+                  </label>
+                  {deactivateOptions.refundLastInvoice && (
+                    <div className="ml-8 pl-3 border-l-2 border-red-200 dark:border-red-800/30 space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="refundType"
+                          checked={refundType === 'full'}
+                          onChange={() => setRefundType('full')}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Full refund</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="refundType"
+                          checked={refundType === 'partial'}
+                          onChange={() => setRefundType('partial')}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Partial refund</span>
+                      </label>
+                      {refundType === 'partial' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">$</span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={refundAmount}
+                            onChange={(e) => setRefundAmount(e.target.value)}
+                            placeholder="0.00"
+                            className="w-32 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white outline-none focus:border-red-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Reason */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Reason for deactivation <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={deactivateReason}
+                    onChange={(e) => setDeactivateReason(e.target.value)}
+                    placeholder="Explain why this organization is being deactivated (min 10 characters)..."
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-red-500 resize-none"
+                  />
+                  {deactivateReason.length > 0 && deactivateReason.length < 10 && (
+                    <p className="text-[10px] text-red-500 mt-1">{10 - deactivateReason.length} more characters needed</p>
+                  )}
+                </div>
+
+                {/* Error */}
+                {deactivateResult && !deactivateResult.success && (
+                  <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/30 text-sm">
+                    {deactivateResult.message}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeactivateModal(false)}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setDeactivateStep(2)}
+                    disabled={deactivateReason.trim().length < 10}
+                    className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Step 2: Type to confirm */
+              <div>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400">
+                    Type <strong className="font-mono">{org?.name}</strong> below to confirm deactivation.
+                  </p>
+                </div>
+
+                {/* Summary of what will happen */}
+                <div className="mb-4 space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+                  <p className="font-medium text-gray-900 dark:text-white text-sm mb-2">Actions to be taken:</p>
+                  {deactivateOptions.cancelSubscription && (
+                    <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Cancel Stripe subscription</p>
+                  )}
+                  {deactivateOptions.releasePhoneNumbers && (
+                    <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Release {stats?.active_phones || 0} phone number(s)</p>
+                  )}
+                  {deactivateOptions.refundLastInvoice && (
+                    <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Refund last invoice {refundType === 'partial' && refundAmount ? `($${refundAmount})` : '(full)'}</p>
+                  )}
+                  {deactivateOptions.sendNotificationEmail && (
+                    <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Notify owner via email</p>
+                  )}
+                  <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Block all members from CRM access</p>
+                  <p className="mt-2 text-[10px] text-gray-400">Reason: {deactivateReason}</p>
+                </div>
+
+                <input
+                  type="text"
+                  value={confirmOrgName}
+                  onChange={(e) => setConfirmOrgName(e.target.value)}
+                  placeholder={`Type "${org?.name}" to confirm`}
+                  className="w-full px-3 py-2.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-red-500 mb-4"
+                  autoFocus
+                />
+
+                {/* Error */}
+                {deactivateResult && !deactivateResult.success && (
+                  <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/30 text-sm">
+                    {deactivateResult.message}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setDeactivateStep(1); setConfirmOrgName(''); }}
+                    disabled={deactivating}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleDeactivate}
+                    disabled={deactivating || confirmOrgName.toLowerCase() !== (org?.name || '').toLowerCase()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {deactivating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Deactivating...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Deactivate Organization
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Communication Modal */}
       {commMode && (
