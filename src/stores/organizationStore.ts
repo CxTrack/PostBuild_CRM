@@ -179,6 +179,14 @@ export const useOrganizationStore = create<OrganizationState>()(
           if ((!currentOrg || !orgBelongsToUser) && activeOrgs.length > 0) {
             console.log('[OrgStore] Setting current organization to:', activeOrgs[0].organization.name);
             await get().setCurrentOrganization(activeOrgs[0].organization.id);
+          } else if (currentOrg && orgBelongsToUser) {
+            // Org already cached, but teamMembers aren't persisted — re-fetch them
+            console.log('[OrgStore] Org already set, refreshing team members...');
+            try {
+              await get().fetchTeamMembers();
+            } catch (error) {
+              console.error('[OrgStore] Error refreshing team members:', error);
+            }
           }
         } catch (error) {
           console.error('[OrgStore] fetchUserOrganizations failed:', error);
