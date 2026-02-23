@@ -49,7 +49,7 @@ export interface Conversation {
     organization_id?: string;
     name?: string;
     is_group?: boolean;
-    channel_type?: 'direct' | 'group' | 'channel';
+    channel_type?: 'direct' | 'group' | 'channel' | 'sms';
     description?: string;
     created_by?: string;
     created_at?: string;
