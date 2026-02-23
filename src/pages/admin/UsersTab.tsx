@@ -314,68 +314,68 @@ export const UsersTab = () => {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div>
+          <table className="w-full table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Organization</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Plan</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">Last Seen</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Actions</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-[30%]">User</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[22%]">Organization</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[8%]">Plan</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell w-[12%]">Last Seen</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-[10%]">Status</th>
+                <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[18%]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loadingUsers ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">Loading users...</td>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">Loading users...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">No users found</td>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No users found</td>
                 </tr>
               ) : filteredUsers.map(user => (
                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
                         {user.full_name?.charAt(0) || 'U'}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.full_name || 'Unknown'}</p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
+                  <td className="px-3 py-2.5 hidden md:table-cell">
                     {user.organization_id && user.organizations?.name ? (
                       <button
                         onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
-                        className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:underline truncate text-left font-medium transition-colors"
+                        className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:underline truncate block text-left font-medium transition-colors max-w-full"
                         title="View organization details"
                       >
                         {user.organizations.name}
                       </button>
                     ) : (
-                      <p className="text-sm text-gray-400 truncate">{'\u2014'}</p>
+                      <p className="text-sm text-gray-400">{'\u2014'}</p>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      user.organizations?.plan === 'elite' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  <td className="px-3 py-2.5 hidden md:table-cell">
+                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                      user.organizations?.plan === 'elite' || user.organizations?.plan === 'elite_premium' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                       user.organizations?.plan === 'business' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       user.organizations?.plan === 'enterprise' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                     }`}>
-                      {user.organizations?.plan || 'free'}
+                      {(user.organizations?.plan || 'free').replace('_premium', '')}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
+                  <td className="px-3 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
                     {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : 'Never'}
                   </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                  <td className="px-3 py-2.5">
+                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
                       user.is_active !== false
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
@@ -383,28 +383,26 @@ export const UsersTab = () => {
                       {user.is_active !== false ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right hidden md:table-cell">
+                  <td className="px-3 py-2.5 text-right hidden md:table-cell">
                     {user.organization_id && user.organizations?.name ? (
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-lg transition-colors"
+                          className="p-1.5 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-lg transition-colors"
                           title="View organization details"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          View Org
+                          <Building2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setConfirmUser(user)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
-                          title="View CRM as this user"
+                          className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
+                          title="Impersonate user"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          Impersonate
                         </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">No org</span>
+                      <span className="text-[10px] text-gray-400">No org</span>
                     )}
                   </td>
                 </tr>
