@@ -178,13 +178,30 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
             : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm'
         }
       `}>
-        {/* Top gradient accent bar */}
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-purple-500 via-blue-500 to-amber-500 opacity-90" />
+        {/* Top gradient accent bar — animated flow */}
+        <div className={`absolute inset-x-0 top-0 h-[3px] qb-gradient-bar opacity-90 ${
+          isMidnight
+            ? 'bg-gradient-to-r from-purple-500 via-amber-400 to-blue-500'
+            : isSoftModern
+              ? 'bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500'
+              : 'bg-gradient-to-r from-purple-500 via-blue-500 to-amber-500'
+        }`} />
 
         {/* Subtle glow effect behind the card (midnight theme only) */}
         {isMidnight && (
           <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-amber-500/10 blur-sm -z-10" />
         )}
+
+        {/* Animated gradient overlay — subtle color shift per theme */}
+        <div className={`absolute inset-0 rounded-2xl qb-card-glow ${
+          isMidnight
+            ? 'bg-gradient-to-br from-purple-600/[0.06] via-amber-500/[0.04] to-blue-600/[0.06]'
+            : isSoftModern
+              ? 'bg-gradient-to-br from-blue-400/[0.03] via-teal-300/[0.02] to-indigo-400/[0.03]'
+              : theme === 'dark'
+                ? 'bg-gradient-to-br from-purple-500/[0.05] via-blue-500/[0.03] to-teal-500/[0.05]'
+                : 'bg-gradient-to-br from-blue-300/[0.04] via-purple-200/[0.03] to-pink-300/[0.04]'
+        }`} />
 
         {/* Header */}
         <div className={`${compact ? 'px-4 pt-4 pb-2' : 'px-6 pt-6 pb-3'}`}>
@@ -194,7 +211,7 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
               <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-purple-500 via-blue-500 to-amber-500 shadow-lg shadow-purple-500/20">
                 <Sparkles className="w-5 h-5 text-white" />
                 {/* Pulse ring */}
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 via-blue-500 to-amber-500 animate-ping opacity-20" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 via-blue-500 to-amber-500 animate-qb-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
