@@ -156,15 +156,24 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const fetchConversations = async () => {
         if (!user) return;
 
-        const { data, error: fetchError } = await supabase
+        const orgId = useOrganizationStore.getState().currentOrganization?.id;
+
+        let query = supabase
             .from('conversations')
             .select(`
         *,
         participants:conversation_participants(
-          user:user_profiles(full_name)
+          user:user_profiles(id, full_name)
         )
       `)
             .order('updated_at', { ascending: false });
+
+        // Scope to current organization so multi-org users only see relevant conversations
+        if (orgId) {
+            query = query.eq('organization_id', orgId);
+        }
+
+        const { data, error: fetchError } = await query;
 
         if (fetchError) {
             console.error('Error fetching conversations:', fetchError);
@@ -172,7 +181,18 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
 
         if (data) {
-            setConversations(data);
+            // For direct/group convos, filter out current user from participants
+            // so the display shows the other person's name (not your own)
+            const processed = data.map(conv => {
+                if (conv.channel_type !== 'channel' && conv.participants) {
+                    const others = conv.participants.filter(
+                        (p: any) => p.user?.id !== user.id
+                    );
+                    return { ...conv, participants: others.length > 0 ? others : conv.participants };
+                }
+                return conv;
+            });
+            setConversations(processed);
         }
     };
 
@@ -445,7 +465,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         // Check if a direct conversation already exists with this member
         const existing = conversations.find(c =>
             (!c.channel_type || c.channel_type === 'direct') &&
-            c.participants?.some(p => p.user?.full_name === member.full_name)
+            c.participants?.some(p => p.user?.id === member.id)
         );
 
         if (existing) {
@@ -479,7 +499,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
 
         const newConv = {
             ...conv,
-            participants: [{ user: { full_name: member.full_name } }],
+            participants: [{ user: { id: member.id, full_name: member.full_name } }],
         };
 
         setConversations(prev => [newConv, ...prev]);
@@ -843,7 +863,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <div className="p-4">
                                 <p className="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Suggested Contacts</p>
                                 <div className="space-y-2">
-                                    {teamMembers.map(u => (
+                                    {teamMembers.filter(u => u.id !== user?.id).map(u => (
                                         <button
                                             key={u.id}
                                             onClick={() => handleStartNewConversation(u)}
