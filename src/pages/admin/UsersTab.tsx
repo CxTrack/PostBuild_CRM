@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Building2, TrendingUp, UserCheck, Loader2, X } from 'lucide-react';
+import { Search, Users, Building2, TrendingUp, UserCheck, Loader2, X, ExternalLink } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useAdminStore } from '../../stores/adminStore';
 import { useImpersonationStore } from '../../stores/impersonationStore';
@@ -57,7 +57,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export const UsersTab = () => {
-  const { kpis, userGrowth, orgBreakdown, loading, fetchUserGrowth, fetchOrgBreakdown } = useAdminStore();
+  const { kpis, userGrowth, orgBreakdown, loading, fetchUserGrowth, fetchOrgBreakdown, setSelectedOrg } = useAdminStore();
   const { startImpersonation, loading: impersonationLoading } = useImpersonationStore();
   const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
@@ -349,7 +349,17 @@ export const UsersTab = () => {
                     </div>
                   </td>
                   <td className="px-4 py-2.5 hidden md:table-cell">
-                    <p className="text-sm text-gray-900 dark:text-white truncate">{user.organizations?.name || '\u2014'}</p>
+                    {user.organization_id && user.organizations?.name ? (
+                      <button
+                        onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
+                        className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:underline truncate text-left font-medium transition-colors"
+                        title="View organization details"
+                      >
+                        {user.organizations.name}
+                      </button>
+                    ) : (
+                      <p className="text-sm text-gray-400 truncate">{'\u2014'}</p>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 hidden md:table-cell">
                     <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -375,14 +385,24 @@ export const UsersTab = () => {
                   </td>
                   <td className="px-4 py-2.5 text-right hidden md:table-cell">
                     {user.organization_id && user.organizations?.name ? (
-                      <button
-                        onClick={() => setConfirmUser(user)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
-                        title="View CRM as this user"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        Impersonate
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-lg transition-colors"
+                          title="View organization details"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View Org
+                        </button>
+                        <button
+                          onClick={() => setConfirmUser(user)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
+                          title="View CRM as this user"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          Impersonate
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-400">No org</span>
                     )}
