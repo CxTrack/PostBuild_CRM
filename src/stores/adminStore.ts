@@ -525,38 +525,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   fetchAdminUsers: async () => {
     set((s) => ({ loading: { ...s.loading, adminUsers: true }, errors: { ...s.errors, adminUsers: null } }));
     try {
-      const token = getAuthToken();
-      if (!token) throw new Error('Not authenticated');
-      // Direct query: join admin_settings + auth.users via admin_user_view or direct query
-      const res = await fetch(`${supabaseUrl}/rest/v1/admin_settings?is_admin=eq.true&select=user_id,is_admin,admin_access_level,created_at`, {
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error('Failed to fetch admin users');
-      const adminSettings = await res.json();
-
-      // Get user emails from users table
-      const userIds = adminSettings.map((a: any) => a.user_id);
-      if (userIds.length > 0) {
-        const usersRes = await fetch(`${supabaseUrl}/rest/v1/users?id=in.(${userIds.join(',')})&select=id,email`, {
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const usersData = usersRes.ok ? await usersRes.json() : [];
-        const emailMap = Object.fromEntries(usersData.map((u: any) => [u.id, u.email]));
-
-        const merged = adminSettings.map((a: any) => ({
-          ...a,
-          email: emailMap[a.user_id] || 'Unknown',
-        }));
-        set((s) => ({ adminUsers: merged, loading: { ...s.loading, adminUsers: false } }));
-      } else {
-        set((s) => ({ adminUsers: [], loading: { ...s.loading, adminUsers: false } }));
-      }
+      const data = await supabaseRpc('admin_get_admin_users');
+      set((s) => ({ adminUsers: Array.isArray(data) ? data : [], loading: { ...s.loading, adminUsers: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, adminUsers: false }, errors: { ...s.errors, adminUsers: e.message } }));
     }

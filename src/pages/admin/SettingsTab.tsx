@@ -16,9 +16,14 @@ const EDGE_FUNCTIONS = [
   { name: 'list-voices', jwt: false, purpose: 'List available voices', api: 'Retell' },
   { name: 'update-retell-agent', jwt: false, purpose: 'Sync agent settings', api: 'Retell' },
   { name: 'manage-knowledge-base', jwt: false, purpose: 'KB CRUD', api: 'Retell' },
+  { name: 'manage-phone-numbers', jwt: false, purpose: 'Phone release/management', api: 'Retell + Twilio' },
   { name: 'retell-webhook', jwt: false, purpose: 'Call events + SMS', api: 'Retell + Twilio' },
   { name: 'send-invitation', jwt: false, purpose: 'Team invitation emails', api: 'Resend' },
   { name: 'send-sms', jwt: true, purpose: 'SMS notifications', api: 'Twilio' },
+  { name: 'send-reopt-email', jwt: false, purpose: 'SMS re-opt-in emails', api: 'Resend' },
+  { name: 'stripe-billing', jwt: false, purpose: 'Subscription management', api: 'Stripe' },
+  { name: 'stripe-checkout', jwt: false, purpose: 'Checkout sessions', api: 'Stripe' },
+  { name: 'admin-deactivate-org', jwt: false, purpose: 'Org deactivation flow', api: 'Stripe + Twilio + Resend' },
 ];
 
 const API_SECRETS = [
@@ -66,16 +71,18 @@ export const SettingsTab = () => {
               <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />
             </div>
           ) : adminUsers.length > 0 ? (
-            adminUsers.map((admin) => (
+            adminUsers.map((admin: any) => (
               <div key={admin.user_id} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
-                    {(admin.email?.[0] || 'A').toUpperCase()}
+                    {(admin.full_name?.[0] || admin.email?.[0] || 'A').toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{admin.email}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {admin.full_name || admin.email}
+                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Access: {admin.admin_access_level} | Since: {new Date(admin.created_at).toLocaleDateString()}
+                      {admin.email} · {admin.admin_access_level} access · Since {new Date(admin.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
