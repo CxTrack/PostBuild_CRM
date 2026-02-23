@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CreditCard, Check, ShieldCheck, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { stripeBillingService } from '@/services/stripeBilling.service';
 
 interface CheckoutFormProps {
   amount: number;
@@ -12,13 +13,6 @@ interface CheckoutFormProps {
   };
 }
 
-// Stripe price IDs - configure these in your Stripe dashboard
-const STRIPE_PRICE_IDS: Record<string, string> = {
-  business: import.meta.env.VITE_STRIPE_PRICE_BUSINESS || 'price_business',
-  elite_premium: import.meta.env.VITE_STRIPE_PRICE_ELITE || 'price_elite_premium',
-  enterprise: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE || 'price_enterprise',
-};
-
 export default function CheckoutForm({ planId, metadata }: CheckoutFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,26 +22,15 @@ export default function CheckoutForm({ planId, metadata }: CheckoutFormProps) {
     setError(null);
 
     try {
-      // For now, redirect to Stripe Checkout via the marketing site API
-      // In production, set up a Supabase Edge Function for this
-      const response = await fetch('https://easyaicrm.com/api/onboarding/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId,
-          priceId: STRIPE_PRICE_IDS[planId],
-          metadata,
-          successUrl: `${window.location.origin}/onboarding/success?plan=${planId}&type=paid`,
-          cancelUrl: `${window.location.origin}/onboarding/checkout?plan=${planId}`,
-        }),
-      });
+      const successUrl = `${window.location.origin}/onboarding/success?plan=${planId}&type=paid&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/onboarding/checkout?plan=${planId}`;
 
-      const data = await response.json();
-
-      if (data.error) {
-        setError(data.error);
-        return;
-      }
+      const data = await stripeBillingService.createCheckoutSession(
+        planId,
+        successUrl,
+        cancelUrl,
+        metadata.organizationId
+      );
 
       if (data.url) {
         window.location.href = data.url;
@@ -56,7 +39,7 @@ export default function CheckoutForm({ planId, metadata }: CheckoutFormProps) {
       }
     } catch (err: any) {
       console.error('Checkout error:', err);
-      setError('Unable to connect to payment processor. Please try again.');
+      setError(err.message || 'Unable to connect to payment processor. Please try again.');
     } finally {
       setIsProcessing(false);
     }

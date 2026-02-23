@@ -1,25 +1,41 @@
-import { CreditCard, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CreditCard, ExternalLink, Loader2, Zap } from 'lucide-react';
+import { pricingTiers } from '@/constants/onboarding';
+import { stripeBillingService } from '@/services/stripeBilling.service';
+import { useOrganizationStore } from '@/stores/organizationStore';
 
 interface BillingPlanSectionProps {
   subscriptionTier?: string;
 }
 
 export default function BillingPlanSection({ subscriptionTier }: BillingPlanSectionProps) {
-  const planName = subscriptionTier === 'professional' ? 'Professional' :
-    subscriptionTier === 'enterprise' ? 'Enterprise' :
-    subscriptionTier === 'business' ? 'Business' :
-    subscriptionTier === 'elite_premium' ? 'Elite Premium' :
-    subscriptionTier === 'pilot' ? 'Pilot' :
-    'Free Plan';
+  const navigate = useNavigate();
+  const { currentOrganization } = useOrganizationStore();
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
 
-  const planAmount = subscriptionTier === 'professional' ? '$49' :
-    subscriptionTier === 'enterprise' ? '$199' :
-    subscriptionTier === 'business' ? '$99' :
-    subscriptionTier === 'elite_premium' ? '$199' :
-    subscriptionTier === 'pilot' ? '$50' :
-    '$0';
-
+  const tier = pricingTiers.find(t => t.id === subscriptionTier);
+  const planName = tier?.name || 'Free Plan';
+  const planAmount = tier?.priceDisplay || '$0/month';
   const isFreePlan = !subscriptionTier || subscriptionTier === 'free';
+  const hasStripeCustomer = !!(currentOrganization as any)?.stripe_customer_id;
+
+  const handleManageBilling = async () => {
+    if (!currentOrganization?.id) return;
+    setPortalLoading(true);
+    setPortalError(null);
+
+    try {
+      const url = await stripeBillingService.getCustomerPortalUrl(currentOrganization.id);
+      window.open(url, '_blank');
+    } catch (err: any) {
+      console.error('Portal error:', err);
+      setPortalError(err.message || 'Failed to open billing portal');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -38,15 +54,37 @@ export default function BillingPlanSection({ subscriptionTier }: BillingPlanSect
             </p>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-gray-900 dark:text-white">{planAmount}</span>
-              <span className="text-gray-600 dark:text-gray-400">/ month</span>
             </div>
           </div>
-          {isFreePlan && (
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors">
-              Upgrade Plan
-            </button>
-          )}
+          <div className="flex flex-col gap-2">
+            {isFreePlan && (
+              <button
+                onClick={() => navigate('/upgrade')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors flex items-center gap-2"
+              >
+                <Zap size={16} />
+                Upgrade Plan
+              </button>
+            )}
+            {!isFreePlan && hasStripeCustomer && (
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {portalLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ExternalLink size={16} />
+                )}
+                Manage Billing
+              </button>
+            )}
+          </div>
         </div>
+        {portalError && (
+          <p className="mt-3 text-sm text-red-500">{portalError}</p>
+        )}
       </div>
 
       {/* Payment Methods */}
@@ -54,8 +92,22 @@ export default function BillingPlanSection({ subscriptionTier }: BillingPlanSect
         <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
           <CreditCard className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Payment Methods</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">Add a payment method when you upgrade your plan.</p>
+        {hasStripeCustomer ? (
+          <>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Payment Method on File</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Manage your payment methods through the{' '}
+              <button onClick={handleManageBilling} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                Stripe Billing Portal
+              </button>.
+            </p>
+          </>
+        ) : (
+          <>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Payment Methods</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Add a payment method when you upgrade your plan.</p>
+          </>
+        )}
       </div>
 
       {/* Usage Stats */}

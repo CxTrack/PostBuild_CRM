@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Zap, Check, ArrowLeft } from 'lucide-react';
+import { Lock, Zap, Check, ArrowLeft, Loader2, AlertCircle, Mail } from 'lucide-react';
+import { stripeBillingService } from '@/services/stripeBilling.service';
+import { useOrganizationStore } from '@/stores/organizationStore';
 
 export const UpgradePage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { from, moduleId } = (location.state as any) || {};
+    const { currentOrganization } = useOrganizationStore();
+    const [loadingTier, setLoadingTier] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const plans = [
         {
@@ -27,13 +32,46 @@ export const UpgradePage: React.FC = () => {
         },
         {
             name: 'Enterprise',
-            price: '$1299',
+            price: '$1,299',
             description: 'Total control for large organizations',
             features: ['Unlimited users', 'Multiple voice agents', 'Dedicated account manager', 'Custom AI models'],
             tier: 'enterprise',
-            color: 'slate'
+            color: 'slate',
+            contactSales: true
         }
     ];
+
+    const handleUpgrade = async (tier: string) => {
+        if (!currentOrganization?.id) {
+            setError('No organization found. Please complete your profile first.');
+            return;
+        }
+        setLoadingTier(tier);
+        setError(null);
+
+        try {
+            const successUrl = `${window.location.origin}/dashboard/settings?tab=billing&upgraded=true`;
+            const cancelUrl = `${window.location.origin}/upgrade`;
+
+            const data = await stripeBillingService.createCheckoutSession(
+                tier,
+                successUrl,
+                cancelUrl,
+                currentOrganization.id
+            );
+
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                setError('Failed to create checkout session. Please try again.');
+            }
+        } catch (err: any) {
+            console.error('Upgrade checkout error:', err);
+            setError(err.message || 'Unable to start checkout. Please try again.');
+        } finally {
+            setLoadingTier(null);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
@@ -57,6 +95,12 @@ export const UpgradePage: React.FC = () => {
                         This module is reserved for our premium tiers. Choose the plan that best fits your business needs to unlock full access.
                         {from && <span className="block mt-2 text-sm opacity-50 font-mono">Origin: {from}</span>}
                     </p>
+                    {error && (
+                        <div className="mt-6 max-w-lg mx-auto p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm font-medium flex items-center gap-3">
+                            <AlertCircle size={20} className="flex-shrink-0" />
+                            {error}
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -94,15 +138,36 @@ export const UpgradePage: React.FC = () => {
                                 ))}
                             </ul>
 
-                            <button
-                                className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center transition-all ${plan.popular
-                                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
-                                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
-                                    }`}
-                            >
-                                <Zap size={18} className="mr-2" />
-                                Upgrade to {plan.name}
-                            </button>
+                            {(plan as any).contactSales ? (
+                                <a
+                                    href="mailto:sales@cxtrack.com?subject=Enterprise%20Plan%20Inquiry"
+                                    className="w-full py-4 rounded-2xl font-bold flex items-center justify-center transition-all bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                                >
+                                    <Mail size={18} className="mr-2" />
+                                    Contact Sales
+                                </a>
+                            ) : (
+                                <button
+                                    onClick={() => handleUpgrade(plan.tier)}
+                                    disabled={loadingTier !== null}
+                                    className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center transition-all disabled:opacity-50 ${plan.popular
+                                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
+                                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                                        }`}
+                                >
+                                    {loadingTier === plan.tier ? (
+                                        <>
+                                            <Loader2 size={18} className="mr-2 animate-spin" />
+                                            Redirecting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Zap size={18} className="mr-2" />
+                                            Upgrade to {plan.name}
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -66,4 +66,41 @@ export const stripeBillingService = {
     const data = await callEdgeFunction('get_customer_portal_url', { organization_id: organizationId });
     return data.url;
   },
+
+  /**
+   * Create a Stripe Checkout Session for subscribing to a plan.
+   * Returns the Stripe-hosted checkout URL to redirect to.
+   */
+  async createCheckoutSession(
+    planId: string,
+    successUrl: string,
+    cancelUrl: string,
+    organizationId?: string
+  ): Promise<{ url: string; sessionId: string }> {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const CHECKOUT_URL = `${SUPABASE_URL}/functions/v1/stripe-checkout`;
+    const response = await fetch(CHECKOUT_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'create_checkout_session',
+        planId,
+        successUrl,
+        cancelUrl,
+        organizationId,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || error.message || `Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+  },
 };

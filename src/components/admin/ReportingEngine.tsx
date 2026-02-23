@@ -4,6 +4,7 @@ import {
   Loader2, CheckCircle, FileBarChart, Printer
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
+import { supabase } from '@/lib/supabase';
 
 type ReportType =
   | 'executive_summary'
@@ -12,7 +13,8 @@ type ReportType =
   | 'module_adoption'
   | 'api_usage'
   | 'voice_analytics'
-  | 'ai_analytics';
+  | 'ai_analytics'
+  | 'billing_revenue';
 
 interface ReportConfig {
   id: ReportType;
@@ -29,6 +31,7 @@ const REPORT_TYPES: ReportConfig[] = [
   { id: 'api_usage', label: 'API Usage', description: 'External API calls, error rates, costs by service', icon: '⚡' },
   { id: 'voice_analytics', label: 'Voice & Calls', description: 'Call volume, duration, SMS delivery, phone inventory', icon: '📱' },
   { id: 'ai_analytics', label: 'AI & LLM', description: 'Token usage, AI users, receipt scans, model costs', icon: '🤖' },
+  { id: 'billing_revenue', label: 'Billing & Revenue', description: 'Subscriptions, invoices, MRR, plan distribution', icon: '💳' },
 ];
 
 const DATE_PRESETS = [
@@ -318,6 +321,63 @@ export const ReportingEngine = () => {
             ] : []),
           ].join('\n');
           filename = `ai-analytics-${formatDate(endDate)}`;
+          break;
+        }
+
+        case 'billing_revenue': {
+          // Fetch subscriptions, invoices, and plans directly
+          const [{ data: allSubs }, { data: allInvoices }, { data: allPlans }] = await Promise.all([
+            supabase.from('subscriptions').select('*, organizations(name, status)').order('created_at', { ascending: false }),
+            supabase.from('stripe_invoices').select('*, organizations(name)').order('created_at', { ascending: false }).limit(200),
+            supabase.from('subscription_plans').select('id, name, price, status'),
+          ]);
+
+          const subs = allSubs || [];
+          const invs = allInvoices || [];
+
+          const activeSubs = subs.filter((s: any) => s.status === 'active');
+          const mrr = activeSubs.reduce((sum: number, s: any) => sum + (s.plan_amount / 100), 0);
+          const arr = mrr * 12;
+
+          // Plan distribution
+          const planCounts: Record<string, number> = {};
+          activeSubs.forEach((s: any) => {
+            const name = s.plan_name || 'Unknown';
+            planCounts[name] = (planCounts[name] || 0) + 1;
+          });
+
+          csvContent = [
+            `CxTrack Billing & Revenue Report,${dateStr}`,
+            `Generated,${new Date().toLocaleString()}`,
+            '',
+            'Revenue Summary',
+            'Metric,Value',
+            `Monthly Recurring Revenue (MRR),$${mrr.toFixed(2)}`,
+            `Annual Recurring Revenue (ARR),$${arr.toFixed(2)}`,
+            `Active Subscriptions,${activeSubs.length}`,
+            `Total Subscriptions (all statuses),${subs.length}`,
+            `Total Invoices,${invs.length}`,
+            `Total Invoiced,$${(invs.reduce((s: number, i: any) => s + (i.amount_due || 0), 0) / 100).toFixed(2)}`,
+            `Total Collected,$${(invs.reduce((s: number, i: any) => s + (i.amount_paid || 0), 0) / 100).toFixed(2)}`,
+            `Total Refunded,$${(invs.reduce((s: number, i: any) => s + (i.refunded_amount || 0), 0) / 100).toFixed(2)}`,
+            '',
+            'Plan Distribution',
+            'Plan,Active Count',
+            ...Object.entries(planCounts).map(([plan, count]) => `"${plan}",${count}`),
+            '',
+            'Active Subscriptions',
+            'Organization,Plan,Amount,Interval,Status,Period End,Created',
+            ...activeSubs.map((s: any) =>
+              `"${s.organizations?.name || 'Unknown'}","${s.plan_name}","$${(s.plan_amount / 100).toFixed(2)}","${s.interval}","${s.status}","${s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : ''}","${new Date(s.created_at).toLocaleDateString()}"`
+            ),
+            '',
+            'Recent Invoices',
+            'Invoice ID,Organization,Amount Paid,Amount Due,Status,Refunded,Date',
+            ...invs.map((i: any) =>
+              `"${i.stripe_invoice_id}","${i.organizations?.name || 'Unknown'}","$${(i.amount_paid / 100).toFixed(2)}","$${(i.amount_due / 100).toFixed(2)}","${i.status}","${i.refunded_amount ? `$${(i.refunded_amount / 100).toFixed(2)}` : ''}","${new Date(i.created_at).toLocaleDateString()}"`
+            ),
+          ].join('\n');
+          filename = `billing-revenue-${formatDate(endDate)}`;
           break;
         }
       }

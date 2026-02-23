@@ -17,20 +17,15 @@ export interface VisibleModule extends Module {
 }
 
 /**
- * Normalize database subscription tier values to match PLAN_MODULE_ACCESS keys
- * Database may have: 'free', 'starter', 'professional', 'enterprise'
- * Code expects: 'free', 'business', 'elite_premium', 'enterprise'
+ * Normalize database subscription tier values to match PLAN_MODULE_ACCESS keys.
+ * DB tiers: 'free', 'business', 'elite_premium', 'enterprise'
+ * These match PLAN_MODULE_ACCESS keys directly. Falls back to 'free' for any unknown value.
  */
+const VALID_TIERS = new Set(['free', 'business', 'elite_premium', 'enterprise']);
+
 const normalizePlanTier = (dbTier?: string): string => {
-    const tierMap: Record<string, string> = {
-        'free': 'free',
-        'starter': 'business',
-        'professional': 'elite_premium',
-        'business': 'business',
-        'elite_premium': 'elite_premium',
-        'enterprise': 'enterprise',
-    };
-    return tierMap[dbTier || 'free'] || 'free';
+    const tier = dbTier || 'free';
+    return VALID_TIERS.has(tier) ? tier : 'free';
 };
 
 export const useVisibleModules = () => {
