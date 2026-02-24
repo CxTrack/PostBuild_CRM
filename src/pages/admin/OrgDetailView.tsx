@@ -198,7 +198,23 @@ export const OrgDetailView = () => {
     setOrgCallDetailLoading(true);
     try {
       const data = await callAdminRpc('admin_get_call_detail', { p_call_id: callId });
-      setSelectedOrgCall(data);
+      // Flatten: merge call + call_summary into one object so template can access fields directly
+      const call = data?.call || {};
+      const summary = data?.call_summary || {};
+      setSelectedOrgCall({
+        ...call,
+        // Map call_summary fields with prefixed names to avoid collisions
+        summary_text: summary.summary_text,
+        summary_sentiment: summary.cs_sentiment,
+        summary_sentiment_score: summary.cs_sentiment_score,
+        summary_recording_url: summary.cs_recording_url,
+        summary_action_items: summary.cs_action_items,
+        cs_transcript: summary.cs_transcript,
+        transcript_object: summary.transcript_object,
+        // key_topics from summary takes priority over call's
+        key_topics: summary.key_topics || call.key_topics,
+        duration_ms: summary.duration_ms,
+      });
     } catch (e) {
       console.error('Failed to fetch call detail:', e);
     } finally {
@@ -755,9 +771,9 @@ export const OrgDetailView = () => {
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Key Topics</p>
                               <div className="flex flex-wrap gap-1.5">
-                                {topics.map((t: string, i: number) => (
+                                {topics.map((t: any, i: number) => (
                                   <span key={i} className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                    {t}
+                                    {typeof t === 'string' ? t : t?.name || t?.text || JSON.stringify(t)}
                                   </span>
                                 ))}
                               </div>
@@ -778,10 +794,10 @@ export const OrgDetailView = () => {
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Action Items</p>
                               <ul className="space-y-1">
-                                {items.map((item: string, i: number) => (
+                                {items.map((item: any, i: number) => (
                                   <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
                                     <span className="w-1.5 h-1.5 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" />
-                                    {item}
+                                    {typeof item === 'string' ? item : item?.text || item?.description || JSON.stringify(item)}
                                   </li>
                                 ))}
                               </ul>
