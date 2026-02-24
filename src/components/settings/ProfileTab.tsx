@@ -12,8 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     User, Camera, Upload, X, Check, Briefcase,
     MapPin, Phone, Mail, Linkedin, Globe,
-    Calendar, Award, Target, Heart, Coffee,
-    Brain, Lightbulb, Sparkles, Save
+    Calendar, Save
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
@@ -121,6 +120,7 @@ export const ProfileTab: React.FC = () => {
     const [scale, setScale] = useState(1.2);
     const [saving, setSaving] = useState(false);
     const [loadedFromDb, setLoadedFromDb] = useState(false);
+    const [deptOtherMode, setDeptOtherMode] = useState(false);
     const editorRef = useRef<AvatarEditor | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pendingAvatarBlob = useRef<Blob | null>(null);
@@ -213,6 +213,18 @@ export const ProfileTab: React.FC = () => {
             setProfile(merged);
             if (merged.avatar_url) {
                 setAvatarPreview(merged.avatar_url);
+            }
+            // Check if loaded department is a custom (non-preset) value
+            const DEPT_PRESETS = [
+                'Sales', 'Marketing', 'Operations', 'Finance', 'Accounting',
+                'Human Resources', 'Engineering', 'Product', 'Design',
+                'Customer Success', 'Customer Support', 'Legal',
+                'IT', 'Administration', 'Executive', 'Business Development',
+                'Research & Development', 'Quality Assurance', 'Logistics',
+                'Procurement', 'Project Management',
+            ];
+            if (merged.department && !DEPT_PRESETS.includes(merged.department)) {
+                setDeptOtherMode(true);
             }
             setLoadedFromDb(true);
 
@@ -439,16 +451,8 @@ export const ProfileTab: React.FC = () => {
         }
     };
 
-    const toggleArrayItem = (field: keyof ProfileData, item: string) => {
-        const current = profile[field] as string[];
-        const updated = current.includes(item)
-            ? current.filter(i => i !== item)
-            : [...current, item];
-        setProfile({ ...profile, [field]: updated });
-    };
-
     return (
-        <div className="space-y-8 max-w-4xl">
+        <div className="space-y-8">
 
             {/* Header */}
             <div>
@@ -670,13 +674,54 @@ export const ProfileTab: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Department
                         </label>
-                        <input
-                            type="text"
-                            value={profile.department}
-                            onChange={(e) => setProfile({ ...profile, department: e.target.value })}
-                            placeholder="Sales"
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
+                        {(() => {
+                            const DEPARTMENTS = [
+                                'Sales', 'Marketing', 'Operations', 'Finance', 'Accounting',
+                                'Human Resources', 'Engineering', 'Product', 'Design',
+                                'Customer Success', 'Customer Support', 'Legal',
+                                'IT', 'Administration', 'Executive', 'Business Development',
+                                'Research & Development', 'Quality Assurance', 'Logistics',
+                                'Procurement', 'Project Management',
+                            ];
+                            const currentVal = profile.department || '';
+                            const isPreset = DEPARTMENTS.includes(currentVal);
+                            return (
+                                <div className="space-y-2">
+                                    <select
+                                        value={deptOtherMode ? '__other__' : (isPreset ? currentVal : '')}
+                                        onChange={(e) => {
+                                            if (e.target.value === '__other__') {
+                                                setDeptOtherMode(true);
+                                                setProfile({ ...profile, department: '' });
+                                                setTimeout(() => {
+                                                    document.getElementById('department-other-input')?.focus();
+                                                }, 50);
+                                            } else {
+                                                setDeptOtherMode(false);
+                                                setProfile({ ...profile, department: e.target.value });
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    >
+                                        <option value="">Select department...</option>
+                                        {DEPARTMENTS.map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                        <option value="__other__">Other</option>
+                                    </select>
+                                    {deptOtherMode && (
+                                        <input
+                                            id="department-other-input"
+                                            type="text"
+                                            value={currentVal}
+                                            onChange={(e) => setProfile({ ...profile, department: e.target.value })}
+                                            placeholder="Enter department name..."
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div>
@@ -784,139 +829,6 @@ export const ProfileTab: React.FC = () => {
                             />
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* AI CoPilot Context */}
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800 p-8">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                        <Brain className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            AI CoPilot Context
-                            <Sparkles className="w-5 h-5 text-purple-600" />
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Help your AI assistant understand you better
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    {/* Work Style */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Coffee className="w-4 h-4 inline mr-2" />
-                            Work Style
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Early Bird', 'Night Owl', 'Flexible', 'Remote', 'In-Office', 'Hybrid'].map(style => (
-                                <button
-                                    key={style}
-                                    onClick={() => toggleArrayItem('work_style', style)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.work_style.includes(style)
-                                            ? 'bg-purple-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400'
-                                        }
-                  `}
-                                >
-                                    {style}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Communication Preference */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Lightbulb className="w-4 h-4 inline mr-2" />
-                            Communication Style
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Direct', 'Detailed', 'Visual', 'Data-Driven', 'Collaborative', 'Async'].map(style => (
-                                <button
-                                    key={style}
-                                    onClick={() => toggleArrayItem('communication_preference', style)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.communication_preference.includes(style)
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400'
-                                        }
-                  `}
-                                >
-                                    {style}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Goals */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Target className="w-4 h-4 inline mr-2" />
-                            Current Goals
-                        </label>
-                        <textarea
-                            value={profile.goals.join('\n')}
-                            onChange={(e) => setProfile({ ...profile, goals: e.target.value.split('\n').filter(g => g.trim()) })}
-                            placeholder="- Increase sales by 20%&#10;- Learn React&#10;- Improve customer satisfaction"
-                            rows={3}
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                        />
-                    </div>
-
-                    {/* Expertise */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Award className="w-4 h-4 inline mr-2" />
-                            Areas of Expertise
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Sales', 'Marketing', 'Product', 'Engineering', 'Design', 'Operations', 'Finance', 'HR', 'Customer Success'].map(area => (
-                                <button
-                                    key={area}
-                                    onClick={() => toggleArrayItem('expertise', area)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.expertise.includes(area)
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-green-400'
-                                        }
-                  `}
-                                >
-                                    {area}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Interests */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Heart className="w-4 h-4 inline mr-2" />
-                            Interests & Hobbies
-                        </label>
-                        <input
-                            type="text"
-                            value={profile.interests.join(', ')}
-                            onChange={(e) => setProfile({ ...profile, interests: e.target.value.split(',').map(i => i.trim()).filter(Boolean) })}
-                            placeholder="Travel, Photography, Cooking, Tech"
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                        />
-                    </div>
-                </div>
-
-                {/* AI Context Info */}
-                <div className="mt-6 p-4 bg-purple-100 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-800">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                        <Sparkles className="w-4 h-4 inline mr-2 text-purple-600" />
-                        This information helps your AI CoPilot provide more personalized assistance, suggest relevant content, and understand your work style better.
-                    </p>
                 </div>
             </div>
 

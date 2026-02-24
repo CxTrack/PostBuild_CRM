@@ -6,7 +6,7 @@ import {
     ExternalLink, MoreVertical, XCircle, RefreshCw, Eye,
     AlertTriangle, CheckCircle, Clock, Download, ArrowUpDown,
     RotateCcw, ChevronDown, ChevronUp, Activity, Users, Mic,
-    Loader2, X
+    Loader2, X, Filter, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -43,18 +43,19 @@ async function callBillingEdgeFunction(action: string, payload: Record<string, a
 interface Subscription {
     id: string;
     organization_id: string;
-    stripe_subscription_id: string;
-    stripe_customer_id: string;
+    stripe_subscription_id?: string;
+    stripe_customer_id?: string;
     plan_name: string;
     plan_amount: number;
     interval: string;
     status: string;
-    current_period_start: string;
-    current_period_end: string;
-    cancel_at_period_end: boolean;
+    current_period_start?: string;
+    current_period_end?: string;
+    cancel_at_period_end?: boolean;
     created_at: string;
     canceled_at?: string;
     organizations?: { name: string; status: string };
+    is_free_tier?: boolean;
 }
 
 interface StripeInvoice {
@@ -113,6 +114,11 @@ export const BillingTab = () => {
     const [showUsage, setShowUsage] = useState(false);
     const [usageLoaded, setUsageLoaded] = useState(false);
 
+    // Filters
+    const [filterPlan, setFilterPlan] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
     useEffect(() => {
         loadBillingData();
     }, []);
@@ -120,29 +126,49 @@ export const BillingTab = () => {
     const loadBillingData = async () => {
         setLoading(true);
 
-        // Load all subscriptions + plans in parallel
-        const [{ data: allSubs }, { data: plansData }] = await Promise.all([
+        // Load subscriptions, plans, and all organizations in parallel
+        const [{ data: allSubs }, { data: plansData }, { data: orgsData }] = await Promise.all([
             supabase.from('subscriptions').select(`*, organizations (name, status)`).order('created_at', { ascending: false }),
             supabase.from('subscription_plans').select('id, name, price, stripe_price_id, status').order('price', { ascending: true }),
+            supabase.from('organizations').select('id, name, status, subscription_tier, created_at'),
         ]);
 
         setPlans((plansData || []).filter((p: any) => p.status !== 'inactive'));
 
-        const activeSubs = (allSubs || []).filter((s: Subscription) => s.status === 'active');
-        setSubscriptions(activeSubs);
+        // Build unified list: paid Stripe subs + free/unsubscribed orgs
+        const paidSubs: Subscription[] = (allSubs || []).map((s: any) => ({ ...s, is_free_tier: false }));
+        const paidOrgIds = new Set(paidSubs.map(s => s.organization_id));
 
-        // Calculate MRR
-        const mrr = activeSubs.reduce((sum: number, sub: Subscription) => sum + (sub.plan_amount / 100), 0);
+        const freeEntries: Subscription[] = (orgsData || [])
+            .filter((org: any) => !paidOrgIds.has(org.id))
+            .map((org: any) => ({
+                id: `free-${org.id}`,
+                organization_id: org.id,
+                plan_name: org.subscription_tier || 'free',
+                plan_amount: 0,
+                interval: 'month',
+                status: org.status === 'active' ? 'active' : 'inactive',
+                created_at: org.created_at,
+                organizations: { name: org.name, status: org.status },
+                is_free_tier: true,
+            }));
+
+        const allEntries = [...paidSubs, ...freeEntries];
+        setSubscriptions(allEntries);
+
+        // Calculate MRR (paid subs only)
+        const activePaid = paidSubs.filter(s => s.status === 'active');
+        const mrr = activePaid.reduce((sum, sub) => sum + (sub.plan_amount / 100), 0);
 
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        const subsAtStartOfMonth = (allSubs || []).filter((s: Subscription) => new Date(s.created_at) < startOfMonth);
-        const canceledThisMonth = (allSubs || []).filter((s: Subscription) =>
+        const subsAtStartOfMonth = paidSubs.filter(s => new Date(s.created_at) < startOfMonth);
+        const canceledThisMonth = paidSubs.filter(s =>
             s.status === 'canceled' && s.canceled_at && new Date(s.canceled_at) >= startOfMonth
         );
-        const newThisMonth = (allSubs || []).filter((s: Subscription) =>
+        const newThisMonth = allEntries.filter(s =>
             new Date(s.created_at) >= startOfMonth && s.status === 'active'
         );
 
@@ -150,7 +176,8 @@ export const BillingTab = () => {
             ? (canceledThisMonth.length / subsAtStartOfMonth.length) * 100 : 0;
 
         setStats({
-            mrr, arr: mrr * 12, activeSubscriptions: activeSubs.length,
+            mrr, arr: mrr * 12,
+            activeSubscriptions: allEntries.filter(s => s.status === 'active').length,
             churnRate: Math.round(churnRate * 10) / 10,
             churnedThisMonth: canceledThisMonth.length, newThisMonth: newThisMonth.length,
         });
@@ -276,6 +303,21 @@ export const BillingTab = () => {
 
     const openStripeCustomer = (id: string) => window.open(`https://dashboard.stripe.com/customers/${id}`, '_blank');
     const openStripeSubscription = (id: string) => window.open(`https://dashboard.stripe.com/subscriptions/${id}`, '_blank');
+
+    // Filtered subscriptions
+    const filteredSubscriptions = subscriptions.filter(sub => {
+        if (filterPlan !== 'all' && sub.plan_name.toLowerCase() !== filterPlan.toLowerCase()) return false;
+        if (filterStatus !== 'all' && sub.status !== filterStatus) return false;
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            const orgName = sub.organizations?.name?.toLowerCase() || '';
+            if (!orgName.includes(q) && !sub.plan_name.toLowerCase().includes(q)) return false;
+        }
+        return true;
+    });
+
+    // Unique plan names for filter dropdown
+    const uniquePlans = [...new Set(subscriptions.map(s => s.plan_name.toLowerCase()))].sort();
 
     const getStatusBadge = (status: string, cancelAtEnd?: boolean) => {
         if (cancelAtEnd) return (
@@ -521,9 +563,57 @@ export const BillingTab = () => {
 
             {/* Subscriptions Table */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Active Subscriptions</h3>
-                    <span className="text-sm text-gray-500">{subscriptions.length} total</span>
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Subscriptions & Organizations</h3>
+                        <span className="text-sm text-gray-500">{filteredSubscriptions.length} of {subscriptions.length}</span>
+                    </div>
+                    {/* Filters Row */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative flex-1 min-w-[180px] max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search organization..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-purple-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-gray-400" />
+                            <select
+                                value={filterPlan}
+                                onChange={e => setFilterPlan(e.target.value)}
+                                className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white outline-none focus:border-purple-500"
+                            >
+                                <option value="all">All Plans</option>
+                                {uniquePlans.map(p => (
+                                    <option key={p} value={p} className="capitalize">{p.replace(/_/g, ' ')}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={filterStatus}
+                                onChange={e => setFilterStatus(e.target.value)}
+                                className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white outline-none focus:border-purple-500"
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="canceled">Canceled</option>
+                                <option value="past_due">Past Due</option>
+                                <option value="trialing">Trialing</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        {(filterPlan !== 'all' || filterStatus !== 'all' || searchQuery) && (
+                            <button
+                                onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setSearchQuery(''); }}
+                                className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                            >
+                                Clear filters
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -538,16 +628,31 @@ export const BillingTab = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {subscriptions.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No active subscriptions found</td></tr>
+                            {filteredSubscriptions.length === 0 ? (
+                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No matching subscriptions found</td></tr>
                             ) : (
-                                subscriptions.map(sub => (
+                                filteredSubscriptions.map(sub => (
                                     <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{sub.organizations?.name || 'Unknown'}</td>
-                                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300 capitalize">{sub.plan_name}</td>
-                                        <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">${(sub.plan_amount / 100).toFixed(2)}/{sub.interval}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`capitalize ${sub.is_free_tier ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                {sub.plan_name.replace(/_/g, ' ')}
+                                            </span>
+                                            {sub.is_free_tier && (
+                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">FREE</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
+                                            {sub.is_free_tier ? (
+                                                <span className="text-gray-400 dark:text-gray-500 font-normal">$0</span>
+                                            ) : (
+                                                <>${(sub.plan_amount / 100).toFixed(2)}/{sub.interval}</>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">{getStatusBadge(sub.status, sub.cancel_at_period_end)}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{new Date(sub.current_period_end).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                                            {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '--'}
+                                        </td>
                                         <td className="px-6 py-4 text-right relative">
                                             <button onClick={() => setActionMenu(actionMenu === sub.id ? null : sub.id)}
                                                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -558,31 +663,42 @@ export const BillingTab = () => {
                                                 <>
                                                     <div className="fixed inset-0 z-10" onClick={() => setActionMenu(null)} />
                                                     <div className="absolute right-6 top-full mt-1 z-20 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 min-w-[200px]">
-                                                        <button
-                                                            onClick={() => { openStripeSubscription(sub.stripe_subscription_id); setActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                        >
-                                                            <ExternalLink className="w-4 h-4" />View in Stripe
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { openStripeCustomer(sub.stripe_customer_id); setActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                        >
-                                                            <Eye className="w-4 h-4" />View Customer
-                                                        </button>
-                                                        <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                                                        <button
-                                                            onClick={() => { setChangePlanSub(sub); setChangePlanTarget(''); setActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                                                        >
-                                                            <ArrowUpDown className="w-4 h-4" />Change Plan
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleCancelSubscription(sub)}
-                                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                                        >
-                                                            <XCircle className="w-4 h-4" />Cancel Subscription
-                                                        </button>
+                                                        {sub.stripe_subscription_id && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => { openStripeSubscription(sub.stripe_subscription_id!); setActionMenu(null); }}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4" />View in Stripe
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => { openStripeCustomer(sub.stripe_customer_id!); setActionMenu(null); }}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />View Customer
+                                                                </button>
+                                                                <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                                                            </>
+                                                        )}
+                                                        {!sub.is_free_tier && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => { setChangePlanSub(sub); setChangePlanTarget(''); setActionMenu(null); }}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                                                >
+                                                                    <ArrowUpDown className="w-4 h-4" />Change Plan
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleCancelSubscription(sub)}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                                >
+                                                                    <XCircle className="w-4 h-4" />Cancel Subscription
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {sub.is_free_tier && (
+                                                            <p className="px-4 py-2 text-xs text-gray-400 italic">Free tier -- no Stripe actions</p>
+                                                        )}
                                                     </div>
                                                 </>
                                             )}

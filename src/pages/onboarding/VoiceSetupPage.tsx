@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { CA_PROVINCES, US_STATES } from '@/constants/onboarding';
+import { updateOnboardingStep } from '@/utils/onboarding';
 
 // 4 curated voices for quick onboarding — covers female/male, professional/friendly
 // Voice IDs must match Retell's actual catalog (verified via /list-voices API)
@@ -90,6 +91,7 @@ export default function VoiceSetupPage() {
       navigate('/register');
       return;
     }
+    updateOnboardingStep('voice-setup');
     const parsed = JSON.parse(leadData);
     setLead(parsed);
   }, [navigate]);

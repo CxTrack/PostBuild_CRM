@@ -11,6 +11,7 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { INDUSTRY_TEMPLATES } from '@/config/modules.config';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
+import MemoryContextSettings, { type MemorySettings } from '@/components/voice/MemoryContextSettings';
 import toast from 'react-hot-toast';
 
 const STEPS = [
@@ -55,7 +56,14 @@ export const VoiceAgentSetup = () => {
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge' | 'memory'>('settings');
+    const [memorySettings, setMemorySettings] = useState<MemorySettings>({
+        memory_enabled: true,
+        memory_call_history: true,
+        memory_customer_notes: true,
+        memory_calendar_tasks: true,
+    });
+    const [memorySaving, setMemorySaving] = useState(false);
     // Voice selection state
     const [voiceSearch, setVoiceSearch] = useState('');
     const [voiceGenderFilter, setVoiceGenderFilter] = useState<'all' | 'male' | 'female'>('all');
@@ -224,6 +232,14 @@ export const VoiceAgentSetup = () => {
                 begin_message: config.begin_message || '',
             });
             setCurrentStep(config.setup_step || 0);
+
+            // Load memory settings from config
+            setMemorySettings({
+                memory_enabled: config.memory_enabled ?? true,
+                memory_call_history: config.memory_call_history ?? true,
+                memory_customer_notes: config.memory_customer_notes ?? true,
+                memory_calendar_tasks: config.memory_calendar_tasks ?? true,
+            });
 
             // Auto-backfill: if agent is provisioned but prompt is empty in DB, fetch from Retell
             if (config.retell_agent_id && !config.general_prompt) {
@@ -502,7 +518,26 @@ export const VoiceAgentSetup = () => {
         </div>
 
         {/* Desktop layout — hidden on mobile */}
-        <div className="hidden md:block max-w-4xl space-y-5">
+        <div className="hidden md:block space-y-5">
+            {/* No Phone Number Banner */}
+            {!isProvisioned() && !getPhoneNumber() && (
+                <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-transparent p-5">
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Phone className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-bold text-white dark:text-white">No Phone Number Assigned</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {isSetupComplete
+                                    ? 'Your voice agent is configured but needs a phone number. Use the Provision button below to get one.'
+                                    : 'Complete the setup wizard below to configure your AI voice agent and get a dedicated phone number.'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Compact Header — agent info + usage in one row */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-4">
@@ -955,6 +990,7 @@ export const VoiceAgentSetup = () => {
                             { id: 'voice' as const, label: 'Voice Selection', icon: Volume2 },
                             { id: 'prompt' as const, label: 'Prompt & Personality', icon: Brain },
                             { id: 'knowledge' as const, label: 'Knowledge Base', icon: BookOpen },
+                            { id: 'memory' as const, label: 'Memory & Context', icon: Brain },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -1505,6 +1541,32 @@ export const VoiceAgentSetup = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Tab: Memory & Context */}
+                    {activeTab === 'memory' && (
+                        <MemoryContextSettings
+                            settings={memorySettings}
+                            onChange={(updates) => setMemorySettings(prev => ({ ...prev, ...updates }))}
+                            onSave={async () => {
+                                setMemorySaving(true);
+                                try {
+                                    await saveConfig({
+                                        memory_enabled: memorySettings.memory_enabled,
+                                        memory_call_history: memorySettings.memory_call_history,
+                                        memory_customer_notes: memorySettings.memory_customer_notes,
+                                        memory_calendar_tasks: memorySettings.memory_calendar_tasks,
+                                    });
+                                    toast.success('Memory settings saved');
+                                } catch {
+                                    toast.error('Failed to save memory settings');
+                                } finally {
+                                    setMemorySaving(false);
+                                }
+                            }}
+                            saving={memorySaving}
+                            isProvisioned={isProvisioned()}
+                        />
                     )}
                 </div>
             )}

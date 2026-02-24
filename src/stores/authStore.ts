@@ -50,6 +50,8 @@ export const useAuthStore = create<AuthState>()(
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+        const providerToken = urlParams.get('provider_token') || hashParams.get('provider_token');
+        const providerRefreshToken = urlParams.get('provider_refresh_token') || hashParams.get('provider_refresh_token');
 
         if (accessToken && refreshToken && !isSelfHandledPage) {
           const { data, error } = await supabase.auth.setSession({
@@ -59,6 +61,17 @@ export const useAuthStore = create<AuthState>()(
 
           if (!error && data.session) {
             const profile = await getUserProfile(data.session.user.id);
+
+            // Capture Microsoft provider tokens for auto email connection
+            const authProvider = data.session.user.app_metadata?.provider;
+            if ((authProvider === 'azure' || authProvider === 'microsoft') && providerToken) {
+              sessionStorage.setItem('microsoft_provider_tokens', JSON.stringify({
+                provider_token: providerToken,
+                provider_refresh_token: providerRefreshToken || '',
+                timestamp: Date.now(),
+              }));
+            }
+
             set({
               user: data.session.user,
               profile,
@@ -132,7 +145,7 @@ export const useAuthStore = create<AuthState>()(
           provider: 'azure',
           options: {
             redirectTo: `${window.location.origin}/onboarding/profile`,
-            scopes: 'email profile openid',
+            scopes: 'email profile openid offline_access https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Mail.ReadWrite',
           },
         });
         if (error) throw error;

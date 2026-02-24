@@ -1,15 +1,29 @@
 /**
  * SendEmailModal
  * Compose and send email via user's connected Gmail/Outlook OAuth account.
+ * Supports industry email templates with variable substitution.
  * Falls back with a helpful message if no email account is connected.
  */
-import React, { useState } from 'react';
-import { X, Mail, Send, Loader2, AlertCircle, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Send, Loader2, AlertCircle, Settings, FileText, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAuthToken } from '@/utils/auth.utils';
+import { useOrganizationStore } from '@/stores/organizationStore';
+import { substituteTemplateVars } from '@/services/sms.service';
 import toast from 'react-hot-toast';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+interface EmailTemplate {
+  id: string;
+  template_key: string;
+  category: string;
+  name: string;
+  subject: string;
+  body_text: string;
+  variables: string[];
+}
 
 interface SendEmailModalProps {
   isOpen: boolean;
@@ -17,22 +31,109 @@ interface SendEmailModalProps {
   customerEmail?: string;
   customerName?: string;
   customerId?: string;
+  organizationId?: string;
+  /** Extra template variables (e.g. quote_total, invoice_number) */
+  templateVars?: Record<string, string>;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  welcome: 'Welcome',
+  follow_up: 'Follow-Up',
+  quote: 'Quotes',
+  invoice: 'Invoices',
+  appointment: 'Appointments',
+  general: 'General',
+};
 
 const SendEmailModal: React.FC<SendEmailModalProps> = ({
   isOpen,
   onClose,
   customerEmail = '',
   customerName = '',
+  customerId,
+  organizationId,
+  templateVars = {},
 }) => {
   const navigate = useNavigate();
+  const { currentOrganization } = useOrganizationStore();
   const [toEmail, setToEmail] = useState(customerEmail);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [noConnection, setNoConnection] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  const orgId = organizationId || currentOrganization?.id;
+
+  // Reset form when customer changes
+  useEffect(() => {
+    if (isOpen) {
+      setToEmail(customerEmail);
+      setNoConnection(false);
+    }
+  }, [isOpen, customerEmail]);
+
+  // Fetch templates when modal opens
+  useEffect(() => {
+    if (!isOpen || !currentOrganization?.industry_template) return;
+
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const tokenKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+        const raw = tokenKey ? localStorage.getItem(tokenKey) : null;
+        const token = raw ? JSON.parse(raw)?.access_token : null;
+        if (!token) return;
+
+        const industry = currentOrganization.industry_template;
+        // Fetch system templates (org_id is null) + org-specific templates
+        const url = `${SUPABASE_URL}/rest/v1/email_templates?industry=eq.${industry}&is_active=eq.true&or=(organization_id.is.null,organization_id.eq.${orgId})&order=sort_order.asc&select=id,template_key,category,name,subject,body_text,variables`;
+
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setTemplates(data || []);
+        }
+      } catch {
+        // Silent -- templates are supplementary
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    fetchTemplates();
+  }, [isOpen, currentOrganization?.industry_template, orgId]);
 
   if (!isOpen) return null;
+
+  const handleSelectTemplate = (template: EmailTemplate) => {
+    // Build substitution variables
+    const vars: Record<string, string> = {
+      customer_name: customerName || '',
+      business_name: currentOrganization?.name || '',
+      user_name: '', // Will be filled if we have user info
+      user_email: '',
+      user_phone: '',
+      ...templateVars,
+    };
+
+    const substitutedSubject = substituteTemplateVars(template.subject, vars);
+    const substitutedBody = substituteTemplateVars(template.body_text, vars);
+
+    setSubject(substitutedSubject);
+    setBody(substitutedBody);
+    setSelectedTemplateKey(template.template_key);
+    setShowTemplates(false);
+  };
 
   const handleSend = async () => {
     if (!toEmail.trim()) {
@@ -69,6 +170,9 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
           subject: subject.trim(),
           body_text: body.trim(),
           body_html: `<div style="font-family: sans-serif; line-height: 1.6;">${body.trim().replace(/\n/g, '<br>')}</div>`,
+          customer_id: customerId || null,
+          organization_id: orgId || null,
+          template_key: selectedTemplateKey || null,
         }),
       });
 
@@ -88,6 +192,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
       // Reset form
       setSubject('');
       setBody('');
+      setSelectedTemplateKey('');
     } catch {
       toast.error('Failed to send email. Please try again.');
     } finally {
@@ -99,6 +204,14 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
     onClose();
     navigate('/dashboard/settings?tab=email');
   };
+
+  // Group templates by category
+  const templatesByCategory = templates.reduce<Record<string, EmailTemplate[]>>((acc, t) => {
+    const cat = t.category || 'general';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(t);
+    return acc;
+  }, {});
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -154,6 +267,46 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
 
         {/* Form */}
         <div className="p-6 space-y-4">
+          {/* Template Picker */}
+          {templates.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors w-full"
+              >
+                <FileText className="w-4 h-4 text-indigo-500" />
+                <span className="flex-1 text-left">
+                  {selectedTemplateKey
+                    ? templates.find(t => t.template_key === selectedTemplateKey)?.name || 'Select Template'
+                    : 'Use a template...'}
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showTemplates && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto">
+                  {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
+                    <div key={category}>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 sticky top-0">
+                        {CATEGORY_LABELS[category] || category}
+                      </div>
+                      {categoryTemplates.map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => handleSelectTemplate(template)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <p className="font-medium text-gray-900 dark:text-white">{template.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{template.subject}</p>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* To */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">

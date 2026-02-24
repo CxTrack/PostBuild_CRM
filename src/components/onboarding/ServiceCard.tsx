@@ -67,7 +67,7 @@ export default function ServiceCard({
   return (
     <div
       onClick={onClick}
-      className={`relative p-8 rounded-[2rem] border border-white/5 transition-all cursor-pointer flex flex-col h-full bg-white/[0.01] backdrop-blur-xl group overflow-hidden hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.99] ${theme.border} ${theme.bg} ${theme.shadow} ${
+      className={`relative p-5 md:p-6 rounded-[2rem] border border-white/5 transition-all cursor-pointer flex flex-col h-full bg-white/[0.01] backdrop-blur-xl group overflow-hidden hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.99] ${theme.border} ${theme.bg} ${theme.shadow} ${
         selected ? theme.selectedBorder : 'hover:border-white/10'
       }`}
     >
@@ -82,16 +82,16 @@ export default function ServiceCard({
         </div>
       )}
 
-      <div className="relative z-10 space-y-6 flex-grow">
-        <div className="space-y-4">
-          <h3 className="text-3xl font-black text-white italic tracking-tight">{title}</h3>
+      <div className="relative z-10 space-y-4 flex-grow">
+        <div className="space-y-3">
+          <h3 className="text-xl md:text-2xl font-black text-white italic tracking-tight">{title}</h3>
         </div>
 
         <div className="h-px w-full bg-gradient-to-r from-white/5 via-white/10 to-transparent" />
 
-        <ul className="space-y-4">
+        <ul className="space-y-2.5">
           {features.map((feature, i) => (
-            <li key={i} className="flex items-center gap-4 text-white/80 group/item">
+            <li key={i} className="flex items-center gap-3 text-white/80 group/item">
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border border-white/10 group-hover/item:border-white/30 transition-colors ${
                   selected ? theme.checkBg : ''
@@ -110,7 +110,7 @@ export default function ServiceCard({
         </ul>
       </div>
 
-      <div className="relative z-10 mt-10 pt-6 border-t border-white/5">
+      <div className="relative z-10 mt-6 pt-4 border-t border-white/5">
         <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-black leading-relaxed">
           {note}
         </p>

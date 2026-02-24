@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserPlus,
@@ -12,6 +12,7 @@ import {
     Check,
     ChevronDown,
 } from 'lucide-react';
+import { STEP_COLORS } from '@/constants/onboarding';
 
 const steps = [
     { id: 'account', label: 'Account', path: '/register', icon: UserPlus },
@@ -44,23 +45,27 @@ export default function OnboardingHeader() {
     const activeStep = steps[Math.min(activeIndex, steps.length - 1)];
     const ActiveIcon = activeStep.icon;
     const progressPercent = Math.min((activeIndex / (steps.length - 1)) * 100, 100);
+    const activeStepColor = STEP_COLORS[activeStep.id] || '#FFD700';
 
     return (
         <header className="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06] py-3 md:py-4 px-4 md:px-12">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
-                {/* Logo */}
-                <Link to="/" className="group flex items-center gap-2 shrink-0">
+                {/* Logo - static during onboarding, no navigation */}
+                <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xl md:text-2xl font-black text-white italic tracking-tighter">
                         Cx<span className="text-[#FFD700]">Track</span>
                     </span>
-                </Link>
+                </div>
 
                 {/* Desktop Accordion Stepper */}
                 <div className="hidden md:flex items-center gap-3 relative">
                     {/* Background progress track */}
                     <div className="absolute top-1/2 left-4 right-4 h-[2px] bg-white/[0.04] -translate-y-1/2 rounded-full" />
                     <motion.div
-                        className="absolute top-1/2 left-4 h-[2px] bg-gradient-to-r from-[#FFD700] to-[#FFD700]/40 -translate-y-1/2 rounded-full"
+                        className="absolute top-1/2 left-4 h-[2px] -translate-y-1/2 rounded-full"
+                        style={{
+                            background: `linear-gradient(to right, ${activeStepColor}, ${activeStepColor}66)`,
+                        }}
                         animate={{ width: `${progressPercent}%` }}
                         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                     />
@@ -69,26 +74,36 @@ export default function OnboardingHeader() {
                         const isActive = index === activeIndex;
                         const isCompleted = index < activeIndex;
                         const Icon = step.icon;
+                        const stepColor = STEP_COLORS[step.id] || '#FFD700';
 
                         return (
                             <div key={step.id} className="relative z-10 flex items-center">
-                                {/* Completed: collapsed gold check */}
+                                {/* Completed: collapsed colored check */}
                                 {isCompleted && (
                                     <motion.div
                                         initial={{ scale: 0.5, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                                        className="w-8 h-8 rounded-full bg-[#FFD700]/10 border border-[#FFD700]/30 flex items-center justify-center backdrop-blur-sm"
+                                        className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm"
+                                        style={{
+                                            backgroundColor: `${stepColor}15`,
+                                            border: `1px solid ${stepColor}4D`,
+                                        }}
                                     >
-                                        <Check size={14} className="text-[#FFD700]" />
+                                        <Check size={14} style={{ color: stepColor }} />
                                     </motion.div>
                                 )}
 
-                                {/* Active: expanded gold pill */}
+                                {/* Active: expanded colored pill */}
                                 {isActive && (
                                     <motion.div
                                         layoutId="activePill"
-                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#FFD700] shadow-[0_0_25px_rgba(255,215,0,0.35)] ring-4 ring-[#FFD700]/10"
+                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-full"
+                                        style={{
+                                            backgroundColor: activeStepColor,
+                                            boxShadow: `0 0 25px ${activeStepColor}59`,
+                                            outline: `4px solid ${activeStepColor}1A`,
+                                        }}
                                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                     >
                                         <Icon size={15} className="text-black" strokeWidth={2.5} />
@@ -125,8 +140,8 @@ export default function OnboardingHeader() {
                         onClick={() => setMobileExpanded(!mobileExpanded)}
                         className="flex items-center gap-2 min-h-[44px] px-1"
                     >
-                        <ActiveIcon size={14} className="text-[#FFD700]" strokeWidth={2.5} />
-                        <span className="text-[#FFD700] text-xs font-black uppercase tracking-widest">
+                        <ActiveIcon size={14} style={{ color: activeStepColor }} strokeWidth={2.5} />
+                        <span style={{ color: activeStepColor }} className="text-xs font-black uppercase tracking-widest">
                             {activeStep.label}
                         </span>
                         <ChevronDown
@@ -138,7 +153,8 @@ export default function OnboardingHeader() {
                     {/* Progress bar */}
                     <div className="w-28 h-1 bg-white/[0.06] rounded-full overflow-hidden mt-1">
                         <motion.div
-                            className="h-full bg-[#FFD700] rounded-full"
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: activeStepColor }}
                             animate={{ width: `${((activeIndex + 1) / steps.length) * 100}%` }}
                             transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                         />
@@ -170,26 +186,29 @@ export default function OnboardingHeader() {
                                             const isActive = index === activeIndex;
                                             const isCompleted = index < activeIndex;
                                             const Icon = step.icon;
+                                            const stepColor = STEP_COLORS[step.id] || '#FFD700';
 
                                             return (
                                                 <div
                                                     key={step.id}
                                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                                                        isActive
-                                                            ? 'bg-[#FFD700]/10'
-                                                            : ''
+                                                        isActive ? 'bg-white/5' : ''
                                                     }`}
+                                                    style={isActive ? { backgroundColor: `${stepColor}15` } : {}}
                                                 >
                                                     {/* Step indicator */}
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                                                        isCompleted
-                                                            ? 'bg-[#FFD700]/15 border border-[#FFD700]/30'
-                                                            : isActive
-                                                                ? 'bg-[#FFD700] shadow-[0_0_12px_rgba(255,215,0,0.3)]'
-                                                                : 'bg-white/[0.04] border border-white/[0.08]'
-                                                    }`}>
+                                                    <div
+                                                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                                                        style={
+                                                            isCompleted
+                                                                ? { backgroundColor: `${stepColor}25`, border: `1px solid ${stepColor}4D` }
+                                                                : isActive
+                                                                    ? { backgroundColor: stepColor, boxShadow: `0 0 12px ${stepColor}4D` }
+                                                                    : { backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }
+                                                        }
+                                                    >
                                                         {isCompleted ? (
-                                                            <Check size={12} className="text-[#FFD700]" />
+                                                            <Check size={12} style={{ color: stepColor }} />
                                                         ) : isActive ? (
                                                             <Icon size={12} className="text-black" strokeWidth={2.5} />
                                                         ) : (
@@ -198,24 +217,29 @@ export default function OnboardingHeader() {
                                                     </div>
 
                                                     {/* Step label */}
-                                                    <span className={`text-xs font-bold uppercase tracking-wider ${
-                                                        isActive
-                                                            ? 'text-[#FFD700]'
-                                                            : isCompleted
-                                                                ? 'text-white/50'
-                                                                : 'text-white/20'
-                                                    }`}>
+                                                    <span
+                                                        className={`text-xs font-bold uppercase tracking-wider ${
+                                                            !isActive && !isCompleted ? 'text-white/20' : isCompleted ? 'text-white/50' : ''
+                                                        }`}
+                                                        style={isActive ? { color: stepColor } : {}}
+                                                    >
                                                         {step.label}
                                                     </span>
 
                                                     {/* Completed badge */}
                                                     {isCompleted && (
-                                                        <span className="ml-auto text-[9px] font-bold text-[#FFD700]/50 uppercase tracking-wider">
+                                                        <span
+                                                            className="ml-auto text-[9px] font-bold uppercase tracking-wider"
+                                                            style={{ color: `${stepColor}80` }}
+                                                        >
                                                             Done
                                                         </span>
                                                     )}
                                                     {isActive && (
-                                                        <span className="ml-auto text-[9px] font-bold text-[#FFD700] uppercase tracking-wider">
+                                                        <span
+                                                            className="ml-auto text-[9px] font-bold uppercase tracking-wider"
+                                                            style={{ color: stepColor }}
+                                                        >
                                                             Current
                                                         </span>
                                                     )}

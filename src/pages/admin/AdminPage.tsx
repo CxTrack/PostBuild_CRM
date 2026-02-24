@@ -59,7 +59,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'users', label: 'Users & Orgs', icon: Users, component: UsersTab },
       { id: 'modules', label: 'Module Usage', icon: Layers, component: ModuleUsageTab },
       { id: 'ai', label: 'AI & LLM', icon: Brain, component: AIAnalyticsTab },
-      { id: 'voice', label: 'Voice & Calls', icon: Phone, component: VoiceAnalyticsTab },
+      { id: 'voice', label: 'Voice & SMS', icon: Phone, component: VoiceAnalyticsTab },
       { id: 'financial', label: 'Financial', icon: TrendingUp, component: FinancialAnalyticsTab },
     ],
   },

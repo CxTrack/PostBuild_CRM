@@ -254,7 +254,7 @@ export const AcceptInvite = () => {
         </div>
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
-          CxTrack CRM &mdash; easyaicrm.com
+          CxTrack CRM &mdash; cxtrack.com
         </p>
       </div>
     </div>

@@ -386,7 +386,7 @@ const EmailConnectionSettings: React.FC = () => {
   const hasAnyConnection = !!(googleConnection || microsoftConnection || smtpSettings);
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <Card>
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">

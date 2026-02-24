@@ -17,9 +17,11 @@ const EDGE_FUNCTIONS = [
   { name: 'update-retell-agent', jwt: false, purpose: 'Sync agent settings', api: 'Retell' },
   { name: 'manage-knowledge-base', jwt: false, purpose: 'KB CRUD', api: 'Retell' },
   { name: 'manage-phone-numbers', jwt: false, purpose: 'Phone release/management', api: 'Retell + Twilio' },
-  { name: 'retell-webhook', jwt: false, purpose: 'Call events + SMS', api: 'Retell + Twilio' },
+  { name: 'retell-webhook', jwt: false, purpose: 'Call events + summaries', api: 'Retell + Twilio' },
   { name: 'send-invitation', jwt: false, purpose: 'Team invitation emails', api: 'Resend' },
-  { name: 'send-sms', jwt: true, purpose: 'SMS notifications', api: 'Twilio' },
+  { name: 'send-sms', jwt: false, purpose: 'Outbound SMS (quota enforced)', api: 'Twilio' },
+  { name: 'receive-sms', jwt: false, purpose: 'Inbound SMS webhook (quota enforced)', api: 'Twilio' },
+  { name: 'configure-sms-webhooks', jwt: false, purpose: 'Auto-configure Twilio SMS webhooks', api: 'Twilio' },
   { name: 'send-reopt-email', jwt: false, purpose: 'SMS re-opt-in emails', api: 'Resend' },
   { name: 'stripe-billing', jwt: false, purpose: 'Subscription management', api: 'Stripe' },
   { name: 'stripe-checkout', jwt: false, purpose: 'Checkout sessions', api: 'Stripe' },
@@ -29,8 +31,8 @@ const EDGE_FUNCTIONS = [
 const API_SECRETS = [
   { name: 'OPENROUTER_API_KEY', service: 'OpenRouter (AI)', usedBy: 'copilot-chat, receipt-scan' },
   { name: 'RETELL_API_KEY', service: 'Retell AI (Voice)', usedBy: 'provision-voice-agent, list-voices, update-retell-agent, manage-knowledge-base, retell-webhook' },
-  { name: 'TWILIO_MASTER_ACCOUNT_SID', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook' },
-  { name: 'TWILIO_MASTER_AUTH_TOKEN', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook' },
+  { name: 'TWILIO_MASTER_ACCOUNT_SID', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook, send-sms, receive-sms, configure-sms-webhooks' },
+  { name: 'TWILIO_MASTER_AUTH_TOKEN', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook, send-sms, receive-sms, configure-sms-webhooks' },
   { name: 'GOOGLE_CLOUD_VISION_API_KEY', service: 'Google Vision (OCR)', usedBy: 'ocr-extract' },
   { name: 'RESEND_API_KEY', service: 'Resend (Email)', usedBy: 'send-invitation' },
   { name: 'TWILIO_SIP_TRUNK_SID', service: 'Twilio SIP Trunk', usedBy: 'provision-voice-agent' },
@@ -41,6 +43,13 @@ const TOKEN_TIERS = [
   { tier: 'Business', monthly: '500,000', color: 'blue' },
   { tier: 'Elite', monthly: '1,000,000', color: 'purple' },
   { tier: 'Enterprise', monthly: '1,000,000', color: 'orange' },
+];
+
+const SMS_TIERS = [
+  { tier: 'Free', inbound: '10', outbound: '10', color: 'gray' },
+  { tier: 'Business', inbound: '100', outbound: '100', color: 'blue' },
+  { tier: 'Elite', inbound: '500', outbound: '500', color: 'purple' },
+  { tier: 'Enterprise', inbound: 'Unlimited', outbound: 'Unlimited', color: 'orange' },
 ];
 
 export const SettingsTab = () => {
@@ -202,6 +211,32 @@ export const SettingsTab = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* SMS Limits by Tier */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-orange-600" />
+          SMS Limits by Tier (Monthly)
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {SMS_TIERS.map((t) => (
+            <div key={t.tier} className="px-3 py-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg text-center">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">{t.tier}</p>
+              <div className="space-y-1">
+                <div>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{t.inbound}</p>
+                  <p className="text-[10px] text-gray-400">inbound/mo</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{t.outbound}</p>
+                  <p className="text-[10px] text-gray-400">outbound/mo</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Enforced in send-sms (outbound) and receive-sms (inbound) edge functions. Quota resets on the 1st of each month.</p>
       </div>
     </div>
   );

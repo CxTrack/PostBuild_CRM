@@ -36,7 +36,7 @@ export interface ActionResult {
 export type QuarterbackChoiceType = 'draft_email' | 'draft_sms' | 'draft_call_script' | 'other';
 
 export interface ChoiceOption {
-  id: QuarterbackChoiceType;
+  id: string;
   label: string;
   description: string;
   icon: string;

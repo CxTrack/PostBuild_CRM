@@ -99,7 +99,26 @@ const AuthCallback: React.FC = () => {
           setStatus('success');
           setMessage('Email verified successfully!');
           toast.success('Email verified! Redirecting...');
-          setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+
+          // Check onboarding status before redirecting (same as hash-based path)
+          const { data: { user: pkceUser } } = await supabase.auth.getUser();
+          if (pkceUser) {
+            const { data: pkceProfile } = await supabase
+              .from('user_profiles')
+              .select('onboarding_completed, organization_id')
+              .eq('id', pkceUser.id)
+              .maybeSingle();
+
+            setTimeout(() => {
+              if (pkceProfile?.onboarding_completed || pkceProfile?.organization_id) {
+                navigate('/dashboard', { replace: true });
+              } else {
+                navigate('/onboarding/profile', { replace: true });
+              }
+            }, 1500);
+          } else {
+            setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+          }
           return;
         }
 
@@ -122,7 +141,7 @@ const AuthCallback: React.FC = () => {
     <main className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-6">
       <div className="text-center max-w-md">
         {/* Logo */}
-        <a href="https://easyaicrm.com">
+        <a href="https://cxtrack.com">
           <img
             src="/cxtrack-logo.png"
             alt="CxTrack"

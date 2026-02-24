@@ -47,7 +47,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
+import { getAuthToken } from '../utils/auth.utils';
 import { TourManager } from '@/lib/tourManager';
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { usePreferencesStore } from '../stores/preferencesStore';
@@ -348,6 +349,96 @@ export const DashboardLayout = () => {
     }
   }, [currentOrganization, fetchPipelineStages]);
 
+  // Auto-connect Microsoft email when user logged in via Microsoft OAuth
+  useEffect(() => {
+    const autoConnectMicrosoftEmail = async () => {
+      const stored = sessionStorage.getItem('microsoft_provider_tokens');
+      if (!stored || !currentOrganization?.id) return;
+
+      // Remove immediately to prevent double-fire
+      sessionStorage.removeItem('microsoft_provider_tokens');
+
+      try {
+        const { provider_token, provider_refresh_token, timestamp } = JSON.parse(stored);
+
+        // Expire after 5 minutes (tokens may be stale)
+        if (Date.now() - timestamp > 5 * 60 * 1000) return;
+
+        const token = await getAuthToken();
+        if (!token) return;
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            provider: 'microsoft',
+            provider_token,
+            provider_refresh_token,
+            organization_id: currentOrganization.id,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[AutoConnect] Microsoft email connected:', data.email_address);
+          if (data.email_address) {
+            const { default: toast } = await import('react-hot-toast');
+            toast.success(`Your Outlook email (${data.email_address}) is connected and ready to send from CxTrack.`, { duration: 5000 });
+          }
+        } else {
+          console.warn('[AutoConnect] Failed:', await res.text());
+        }
+      } catch (err) {
+        console.warn('[AutoConnect] Error:', err);
+      }
+    };
+
+    autoConnectMicrosoftEmail();
+  }, [currentOrganization?.id]);
+
+  // Background inbox sync - runs every 15 minutes if user has an active email connection
+  useEffect(() => {
+    if (!currentOrganization?.id) return;
+
+    const syncInbox = async () => {
+      const lastSync = localStorage.getItem('cxtrack_last_email_sync');
+      const fifteenMinAgo = Date.now() - 15 * 60 * 1000;
+
+      if (lastSync && parseInt(lastSync) > fifteenMinAgo) return;
+
+      try {
+        const token = await getAuthToken();
+        if (!token) return;
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/sync-inbox-emails`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('cxtrack_last_email_sync', Date.now().toString());
+          if (data.synced > 0) {
+            console.log(`[InboxSync] ${data.synced} new emails synced`);
+          }
+        }
+      } catch {
+        // Silent background sync
+      }
+    };
+
+    // Run after a short delay to not block initial load
+    const timer = setTimeout(syncInbox, 5000);
+    return () => clearTimeout(timer);
+  }, [currentOrganization?.id]);
+
   const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com', 'info@cxtrack.com'];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
@@ -510,15 +601,15 @@ export const DashboardLayout = () => {
   }
 
   return (
-    <div className={`h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900 ${isImpersonating ? 'pt-10' : ''}`}>
+    <div className={`h-screen flex flex-col ${isCoPilotOpen && panelSide === 'left' ? 'md:flex-row-reverse' : 'md:flex-row'} bg-gray-50 dark:bg-gray-900 ${isImpersonating ? 'pt-10' : ''}`}>
       <ImpersonationBanner />
       <BroadcastBanner />
       {/* Desktop Sidebar - Hidden on Mobile */}
       <aside
         className={`hidden md:flex md:flex-col ${sidebarCollapsed ? 'md:w-[68px]' : 'md:w-64'} transition-all duration-300 ${theme === 'soft-modern'
-          ? 'bg-white border-r border-gray-200/60'
-          : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
-          } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
+          ? `bg-white ${isCoPilotOpen && panelSide === 'left' ? 'border-l' : 'border-r'} border-gray-200/60`
+          : `bg-white dark:bg-gray-800 ${isCoPilotOpen && panelSide === 'left' ? 'border-l' : 'border-r'} border-gray-200 dark:border-gray-700`
+          }`}
       >
         {/* Logo + Collapse Toggle */}
         <div className={`${theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`} data-tour="sidebar">

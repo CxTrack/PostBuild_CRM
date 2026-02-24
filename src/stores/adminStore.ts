@@ -264,6 +264,7 @@ interface AdminState {
   phoneCostSummary: PhoneCostSummary | null;
   smsConsentList: any[];
   smsAuditLog: any[];
+  smsUsageData: any;
   adminNotifications: any[];
   marketingSubscriptions: any[];
   orgDetail: any | null;
@@ -307,6 +308,7 @@ interface AdminState {
   releaseNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   poolNumber: (phoneNumberId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   reassignNumber: (phoneNumberId: string, targetOrgId: string) => Promise<{ success: boolean; error?: string }>;
+  fetchSmsUsageData: () => Promise<void>;
   fetchSmsConsentList: () => Promise<void>;
   fetchSmsAuditLog: (consentId: string) => Promise<void>;
   adminReenableSms: (consentId: string) => Promise<void>;
@@ -348,6 +350,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   phoneCostSummary: null,
   smsConsentList: [],
   smsAuditLog: [],
+  smsUsageData: null,
   adminNotifications: [],
   marketingSubscriptions: [],
   orgDetail: null,
@@ -681,6 +684,16 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       return data;
     } catch (e: any) {
       return { success: false, error: e.message };
+    }
+  },
+
+  fetchSmsUsageData: async () => {
+    set((s) => ({ loading: { ...s.loading, smsUsage: true }, errors: { ...s.errors, smsUsage: null } }));
+    try {
+      const data = await supabaseRpc('admin_get_sms_usage');
+      set((s) => ({ smsUsageData: data, loading: { ...s.loading, smsUsage: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, smsUsage: false }, errors: { ...s.errors, smsUsage: e.message } }));
     }
   },
 

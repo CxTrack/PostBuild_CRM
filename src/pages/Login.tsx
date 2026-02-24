@@ -6,6 +6,8 @@ import { Eye, EyeOff, Loader2, Sun, Moon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { validateEmail, validateRequired } from '@/utils/validation';
+import { checkOnboardingStatus } from '@/utils/onboarding';
+import { supabase } from '@/lib/supabase';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -43,6 +45,16 @@ export const Login: React.FC = () => {
           ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
           : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
       });
+
+      // Check if onboarding is complete before redirecting to dashboard
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const status = await checkOnboardingStatus(currentUser.id);
+        if (status && !status.complete) {
+          navigate('/onboarding/profile');
+          return;
+        }
+      }
       navigate('/dashboard');
     } catch (error: any) {
       toast.error(getSafeErrorMessage(error, 'auth'));

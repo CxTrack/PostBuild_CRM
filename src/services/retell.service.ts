@@ -326,4 +326,188 @@ export const retellService = {
       return null;
     }
   },
+
+  /**
+   * Register webhook URL and function calling tools with the Retell agent.
+   * Called after provisioning or when updating agent tools.
+   */
+  async registerWebhookAndTools(params: {
+    organizationId: string;
+    webhookUrl?: string;
+    tools?: Array<{
+      type: 'custom';
+      name: string;
+      description: string;
+      url: string;
+      parameters: Record<string, any>;
+      speak_during_execution?: boolean;
+      speak_after_execution?: boolean;
+    }>;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await invokeEdgeFunction<{ success: boolean; error?: string }>(
+        'update-retell-agent',
+        {
+          organizationId: params.organizationId,
+          webhookUrl: params.webhookUrl,
+          tools: params.tools,
+        }
+      );
+
+      if (error) {
+        return { success: false, error };
+      }
+
+      return data || { success: false, error: 'No response from edge function' };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      return { success: false, error: message };
+    }
+  },
+
+  /**
+   * Get the default Retell tool definitions for function calling.
+   * These are registered on the agent's LLM so it can call our edge functions.
+   */
+  getDefaultToolDefinitions(): Array<{
+    type: 'custom';
+    name: string;
+    description: string;
+    url: string;
+    parameters: Record<string, any>;
+    speak_during_execution?: boolean;
+    speak_after_execution?: boolean;
+  }> {
+    const ref = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1] || '';
+    const baseUrl = `https://${ref}.supabase.co/functions/v1/retell-function-handler`;
+
+    return [
+      {
+        type: 'custom' as const,
+        name: 'save_customer_info',
+        description: 'Save the caller\'s name and/or email address to the CRM. Call this when the caller provides their name or email, or when you successfully ask for it.',
+        url: baseUrl,
+        parameters: {
+          type: 'object',
+          properties: {
+            customer_name: {
+              type: 'string',
+              description: 'The caller\'s full name',
+            },
+            customer_email: {
+              type: 'string',
+              description: 'The caller\'s email address',
+            },
+          },
+          required: [],
+        },
+        speak_during_execution: true,
+        speak_after_execution: false,
+      },
+      {
+        type: 'custom' as const,
+        name: 'create_task',
+        description: 'Create a follow-up task in the CRM. Use when the caller requests a callback, follow-up, or any action item that needs tracking.',
+        url: baseUrl,
+        parameters: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Short task title describing what needs to be done',
+            },
+            description: {
+              type: 'string',
+              description: 'Detailed description of the task',
+            },
+            task_type: {
+              type: 'string',
+              description: 'Type of task',
+              enum: ['call', 'email', 'meeting', 'follow_up', 'other'],
+            },
+            due_date: {
+              type: 'string',
+              description: 'Due date in YYYY-MM-DD format',
+            },
+            priority: {
+              type: 'string',
+              description: 'Task priority level',
+              enum: ['low', 'medium', 'high', 'urgent'],
+            },
+          },
+          required: ['title', 'task_type'],
+        },
+        speak_during_execution: true,
+        speak_after_execution: true,
+      },
+      {
+        type: 'custom' as const,
+        name: 'check_availability',
+        description: 'Check available appointment slots for a specific date. Call this before booking to offer the caller available times.',
+        url: baseUrl,
+        parameters: {
+          type: 'object',
+          properties: {
+            date: {
+              type: 'string',
+              description: 'The date to check availability for in YYYY-MM-DD format',
+            },
+            duration_minutes: {
+              type: 'integer',
+              description: 'Desired meeting length in minutes, default 30',
+            },
+          },
+          required: ['date'],
+        },
+        speak_during_execution: true,
+        speak_after_execution: true,
+      },
+      {
+        type: 'custom' as const,
+        name: 'book_appointment',
+        description: 'Book an appointment after confirming time with the caller. ALWAYS confirm the date, time, and purpose with the caller before calling this tool.',
+        url: baseUrl,
+        parameters: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Meeting title or purpose',
+            },
+            start_time: {
+              type: 'string',
+              description: 'ISO 8601 datetime for appointment start',
+            },
+            duration_minutes: {
+              type: 'integer',
+              description: 'Duration in minutes, default 30',
+            },
+            attendee_name: {
+              type: 'string',
+              description: 'Name of the person booking',
+            },
+            attendee_email: {
+              type: 'string',
+              description: 'Email of the person booking',
+            },
+            attendee_phone: {
+              type: 'string',
+              description: 'Phone number of the person booking',
+            },
+          },
+          required: ['title', 'start_time'],
+        },
+        speak_during_execution: true,
+        speak_after_execution: true,
+      },
+    ];
+  },
+
+  /**
+   * Get the webhook URL for this Supabase project.
+   */
+  getWebhookUrl(): string {
+    const ref = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1] || '';
+    return `https://${ref}.supabase.co/functions/v1/retell-webhook`;
+  },
 };

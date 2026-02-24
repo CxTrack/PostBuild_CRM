@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ChoiceOption } from '@/types/copilot-actions.types';
-import { Mail, MessageSquare, Phone, Pencil, Lock, ArrowUpRight } from 'lucide-react';
+import { Mail, MessageSquare, Phone, Pencil, Lock, ArrowUpRight, User } from 'lucide-react';
 
 interface ChoiceCardProps {
   choices: ChoiceOption[];
@@ -13,6 +13,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   MessageSquare,
   Phone,
   Pencil,
+  User,
 };
 
 const COLOR_MAP: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {

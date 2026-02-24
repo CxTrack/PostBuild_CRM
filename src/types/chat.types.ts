@@ -6,7 +6,7 @@ export interface Message {
     conversation_id?: string;
     content: string;
     sender_id: string;
-    message_type?: 'text' | 'image' | 'file' | 'system';
+    message_type?: 'text' | 'image' | 'file' | 'system' | 'sms';
     metadata?: Record<string, unknown>;
     is_edited?: boolean;
     edited_at?: string;

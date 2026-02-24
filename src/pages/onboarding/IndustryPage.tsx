@@ -5,6 +5,7 @@ import { ChevronDown, Search, ArrowRight, Check } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import OnboardingPageWrapper, { staggerContainer, staggerItem } from '@/components/onboarding/OnboardingPageWrapper';
 import { industries, COUNTRY_OPTIONS, detectCountryFromLocale, detectCountryFromIP } from '@/constants/onboarding';
+import { updateOnboardingStep } from '@/utils/onboarding';
 
 export default function IndustryPage() {
     const navigate = useNavigate();
@@ -30,6 +31,7 @@ export default function IndustryPage() {
             navigate('/register');
             return;
         }
+        updateOnboardingStep('industry');
         const parsed = JSON.parse(leadData);
         setLead(parsed);
         if (parsed.industry) setSelectedIndustry(parsed.industry);

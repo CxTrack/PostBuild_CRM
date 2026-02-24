@@ -216,6 +216,14 @@ export const PLAN_VOICE_MINUTES: Record<string, number> = {
   enterprise: 99999,  // Effectively unlimited
 };
 
+// SMS messages included per plan per month (inbound + outbound tracked separately)
+export const PLAN_SMS_LIMITS: Record<string, { inbound: number; outbound: number }> = {
+  free: { inbound: 10, outbound: 10 },           // 10 in / 10 out during trial
+  business: { inbound: 100, outbound: 100 },     // 100 in / 100 out per month
+  elite_premium: { inbound: 500, outbound: 500 }, // 500 in / 500 out per month
+  enterprise: { inbound: 99999, outbound: 99999 }, // Effectively unlimited (pay-as-you-go)
+};
+
 // ============================================================================
 // PAGE LABELS - Industry-specific page content
 // ============================================================================

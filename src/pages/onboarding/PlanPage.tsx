@@ -7,6 +7,7 @@ import OnboardingPageWrapper, { staggerContainer, staggerItem } from '@/componen
 import PricingTierCard from '@/components/onboarding/PricingTierCard';
 import { pricingTiers, COUNTRY_OPTIONS } from '@/constants/onboarding';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { updateOnboardingStep } from '@/utils/onboarding';
 
 // Legal version constants
 const TERMS_VERSION = '1.0.0';
@@ -37,6 +38,7 @@ export default function PlanPage() {
             return;
         }
 
+        updateOnboardingStep('plan');
         if (parsed.planId) setSelectedPlan(parsed.planId);
     }, [navigate]);
 
@@ -138,6 +140,31 @@ export default function PlanPage() {
                     );
                     updatedLead.organizationId = existingMembers[0].organization_id;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+
+                    // Auto-connect Microsoft email for existing org case
+                    try {
+                        const msTokens = sessionStorage.getItem('microsoft_provider_tokens');
+                        if (msTokens) {
+                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(msTokens);
+                            sessionStorage.removeItem('microsoft_provider_tokens');
+                            if (Date.now() - timestamp < 5 * 60 * 1000) {
+                                fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        provider: 'microsoft',
+                                        provider_token,
+                                        provider_refresh_token,
+                                        organization_id: existingMembers[0].organization_id,
+                                    }),
+                                }).then(r => r.ok && r.json().then(d => console.log('[Onboarding] Auto-connected Microsoft email:', d.email_address)))
+                                  .catch(err => console.warn('[Onboarding] Auto-connect email failed:', err));
+                            }
+                        }
+                    } catch { /* Don't block onboarding flow */ }
                 } else {
                     // Create org + owner via RPC
                     const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/create_organization_with_owner`, {
@@ -175,6 +202,31 @@ export default function PlanPage() {
                     const orgId = await rpcRes.json();
                     updatedLead.organizationId = orgId;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
+
+                    // Auto-connect Microsoft email if user signed up via Microsoft OAuth
+                    try {
+                        const msTokens = sessionStorage.getItem('microsoft_provider_tokens');
+                        if (msTokens) {
+                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(msTokens);
+                            sessionStorage.removeItem('microsoft_provider_tokens');
+                            if (Date.now() - timestamp < 5 * 60 * 1000) {
+                                fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        provider: 'microsoft',
+                                        provider_token,
+                                        provider_refresh_token,
+                                        organization_id: orgId,
+                                    }),
+                                }).then(r => r.ok && r.json().then(d => console.log('[Onboarding] Auto-connected Microsoft email:', d.email_address)))
+                                  .catch(err => console.warn('[Onboarding] Auto-connect email failed:', err));
+                            }
+                        }
+                    } catch { /* Don't block onboarding flow */ }
 
                     // Update org with country/currency
                     await fetch(
@@ -329,7 +381,7 @@ export default function PlanPage() {
                             <span className="text-white/50 text-xs leading-relaxed group-hover:text-white/70 transition-colors">
                                 I agree to the{' '}
                                 <a
-                                    href="/terms"
+                                    href="https://cxtrack.com/terms"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-[#FFD700]/70 hover:text-[#FFD700] underline underline-offset-2 transition-colors"
@@ -349,7 +401,7 @@ export default function PlanPage() {
                             <span className="text-white/50 text-xs leading-relaxed group-hover:text-white/70 transition-colors">
                                 I agree to the{' '}
                                 <a
-                                    href="/privacy"
+                                    href="https://cxtrack.com/privacy"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-[#FFD700]/70 hover:text-[#FFD700] underline underline-offset-2 transition-colors"

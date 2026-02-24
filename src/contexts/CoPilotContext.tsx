@@ -20,6 +20,8 @@ export interface Message {
   choices?: ChoiceOption[];
   choiceSelected?: string;
   feedbackRating?: 'positive' | 'negative';
+  /** Stored when disambiguation is needed -- the action waiting for customer selection */
+  pendingAction?: ActionProposal;
 }
 
 interface ContextData {
@@ -321,6 +323,79 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Parse the AI response for action proposals
       const parsed = parseActionProposal(data.response);
 
+      // Enrich action proposals with local CRM data (phone, email, customer_id)
+      // If multiple customers share the same name, show disambiguation choices
+      let disambiguationChoices: import('@/types/copilot-actions.types').ChoiceOption[] | null = null;
+      let disambiguationAction: ActionProposal | undefined;
+
+      if (parsed.action) {
+        const customerNameField = parsed.action.fields.find(f => f.key === 'customer_name');
+        if (customerNameField?.value) {
+          const store = useCustomerStore.getState();
+          if (store.customers.length === 0) {
+            await store.fetchCustomers();
+          }
+          const allCustomers = useCustomerStore.getState().customers;
+          const searchName = customerNameField.value.toLowerCase().trim();
+
+          // Collect ALL matches at each tier, stop at the first tier that has results
+          let matches: typeof allCustomers = [];
+          const exactMatches = allCustomers.filter(c => c.name?.toLowerCase() === searchName);
+          if (exactMatches.length > 0) {
+            matches = exactMatches;
+          } else {
+            const partialMatches = allCustomers.filter(c => c.name?.toLowerCase().includes(searchName));
+            if (partialMatches.length > 0) {
+              matches = partialMatches;
+            } else {
+              const parts = searchName.split(/\s+/);
+              if (parts.length >= 2) {
+                matches = allCustomers.filter(c => {
+                  const name = c.name?.toLowerCase() || '';
+                  return parts.every(p => name.includes(p));
+                });
+              }
+            }
+          }
+
+          // Deduplicate by ID
+          const uniqueMatches = [...new Map(matches.map(c => [c.id, c])).values()];
+
+          if (uniqueMatches.length === 1) {
+            // Single match -- auto-fill fields
+            const match = uniqueMatches[0];
+            const phoneField = parsed.action.fields.find(f => f.key === 'to_phone');
+            if (phoneField && !phoneField.value && match.phone) {
+              phoneField.value = match.phone;
+            }
+            const emailField = parsed.action.fields.find(f => f.key === 'to_email');
+            if (emailField && !emailField.value && match.email) {
+              emailField.value = match.email;
+            }
+            const idField = parsed.action.fields.find(f => f.key === 'customer_id');
+            if (idField && !idField.value) {
+              idField.value = match.id;
+            }
+          } else if (uniqueMatches.length > 1) {
+            // Multiple matches -- ask user to disambiguate
+            disambiguationAction = parsed.action;
+            parsed.action = undefined as any; // Strip action so ActionCard doesn't render yet
+            disambiguationChoices = uniqueMatches.slice(0, 4).map(c => {
+              const details: string[] = [];
+              if (c.phone) details.push(c.phone);
+              if (c.email) details.push(c.email);
+              if (c.company) details.push(c.company);
+              return {
+                id: c.id,
+                label: c.name || 'Unknown',
+                description: details.join(' · ') || 'No contact info',
+                icon: 'User',
+              };
+            });
+          }
+        }
+      }
+
       // Permission gate: strip action if user doesn't have permission
       let actionToShow = parsed.action;
       let displayContent = parsed.textContent;
@@ -329,15 +404,28 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         displayContent += "\n\n⚠️ You don't have permission to perform this action. Contact your admin.";
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: displayContent,
-        timestamp: new Date(),
-        action: actionToShow || undefined,
-        actionStatus: actionToShow ? 'proposed' : undefined,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      // If disambiguation is needed, show choices instead of the action card
+      if (disambiguationChoices && disambiguationAction) {
+        const disambigMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: displayContent + `\n\nI found **${disambiguationChoices.length} customers** matching that name. Which one did you mean?`,
+          timestamp: new Date(),
+          choices: disambiguationChoices,
+          pendingAction: disambiguationAction,
+        };
+        setMessages(prev => [...prev, disambigMessage]);
+      } else {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: displayContent,
+          timestamp: new Date(),
+          action: actionToShow || undefined,
+          actionStatus: actionToShow ? 'proposed' : undefined,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
 
     } catch (error) {
       console.error('CoPilot error:', error);

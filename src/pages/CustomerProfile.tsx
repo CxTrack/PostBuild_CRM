@@ -367,6 +367,7 @@ export const CustomerProfile: React.FC = () => {
         customerEmail={currentCustomer.email || ''}
         customerName={currentCustomer.name}
         customerId={currentCustomer.id}
+        organizationId={currentOrganization?.id}
       />
 
       {showEditModal && (
@@ -992,7 +993,9 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
   const { events, fetchEvents } = useCalendarStore();
   const navigate = useNavigate();
   const [showLogCallModal, setShowLogCallModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'meetings'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'meetings' | 'emails'>('all');
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
 
   useEffect(() => {
     if (customer.id && currentOrganization?.id) {
@@ -1000,6 +1003,37 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
       fetchEvents(currentOrganization.id);
     }
   }, [customer.id, currentOrganization?.id]);
+
+  // Fetch email logs for Communications tab
+  useEffect(() => {
+    const fetchEmailLogs = async () => {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+        const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const tokenKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+        const raw = tokenKey ? localStorage.getItem(tokenKey) : null;
+        const token = raw ? JSON.parse(raw)?.access_token : null;
+        if (!token) return;
+
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at&order=sent_at.desc&limit=50`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': SUPABASE_ANON_KEY,
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setEmailLogs(data || []);
+        }
+      } catch {
+        // Silent
+      }
+    };
+    fetchEmailLogs();
+  }, [customer.id]);
 
   const customerEvents = events.filter(e => e.customer_id === customer.id);
 
@@ -1014,6 +1048,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
       direction: call.direction,
       duration: call.duration_seconds,
       callId: call.id,
+      emailData: null as any,
     })),
     ...customerEvents.map(event => ({
       id: event.id,
@@ -1025,6 +1060,21 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
       direction: null as string | null,
       duration: 0,
       callId: null as string | null,
+      emailData: null as any,
+    })),
+    ...emailLogs.map(email => ({
+      id: email.id,
+      type: 'email' as const,
+      date: email.sent_at || email.created_at,
+      title: email.subject || '(No subject)',
+      subtitle: email.direction === 'inbound'
+        ? `From: ${email.sender_email || 'Unknown'}`
+        : `To: ${email.recipient_email}`,
+      status: email.status,
+      direction: email.direction,
+      duration: 0,
+      callId: null as string | null,
+      emailData: email,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -1032,7 +1082,9 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
     ? timelineItems
     : activeFilter === 'calls'
       ? timelineItems.filter(i => i.type === 'call')
-      : timelineItems.filter(i => i.type === 'meeting');
+      : activeFilter === 'meetings'
+        ? timelineItems.filter(i => i.type === 'meeting')
+        : timelineItems.filter(i => i.type === 'email');
 
   const handleLogCall = async (callData: any) => {
     try {
@@ -1061,7 +1113,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            {(['all', 'calls', 'meetings'] as const).map(filter => (
+            {(['all', 'calls', 'meetings', 'emails'] as const).map(filter => (
               <button
                 key={filter}
                 onClick={() => setActiveFilter(filter)}
@@ -1100,7 +1152,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
               No communications yet
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Calls and meetings will appear here once recorded
+              Calls, meetings, and emails will appear here once recorded
             </p>
             <button
               onClick={() => setShowLogCallModal(true)}
@@ -1112,46 +1164,75 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredItems.map(item => (
-              <div
-                key={item.id}
-                onClick={() => {
-                  if (item.type === 'call' && item.callId) {
-                    navigate(`/dashboard/calls/${item.callId}`);
-                  }
-                }}
-                className={`flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-                  item.type === 'call' ? 'cursor-pointer' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    item.type === 'call'
-                      ? item.direction === 'inbound'
-                        ? 'bg-blue-50 dark:bg-blue-500/10'
-                        : 'bg-green-50 dark:bg-green-500/10'
-                      : 'bg-purple-50 dark:bg-purple-500/10'
-                  }`}>
-                    {item.type === 'call' ? (
-                      item.direction === 'inbound'
-                        ? <PhoneIncoming size={16} className="text-blue-600 dark:text-blue-400" />
-                        : <PhoneOutgoing size={16} className="text-green-600 dark:text-green-400" />
-                    ) : (
-                      <Calendar size={16} className="text-purple-600 dark:text-purple-400" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(item.date), 'MMM d, yyyy · h:mm a')}
-                      {item.type === 'call' && item.duration > 0 && (
-                        <> · {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}</>
+              <div key={item.id}>
+                <div
+                  onClick={() => {
+                    if (item.type === 'call' && item.callId) {
+                      navigate(`/dashboard/calls/${item.callId}`);
+                    } else if (item.type === 'email') {
+                      setExpandedEmailId(expandedEmailId === item.id ? null : item.id);
+                    }
+                  }}
+                  className={`flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                    item.type === 'call' || item.type === 'email' ? 'cursor-pointer' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      item.type === 'call'
+                        ? item.direction === 'inbound'
+                          ? 'bg-blue-50 dark:bg-blue-500/10'
+                          : 'bg-green-50 dark:bg-green-500/10'
+                        : item.type === 'email'
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                          : 'bg-purple-50 dark:bg-purple-500/10'
+                    }`}>
+                      {item.type === 'call' ? (
+                        item.direction === 'inbound'
+                          ? <PhoneIncoming size={16} className="text-blue-600 dark:text-blue-400" />
+                          : <PhoneOutgoing size={16} className="text-green-600 dark:text-green-400" />
+                      ) : item.type === 'email' ? (
+                        <Mail size={16} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <Calendar size={16} className="text-purple-600 dark:text-purple-400" />
                       )}
-                    </p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
+                        {item.type === 'email' && item.emailData?.direction === 'inbound' && !item.emailData?.read_at && (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" title="Unread" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.subtitle && <>{item.subtitle} · </>}
+                        {format(new Date(item.date), 'MMM d, yyyy · h:mm a')}
+                        {item.type === 'call' && item.duration > 0 && (
+                          <> · {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}</>
+                        )}
+                      </p>
+                    </div>
                   </div>
+                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
+                    item.type === 'email'
+                      ? item.direction === 'inbound'
+                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                        : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                      : getStatusColor(item.status)
+                  }`}>
+                    {item.type === 'email'
+                      ? item.direction === 'inbound' ? 'received' : 'sent'
+                      : item.status.replace('_', ' ')}
+                  </span>
                 </div>
-                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
-                  {item.status.replace('_', ' ')}
-                </span>
+                {/* Expanded email body */}
+                {item.type === 'email' && expandedEmailId === item.id && item.emailData && (
+                  <div className="px-4 pb-4 pl-14">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      {item.emailData.body_text || '(No content)'}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1536,10 +1617,11 @@ function ActivityTab({ customer }: { customer: Customer }) {
   const { quotes } = useQuoteStore();
   const { invoices } = useInvoiceStore();
   const [smsLogs, setSmsLogs] = useState<any[]>([]);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
 
-  // Fetch SMS logs for this customer via direct REST API (AbortController-safe)
+  // Fetch SMS + Email logs for this customer via direct REST API (AbortController-safe)
   useEffect(() => {
-    const fetchSmsLogs = async () => {
+    const fetchLogs = async () => {
       try {
         const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
         const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -1548,24 +1630,36 @@ function ActivityTab({ customer }: { customer: Customer }) {
         const token = raw ? JSON.parse(raw)?.access_token : null;
         if (!token) return;
 
-        const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/sms_log?customer_id=eq.${customer.id}&select=id,recipient_phone,message_body,status,template_key,sent_at,created_at&order=created_at.desc&limit=50`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'apikey': SUPABASE_ANON_KEY,
-            },
-          }
-        );
-        if (res.ok) {
-          const data = await res.json();
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        };
+
+        // Fetch both in parallel
+        const [smsRes, emailRes] = await Promise.all([
+          fetch(
+            `${SUPABASE_URL}/rest/v1/sms_log?customer_id=eq.${customer.id}&select=id,recipient_phone,message_body,status,template_key,sent_at,created_at&order=created_at.desc&limit=50`,
+            { headers }
+          ),
+          fetch(
+            `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,status,sent_at,created_at&order=sent_at.desc&limit=50`,
+            { headers }
+          ),
+        ]);
+
+        if (smsRes.ok) {
+          const data = await smsRes.json();
           setSmsLogs(data || []);
         }
+        if (emailRes.ok) {
+          const data = await emailRes.json();
+          setEmailLogs(data || []);
+        }
       } catch {
-        // Silent — SMS logs are supplementary
+        // Silent -- logs are supplementary
       }
     };
-    fetchSmsLogs();
+    fetchLogs();
   }, [customer.id]);
 
   const customerEvents = getEventsByCustomer(customer.id);
@@ -1621,6 +1715,13 @@ function ActivityTab({ customer }: { customer: Customer }) {
       date: new Date(sms.sent_at || sms.created_at),
       status: sms.status,
     })),
+    ...emailLogs.map(email => ({
+      type: email.direction === 'inbound' ? 'email_received' : 'email_sent',
+      title: email.direction === 'inbound' ? `Email received: ${email.subject}` : `Email sent: ${email.subject}`,
+      description: email.body_text ? (email.body_text.length > 100 ? email.body_text.substring(0, 100) + '...' : email.body_text) : null,
+      date: new Date(email.sent_at || email.created_at),
+      status: email.status,
+    })),
     {
       type: 'created',
       title: 'Customer created',
@@ -1651,6 +1752,10 @@ function ActivityTab({ customer }: { customer: Customer }) {
                   return { icon: DollarSign, bg: 'bg-green-100 dark:bg-green-900/20', color: 'text-green-600 dark:text-green-400' };
                 case 'sms':
                   return { icon: MessageSquare, bg: 'bg-emerald-100 dark:bg-emerald-900/20', color: 'text-emerald-600 dark:text-emerald-400' };
+                case 'email_sent':
+                  return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
+                case 'email_received':
+                  return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
                 default:
                   return { icon: Activity, bg: 'bg-primary-100 dark:bg-primary-900/20', color: 'text-primary-600 dark:text-primary-400' };
               }

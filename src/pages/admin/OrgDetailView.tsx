@@ -1,12 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   ArrowLeft, Building2, Users, Mail, Phone, Globe, MapPin,
   Brain, PhoneCall, FileText, UserCheck, Activity, Layers,
   MessageSquare, Send, Bell, Clock, Shield, Crown, Loader2, X,
   AlertCircle, Calendar, Zap, ArrowUpDown, Trash2, ShieldOff,
-  CheckCircle2, AlertTriangle
+  CheckCircle2, AlertTriangle, PlayCircle, ArrowDownLeft, ArrowUpRight,
+  ChevronLeft, ChevronRight, Search, Eye
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+
+/* ─── Auth + RPC Helpers ─── */
+
+const getAuthToken = (): string | null => {
+  try {
+    const ref = (supabaseUrl || '').split('//')[1]?.split('.')[0];
+    if (!ref) return null;
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || null;
+  } catch { return null; }
+};
+
+const callAdminRpc = async (fnName: string, params: Record<string, any> = {}) => {
+  const token = getAuthToken();
+  if (!token) throw new Error('No auth token');
+  const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'apikey': supabaseAnonKey,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`RPC ${fnName} failed (${res.status})`);
+  return res.json();
+};
 
 const INDUSTRY_LABELS: Record<string, string> = {
   tax_accounting: 'Tax & Accounting',
@@ -69,6 +100,33 @@ const formatCurrency = (n: number) => {
   return `$${n.toLocaleString()}`;
 };
 
+const formatDuration = (seconds: number | null | undefined) => {
+  if (!seconds || seconds <= 0) return '0s';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins < 60) return `${mins}m ${secs}s`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+};
+
+const sentimentColor = (s: string | null | undefined) => {
+  if (!s) return 'text-gray-400';
+  const l = s.toLowerCase();
+  if (l === 'positive') return 'text-green-500';
+  if (l === 'negative') return 'text-red-500';
+  return 'text-yellow-500';
+};
+
+const smsStatusBadge = (status: string | null | undefined) => {
+  if (!status) return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+  const s = status.toLowerCase();
+  if (s === 'delivered') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+  if (s === 'sent') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+  if (s === 'failed' || s === 'undelivered') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+  if (s === 'queued') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+  return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+};
+
 export const OrgDetailView = () => {
   const {
     selectedOrgId, selectedOrgContext, setSelectedOrg, setActiveTab,
@@ -99,9 +157,80 @@ export const OrgDetailView = () => {
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateResult, setDeactivateResult] = useState<{ success: boolean; message: string; actions?: any } | null>(null);
 
+  // Call History state
+  const [orgCalls, setOrgCalls] = useState<any[]>([]);
+  const [orgCallsTotal, setOrgCallsTotal] = useState(0);
+  const [orgCallsPage, setOrgCallsPage] = useState(0);
+  const [orgCallsLoading, setOrgCallsLoading] = useState(false);
+  const [selectedOrgCall, setSelectedOrgCall] = useState<any>(null);
+  const [orgCallDetailLoading, setOrgCallDetailLoading] = useState(false);
+  const CALLS_PER_PAGE = 10;
+
+  // SMS History state
+  const [orgSms, setOrgSms] = useState<any[]>([]);
+  const [orgSmsTotal, setOrgSmsTotal] = useState(0);
+  const [orgSmsPage, setOrgSmsPage] = useState(0);
+  const [orgSmsLoading, setOrgSmsLoading] = useState(false);
+  const [selectedSms, setSelectedSms] = useState<any>(null);
+  const SMS_PER_PAGE = 10;
+
+  const fetchOrgCalls = useCallback(async (page = 0) => {
+    if (!selectedOrgId) return;
+    setOrgCallsLoading(true);
+    try {
+      const data = await callAdminRpc('admin_get_calls_list', {
+        p_limit: CALLS_PER_PAGE,
+        p_offset: page * CALLS_PER_PAGE,
+        p_org_id: selectedOrgId,
+        p_days: 365,
+      });
+      setOrgCalls(data?.calls || data?.items || []);
+      setOrgCallsTotal(data?.total_count || data?.total || 0);
+      setOrgCallsPage(page);
+    } catch (e) {
+      console.error('Failed to fetch org calls:', e);
+    } finally {
+      setOrgCallsLoading(false);
+    }
+  }, [selectedOrgId]);
+
+  const fetchOrgCallDetail = useCallback(async (callId: string) => {
+    setOrgCallDetailLoading(true);
+    try {
+      const data = await callAdminRpc('admin_get_call_detail', { p_call_id: callId });
+      setSelectedOrgCall(data);
+    } catch (e) {
+      console.error('Failed to fetch call detail:', e);
+    } finally {
+      setOrgCallDetailLoading(false);
+    }
+  }, []);
+
+  const fetchOrgSms = useCallback(async (page = 0) => {
+    if (!selectedOrgId) return;
+    setOrgSmsLoading(true);
+    try {
+      const data = await callAdminRpc('admin_get_org_sms_list', {
+        p_org_id: selectedOrgId,
+        p_limit: SMS_PER_PAGE,
+        p_offset: page * SMS_PER_PAGE,
+        p_days: 365,
+      });
+      setOrgSms(data?.items || []);
+      setOrgSmsTotal(data?.total || 0);
+      setOrgSmsPage(page);
+    } catch (e) {
+      console.error('Failed to fetch org SMS:', e);
+    } finally {
+      setOrgSmsLoading(false);
+    }
+  }, [selectedOrgId]);
+
   useEffect(() => {
     if (selectedOrgId) {
       fetchOrgDetail(selectedOrgId);
+      fetchOrgCalls(0);
+      fetchOrgSms(0);
     }
   }, [selectedOrgId]);
 
@@ -513,6 +642,347 @@ export const OrgDetailView = () => {
               </div>
             </div>
           )}
+
+          {/* ── Call History ── */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <PhoneCall className="w-4 h-4 text-purple-500" />
+                Call History
+                {orgCallsTotal > 0 && (
+                  <span className="text-xs font-normal text-gray-400">({orgCallsTotal})</span>
+                )}
+              </h3>
+              {orgCallsLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+            </div>
+
+            {/* Call Detail Expanded View */}
+            {selectedOrgCall && (
+              <div className="border-b border-gray-200 dark:border-gray-700">
+                <div className="px-4 py-3 bg-purple-50 dark:bg-purple-900/10 border-b border-purple-200 dark:border-purple-800/30">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setSelectedOrgCall(null)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Back to list
+                    </button>
+                    <span className="text-[10px] text-gray-400">
+                      {formatDateTime(selectedOrgCall.started_at || selectedOrgCall.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {orgCallDetailLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                  </div>
+                ) : (
+                  <div className="p-4 space-y-4">
+                    {/* Call Meta */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">Direction</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1 mt-0.5">
+                          {selectedOrgCall.direction === 'inbound' ? <ArrowDownLeft className="w-3 h-3 text-blue-500" /> : <ArrowUpRight className="w-3 h-3 text-green-500" />}
+                          {selectedOrgCall.direction || 'Unknown'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">Duration</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5">
+                          {formatDuration(selectedOrgCall.duration_seconds || Math.round((selectedOrgCall.duration_ms || 0) / 1000))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">Agent</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5 truncate">{selectedOrgCall.agent_name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">Sentiment</p>
+                        <p className={`text-sm font-medium mt-0.5 capitalize ${sentimentColor(selectedOrgCall.sentiment || selectedOrgCall.summary_sentiment)}`}>
+                          {selectedOrgCall.sentiment || selectedOrgCall.summary_sentiment || '—'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Phone Numbers */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">From</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{selectedOrgCall.phone_number || selectedOrgCall.customer_phone || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium">Customer</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">
+                          {selectedOrgCall.customer_name || selectedOrgCall.customer_phone || '—'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Recording */}
+                    {(selectedOrgCall.recording_url || selectedOrgCall.summary_recording_url) && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Recording</p>
+                        <audio
+                          controls
+                          src={selectedOrgCall.recording_url || selectedOrgCall.summary_recording_url}
+                          className="w-full h-8"
+                          preload="none"
+                        />
+                      </div>
+                    )}
+
+                    {/* AI Summary */}
+                    {(selectedOrgCall.call_summary || selectedOrgCall.summary || selectedOrgCall.summary_text) && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">AI Summary</p>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+                          {selectedOrgCall.summary_text || selectedOrgCall.call_summary || selectedOrgCall.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Key Topics */}
+                    {selectedOrgCall.key_topics && (() => {
+                      try {
+                        const topics = typeof selectedOrgCall.key_topics === 'string'
+                          ? JSON.parse(selectedOrgCall.key_topics)
+                          : selectedOrgCall.key_topics;
+                        if (Array.isArray(topics) && topics.length > 0) {
+                          return (
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Key Topics</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {topics.map((t: string, i: number) => (
+                                  <span key={i} className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                      } catch { /* ignore */ }
+                      return null;
+                    })()}
+
+                    {/* Action Items */}
+                    {(selectedOrgCall.action_items || selectedOrgCall.summary_action_items) && (() => {
+                      try {
+                        const raw = selectedOrgCall.summary_action_items || selectedOrgCall.action_items;
+                        const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                        if (Array.isArray(items) && items.length > 0) {
+                          return (
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Action Items</p>
+                              <ul className="space-y-1">
+                                {items.map((item: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        }
+                      } catch { /* ignore */ }
+                      return null;
+                    })()}
+
+                    {/* Transcript */}
+                    {selectedOrgCall.transcript && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Transcript</p>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 max-h-48 overflow-y-auto text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
+                          {selectedOrgCall.transcript}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Calls Table */}
+            {!selectedOrgCall && (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 dark:bg-gray-700/50">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Direction</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Agent</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Duration</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">Sentiment</th>
+                        <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {orgCalls.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-400">
+                            {orgCallsLoading ? 'Loading...' : 'No call history found'}
+                          </td>
+                        </tr>
+                      ) : orgCalls.map((call: any) => (
+                        <tr
+                          key={call.id}
+                          onClick={() => fetchOrgCallDetail(call.id)}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-2.5">
+                            <p className="text-xs font-medium text-gray-900 dark:text-white">{formatDateTime(call.started_at || call.created_at)}</p>
+                            <p className="text-[10px] text-gray-400">{call.customer_phone || call.phone_number || '—'}</p>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+                              call.direction === 'inbound' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {call.direction === 'inbound' ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                              {call.direction || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 hidden md:table-cell">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px]">{call.agent_name || '—'}</p>
+                          </td>
+                          <td className="px-4 py-2.5 hidden md:table-cell">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              {formatDuration(call.duration_seconds || Math.round((call.duration_ms || 0) / 1000))}
+                            </p>
+                          </td>
+                          <td className="px-4 py-2.5 hidden lg:table-cell">
+                            <span className={`text-xs capitalize ${sentimentColor(call.sentiment || call.summary_sentiment)}`}>
+                              {call.sentiment || call.summary_sentiment || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <ChevronRight className="w-3.5 h-3.5 text-gray-400 inline-block" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Calls Pagination */}
+                {orgCallsTotal > CALLS_PER_PAGE && (
+                  <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400">
+                      {orgCallsPage * CALLS_PER_PAGE + 1}-{Math.min((orgCallsPage + 1) * CALLS_PER_PAGE, orgCallsTotal)} of {orgCallsTotal}
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => fetchOrgCalls(orgCallsPage - 1)}
+                        disabled={orgCallsPage === 0}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                      >
+                        <ChevronLeft className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => fetchOrgCalls(orgCallsPage + 1)}
+                        disabled={(orgCallsPage + 1) * CALLS_PER_PAGE >= orgCallsTotal}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                      >
+                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── SMS History ── */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-green-500" />
+                SMS History
+                {orgSmsTotal > 0 && (
+                  <span className="text-xs font-normal text-gray-400">({orgSmsTotal})</span>
+                )}
+              </h3>
+              {orgSmsLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Recipient</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Message</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {orgSms.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-400">
+                        {orgSmsLoading ? 'Loading...' : 'No SMS history found'}
+                      </td>
+                    </tr>
+                  ) : orgSms.map((sms: any) => (
+                    <tr
+                      key={sms.id}
+                      onClick={() => setSelectedSms(sms)}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-2.5">
+                        <p className="text-xs font-medium text-gray-900 dark:text-white">{formatDateTime(sms.sent_at || sms.created_at)}</p>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <p className="text-xs text-gray-700 dark:text-gray-300">{sms.recipient_phone || '—'}</p>
+                        {(sms.customer_first_name || sms.customer_last_name) && (
+                          <p className="text-[10px] text-gray-400 truncate">{[sms.customer_first_name, sms.customer_last_name].filter(Boolean).join(' ')}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 hidden md:table-cell">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{sms.message_body || '—'}</p>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${smsStatusBadge(sms.status)}`}>
+                          {sms.status || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Eye className="w-3.5 h-3.5 text-gray-400 inline-block" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* SMS Pagination */}
+            {orgSmsTotal > SMS_PER_PAGE && (
+              <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span className="text-[10px] text-gray-400">
+                  {orgSmsPage * SMS_PER_PAGE + 1}-{Math.min((orgSmsPage + 1) * SMS_PER_PAGE, orgSmsTotal)} of {orgSmsTotal}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => fetchOrgSms(orgSmsPage - 1)}
+                    disabled={orgSmsPage === 0}
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gray-500" />
+                  </button>
+                  <button
+                    onClick={() => fetchOrgSms(orgSmsPage + 1)}
+                    disabled={(orgSmsPage + 1) * SMS_PER_PAGE >= orgSmsTotal}
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Column - 1/3 */}
@@ -1105,6 +1575,103 @@ export const OrgDetailView = () => {
                 {commResult?.success ? 'Sent' : 'Send'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SMS Detail Modal ── */}
+      {selectedSms && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50" onClick={() => setSelectedSms(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-green-500" />
+                SMS Detail
+              </h3>
+              <button onClick={() => setSelectedSms(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Status Badge */}
+            <div className="mb-4 flex items-center gap-2">
+              <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-full uppercase ${smsStatusBadge(selectedSms.status)}`}>
+                {selectedSms.status || 'Unknown'}
+              </span>
+              {selectedSms.template_key && (
+                <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  {selectedSms.template_key}
+                </span>
+              )}
+            </div>
+
+            {/* Meta Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-medium">Recipient</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5">{selectedSms.recipient_phone || '—'}</p>
+                {(selectedSms.customer_first_name || selectedSms.customer_last_name) && (
+                  <p className="text-xs text-gray-500">
+                    {[selectedSms.customer_first_name, selectedSms.customer_last_name].filter(Boolean).join(' ')}
+                  </p>
+                )}
+                {selectedSms.customer_email && (
+                  <p className="text-[10px] text-gray-400">{selectedSms.customer_email}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-medium">Sent</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{formatDateTime(selectedSms.sent_at || selectedSms.created_at)}</p>
+              </div>
+              {selectedSms.sender_name && (
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Sent By</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{selectedSms.sender_name}</p>
+                </div>
+              )}
+              {selectedSms.document_type && (
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Related To</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 capitalize">{selectedSms.document_type}</p>
+                </div>
+              )}
+              {selectedSms.message_sid && (
+                <div className="col-span-2">
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Message SID</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono break-all">{selectedSms.message_sid}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Full Message Body */}
+            <div className="mb-4">
+              <p className="text-[10px] text-gray-400 uppercase font-medium mb-1.5">Full Message</p>
+              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
+                  {selectedSms.message_body || 'No message content'}
+                </p>
+              </div>
+              {selectedSms.message_body && (
+                <p className="text-[10px] text-gray-400 mt-1 text-right">{selectedSms.message_body.length} characters</p>
+              )}
+            </div>
+
+            {/* Error Info */}
+            {selectedSms.error_message && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30">
+                <p className="text-[10px] text-red-500 uppercase font-medium mb-1">Error</p>
+                <p className="text-xs text-red-700 dark:text-red-400">{selectedSms.error_message}</p>
+              </div>
+            )}
+
+            {/* Close */}
+            <button
+              onClick={() => setSelectedSms(null)}
+              className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

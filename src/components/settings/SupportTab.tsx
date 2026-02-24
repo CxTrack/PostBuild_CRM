@@ -12,7 +12,7 @@ export default function SupportTab({ initialSubTab }: SupportTabProps) {
   const [subTab, setSubTab] = useState(initialSubTab || 'security');
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <SubTabs
         tabs={[
           { id: 'security', label: 'Security', icon: Shield },

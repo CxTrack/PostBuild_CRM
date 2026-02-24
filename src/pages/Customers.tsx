@@ -3,7 +3,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
   Search, Plus, Users, Building2, Mail, Phone,
-  Eye, Edit, Trash2, MessageSquare
+  Eye, Edit, Trash2, MessageSquare, X
 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -36,9 +36,11 @@ export const Customers: React.FC = () => {
   const [showImporter, setShowImporter] = useState(false);
   const [showCustomFields, setShowCustomFields] = useState(false);
   const [smsTarget, setSmsTarget] = useState<{ phone: string; name: string; id: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const { currentOrganization, currentMembership, _hasHydrated } = useOrganizationStore();
-  const { customers, loading, fetchCustomers, deleteCustomer } = useCustomerStore();
+  const { customers, loading, fetchCustomers, deleteCustomer, deleteCustomers } = useCustomerStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
   const { canAccessSharedModule } = usePermissions();
@@ -122,6 +124,55 @@ export const Customers: React.FC = () => {
         toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
       } catch (error) {
         toast.error(`Failed to delete ${labels.entitySingular}`);
+      }
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredCustomers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCustomers.map((c) => c.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
+      toast.error(`You do not have permission to delete ${labels.entityPlural}`);
+      return;
+    }
+    const count = selectedIds.size;
+    const confirmed = await confirm({
+      title: `Delete ${count} ${count === 1 ? labels.entitySingular : labels.entityPlural}`,
+      message: `Are you sure you want to delete ${count} ${count === 1 ? labels.entitySingular : labels.entityPlural}? This action cannot be undone.`,
+      variant: 'danger',
+      confirmText: `Delete ${count}`,
+    });
+
+    if (confirmed) {
+      setBulkDeleting(true);
+      try {
+        const { succeeded, failed } = await deleteCustomers(Array.from(selectedIds));
+        if (succeeded > 0) {
+          toast.success(`Deleted ${succeeded} ${succeeded === 1 ? labels.entitySingular : labels.entityPlural}`);
+        }
+        if (failed > 0) {
+          toast.error(`Failed to delete ${failed} ${failed === 1 ? labels.entitySingular : labels.entityPlural} (may have associated quotes or invoices)`);
+        }
+        setSelectedIds(new Set());
+      } catch {
+        toast.error(`Failed to delete ${labels.entityPlural}`);
+      } finally {
+        setBulkDeleting(false);
       }
     }
   };
@@ -292,6 +343,16 @@ export const Customers: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <tr>
+                      {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
+                        <th className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={filteredCustomers.length > 0 && selectedIds.size === filteredCustomers.length}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                          />
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                         {labels.columns?.name}
                       </th>
@@ -316,8 +377,18 @@ export const Customers: React.FC = () => {
                     {filteredCustomers.map((customer) => (
                       <tr
                         key={customer.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedIds.has(customer.id) ? 'bg-primary-50 dark:bg-primary-500/10' : ''}`}
                       >
+                        {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
+                          <td className="px-4 py-4 w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(customer.id)}
+                              onChange={() => toggleSelect(customer.id)}
+                              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4">
                           <Link
                             to={`/dashboard/customers/${customer.id}`}
@@ -433,6 +504,30 @@ export const Customers: React.FC = () => {
                 </table>
               </div>
             </div>
+
+            {/* Bulk Action Bar */}
+            {selectedIds.size > 0 && (currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-2xl border border-gray-700 dark:border-gray-600">
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {selectedIds.size} selected
+                </span>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Trash2 size={15} />
+                  {bulkDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  title="Clear selection"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
 
             <div className="md:hidden space-y-4 px-4 pb-20">
               {filteredCustomers.map((customer) => (

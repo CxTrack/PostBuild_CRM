@@ -21,6 +21,7 @@ interface CustomerStore {
   createCustomer: (customer: Partial<Customer>) => Promise<Customer | null>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
+  deleteCustomers: (ids: string[]) => Promise<{ succeeded: number; failed: number }>;
 
   fetchNotes: (customerId: string) => Promise<void>;
   addNote: (note: Partial<CustomerNote>) => Promise<void>;
@@ -218,6 +219,44 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  deleteCustomers: async (ids: string[]) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) throw new Error('No organization selected');
+
+    const succeededIds: string[] = [];
+    let failed = 0;
+
+    for (const id of ids) {
+      try {
+        await supabase.from('customer_notes').delete().eq('customer_id', id);
+        await supabase.from('customer_contacts').delete().eq('customer_id', id);
+        await supabase.from('tasks').delete().eq('customer_id', id);
+        await supabase.from('pipeline_items').delete().eq('customer_id', id);
+        await supabase.from('calendar_events').delete().eq('customer_id', id);
+
+        const { error } = await supabase
+          .from('customers')
+          .delete()
+          .eq('id', id)
+          .eq('organization_id', organizationId);
+
+        if (error) throw error;
+        succeededIds.push(id);
+      } catch {
+        failed++;
+      }
+    }
+
+    if (succeededIds.length > 0) {
+      const deletedSet = new Set(succeededIds);
+      set((state) => ({
+        customers: state.customers.filter((c) => !deletedSet.has(c.id)),
+      }));
+    }
+
+    return { succeeded: succeededIds.length, failed };
   },
 
   fetchNotes: async (customerId: string) => {

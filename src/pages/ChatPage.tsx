@@ -10,6 +10,7 @@ import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
 import { FileAttachmentButton, FilePreview } from '@/components/chat/FileAttachment';
 import { CreateGroupModal } from '@/components/chat/CreateGroupModal';
 import ActionCard from '@/components/copilot/ActionCard';
+import SmsAgentSuggestions from '@/components/chat/SmsAgentSuggestions';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import type { ActionStatus } from '@/types/copilot-actions.types';
@@ -154,6 +155,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
         return saved ? JSON.parse(saved) : DEFAULT_CHAT_SETTINGS;
     });
+    // SMS Agent Suggestions state
+    const [showSmsSuggestions, setShowSmsSuggestions] = useState(false);
+    const [lastInboundSmsText, setLastInboundSmsText] = useState('');
+    const [smsSuggestionKey, setSmsSuggestionKey] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -175,6 +180,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     const newMsg = payload.new;
                     if (newMsg.sender_id !== user?.id) {
                         setMessages(prev => [...prev, newMsg as Message]);
+                        // Trigger SMS suggestions for inbound SMS
+                        if (newMsg.message_type === 'sms' && (newMsg.metadata as any)?.direction === 'inbound') {
+                            setLastInboundSmsText(newMsg.content);
+                            setSmsSuggestionKey(prev => prev + 1);
+                            setShowSmsSuggestions(true);
+                        }
                     }
                 })
                 .subscribe();
@@ -253,6 +264,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 setMessages([]);
             } else if (data) {
                 setMessages(data);
+                // Trigger SMS suggestions if last message is inbound SMS
+                if (activeConversation?.channel_type === 'sms' && data.length > 0) {
+                    const lastMsg = data[data.length - 1];
+                    if (lastMsg.message_type === 'sms' && (lastMsg.metadata as any)?.direction === 'inbound') {
+                        setLastInboundSmsText(lastMsg.content);
+                        setSmsSuggestionKey(prev => prev + 1);
+                        setShowSmsSuggestions(true);
+                    } else {
+                        setShowSmsSuggestions(false);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error loading messages:", error);
@@ -266,6 +288,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const messageContent = newMessage;
         setNewMessage('');
         setAttachedFile(null);
+        setShowSmsSuggestions(false);
 
         const newMsg: Message = {
             id: `temp-${Date.now()}`,
@@ -978,6 +1001,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 <div className="px-4 py-2 border-t border-gray-200/50 dark:border-gray-700/50">
                                     <FilePreview file={attachedFile} onRemove={() => setAttachedFile(null)} />
                                 </div>
+                            )}
+
+                            {/* SMS Agent Suggestions */}
+                            {activeConversation.channel_type === 'sms' && (
+                                <SmsAgentSuggestions
+                                    key={smsSuggestionKey}
+                                    organizationId={useOrganizationStore.getState().currentOrganization?.id || ''}
+                                    inboundMessage={lastInboundSmsText}
+                                    customerName={activeConversation.name || undefined}
+                                    customerPhone={(activeConversation as any).customer_phone || undefined}
+                                    conversationHistory={messages.slice(-10).map(m => ({
+                                        role: (m.message_type === 'sms' && (m.metadata as any)?.direction === 'inbound' ? 'customer' : 'agent') as 'customer' | 'agent',
+                                        content: m.content,
+                                    }))}
+                                    onSelectSuggestion={(text) => {
+                                        setNewMessage(text);
+                                        setShowSmsSuggestions(false);
+                                        inputRef.current?.focus();
+                                    }}
+                                    onDismiss={() => setShowSmsSuggestions(false)}
+                                    visible={showSmsSuggestions}
+                                />
                             )}
 
                             {/* Input Area */}

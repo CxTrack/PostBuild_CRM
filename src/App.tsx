@@ -4,7 +4,7 @@ import {
   Navigate,
   useLocation
 } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 
 import { useAuthContext } from './contexts/AuthContext';
@@ -67,6 +67,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import AuthCallback from './pages/auth/AuthCallback';
 import { CookieConsent } from './components/common/CookieConsent';
+import { checkOnboardingStatus } from './utils/onboarding';
 
 // Pipeline Pages
 import NewDealPage from './pages/pipeline/NewDealPage';
@@ -80,12 +81,31 @@ const RouteChangeTracker = () => {
   return null;
 };
 
-// Auth guard component - redirects to login if not authenticated
+// Auth guard component - redirects to login if not authenticated, and to onboarding if incomplete
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuthContext();
   const location = useLocation();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const checkedRef = useRef(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (!user || checkedRef.current) return;
+
+    (async () => {
+      const status = await checkOnboardingStatus(user.id);
+      // Fail-open: if status is null (query failed or no profile), allow access
+      if (status === null) {
+        setOnboardingComplete(true);
+      } else {
+        setOnboardingComplete(status.complete);
+      }
+      checkedRef.current = true;
+      setOnboardingChecked(true);
+    })();
+  }, [user]);
+
+  if (loading || (user && !onboardingChecked)) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -96,6 +116,11 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   if (!user) {
     // Redirect to login, save the attempted URL
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!onboardingComplete) {
+    // User has not completed onboarding - redirect to profile (which handles resume)
+    return <Navigate to="/onboarding/profile" replace />;
   }
 
   return children;

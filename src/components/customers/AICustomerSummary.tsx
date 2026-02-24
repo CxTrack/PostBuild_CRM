@@ -28,6 +28,27 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
     }
 
     try {
+      // Fetch email activity count for context enrichment
+      let emailContext = '';
+      try {
+        const supabaseUrl = getSupabaseUrl();
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const emailRes = await fetch(
+          `${supabaseUrl}/rest/v1/email_log?customer_id=eq.${customerId}&sent_at=gte.${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()}&select=id,direction,subject,sent_at`,
+          { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+        );
+        if (emailRes.ok) {
+          const emails = await emailRes.json();
+          if (emails.length > 0) {
+            const sent = emails.filter((e: any) => e.direction === 'outbound').length;
+            const received = emails.filter((e: any) => e.direction === 'inbound').length;
+            emailContext = `\n\nEMAIL ACTIVITY (last 30 days): ${emails.length} total emails (${sent} sent, ${received} received). Recent subjects: ${emails.slice(0, 3).map((e: any) => `"${e.subject}"`).join(', ')}.`;
+          }
+        }
+      } catch {
+        // Silent -- email context is supplementary
+      }
+
       const response = await fetch(`${getSupabaseUrl()}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: {
@@ -35,7 +56,7 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: `Summarize the CRM data for customer "${customerName}" (ID: ${customerId}). ONLY report what appears in the retrieved data — do NOT invent or assume any information. For each category (calls, tasks, pipeline deals, invoices, notes), state what exists or say "none" if the data array is empty. Keep it concise — 3-5 sentences maximum.`,
+          message: `[CONTEXT_SUMMARY_MODE] Summarize the CRM data for customer "${customerName}" (ID: ${customerId}). ONLY report what appears in the retrieved data — do NOT invent or assume any information. For each category (calls, tasks, pipeline deals, invoices, emails, notes), state what exists or say "none" if the data array is empty. Keep it concise — 3-5 sentences maximum. IMPORTANT: This is a read-only information panel. Do NOT include any interactive options, multiple choice (A/B/C/D), follow-up questions, or "What would you like to do next?" prompts. Just provide the summary.${emailContext}`,
           conversationHistory: [],
           context: {
             page: 'Customers',

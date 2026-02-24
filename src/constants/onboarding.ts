@@ -51,6 +51,8 @@ export const pricingTiers = [
             'Basic invoices & quotes',
             '10 invoices/quotes per month',
             'Voice AI Agent (60 min) - FIRST MONTH ONLY',
+            'AI Quarterback (CoPilot)',
+            '50K AI tokens/month',
         ],
         cta: 'Start Free',
         skipPayment: true,
@@ -68,6 +70,8 @@ export const pricingTiers = [
             '50 invoices & quotes/month',
             'Voice AI Agent (100 min/month)',
             'Inventory & pipeline access',
+            'AI Quarterback (CoPilot)',
+            '500K AI tokens/month',
         ],
         pricingNote: '$50/mo for first 3 months, then $150/mo',
         cta: 'Select Business',
@@ -86,6 +90,8 @@ export const pricingTiers = [
             'Unlimited invoices & quotes',
             'Voice AI Agent (500 min/month)',
             'Full suite of automations',
+            'AI Quarterback (CoPilot)',
+            '1M AI tokens/month',
         ],
         cta: 'Select Elite Premium',
         highlighted: true,
@@ -103,6 +109,8 @@ export const pricingTiers = [
             'Advanced automations',
             'Dedicated account manager',
             'Skool community access',
+            'AI Quarterback (CoPilot)',
+            '1M AI tokens/month',
         ],
         cta: 'Select Enterprise',
     },
@@ -225,3 +233,15 @@ export async function detectCountryFromIP(): Promise<string> {
     }
     return detectCountryFromLocale();
 }
+
+// Color for each onboarding step in the progress ribbon
+// Follows the CxTrack marketing site brand palette
+export const STEP_COLORS: Record<string, string> = {
+    account:   '#1E90FF', // Sapphire Blue
+    profile:   '#C850C0', // Purple
+    selection: '#FF8C00', // Orange
+    industry:  '#00CED1', // Cyan
+    plan:      '#FFD700', // Electric Gold
+    voice:     '#C850C0', // Purple
+    checkout:  '#22C55E', // Green
+};

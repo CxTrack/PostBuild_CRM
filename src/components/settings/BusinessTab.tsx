@@ -37,7 +37,7 @@ export default function BusinessTab({
   const [subTab, setSubTab] = useState(initialSubTab || 'info');
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <SubTabs
         tabs={[
           { id: 'info', label: 'Business Info', icon: Building2 },

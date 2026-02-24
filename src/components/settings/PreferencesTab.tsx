@@ -13,7 +13,7 @@ export default function PreferencesTab({ initialSubTab }: PreferencesTabProps) {
   const [subTab, setSubTab] = useState(initialSubTab || 'theme');
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <SubTabs
         tabs={[
           { id: 'theme', label: 'Theme', icon: Palette },

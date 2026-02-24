@@ -7,6 +7,7 @@ import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import { retellService } from '@/services/retell.service';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { markOnboardingComplete } from '@/utils/onboarding';
 
 function getAuthToken(): string | null {
   try {
@@ -43,10 +44,15 @@ export default function SuccessPage() {
   const [provisionError, setProvisionError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+
     const leadData = sessionStorage.getItem('onboarding_lead');
     if (leadData) {
       setLead(JSON.parse(leadData));
     }
+
+    // Mark onboarding as complete in the database (fire-and-forget)
+    markOnboardingComplete();
 
     // Trigger confetti effect
     triggerConfetti();
@@ -55,16 +61,15 @@ export default function SuccessPage() {
   const triggerConfetti = () => {
     import('canvas-confetti')
       .then((confetti) => {
-        confetti.default({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#FFD700', '#ffffff', '#000000'],
-        });
+        const colors = ['#FFD700', '#C850C0', '#1E90FF', '#ffffff'];
+        // Center burst
+        confetti.default({ particleCount: 120, spread: 70, origin: { y: 0.6, x: 0.5 }, colors });
+        // Left burst
+        setTimeout(() => confetti.default({ particleCount: 80, spread: 60, origin: { y: 0.65, x: 0.25 }, colors }), 200);
+        // Right burst
+        setTimeout(() => confetti.default({ particleCount: 80, spread: 60, origin: { y: 0.65, x: 0.75 }, colors }), 400);
       })
-      .catch(() => {
-        console.log('Confetti animation triggered (library not installed)');
-      });
+      .catch(() => {});
   };
 
   const type = searchParams.get('type');
@@ -179,6 +184,8 @@ export default function SuccessPage() {
     return `Your ${plan?.toUpperCase() || 'CRM'} environment is being provisioned. Welcome to the future of high-performance business operations.`;
   };
 
+  const canAccessCards = true; // Always allow access to dashboard & roadmap cards
+
   const roadmap = isRequest
     ? [
         { icon: MailSearch, label: 'Technical Review', status: 'In Progress', desc: 'Analyzing brief' },
@@ -187,10 +194,8 @@ export default function SuccessPage() {
       ]
     : [
         { icon: ShieldCheck, label: 'Environment Setup', status: 'Active', desc: 'Provisioning instance' },
-        { icon: Settings, label: 'Configure Your Agent', status: 'Ready', desc: 'Customize in Settings', link: '/dashboard/settings?tab=voiceagent' },
-        ...(plan === 'elite_premium' || plan === 'enterprise'
-          ? [{ icon: CalendarDays, label: 'Kickoff Call', status: 'Awaiting', desc: 'Launch strategy' }]
-          : []),
+        { icon: Settings, label: 'Configure Your Agent', status: canAccessCards ? 'Ready' : 'Locked', desc: 'Customize in Settings', link: canAccessCards ? '/dashboard/settings?tab=voiceagent' : undefined },
+        { icon: CalendarDays, label: 'Book Kickoff Meeting', status: canAccessCards ? 'Ready' : 'Locked', desc: 'Opens in new window', externalLink: canAccessCards ? 'https://cal.com/admincxtrack/30min' : undefined },
       ];
 
   return (
@@ -232,22 +237,17 @@ export default function SuccessPage() {
         <div className="pt-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {roadmap.map((step, i) => {
-              const CardWrapper = (step as any).link ? Link : 'div';
-              const cardProps = (step as any).link
-                ? { to: (step as any).link, key: i }
-                : { key: i };
+              const stepData = step as any;
+              const isLocked = step.status === 'Locked';
+              const hasInternalLink = stepData.link && !isLocked;
+              const hasExternalLink = stepData.externalLink && !isLocked;
 
-              return (
-                <CardWrapper
-                  {...cardProps}
-                  className={`relative p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden group text-left ${
-                    (step as any).link ? 'cursor-pointer hover:bg-white/[0.04] hover:border-[#FFD700]/20 transition-all' : ''
-                  }`}
-                  style={{ animationDelay: `${0.5 + i * 0.1}s` }}
-                >
+              const cardContent = (
+                <>
                   <div
                     className={`absolute top-0 left-0 w-1 h-full ${
-                      step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
+                      isLocked ? 'bg-white/5'
+                        : step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
                         ? 'bg-[#FFD700]'
                         : 'bg-white/5'
                     }`}
@@ -256,24 +256,26 @@ export default function SuccessPage() {
                   <step.icon
                     size={28}
                     className={`mb-6 ${
-                      step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
+                      isLocked ? 'text-white/10'
+                        : step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
                         ? 'text-[#FFD700]'
                         : 'text-white/20'
                     }`}
                   />
 
                   <div className="space-y-1">
-                    <div className="text-white font-black text-xs uppercase tracking-[0.2em]">
+                    <div className={`font-black text-xs uppercase tracking-[0.2em] ${isLocked ? 'text-white/20' : 'text-white'}`}>
                       {step.label}
                     </div>
-                    <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest">
-                      {step.desc}
+                    <div className={`text-[10px] uppercase font-bold tracking-widest ${isLocked ? 'text-white/10' : 'text-white/30'}`}>
+                      {isLocked ? 'Activate phone first' : step.desc}
                     </div>
                   </div>
 
                   <div
                     className={`mt-6 inline-flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                      step.status === 'Active' || step.status === 'In Progress'
+                      isLocked ? 'bg-white/5 text-white/15'
+                        : step.status === 'Active' || step.status === 'In Progress'
                         ? 'bg-[#FFD700]/10 text-[#FFD700]'
                         : step.status === 'Ready'
                         ? 'bg-green-500/10 text-green-400'
@@ -285,7 +287,35 @@ export default function SuccessPage() {
                     )}
                     {step.status}
                   </div>
-                </CardWrapper>
+                </>
+              );
+
+              const cardClass = `relative p-8 rounded-[2rem] border overflow-hidden group text-left transition-all ${
+                isLocked
+                  ? 'bg-white/[0.01] border-white/[0.03] opacity-50 cursor-not-allowed'
+                  : 'bg-white/[0.02] border-white/5'
+              } ${(hasInternalLink || hasExternalLink) ? 'cursor-pointer hover:bg-white/[0.04] hover:border-[#FFD700]/20' : ''}`;
+
+              if (hasExternalLink) {
+                return (
+                  <a key={i} href={stepData.externalLink} target="_blank" rel="noopener noreferrer" className={cardClass}>
+                    {cardContent}
+                  </a>
+                );
+              }
+
+              if (hasInternalLink) {
+                return (
+                  <Link key={i} to={stepData.link} className={cardClass}>
+                    {cardContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={i} className={cardClass}>
+                  {cardContent}
+                </div>
               );
             })}
           </div>
@@ -413,7 +443,7 @@ export default function SuccessPage() {
                     to="/dashboard"
                     className="px-8 py-3 bg-white/5 text-white font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
                   >
-                    Skip &mdash; Set Up Later
+                    Skip - Set Up Later
                   </Link>
                 </div>
               </div>
@@ -424,23 +454,19 @@ export default function SuccessPage() {
         {/* Action Buttons */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 pt-12">
           {!isRequest && (
-            <Link
-              to="/dashboard"
-              className="w-full md:w-auto px-12 py-6 bg-white text-black font-black rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center"
-            >
-              Go to Dashboard
-            </Link>
+              <Link
+                to="/dashboard"
+                className="w-full md:w-auto px-12 py-6 bg-white text-black font-black rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center"
+              >
+                Go to Dashboard
+              </Link>
           )}
-          {(isRequest || plan === 'elite_premium' || plan === 'enterprise') && (
+          {isRequest && (
             <a
               href="https://cal.com/admincxtrack/30min"
               target="_blank"
               rel="noopener noreferrer"
-              className={`w-full md:w-auto px-12 py-6 rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm font-black border text-center ${
-                isRequest
-                  ? 'bg-[#FFD700] text-black border-[#FFD700] shadow-[0_20px_40px_rgba(255,215,0,0.2)]'
-                  : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
-              }`}
+              className="w-full md:w-auto px-12 py-6 rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm font-black border text-center bg-[#FFD700] text-black border-[#FFD700] shadow-[0_20px_40px_rgba(255,215,0,0.2)]"
             >
               Book Kickoff Call
             </a>

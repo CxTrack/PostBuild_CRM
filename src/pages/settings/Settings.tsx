@@ -3,12 +3,12 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { settingsService, BusinessSettings as BusinessSettingsType, DocumentTemplate } from '@/services/settings.service';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Building2, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Save, Palette, Sparkles, MessageSquare, HelpCircle, LogOut, Mic } from 'lucide-react';
+import { Building2, CreditCard, Calendar as CalendarIcon, Share2, Check, Loader2, Save, Palette, Sparkles, MessageSquare, HelpCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import CalendarSettings from './CalendarSettings';
 import { InviteMemberModal } from '@/components/settings/InviteMemberModal';
 import ProfileTab from '@/components/settings/ProfileTab';
-import VoiceAgentSetup from './VoiceAgentSetup';
+import AIAgentsTab from './AIAgentsTab';
 import BusinessTab from '@/components/settings/BusinessTab';
 import BillingTab from '@/components/settings/BillingTab';
 import PreferencesTab from '@/components/settings/PreferencesTab';
@@ -23,7 +23,7 @@ import { ApiKeyModal } from '@/components/settings/ApiKeyModal';
 import { ZapierIntegrationModal } from '@/components/settings/ZapierIntegrationModal';
 
 // --- Tab definitions ---
-type SettingsTabId = 'profile' | 'business' | 'billing' | 'preferences' | 'communications' | 'calendar' | 'team' | 'voiceagent' | 'support';
+type SettingsTabId = 'profile' | 'business' | 'billing' | 'preferences' | 'communications' | 'calendar' | 'team' | 'aiagents' | 'support';
 
 const SETTINGS_TABS: { id: SettingsTabId; label: string; icon: any; premium?: boolean }[] = [
   { id: 'profile', label: 'Profile', icon: Building2 },
@@ -33,7 +33,7 @@ const SETTINGS_TABS: { id: SettingsTabId; label: string; icon: any; premium?: bo
   { id: 'communications', label: 'Communications', icon: MessageSquare },
   { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
   { id: 'team', label: 'Team & Integrations', icon: Share2 },
-  { id: 'voiceagent', label: 'Voice Agent', icon: Sparkles, premium: true },
+  { id: 'aiagents', label: 'AI Agents', icon: Sparkles, premium: true },
   { id: 'support', label: 'Security & Support', icon: HelpCircle },
 ];
 
@@ -50,7 +50,9 @@ const TAB_PARAM_MAP: Record<string, { tab: SettingsTabId; subTab?: string }> = {
   email: { tab: 'communications', subTab: 'email' },
   calendar: { tab: 'calendar' },
   sharing: { tab: 'team' },
-  voiceagent: { tab: 'voiceagent' },
+  voiceagent: { tab: 'aiagents', subTab: 'voice' },
+  aiagents: { tab: 'aiagents' },
+  smsagent: { tab: 'aiagents', subTab: 'sms' },
   notifications: { tab: 'preferences', subTab: 'notifications' },
   security: { tab: 'support', subTab: 'security' },
   help: { tab: 'support', subTab: 'help' },
@@ -405,7 +407,7 @@ export default function Settings() {
         )}
 
         {activeTab === 'calendar' && (
-          <div className="max-w-4xl">
+          <div>
             <CalendarSettings />
           </div>
         )}
@@ -430,7 +432,11 @@ export default function Settings() {
           />
         )}
 
-        {activeTab === 'voiceagent' && <VoiceAgentSetup />}
+        {activeTab === 'aiagents' && (
+          <AIAgentsTab
+            initialSubTab={activeTab === initialResolved.tab ? initialSubTab : undefined}
+          />
+        )}
 
         {activeTab === 'support' && (
           <SupportTab

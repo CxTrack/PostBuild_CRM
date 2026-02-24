@@ -15,7 +15,7 @@ export default function BillingTab({ organizationId, subscriptionTier, initialSu
   const [subTab, setSubTab] = useState(initialSubTab || 'plan');
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <SubTabs
         tabs={[
           { id: 'plan', label: 'Plan & Usage', icon: CreditCard },

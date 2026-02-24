@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import ServiceCard from '@/components/onboarding/ServiceCard';
+import { updateOnboardingStep } from '@/utils/onboarding';
 
 type ServiceType = 'crm' | 'custom' | 'config' | 'audit';
 
@@ -14,7 +15,9 @@ export default function SelectServicePage() {
     const leadData = sessionStorage.getItem('onboarding_lead');
     if (!leadData) {
       navigate('/onboarding/profile');
+      return;
     }
+    updateOnboardingStep('select-service');
   }, [navigate]);
 
   const handleContinue = () => {
@@ -39,27 +42,27 @@ export default function SelectServicePage() {
   };
 
   return (
-    <main className="min-h-screen bg-black pt-32 pb-20 px-6">
+    <main className="min-h-screen bg-black pt-24 pb-10 px-4 md:px-6">
       <OnboardingHeader />
 
-      <div className="max-w-6xl mx-auto space-y-12">
-        <div className="flex flex-col items-center text-center space-y-6">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex flex-col items-center text-center space-y-4">
           <button
             onClick={() => navigate('/onboarding/profile')}
-            className="flex items-center gap-2 text-white/40 hover:text-[#FFD700] transition-colors text-[10px] font-black uppercase tracking-[0.3em] mb-4 group"
+            className="flex items-center gap-2 text-white/40 hover:text-[#FFD700] transition-colors text-[10px] font-black uppercase tracking-[0.3em] mb-2 group"
           >
             <span className="group-hover:-translate-x-1 transition-transform">&larr;</span> Return to
             Profile
           </button>
-          <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter italic">
+          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tighter italic">
             Choose Your <span className="text-[#FFD700]">Service</span>
           </h1>
-          <p className="text-white/60 text-xl max-w-2xl font-medium">
+          <p className="text-white/60 text-base max-w-2xl font-medium">
             Select the CxTrack vertical tailored to your current business objectives.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#FFD700]/5 to-transparent blur-[120px] -z-10" />
 
           <ServiceCard
@@ -119,10 +122,10 @@ export default function SelectServicePage() {
           />
         </div>
 
-        <div className="flex justify-center pt-8">
+        <div className="flex justify-center pt-4">
           <button
             onClick={handleContinue}
-            className="group relative px-12 py-5 bg-[#FFD700] hover:bg-yellow-400 text-black font-black text-lg rounded-2xl transition-all shadow-[0_20px_50px_rgba(255,215,0,0.2)] hover:shadow-[0_20px_50px_rgba(255,215,0,0.35)] active:scale-95"
+            className="group relative px-10 py-4 bg-[#FFD700] hover:bg-yellow-400 text-black font-black text-base rounded-2xl transition-all shadow-[0_20px_50px_rgba(255,215,0,0.2)] hover:shadow-[0_20px_50px_rgba(255,215,0,0.35)] active:scale-95"
           >
             CONTINUE TO NEXT STEP
             <span className="ml-3 group-hover:translate-x-1 transition-transform inline-block">

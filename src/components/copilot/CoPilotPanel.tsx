@@ -19,6 +19,7 @@ import {
   Info,
   Paperclip,
   UserCog,
+  ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -37,18 +38,50 @@ const CoPilotPanel: React.FC = () => {
     confirmAction,
     cancelAction,
     markChoiceSelected,
+    addAssistantMessage,
     setMessageFeedback,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
   const [input, setInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [tokensExpanded, setTokensExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Handle Quarterback choice selection
+  // Handle Quarterback choice selection + customer disambiguation
   const handleChoiceSelect = useCallback(async (messageId: string, choiceId: string) => {
     markChoiceSelected(messageId, choiceId);
+
+    // Check if this is a customer disambiguation choice
+    const msg = messages.find(m => m.id === messageId);
+    if (msg?.pendingAction) {
+      const { useCustomerStore } = await import('@/stores/customerStore');
+      const customer = useCustomerStore.getState().customers.find(c => c.id === choiceId);
+      if (!customer) return;
+
+      // Deep-copy the pending action and enrich with selected customer data
+      const enrichedAction = {
+        ...msg.pendingAction,
+        fields: msg.pendingAction.fields.map(f => ({ ...f })),
+      };
+      const nameField = enrichedAction.fields.find(f => f.key === 'customer_name');
+      if (nameField) nameField.value = customer.name;
+      const phoneField = enrichedAction.fields.find(f => f.key === 'to_phone');
+      if (phoneField && customer.phone) phoneField.value = customer.phone;
+      const emailField = enrichedAction.fields.find(f => f.key === 'to_email');
+      if (emailField && customer.email) emailField.value = customer.email;
+      const idField = enrichedAction.fields.find(f => f.key === 'customer_id');
+      if (idField) idField.value = customer.id;
+
+      addAssistantMessage({
+        role: 'assistant',
+        content: `Got it -- here's the action for **${customer.name}**:`,
+        action: enrichedAction,
+        actionStatus: 'proposed',
+      });
+      return;
+    }
 
     // "Other" lets the user type freely
     if (choiceId === 'other') {
@@ -56,6 +89,7 @@ const CoPilotPanel: React.FC = () => {
       return;
     }
 
+    // Quarterback insight flow
     const insightData = currentContext?.data?.insightData;
     const insightType = currentContext?.data?.insightType;
     if (!insightData) return;
@@ -70,7 +104,7 @@ const CoPilotPanel: React.FC = () => {
     const prompt = `[QUARTERBACK_MODE] The user chose to draft a ${label}. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Days inactive: ${insightData.days_inactive || insightData.days_stale || insightData.days_overdue || insightData.days_past_followup || 'N/A'}. Draft the ${label} now and include the ACTION_PROPOSAL block so the user can review and send it.`;
 
     await sendMessage(prompt);
-  }, [currentContext, sendMessage, markChoiceSelected]);
+  }, [currentContext, sendMessage, markChoiceSelected, messages, addAssistantMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -240,35 +274,54 @@ const CoPilotPanel: React.FC = () => {
 
       {/* Input area */}
       {/* Token Usage Indicator */}
-      {tokenUsage && (
-        <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-            <span>AI Tokens</span>
-            <span>
-              {tokenUsage.tokensRemaining.toLocaleString()} / {tokenUsage.tokensAllocated.toLocaleString()} remaining
-            </span>
+      <div className="px-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => tokenUsage && setTokensExpanded(prev => !prev)}
+          className={`w-full flex items-center justify-between py-1.5 text-xs text-gray-500 dark:text-gray-400 ${tokenUsage ? 'hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer' : 'cursor-default'} transition-colors`}
+        >
+          <span>AI Tokens</span>
+          <div className="flex items-center gap-1.5">
+            {tokenUsage ? (
+              <>
+                {!tokensExpanded && (
+                  <span className="text-[10px]">
+                    {tokenUsage.tokensRemaining.toLocaleString()} remaining
+                  </span>
+                )}
+                <ChevronDown size={12} className={`transition-transform duration-200 ${tokensExpanded ? 'rotate-180' : ''}`} />
+              </>
+            ) : (
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">--</span>
+            )}
           </div>
-          <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                tokenUsage.tokensRemaining <= 0
-                  ? 'bg-red-500'
-                  : tokenUsage.tokensRemaining < tokenUsage.tokensAllocated * 0.2
-                    ? 'bg-amber-500'
-                    : 'bg-purple-500'
-              }`}
-              style={{
-                width: `${Math.max(0, Math.min(100, (tokenUsage.tokensRemaining / tokenUsage.tokensAllocated) * 100))}%`,
-              }}
-            />
+        </button>
+        {tokensExpanded && tokenUsage && (
+          <div className="pb-2">
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>{tokenUsage.tokensRemaining.toLocaleString()} / {tokenUsage.tokensAllocated.toLocaleString()} remaining</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  tokenUsage.tokensRemaining <= 0
+                    ? 'bg-red-500'
+                    : tokenUsage.tokensRemaining < tokenUsage.tokensAllocated * 0.2
+                      ? 'bg-amber-500'
+                      : 'bg-purple-500'
+                }`}
+                style={{
+                  width: `${Math.max(0, Math.min(100, (tokenUsage.tokensRemaining / tokenUsage.tokensAllocated) * 100))}%`,
+                }}
+              />
+            </div>
+            {tokenUsage.tokensRemaining <= 0 && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1 font-medium">
+                Out of tokens -- upgrade your plan for more
+              </p>
+            )}
           </div>
-          {tokenUsage.tokensRemaining <= 0 && (
-            <p className="text-xs text-red-500 dark:text-red-400 mt-1 font-medium">
-              Out of tokens — upgrade your plan for more
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <form onSubmit={handleSubmit} className="space-y-3">

@@ -36,6 +36,12 @@ export interface VoiceAgentConfig {
     broker_name?: string;
     general_prompt?: string;
     begin_message?: string;
+    // Memory/RAG settings
+    memory_enabled?: boolean;
+    memory_call_history?: boolean;
+    memory_customer_notes?: boolean;
+    memory_calendar_tasks?: boolean;
+    retell_llm_id?: string;
     created_at: string;
     updated_at: string;
 }
