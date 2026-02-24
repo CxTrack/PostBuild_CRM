@@ -36,7 +36,9 @@ export const SecurityTab: React.FC = () => {
         { id: '3', device: 'MacBook Pro', browser: 'Firefox', location: 'Boston, MA', lastActive: '3 days ago', isCurrent: false },
     ];
 
-    const handlePasswordChange = () => {
+    const [changingPassword, setChangingPassword] = useState(false);
+
+    const handlePasswordChange = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
             toast.error('Please fill in all fields');
             return;
@@ -50,11 +52,39 @@ export const SecurityTab: React.FC = () => {
             return;
         }
 
-        // Demo mode simulation
-        toast.success('Password updated successfully');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        setChangingPassword(true);
+        try {
+            // Verify current password by re-authenticating
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user?.email) throw new Error('Unable to verify current user');
+
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: currentPassword,
+            });
+
+            if (signInError) {
+                toast.error('Current password is incorrect');
+                return;
+            }
+
+            // Update to new password
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: newPassword,
+            });
+
+            if (updateError) throw updateError;
+
+            toast.success('Password updated successfully');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to update password';
+            toast.error(msg);
+        } finally {
+            setChangingPassword(false);
+        }
     };
 
     const handleEnable2FA = () => {
@@ -161,9 +191,17 @@ export const SecurityTab: React.FC = () => {
 
                     <button
                         onClick={handlePasswordChange}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors"
+                        disabled={changingPassword}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        Update Password
+                        {changingPassword ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Updating...
+                            </>
+                        ) : (
+                            'Update Password'
+                        )}
                     </button>
                 </div>
             </div>

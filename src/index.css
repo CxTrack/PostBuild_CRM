@@ -1,5 +1,6 @@
 @import './styles/soft-modern.css';
 @import './styles/midnight.css';
+@import './styles/ocean.css';
 
 @tailwind base;
 @tailwind components;

@@ -110,6 +110,21 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
     }
   }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-refresh when an email is sent from SendEmailModal
+  useEffect(() => {
+    const handleEmailSent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      // Only refresh if the email was sent to this customer
+      if (detail?.customerId === customerId) {
+        // Delay to allow email_log insert to complete
+        setTimeout(() => generateSummary(), 2000);
+      }
+    };
+
+    window.addEventListener('email-sent', handleEmailSent);
+    return () => window.removeEventListener('email-sent', handleEmailSent);
+  }, [customerId, generateSummary]);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">

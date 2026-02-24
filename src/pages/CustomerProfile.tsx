@@ -5,7 +5,8 @@ import {
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
-  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert
+  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
+  Reply, MailOpen, ArrowDownLeft, ArrowUpRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -77,6 +78,7 @@ export const CustomerProfile: React.FC = () => {
   const [editingNote, setEditingNote] = useState<any>(null);
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailReplyTo, setEmailReplyTo] = useState<{ subject: string; messageId?: string; conversationId?: string; senderEmail?: string } | undefined>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
   const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
   const { confirm: confirmDeleteNote, DialogComponent: DeleteNoteDialog } = useConfirmDialog();
@@ -296,7 +298,15 @@ export const CustomerProfile: React.FC = () => {
             organizationId={currentOrganization?.id}
           />
         )}
-        {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
+        {activeTab === 'communications' && (
+          <CommunicationsTab
+            customer={currentCustomer}
+            onReplyEmail={(replyData) => {
+              setEmailReplyTo(replyData);
+              setShowEmailModal(true);
+            }}
+          />
+        )}
         {activeTab === 'documents' && <DocumentsTab customer={currentCustomer} />}
         {activeTab === 'tasks' && <TasksTab customer={currentCustomer} onAddTask={handleAddTask} />}
         {activeTab === 'activity' && <ActivityTab customer={currentCustomer} />}
@@ -362,12 +372,15 @@ export const CustomerProfile: React.FC = () => {
         isOpen={showEmailModal}
         onClose={() => {
           setShowEmailModal(false);
+          setEmailReplyTo(undefined);
           setSummaryRefreshTrigger(t => t + 1);
         }}
         customerEmail={currentCustomer.email || ''}
         customerName={currentCustomer.name}
         customerId={currentCustomer.id}
         organizationId={currentOrganization?.id}
+        replyTo={emailReplyTo}
+        onEmailSent={() => setSummaryRefreshTrigger(t => t + 1)}
       />
 
       {showEditModal && (
@@ -987,7 +1000,7 @@ function OverviewTab({
   );
 }
 
-function CommunicationsTab({ customer }: { customer: Customer }) {
+function CommunicationsTab({ customer, onReplyEmail }: { customer: Customer; onReplyEmail?: (data: { subject: string; messageId?: string; conversationId?: string; senderEmail?: string }) => void }) {
   const { currentOrganization } = useOrganizationStore();
   const { calls, fetchCallsByCustomer, createCall, loading: callsLoading } = useCallStore();
   const { events, fetchEvents } = useCalendarStore();
@@ -1016,7 +1029,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
         if (!token) return;
 
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at&order=sent_at.desc&limit=50`,
+          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at,message_id,conversation_id&order=sent_at.desc&limit=50`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -1033,6 +1046,16 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
       }
     };
     fetchEmailLogs();
+
+    // Re-fetch when an email is sent to this customer
+    const handleEmailSent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.customerId === customer.id) {
+        setTimeout(() => fetchEmailLogs(), 1500);
+      }
+    };
+    window.addEventListener('email-sent', handleEmailSent);
+    return () => window.removeEventListener('email-sent', handleEmailSent);
   }, [customer.id]);
 
   const customerEvents = events.filter(e => e.customer_id === customer.id);
@@ -1192,7 +1215,9 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
                           ? <PhoneIncoming size={16} className="text-blue-600 dark:text-blue-400" />
                           : <PhoneOutgoing size={16} className="text-green-600 dark:text-green-400" />
                       ) : item.type === 'email' ? (
-                        <Mail size={16} className="text-indigo-600 dark:text-indigo-400" />
+                        item.direction === 'inbound'
+                          ? <ArrowDownLeft size={16} className="text-indigo-600 dark:text-indigo-400" />
+                          : <ArrowUpRight size={16} className="text-emerald-600 dark:text-emerald-400" />
                       ) : (
                         <Calendar size={16} className="text-purple-600 dark:text-purple-400" />
                       )}
@@ -1217,7 +1242,7 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
                     item.type === 'email'
                       ? item.direction === 'inbound'
                         ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
-                        : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                        : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                       : getStatusColor(item.status)
                   }`}>
                     {item.type === 'email'
@@ -1231,6 +1256,24 @@ function CommunicationsTab({ customer }: { customer: Customer }) {
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
                       {item.emailData.body_text || '(No content)'}
                     </div>
+                    {/* Reply button for inbound emails */}
+                    {item.emailData.direction === 'inbound' && onReplyEmail && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReplyEmail({
+                            subject: item.emailData.subject || '',
+                            messageId: item.emailData.message_id,
+                            conversationId: item.emailData.conversation_id,
+                            senderEmail: item.emailData.sender_email,
+                          });
+                        }}
+                        className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                      >
+                        <Reply size={14} />
+                        Reply
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1660,6 +1703,16 @@ function ActivityTab({ customer }: { customer: Customer }) {
       }
     };
     fetchLogs();
+
+    // Re-fetch when an email is sent to this customer
+    const handleEmailSent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.customerId === customer.id) {
+        setTimeout(() => fetchLogs(), 1500);
+      }
+    };
+    window.addEventListener('email-sent', handleEmailSent);
+    return () => window.removeEventListener('email-sent', handleEmailSent);
   }, [customer.id]);
 
   const customerEvents = getEventsByCustomer(customer.id);

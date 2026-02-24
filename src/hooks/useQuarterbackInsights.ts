@@ -13,7 +13,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -35,6 +35,12 @@ export interface QuarterbackInsight {
   expiry_date?: string;
   follow_up_date?: string;
   task_type?: string;
+  /** Email-specific fields for new_email_received insights */
+  email_subject?: string;
+  email_sender?: string;
+  email_received_at?: string;
+  email_log_id?: string;
+  conversation_id?: string;
 }
 
 const MAX_VISIBLE_INSIGHTS = 5;
@@ -78,7 +84,103 @@ export function useQuarterbackInsights() {
     }
   }, [orgId]);
 
-  // Fetch insights from the RPC function
+  // Fetch new inbound email insights (client-side supplement)
+  const fetchEmailInsights = useCallback(async (token: string): Promise<QuarterbackInsight[]> => {
+    try {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // Fetch inbound emails from last 24 hours that are linked to customers
+      const emailRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&direction=eq.inbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=not.is.null&select=id,customer_id,sender_email,subject,sent_at,conversation_id&order=sent_at.desc&limit=10`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        }
+      );
+
+      if (!emailRes.ok) return [];
+      const inboundEmails = await emailRes.json();
+      if (!inboundEmails || inboundEmails.length === 0) return [];
+
+      // Check which ones already have an outbound reply
+      const customerIds = [...new Set(inboundEmails.map((e: any) => e.customer_id))];
+      const repliedRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&direction=eq.outbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=in.(${customerIds.join(',')})&select=customer_id`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        }
+      );
+
+      const repliedCustomerIds = new Set<string>();
+      if (repliedRes.ok) {
+        const replied = await repliedRes.json();
+        (replied || []).forEach((r: any) => repliedCustomerIds.add(r.customer_id));
+      }
+
+      // Also get customer names for the unreplied emails
+      const unrepliedEmails = inboundEmails.filter((e: any) => !repliedCustomerIds.has(e.customer_id));
+      if (unrepliedEmails.length === 0) return [];
+
+      const unrepliedCustomerIds = [...new Set(unrepliedEmails.map((e: any) => e.customer_id))];
+      const custRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/customers?id=in.(${unrepliedCustomerIds.join(',')})&select=id,name,email,phone`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        }
+      );
+
+      const customerMap = new Map<string, any>();
+      if (custRes.ok) {
+        const custs = await custRes.json();
+        (custs || []).forEach((c: any) => customerMap.set(c.id, c));
+      }
+
+      // Build insights (one per unique customer, using latest email)
+      const seenCustomers = new Set<string>();
+      const emailInsights: QuarterbackInsight[] = [];
+
+      for (const email of unrepliedEmails) {
+        if (seenCustomers.has(email.customer_id)) continue;
+        seenCustomers.add(email.customer_id);
+
+        const customer = customerMap.get(email.customer_id);
+        const timeDiff = Date.now() - new Date(email.sent_at).getTime();
+        const hoursAgo = Math.round(timeDiff / (1000 * 60 * 60));
+        const timeLabel = hoursAgo < 1 ? 'just now' : hoursAgo === 1 ? '1 hour ago' : `${hoursAgo} hours ago`;
+
+        emailInsights.push({
+          id: `email_${email.id}`,
+          type: 'new_email_received',
+          title: email.subject || '(No subject)',
+          customer_name: customer?.name || email.sender_email,
+          customer_id: email.customer_id,
+          email: customer?.email || email.sender_email,
+          phone: customer?.phone || undefined,
+          message: `New email from ${customer?.name || email.sender_email} - "${email.subject}" received ${timeLabel}. No reply sent yet.`,
+          priority: 'high',
+          email_subject: email.subject,
+          email_sender: email.sender_email,
+          email_received_at: email.sent_at,
+          email_log_id: email.id,
+          conversation_id: email.conversation_id,
+        });
+      }
+
+      return emailInsights;
+    } catch (err) {
+      console.error('[QB] Error fetching email insights:', err);
+      return [];
+    }
+  }, [orgId]);
+
+  // Fetch insights from the RPC function + email insights
   const fetchInsights = useCallback(async () => {
     if (!orgId || !userId) return;
 
@@ -90,37 +192,46 @@ export function useQuarterbackInsights() {
         return;
       }
 
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/generate_quarterback_insights`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'apikey': SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            p_user_id: userId,
-            p_organization_id: orgId,
-            p_role: userRole,
-          }),
-        }
-      );
+      // Fetch RPC insights and email insights in parallel
+      const [rpcResponse, emailInsights] = await Promise.all([
+        fetch(
+          `${SUPABASE_URL}/rest/v1/rpc/generate_quarterback_insights`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              p_user_id: userId,
+              p_organization_id: orgId,
+              p_role: userRole,
+            }),
+          }
+        ),
+        fetchEmailInsights(token),
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
-        const insights = Array.isArray(data) ? data : [];
-        setAllInsights(insights);
-        setLastUpdated(new Date());
+      let insights: QuarterbackInsight[] = [];
+
+      if (rpcResponse.ok) {
+        const data = await rpcResponse.json();
+        insights = Array.isArray(data) ? data : [];
       } else {
-        console.error('[QB] Failed to fetch insights:', response.status);
+        console.error('[QB] Failed to fetch RPC insights:', rpcResponse.status);
       }
+
+      // Merge: email insights first (high priority), then existing
+      const combined = [...emailInsights, ...insights];
+      setAllInsights(combined);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error('[QB] Error fetching insights:', err);
     } finally {
       setLoading(false);
     }
-  }, [orgId, userId, userRole]);
+  }, [orgId, userId, userRole, fetchEmailInsights]);
 
   // Dismiss an insight and persist to user_preferences
   const dismissInsight = useCallback(async (insightId: string) => {

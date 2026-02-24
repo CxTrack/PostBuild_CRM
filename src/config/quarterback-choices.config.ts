@@ -20,6 +20,46 @@ export function buildQuarterbackChoices(
   const hasPhone = !!insight.phone;
   const isCallTierEligible = planTier === 'elite_premium' || planTier === 'enterprise';
 
+  // For incoming emails, the primary action is "Draft a reply"
+  if (insight.type === 'new_email_received') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Draft a reply',
+        description: hasEmail
+          ? `Reply to ${insight.email}`
+          : 'Draft a response to this email',
+        icon: 'Reply',
+      },
+      {
+        id: 'draft_sms',
+        label: 'Text them instead',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script a call back',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
   return [
     {
       id: 'draft_email',
@@ -81,6 +121,13 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
 
     case 'follow_up_reminder':
       return `Follow-up with **${insight.customer_name}** was ${insight.days_past_followup === 0 ? 'due today' : `due **${insight.days_past_followup} days ago**`}. Don't let this slip.\n\nHow would you like to follow up?`;
+
+    case 'new_email_received': {
+      const receivedAt = insight.email_received_at ? new Date(insight.email_received_at) : null;
+      const hoursAgo = receivedAt ? Math.round((Date.now() - receivedAt.getTime()) / (1000 * 60 * 60)) : 0;
+      const timeLabel = hoursAgo < 1 ? 'just now' : hoursAgo === 1 ? '1 hour ago' : `${hoursAgo} hours ago`;
+      return `**${insight.customer_name}** sent you an email **"${insight.email_subject || insight.title}"** ${timeLabel}. No reply has been sent yet -- don't leave them waiting.\n\nHow would you like to respond?`;
+    }
 
     default:
       return `${insight.message}\n\nHow would you like to take action?`;

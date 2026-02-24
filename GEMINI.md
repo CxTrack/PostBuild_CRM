@@ -71,7 +71,7 @@ git branch     # Should be on: CRM-Template-Configuration
         v                                                       v
 +---------------------------+                   +---------------------------+
 |   MARKETING WEBSITE       |                   |    CRM APPLICATION        |
-|   easyaicrm.com           | ----------------> |  crm.easyaicrm.com        |
+|   cxtrack.com             | ----------------> |  crm.cxtrack.com          |
 |                           |   Redirect after  |                           |
 |   - Signup/Login          |   authentication  |   - Dashboard             |
 |   - Onboarding            |                   |   - Customers             |

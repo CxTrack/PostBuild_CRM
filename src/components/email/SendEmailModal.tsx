@@ -3,9 +3,12 @@
  * Compose and send email via user's connected Gmail/Outlook OAuth account.
  * Supports industry email templates with variable substitution.
  * Falls back with a helpful message if no email account is connected.
+ *
+ * v2: Double-click prevention, email-sent event for AI Summary refresh,
+ *     sync trigger after send, reply threading support.
  */
-import React, { useState, useEffect } from 'react';
-import { X, Mail, Send, Loader2, AlertCircle, Settings, FileText, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Mail, Send, Loader2, AlertCircle, Settings, FileText, ChevronDown, Reply } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAuthToken } from '@/utils/auth.utils';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -34,6 +37,15 @@ interface SendEmailModalProps {
   organizationId?: string;
   /** Extra template variables (e.g. quote_total, invoice_number) */
   templateVars?: Record<string, string>;
+  /** Reply mode: pre-populate with reply context */
+  replyTo?: {
+    subject: string;
+    messageId?: string;
+    conversationId?: string;
+    senderEmail?: string;
+  };
+  /** Callback fired after a successful send (e.g. to refresh parent data) */
+  onEmailSent?: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -53,6 +65,8 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
   customerId,
   organizationId,
   templateVars = {},
+  replyTo,
+  onEmailSent,
 }) => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganizationStore();
@@ -65,16 +79,27 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
   const [showTemplates, setShowTemplates] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const sendClickedRef = useRef(false); // Double-click guard
 
   const orgId = organizationId || currentOrganization?.id;
+  const isReply = !!replyTo;
 
-  // Reset form when customer changes
+  // Reset form when customer changes or reply mode activates
   useEffect(() => {
     if (isOpen) {
-      setToEmail(customerEmail);
+      setToEmail(replyTo?.senderEmail || customerEmail);
       setNoConnection(false);
+      sendClickedRef.current = false;
+
+      // Pre-populate reply subject
+      if (replyTo?.subject) {
+        const replySubject = replyTo.subject.startsWith('Re: ')
+          ? replyTo.subject
+          : `Re: ${replyTo.subject}`;
+        setSubject(replySubject);
+      }
     }
-  }, [isOpen, customerEmail]);
+  }, [isOpen, customerEmail, replyTo]);
 
   // Fetch templates when modal opens
   useEffect(() => {
@@ -136,6 +161,9 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
   };
 
   const handleSend = async () => {
+    // Double-click guard
+    if (sendClickedRef.current || sending) return;
+
     if (!toEmail.trim()) {
       toast.error('Please enter a recipient email');
       return;
@@ -149,6 +177,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
       return;
     }
 
+    sendClickedRef.current = true;
     setSending(true);
     setNoConnection(false);
 
@@ -159,21 +188,32 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
         return;
       }
 
+      const payload: Record<string, unknown> = {
+        to_email: toEmail.trim(),
+        subject: subject.trim(),
+        body_text: body.trim(),
+        body_html: `<div style="font-family: sans-serif; line-height: 1.6;">${body.trim().replace(/\n/g, '<br>')}</div>`,
+        customer_id: customerId || null,
+        organization_id: orgId || null,
+        template_key: selectedTemplateKey || null,
+      };
+
+      // Reply threading headers
+      if (replyTo?.messageId) {
+        payload.in_reply_to = replyTo.messageId;
+        payload.references = replyTo.messageId;
+      }
+      if (replyTo?.conversationId) {
+        payload.conversation_id = replyTo.conversationId;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/send-user-email`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          to_email: toEmail.trim(),
-          subject: subject.trim(),
-          body_text: body.trim(),
-          body_html: `<div style="font-family: sans-serif; line-height: 1.6;">${body.trim().replace(/\n/g, '<br>')}</div>`,
-          customer_id: customerId || null,
-          organization_id: orgId || null,
-          template_key: selectedTemplateKey || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -188,6 +228,15 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
       }
 
       toast.success(`Email sent to ${toEmail}`);
+
+      // Dispatch custom event so AI Summary and other components can refresh
+      window.dispatchEvent(new CustomEvent('email-sent', {
+        detail: { customerId, toEmail: toEmail.trim(), subject: subject.trim() },
+      }));
+
+      // Fire the callback for parent components
+      onEmailSent?.();
+
       onClose();
       // Reset form
       setSubject('');
@@ -197,6 +246,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
       toast.error('Failed to send email. Please try again.');
     } finally {
       setSending(false);
+      sendClickedRef.current = false;
     }
   };
 
@@ -223,11 +273,17 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-              <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className={`p-2 rounded-lg ${isReply ? 'bg-green-50 dark:bg-green-900/20' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
+              {isReply ? (
+                <Reply className="w-5 h-5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              )}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Send Email</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {isReply ? 'Reply' : 'Send Email'}
+              </h2>
               {customerName && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">to {customerName}</p>
               )}

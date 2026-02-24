@@ -18,7 +18,7 @@ CxTrack is a multi-industry AI-powered CRM platform. Two separate codebases shar
 | **Path** | `c:\AntiGravity\CxTrack_Manik_Website_Production_02` | `c:\Users\cxtra\Final_CxTrack_production\PostBuild_CRM` |
 | **GitHub** | `CxTrack/CxTrack_Official_Website` | `CxTrack/PostBuild_CRM` |
 | **Branch** | `main` | `CRM-Template-Configuration` |
-| **URL** | easyaicrm.com | crm.easyaicrm.com |
+| **URL** | cxtrack.com | crm.cxtrack.com |
 | **Framework** | Next.js 14 (App Router) | React 18 + Vite |
 | **State Management** | React state / Server components | Zustand stores |
 | **Hosting** | Netlify | Netlify |
@@ -56,11 +56,11 @@ CxTrack is a multi-industry AI-powered CRM platform. Two separate codebases shar
 
 ### Auth Flow
 ```
-1. User visits easyaicrm.com/signup (Marketing Site)
+1. User visits cxtrack.com/signup (Marketing Site)
 2. Creates account -> Supabase Auth
 3. Selects industry template
 4. Completes Stripe checkout (if paid plan)
-5. Redirected to crm.easyaicrm.com/dashboard (CRM App)
+5. Redirected to crm.cxtrack.com/dashboard (CRM App)
 6. CRM reads same Supabase session
 ```
 

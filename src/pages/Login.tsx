@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
-import { Eye, EyeOff, Loader2, Sun, Moon } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Sun, Moon, Waves } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { validateEmail, validateRequired } from '@/utils/validation';
@@ -17,7 +17,8 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signInWithGoogle, signInWithMicrosoft } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
-  const isDark = theme === 'dark' || theme === 'midnight';
+  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'ocean';
+  const isOcean = theme === 'ocean';
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,9 +42,11 @@ export const Login: React.FC = () => {
 
       await signIn(email, password);
       toast.success('Welcome back!', {
-        style: isDark
-          ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
-          : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
+        style: isOcean
+          ? { background: '#0E1F38', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)' }
+          : isDark
+            ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
+            : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
       });
 
       // Check if onboarding is complete before redirecting to dashboard
@@ -86,21 +89,21 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Theme Toggle */}
+    <main className={`min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden ${isOcean ? 'bg-[#0A1628]' : 'bg-white dark:bg-black'}`}>
+      {/* Theme Toggle — ocean→Moon, midnight→Sun, light→Waves */}
       <button
         onClick={toggleTheme}
         className="absolute top-5 right-5 z-20 p-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.07] border border-gray-200 dark:border-white/[0.1] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-all text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80"
         aria-label="Toggle theme"
         title={`Current: ${theme}`}
       >
-        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        {theme === 'ocean' ? <Moon size={18} /> : theme === 'midnight' ? <Sun size={18} /> : <Waves size={18} />}
       </button>
 
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className={`absolute top-[-10%] right-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full ${isOcean ? 'bg-[#00D4FF]/5' : 'bg-[#B8860B]/5 dark:bg-[#FFD700]/5'}`} />
+        <div className={`absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full ${isOcean ? 'bg-[#2DD4BF]/5' : 'bg-[#B8860B]/5 dark:bg-[#FFD700]/5'}`} />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -177,7 +180,7 @@ export const Login: React.FC = () => {
           {/* Email + Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+              <label htmlFor="email" className={`text-[10px] uppercase tracking-widest font-bold ml-1 ${isOcean ? 'text-[#00D4FF]/70' : 'text-[#FFD700]/70'}`}>
                 Email Address
               </label>
               <input
@@ -186,13 +189,13 @@ export const Login: React.FC = () => {
                 placeholder="name@business.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                className={`w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all ${isOcean ? 'focus:ring-[#00D4FF]/30' : 'focus:ring-[#FFD700]/30'}`}
                 required
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold text-[#FFD700]/70 ml-1">
+              <label htmlFor="password" className={`text-[10px] uppercase tracking-widest font-bold ml-1 ${isOcean ? 'text-[#00D4FF]/70' : 'text-[#FFD700]/70'}`}>
                 Password
               </label>
               <div className="relative">
@@ -202,7 +205,7 @@ export const Login: React.FC = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className={`w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-4 py-3.5 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all ${isOcean ? 'focus:ring-[#00D4FF]/30' : 'focus:ring-[#FFD700]/30'}`}
                   required
                 />
                 <button
@@ -219,7 +222,7 @@ export const Login: React.FC = () => {
             <div className="flex items-center justify-end px-1 pt-1">
               <Link
                 to="/forgot-password"
-                className="text-[#B8860B] dark:text-[#FFD700]/60 hover:text-[#FFD700] text-xs transition-colors"
+                className={`text-xs transition-colors ${isOcean ? 'text-[#00D4FF]/60 hover:text-[#00D4FF]' : 'text-[#B8860B] dark:text-[#FFD700]/60 hover:text-[#FFD700]'}`}
               >
                 Forgot Password?
               </Link>
@@ -228,7 +231,7 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-lg dark:shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+              className={`w-full text-black font-bold py-4 rounded-xl transition-all shadow-lg disabled:opacity-50 mt-2 flex items-center justify-center gap-2 ${isOcean ? 'bg-[#00D4FF] hover:bg-[#00D4FF]/90 dark:shadow-[0_0_20px_rgba(0,212,255,0.2)]' : 'bg-[#FFD700] hover:bg-[#FFD700]/90 dark:shadow-[0_0_20px_rgba(255,215,0,0.2)]'}`}
             >
               {loading ? (
                 <>
@@ -244,7 +247,7 @@ export const Login: React.FC = () => {
           {/* Footer */}
           <p className="mt-8 text-center text-sm text-gray-400 dark:text-white/30">
             Don't have an account?{' '}
-            <Link to="/register" className="text-[#B8860B] dark:text-[#FFD700]/70 hover:text-[#FFD700] font-medium transition-colors">
+            <Link to="/register" className={`font-medium transition-colors ${isOcean ? 'text-[#00D4FF]/70 hover:text-[#00D4FF]' : 'text-[#B8860B] dark:text-[#FFD700]/70 hover:text-[#FFD700]'}`}>
               Sign up
             </Link>
           </p>
