@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { useOrganizationStore } from './organizationStore';
 import { retellService, type ProvisionVoiceAgentParams, type UpdateAgentParams, type KnowledgeBase, type ManageKBParams, type RetellVoice } from '@/services/retell.service';
+import { PLAN_MAX_VOICE_AGENTS } from '@/config/modules.config';
 
 export type AgentTone = 'professional' | 'friendly' | 'casual' | 'formal';
 export type HandlingPreference = 'handle_automatically' | 'notify_team' | 'transfer_immediately';
@@ -129,6 +131,12 @@ const TONE_DESCRIPTIONS: Record<AgentTone, string> = {
 };
 
 export { INDUSTRY_OPTIONS, TONE_DESCRIPTIONS };
+
+/** Returns the max voice agents allowed for the current org's plan tier */
+export const getVoiceAgentLimit = (): number => {
+    const tier = (useOrganizationStore.getState().currentOrganization as any)?.subscription_tier || 'free';
+    return PLAN_MAX_VOICE_AGENTS[tier] ?? 1;
+};
 
 export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     config: null,
@@ -265,9 +273,53 @@ export const useVoiceAgentStore = create<VoiceAgentStore>((set, get) => ({
     },
 
     provisionAgent: async (params) => {
-        const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+        const orgStore = useOrganizationStore.getState();
+        const organizationId = orgStore.currentOrganization?.id;
         if (!organizationId) {
             return { success: false, error: 'No organization selected' };
+        }
+
+        // Check plan limit for voice agents
+        const planTier = (orgStore.currentOrganization as any)?.subscription_tier || 'free';
+        const maxAgents = PLAN_MAX_VOICE_AGENTS[planTier] ?? 1;
+
+        try {
+            // Count existing voice agents for this org
+            const token = (() => {
+                for (const key of Object.keys(localStorage)) {
+                    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                        try {
+                            const stored = JSON.parse(localStorage.getItem(key) || '');
+                            if (stored?.access_token) return stored.access_token;
+                        } catch { /* skip */ }
+                    }
+                }
+                return null;
+            })();
+
+            if (token) {
+                const countRes = await fetch(
+                    `${supabaseUrl}/rest/v1/voice_agent_configs?organization_id=eq.${organizationId}&select=id`,
+                    {
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }
+                );
+                if (countRes.ok) {
+                    const existing = await countRes.json();
+                    if (existing.length >= maxAgents) {
+                        const tierLabel = planTier === 'elite_premium' ? 'Elite Premium' : planTier.charAt(0).toUpperCase() + planTier.slice(1);
+                        return {
+                            success: false,
+                            error: `Your ${tierLabel} plan allows up to ${maxAgents} voice agent${maxAgents > 1 ? 's' : ''}. Upgrade your plan for more.`,
+                        };
+                    }
+                }
+            }
+        } catch {
+            // Don't block provisioning if limit check fails
         }
 
         set({ provisioning: true, error: null });

@@ -216,6 +216,14 @@ export const PLAN_VOICE_MINUTES: Record<string, number> = {
   enterprise: 99999,  // Effectively unlimited
 };
 
+// Maximum voice agents per plan
+export const PLAN_MAX_VOICE_AGENTS: Record<string, number> = {
+  free: 1,
+  business: 1,
+  elite_premium: 3,
+  enterprise: 99,
+};
+
 // SMS messages included per plan per month (inbound + outbound tracked separately)
 export const PLAN_SMS_LIMITS: Record<string, { inbound: number; outbound: number }> = {
   free: { inbound: 10, outbound: 10 },           // 10 in / 10 out during trial
