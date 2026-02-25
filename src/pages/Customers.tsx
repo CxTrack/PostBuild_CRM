@@ -3,7 +3,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import {
   Search, Plus, Users, Building2, Mail, Phone,
-  Eye, Edit, Trash2, MessageSquare, X
+  Eye, Edit, Trash2, MessageSquare, X,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -38,6 +39,8 @@ export const Customers: React.FC = () => {
   const [smsTarget, setSmsTarget] = useState<{ phone: string; name: string; id: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { currentOrganization, currentMembership, _hasHydrated } = useOrganizationStore();
   const { customers, loading, fetchCustomers, deleteCustomer, deleteCustomers } = useCustomerStore();
@@ -106,6 +109,17 @@ export const Customers: React.FC = () => {
     });
   }, [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange]);
 
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, filterType, filterStatus, filterDateRange, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
+
   const handleDelete = async (id: string) => {
     if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
       toast.error(`You do not have permission to delete ${labels.entityPlural}`);
@@ -138,10 +152,16 @@ export const Customers: React.FC = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredCustomers.length) {
-      setSelectedIds(new Set());
+    const pageIds = paginatedCustomers.map((c) => c.id);
+    const allSelected = pageIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filteredCustomers.map((c) => c.id)));
+      setSelectedIds((prev) => new Set([...prev, ...pageIds]));
     }
   };
 
@@ -347,7 +367,7 @@ export const Customers: React.FC = () => {
                         <th className="px-4 py-3 w-10">
                           <input
                             type="checkbox"
-                            checked={filteredCustomers.length > 0 && selectedIds.size === filteredCustomers.length}
+                            checked={paginatedCustomers.length > 0 && paginatedCustomers.every((c) => selectedIds.has(c.id))}
                             onChange={toggleSelectAll}
                             className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
                           />
@@ -374,7 +394,7 @@ export const Customers: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                    {filteredCustomers.map((customer) => (
+                    {paginatedCustomers.map((customer) => (
                       <tr
                         key={customer.id}
                         className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedIds.has(customer.id) ? 'bg-primary-50 dark:bg-primary-500/10' : ''}`}
@@ -505,6 +525,43 @@ export const Customers: React.FC = () => {
               </div>
             </div>
 
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Showing</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  {[10, 25, 50, 100].map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+                <span>of {filteredCustomers.length} {labels.entityPlural}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-sm text-gray-700 dark:text-gray-300 min-w-[80px] text-center">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
               <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-2xl border border-gray-700 dark:border-gray-600">
@@ -530,7 +587,7 @@ export const Customers: React.FC = () => {
             )}
 
             <div className="md:hidden space-y-4 px-4 pb-20">
-              {filteredCustomers.map((customer) => (
+              {paginatedCustomers.map((customer) => (
                 <Link
                   key={customer.id}
                   to={`/dashboard/customers/${customer.id}`}
