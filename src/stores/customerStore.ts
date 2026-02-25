@@ -225,38 +225,22 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     const organizationId = useOrganizationStore.getState().currentOrganization?.id;
     if (!organizationId) throw new Error('No organization selected');
 
-    const succeededIds: string[] = [];
-    let failed = 0;
+    const { data, error } = await supabase.rpc('bulk_delete_customers', {
+      p_customer_ids: ids,
+    });
 
-    for (const id of ids) {
-      try {
-        await supabase.from('customer_notes').delete().eq('customer_id', id);
-        await supabase.from('customer_contacts').delete().eq('customer_id', id);
-        await supabase.from('tasks').delete().eq('customer_id', id);
-        await supabase.from('pipeline_items').delete().eq('customer_id', id);
-        await supabase.from('calendar_events').delete().eq('customer_id', id);
+    if (error) throw error;
 
-        const { error } = await supabase
-          .from('customers')
-          .delete()
-          .eq('id', id)
-          .eq('organization_id', organizationId);
+    const result = data as { succeeded: number; failed: number };
 
-        if (error) throw error;
-        succeededIds.push(id);
-      } catch {
-        failed++;
-      }
-    }
-
-    if (succeededIds.length > 0) {
-      const deletedSet = new Set(succeededIds);
+    if (result.succeeded > 0) {
+      const deletedSet = new Set(ids);
       set((state) => ({
         customers: state.customers.filter((c) => !deletedSet.has(c.id)),
       }));
     }
 
-    return { succeeded: succeededIds.length, failed };
+    return result;
   },
 
   fetchNotes: async (customerId: string) => {
