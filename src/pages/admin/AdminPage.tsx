@@ -5,7 +5,7 @@ import {
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug, Mail, Building2
+  FileBarChart, Plug, Mail, Building2, GitMerge
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -33,6 +33,7 @@ import { PhoneLifecycleTab } from './PhoneLifecycleTab';
 import { SmsComplianceTab } from '../../components/admin/SmsComplianceTab';
 import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
 import { OrgDetailView } from './OrgDetailView';
+import { OrgMergeTool } from '../../components/admin/OrgMergeTool';
 
 interface TabItem {
   id: string;
@@ -73,6 +74,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'sms-compliance', label: 'SMS Compliance', icon: MessageSquare, component: SmsComplianceTab },
       { id: 'marketing-emails', label: 'Marketing Emails', icon: Mail, component: MarketingEmailsTab },
       { id: 'reports', label: 'Reports', icon: FileBarChart, component: ReportingEngine },
+      { id: 'org-merge', label: 'Org Merge', icon: GitMerge, component: OrgMergeTool },
     ],
   },
   {
