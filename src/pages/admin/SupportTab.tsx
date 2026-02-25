@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Search, Clock, User, Tag, MessageSquare, X, Send,
     AlertTriangle, CheckCircle, Circle, MoreVertical,
     Trash2, ExternalLink, LayoutGrid, List,
-    RefreshCw, Globe, FileText, UserX, Check, Loader2
+    RefreshCw, Globe, FileText, UserX, Check, Loader2,
+    Eye, EyeOff, ArrowRight, UserPlus
 } from 'lucide-react';
-import { useAdminStore, AdminTicket, DeletionRequest } from '@/stores/adminStore';
+import { useAdminStore, AdminTicket, DeletionRequest, TicketMessage, TicketActivity } from '@/stores/adminStore';
 import toast from 'react-hot-toast';
 
 type SubTab = 'tickets' | 'dsar';

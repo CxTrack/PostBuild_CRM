@@ -151,6 +151,31 @@ export interface AdminTicket {
   user_id?: string;
 }
 
+export interface TicketMessage {
+  id: string;
+  ticket_id: string;
+  user_id: string | null;
+  user_name: string;
+  user_avatar?: string;
+  message: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
+export interface TicketActivity {
+  id: string;
+  ticket_id: string;
+  user_id: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  action: string;
+  field: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  message: string | null;
+  created_at: string;
+}
+
 export interface DeletionRequest {
   id: string;
   user_id: string;
@@ -258,6 +283,8 @@ interface AdminState {
   activityLog: ActivityLogEntry[];
   adminUsers: AdminUser[];
   allTickets: AdminTicket[];
+  currentTicketMessages: TicketMessage[];
+  currentTicketActivities: TicketActivity[];
   deletionRequests: DeletionRequest[];
   phoneLifecycle: PhoneOrphanData | null;
   phoneAssignmentHistory: PhoneAssignmentEvent[];
@@ -300,6 +327,9 @@ interface AdminState {
   fetchActivityLog: (limit?: number, offset?: number, entityType?: string, action?: string) => Promise<void>;
   fetchAdminUsers: () => Promise<void>;
   fetchAllTickets: () => Promise<void>;
+  fetchTicketDetail: (ticketId: string) => Promise<void>;
+  updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }) => Promise<void>;
+  replyToTicket: (ticketId: string, message: string, isInternal?: boolean) => Promise<void>;
   fetchDeletionRequests: () => Promise<void>;
   updateDeletionRequest: (requestId: string, status: string, notes?: string) => Promise<void>;
   fetchPhoneLifecycle: () => Promise<void>;
@@ -348,6 +378,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   activityLog: [],
   adminUsers: [],
   allTickets: [],
+  currentTicketMessages: [],
+  currentTicketActivities: [],
   deletionRequests: [],
   phoneLifecycle: null,
   phoneAssignmentHistory: [],
@@ -547,6 +579,67 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set((s) => ({ allTickets: data || [], loading: { ...s.loading, tickets: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, tickets: false }, errors: { ...s.errors, tickets: e.message } }));
+    }
+  },
+
+  fetchTicketDetail: async (ticketId: string) => {
+    set((s) => ({ loading: { ...s.loading, ticketDetail: true }, errors: { ...s.errors, ticketDetail: null } }));
+    try {
+      const data = await supabaseRpc<{ ticket: AdminTicket; messages: TicketMessage[]; activities: TicketActivity[] }>('admin_get_ticket_detail', { p_ticket_id: ticketId });
+      set((s) => ({
+        currentTicketMessages: data.messages || [],
+        currentTicketActivities: data.activities || [],
+        loading: { ...s.loading, ticketDetail: false },
+      }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, ticketDetail: false }, errors: { ...s.errors, ticketDetail: e.message } }));
+    }
+  },
+
+  updateTicket: async (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }) => {
+    try {
+      const params: Record<string, any> = { p_ticket_id: ticketId };
+      if (updates.status) params.p_status = updates.status;
+      if (updates.priority) params.p_priority = updates.priority;
+      if (updates.category) params.p_category = updates.category;
+      if (updates.assigned_to === null) {
+        params.p_clear_assigned = true;
+      } else if (updates.assigned_to) {
+        params.p_assigned_to = updates.assigned_to;
+      }
+
+      const updatedTicket = await supabaseRpc<AdminTicket>('admin_update_ticket', params);
+
+      // Update the ticket in allTickets list
+      set((s) => ({
+        allTickets: s.allTickets.map((t) => (t.id === ticketId ? { ...t, ...updatedTicket } : t)),
+      }));
+
+      // Refresh activities
+      await get().fetchTicketDetail(ticketId);
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  replyToTicket: async (ticketId: string, message: string, isInternal: boolean = false) => {
+    try {
+      const newMsg = await supabaseRpc<TicketMessage>('admin_reply_ticket', {
+        p_ticket_id: ticketId,
+        p_message: message,
+        p_is_internal: isInternal,
+      });
+
+      // Append new message to current list
+      set((s) => ({
+        currentTicketMessages: [...s.currentTicketMessages, newMsg],
+      }));
+
+      // Refresh activities (auto-status change may have happened) and ticket list
+      await get().fetchTicketDetail(ticketId);
+      await get().fetchAllTickets();
+    } catch (e: any) {
+      throw e;
     }
   },
 
