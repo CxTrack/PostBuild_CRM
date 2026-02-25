@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -80,6 +80,20 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     provider: 'internal',
     model: 'internal-assistant',
   });
+
+  // Clear CoPilot conversation when the impersonation target changes
+  // (e.g., switching from Alex -> Josie, or starting/ending impersonation)
+  const { isImpersonating, targetUserId } = useImpersonationStore();
+  const prevTargetRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const key = isImpersonating ? targetUserId : '__self__';
+    if (prevTargetRef.current !== null && prevTargetRef.current !== key) {
+      setMessages([]);
+      setTokenUsage(null);
+    }
+    prevTargetRef.current = key;
+  }, [isImpersonating, targetUserId]);
 
   const openPanel = useCallback(() => {
     setIsOpen(true);
