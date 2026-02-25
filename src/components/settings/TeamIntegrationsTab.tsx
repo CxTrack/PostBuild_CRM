@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Users, UserPlus, Calendar as CalendarIcon, TrendingUp, CheckCircle, FileText, DollarSign, Phone, Package, LayoutGrid, Building2, Link, Copy, Zap, Code, Key, MoreVertical, Loader2, X, Settings as SettingsIcon, Info, UserCheck, UserX, Clock, MessageSquare } from 'lucide-react';
+import { Users, UserPlus, Calendar as CalendarIcon, TrendingUp, CheckCircle, FileText, DollarSign, Phone, Package, LayoutGrid, Building2, Link, Copy, Zap, Code, Key, MoreVertical, Loader2, X, Settings as SettingsIcon, Info, UserCheck, UserX, Clock, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { Webhook } from '@/services/webhook.service';
 import { ApiKey } from '@/services/apiKey.service';
 import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
 import { useOrganizationStore, type JoinRequest } from '@/stores/organizationStore';
+import { useTeamStore } from '@/stores/teamStore';
 import toast from 'react-hot-toast';
 
 interface TeamMember {
@@ -58,12 +59,33 @@ export default function TeamIntegrationsTab({
   onDeleteApiKey,
   bookingUrl,
 }: TeamIntegrationsTabProps) {
-  const { joinRequests, fetchJoinRequests, reviewJoinRequest } = useOrganizationStore();
+  const { joinRequests, fetchJoinRequests, reviewJoinRequest, currentMembership } = useOrganizationStore();
+  const { teams, fetchTeams, createTeam, deleteTeam, addMember, removeMember } = useTeamStore();
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [approveRole, setApproveRole] = useState<string>('user');
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDescription, setNewTeamDescription] = useState('');
+  const [newTeamColor, setNewTeamColor] = useState('#6366f1');
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [addMemberDropdown, setAddMemberDropdown] = useState<string | null>(null);
+  const [confirmDeleteTeam, setConfirmDeleteTeam] = useState<string | null>(null);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ teamId: string; userId: string; name: string } | null>(null);
+
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+
+  const TEAM_COLORS = [
+    { name: 'Indigo', value: '#6366f1' },
+    { name: 'Emerald', value: '#10b981' },
+    { name: 'Amber', value: '#f59e0b' },
+    { name: 'Rose', value: '#f43f5e' },
+    { name: 'Cyan', value: '#06b6d4' },
+    { name: 'Violet', value: '#8b5cf6' },
+  ];
 
   useEffect(() => {
     fetchJoinRequests();
+    fetchTeams();
   }, [currentOrganization?.id]);
 
   const handleReviewRequest = async (requestId: string, action: 'approved' | 'denied') => {
@@ -75,6 +97,53 @@ export default function TeamIntegrationsTab({
       toast.error(err.message || `Failed to ${action === 'approved' ? 'approve' : 'deny'} request`);
     } finally {
       setReviewingId(null);
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) return;
+    setCreatingTeam(true);
+    try {
+      await createTeam({ name: newTeamName.trim(), description: newTeamDescription.trim() || undefined, color: newTeamColor });
+      toast.success(`Team "${newTeamName.trim()}" created`);
+      setNewTeamName('');
+      setNewTeamDescription('');
+      setNewTeamColor('#6366f1');
+      setShowCreateTeam(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create team');
+    } finally {
+      setCreatingTeam(false);
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: string) => {
+    try {
+      await deleteTeam(teamId);
+      toast.success('Team deleted');
+      setConfirmDeleteTeam(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete team');
+    }
+  };
+
+  const handleAddMember = async (teamId: string, userId: string) => {
+    try {
+      await addMember(teamId, userId);
+      toast.success('Member added to team');
+      setAddMemberDropdown(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add member');
+    }
+  };
+
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    try {
+      await removeMember(teamId, userId);
+      toast.success('Member removed from team');
+      setConfirmRemoveMember(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
     }
   };
 
@@ -177,6 +246,232 @@ export default function TeamIntegrationsTab({
             <div className="text-center py-8">
               <Users className="w-12 h-12 text-gray-400 mx-auto mb-3 opacity-20" />
               <p className="text-gray-500">No team members found</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Teams */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Teams</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize members into teams for better collaboration</p>
+          </div>
+          {isOwnerOrAdmin && !showCreateTeam && (
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium text-sm flex items-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Team
+            </button>
+          )}
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Create Team Form */}
+          {showCreateTeam && (
+            <div className="p-4 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl bg-indigo-50/30 dark:bg-indigo-900/10">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">New Team</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    placeholder="e.g. Sales, Engineering, Support"
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={newTeamDescription}
+                    onChange={(e) => setNewTeamDescription(e.target.value)}
+                    placeholder="What does this team work on?"
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    {TEAM_COLORS.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setNewTeamColor(c.value)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${newTeamColor === c.value ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                        style={{ backgroundColor: c.value }}
+                        title={c.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={handleCreateTeam}
+                    disabled={!newTeamName.trim() || creatingTeam}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {creatingTeam && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Team
+                  </button>
+                  <button
+                    onClick={() => { setShowCreateTeam(false); setNewTeamName(''); setNewTeamDescription(''); setNewTeamColor('#6366f1'); }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Team Cards */}
+          {teams.length > 0 ? (
+            teams.map((team) => {
+              const memberIds = team.team_members.map((m) => m.user_id);
+              const availableMembers = teamMembers.filter((m) => !memberIds.includes(m.id));
+
+              return (
+                <div key={team.id} className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: team.color }} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white">{team.name}</h4>
+                          <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
+                            {team.team_members.length} {team.team_members.length === 1 ? 'member' : 'members'}
+                          </span>
+                        </div>
+                        {team.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{team.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Add Member Button */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setAddMemberDropdown(addMemberDropdown === team.id ? null : team.id)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
+                          title="Add member"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                        {addMemberDropdown === team.id && (
+                          <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-10 max-h-48 overflow-y-auto">
+                            {availableMembers.length > 0 ? (
+                              availableMembers.map((m) => (
+                                <button
+                                  key={m.id}
+                                  onClick={() => handleAddMember(team.id, m.id)}
+                                  className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                >
+                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: m.color || '#6366f1' }}>
+                                    {m.avatar_url ? (
+                                      <img src={m.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                      (m.full_name || m.email).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                                    )}
+                                  </div>
+                                  <span className="text-gray-900 dark:text-white truncate">{m.full_name || m.email}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <p className="px-3 py-2 text-xs text-gray-500 italic">All members are in this team</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Delete Team */}
+                      {isOwnerOrAdmin && (
+                        <button
+                          onClick={() => setConfirmDeleteTeam(team.id)}
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500"
+                          title="Delete team"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Member Avatars */}
+                  {team.team_members.length > 0 && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <div className="flex -space-x-2">
+                        {team.team_members.map((tm) => (
+                          <button
+                            key={tm.user_id}
+                            onClick={() => setConfirmRemoveMember({ teamId: team.id, userId: tm.user_id, name: tm.user_profiles?.full_name || tm.user_profiles?.email || 'this member' })}
+                            className="relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white dark:border-gray-800 hover:z-10 hover:ring-2 hover:ring-red-400 transition-all cursor-pointer"
+                            style={{ backgroundColor: '#6366f1' }}
+                            title={`${tm.user_profiles?.full_name || tm.user_profiles?.email || 'Member'} - click to remove`}
+                          >
+                            {tm.user_profiles?.avatar_url ? (
+                              <img src={tm.user_profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              (tm.user_profiles?.full_name || tm.user_profiles?.email || '?').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delete Team Confirmation */}
+                  {confirmDeleteTeam === team.id && (
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <p className="text-sm text-red-700 dark:text-red-400 mb-2">Delete "{team.name}"? This cannot be undone.</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteTeam(team.id)}
+                          className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteTeam(null)}
+                          className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Remove Member Confirmation */}
+                  {confirmRemoveMember && confirmRemoveMember.teamId === team.id && (
+                    <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm text-amber-700 dark:text-amber-400 mb-2">Remove {confirmRemoveMember.name} from this team?</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleRemoveMember(confirmRemoveMember.teamId, confirmRemoveMember.userId)}
+                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium transition-colors"
+                        >
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => setConfirmRemoveMember(null)}
+                          className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3 opacity-20" />
+              <p className="text-gray-500">No teams yet. Create one to organize your members.</p>
             </div>
           )}
         </div>

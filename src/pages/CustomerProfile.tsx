@@ -6,7 +6,7 @@ import {
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
   AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
-  Reply, MailOpen, ArrowDownLeft, ArrowUpRight
+  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -54,6 +54,7 @@ export const CustomerProfile: React.FC = () => {
   const {
     currentCustomer,
     fetchCustomerById,
+    updateCustomer,
     loading,
     notes,
     fetchNotes,
@@ -68,7 +69,7 @@ export const CustomerProfile: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { fetchTasks } = useTaskStore();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, currentMembership, teamMembers } = useOrganizationStore();
   const { consentCache, fetchConsent } = useSmsConsentStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -81,6 +82,9 @@ export const CustomerProfile: React.FC = () => {
   const [emailReplyTo, setEmailReplyTo] = useState<{ subject: string; messageId?: string; conversationId?: string; senderEmail?: string } | undefined>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
   const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
+  const assignDropdownRef = useRef<HTMLDivElement>(null);
   const { confirm: confirmDeleteNote, DialogComponent: DeleteNoteDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -99,6 +103,36 @@ export const CustomerProfile: React.FC = () => {
       fetchConsent(id, currentOrganization.id);
     }
   }, [id, currentOrganization?.id]);
+
+  // Close assign dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (assignDropdownRef.current && !assignDropdownRef.current.contains(e.target as Node)) {
+        setShowAssignDropdown(false);
+      }
+    };
+    if (showAssignDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAssignDropdown]);
+
+  const canReassign = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
+
+  const handleReassign = async (newUserId: string | null) => {
+    if (!id) return;
+    setReassigning(true);
+    try {
+      await updateCustomer(id, { assigned_to: newUserId });
+      await fetchCustomerById(id);
+      toast.success('Customer reassigned successfully');
+    } catch (err) {
+      toast.error('Failed to reassign customer');
+    } finally {
+      setReassigning(false);
+      setShowAssignDropdown(false);
+    }
+  };
 
   if (loading || !currentCustomer) {
     return (
@@ -170,6 +204,68 @@ export const CustomerProfile: React.FC = () => {
                     }`}>
                     {currentCustomer.status}
                   </span>
+
+                  {/* Assigned User */}
+                  <div className="relative" ref={assignDropdownRef}>
+                    <button
+                      onClick={() => canReassign && setShowAssignDropdown(!showAssignDropdown)}
+                      className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                        currentCustomer.assigned_user
+                          ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30'
+                          : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+                      } ${canReassign ? 'hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer' : 'cursor-default'}`}
+                      title={canReassign ? 'Click to reassign' : (currentCustomer.assigned_user?.full_name || 'Unassigned')}
+                    >
+                      {currentCustomer.assigned_user?.avatar_url ? (
+                        <img
+                          src={currentCustomer.assigned_user.avatar_url}
+                          alt=""
+                          className="w-3.5 h-3.5 rounded-full object-cover"
+                        />
+                      ) : (
+                        <UserCheck size={10} />
+                      )}
+                      <span>{currentCustomer.assigned_user?.full_name || 'Unassigned'}</span>
+                    </button>
+
+                    {showAssignDropdown && canReassign && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
+                        <button
+                          onClick={() => handleReassign(null)}
+                          className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                            <X size={10} className="text-gray-400" />
+                          </div>
+                          <span>Unassigned</span>
+                        </button>
+                        {teamMembers.map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => handleReassign(member.id)}
+                            disabled={reassigning}
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 ${
+                              currentCustomer.assigned_to === member.id
+                                ? 'text-primary-600 dark:text-primary-400 font-medium'
+                                : 'text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {member.avatar_url ? (
+                              <img src={member.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            ) : (
+                              <div
+                                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+                                style={{ backgroundColor: member.color }}
+                              >
+                                {(member.full_name || member.email).charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="truncate">{member.full_name || member.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-4 text-xs mt-0.5">
                   {currentCustomer.email && (

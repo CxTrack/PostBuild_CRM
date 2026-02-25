@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import {
   Search, Plus, Users, Building2, Mail, Phone,
   Eye, Edit, Trash2, MessageSquare, X,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, UserCheck, ChevronDown
 } from 'lucide-react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useTeamStore } from '@/stores/teamStore';
+import { supabase } from '@/lib/supabase';
 import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import { getCustomerFullName } from '@/utils/customer.utils';
@@ -41,13 +43,41 @@ export const Customers: React.FC = () => {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [ownershipFilter, setOwnershipFilter] = useState<string>('all'); // 'mine' | 'all' | userId | 'team:teamId'
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
+  const [reassignTarget, setReassignTarget] = useState<string>('');
+  const [showReassignDropdown, setShowReassignDropdown] = useState(false);
+  const [bulkReassigning, setBulkReassigning] = useState(false);
 
-  const { currentOrganization, currentMembership, _hasHydrated } = useOrganizationStore();
-  const { customers, loading, fetchCustomers, deleteCustomer, deleteCustomers } = useCustomerStore();
+  const { currentOrganization, currentMembership, teamMembers, _hasHydrated } = useOrganizationStore();
+  const { customers, loading, fetchCustomers, deleteCustomer, deleteCustomers, bulkReassignCustomers } = useCustomerStore();
+  const { teams, fetchTeams } = useTeamStore();
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
   const { canAccessSharedModule } = usePermissions();
   const labels = usePageLabels('crm');
+
+  // Determine current user id
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id || null);
+    });
+  }, []);
+
+  // Set default ownership filter based on role
+  useEffect(() => {
+    if (currentMembership && currentUserId) {
+      const role = currentMembership.role;
+      if (role === 'user') {
+        setOwnershipFilter('mine');
+      } else {
+        setOwnershipFilter('all');
+      }
+    }
+  }, [currentMembership?.role, currentUserId]);
+
+  const isManagerOrAbove = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
 
   const hasAccess = canAccessSharedModule('crm');
 
@@ -74,11 +104,33 @@ export const Customers: React.FC = () => {
   useEffect(() => {
     if (currentOrganization?.id) {
       fetchCustomers();
+      fetchTeams();
     }
   }, [currentOrganization?.id]);
 
+  // Get user IDs for team filtering
+  const getTeamUserIds = (teamId: string): Set<string> => {
+    const team = teams.find(t => t.id === teamId);
+    return new Set(team ? team.team_members.map(m => m.user_id) : []);
+  };
+
   const filteredCustomers = useMemo(() => {
     return customers.filter(customer => {
+      // Ownership filter
+      let matchesOwnership = true;
+      if (ownershipFilter === 'mine') {
+        matchesOwnership = customer.assigned_to === currentUserId;
+      } else if (ownershipFilter === 'all') {
+        matchesOwnership = true;
+      } else if (ownershipFilter.startsWith('team:')) {
+        const teamId = ownershipFilter.replace('team:', '');
+        const teamUserIds = getTeamUserIds(teamId);
+        matchesOwnership = customer.assigned_to ? teamUserIds.has(customer.assigned_to) : false;
+      } else {
+        // Specific user ID
+        matchesOwnership = customer.assigned_to === ownershipFilter;
+      }
+
       const fullName = getCustomerFullName(customer);
       const matchesSearch =
         fullName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
@@ -105,14 +157,14 @@ export const Customers: React.FC = () => {
         }
       }
 
-      return matchesSearch && matchesType && matchesStatus && matchesDate;
+      return matchesOwnership && matchesSearch && matchesType && matchesStatus && matchesDate;
     });
-  }, [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange]);
+  }, [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange, ownershipFilter, currentUserId, teams]);
 
   // Reset to page 1 when filters/search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, filterType, filterStatus, filterDateRange, pageSize]);
+  }, [debouncedSearchTerm, filterType, filterStatus, filterDateRange, pageSize, ownershipFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
   const paginatedCustomers = useMemo(() => {
@@ -194,6 +246,30 @@ export const Customers: React.FC = () => {
       } finally {
         setBulkDeleting(false);
       }
+    }
+  };
+
+  const handleBulkReassign = async (targetUserId: string) => {
+    if (!isManagerOrAbove) {
+      toast.error('You do not have permission to reassign');
+      return;
+    }
+    setBulkReassigning(true);
+    try {
+      const { succeeded, failed } = await bulkReassignCustomers(Array.from(selectedIds), targetUserId);
+      if (succeeded > 0) {
+        const targetUser = teamMembers.find(m => m.id === targetUserId);
+        toast.success(`Reassigned ${succeeded} ${succeeded === 1 ? labels.entitySingular : labels.entityPlural} to ${targetUser?.full_name || 'user'}`);
+      }
+      if (failed > 0) {
+        toast.error(`Failed to reassign ${failed} ${failed === 1 ? labels.entitySingular : labels.entityPlural}`);
+      }
+      setSelectedIds(new Set());
+      setShowReassignDropdown(false);
+    } catch {
+      toast.error('Failed to reassign');
+    } finally {
+      setBulkReassigning(false);
     }
   };
 
@@ -302,24 +378,124 @@ export const Customers: React.FC = () => {
         />
       </Card>
 
+      {/* Ownership Filter Pills */}
+      <Card className="mb-4 p-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-1 flex items-center">
+            <UserCheck size={14} className="mr-1" />
+            View:
+          </span>
+          <button
+            onClick={() => setOwnershipFilter('mine')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              ownershipFilter === 'mine'
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            My {labels.entityPlural}
+          </button>
+          <button
+            onClick={() => setOwnershipFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              ownershipFilter === 'all'
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            All {labels.entityPlural}
+          </button>
+          {isManagerOrAbove && (
+            <div className="relative">
+              <button
+                onClick={() => setShowOwnerDropdown(!showOwnerDropdown)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                  ownershipFilter !== 'mine' && ownershipFilter !== 'all'
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {ownershipFilter !== 'mine' && ownershipFilter !== 'all'
+                  ? ownershipFilter.startsWith('team:')
+                    ? teams.find(t => t.id === ownershipFilter.replace('team:', ''))?.name || 'Team'
+                    : teamMembers.find(m => m.id === ownershipFilter)?.full_name || 'Person'
+                  : 'Filter by...'}
+                <ChevronDown size={12} />
+              </button>
+              {showOwnerDropdown && (
+                <div className="absolute top-full left-0 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                  {teams.length > 0 && (
+                    <>
+                      <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50">
+                        Teams
+                      </div>
+                      {teams.map(team => (
+                        <button
+                          key={team.id}
+                          onClick={() => { setOwnershipFilter(`team:${team.id}`); setShowOwnerDropdown(false); }}
+                          className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: team.color }} />
+                          {team.name}
+                          <span className="ml-auto text-xs text-gray-400">{team.team_members.length}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50">
+                    People
+                  </div>
+                  {teamMembers.map(member => (
+                    <button
+                      key={member.id}
+                      onClick={() => { setOwnershipFilter(member.id); setShowOwnerDropdown(false); }}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} className="w-5 h-5 rounded-full" alt="" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: member.color }}>
+                          {(member.full_name || member.email)?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="truncate">{member.full_name || member.email}</span>
+                      {member.id === currentUserId && <span className="text-[10px] text-gray-400">(you)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {ownershipFilter !== 'mine' && ownershipFilter !== 'all' && (
+            <button
+              onClick={() => setOwnershipFilter('all')}
+              className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Clear filter"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </Card>
+
       <Card className="mb-6 p-4">
         <div className="flex items-center space-x-6 text-sm">
           <div className="flex items-center">
             <span className="text-gray-600 dark:text-gray-400">Total:</span>
-            <span className="ml-2 font-semibold text-gray-900 dark:text-white">{customers.length}</span>
+            <span className="ml-2 font-semibold text-gray-900 dark:text-white">{filteredCustomers.length}</span>
           </div>
           <div className="flex items-center">
             <Users size={16} className="text-blue-600 dark:text-blue-400 mr-1" />
             <span className="text-gray-600 dark:text-gray-400">Personal:</span>
             <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-              {customers.filter(c => c.customer_type === 'personal').length}
+              {filteredCustomers.filter(c => c.customer_type === 'personal').length}
             </span>
           </div>
           <div className="flex items-center">
             <Building2 size={16} className="text-purple-600 dark:text-purple-400 mr-1" />
             <span className="text-gray-600 dark:text-gray-400">Business:</span>
             <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-              {customers.filter(c => c.customer_type === 'business').length}
+              {filteredCustomers.filter(c => c.customer_type === 'business').length}
             </span>
           </div>
         </div>
@@ -384,6 +560,9 @@ export const Customers: React.FC = () => {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                         Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                        Assigned To
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                         Total Spent
@@ -474,6 +653,24 @@ export const Customers: React.FC = () => {
                             }`}>
                             {customer.status}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {customer.assigned_user ? (
+                            <div className="flex items-center gap-2">
+                              {customer.assigned_user.avatar_url ? (
+                                <img src={customer.assigned_user.avatar_url} className="w-6 h-6 rounded-full" alt="" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
+                                  {(customer.assigned_user.full_name || customer.assigned_user.email)?.[0]?.toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
+                                {customer.assigned_user.full_name || customer.assigned_user.email}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Unassigned</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">
                           ${customer.total_spent?.toLocaleString() || '0.00'}
@@ -568,6 +765,44 @@ export const Customers: React.FC = () => {
                 <span className="text-sm font-medium whitespace-nowrap">
                   {selectedIds.size} selected
                 </span>
+                {/* Reassign dropdown */}
+                {isManagerOrAbove && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowReassignDropdown(!showReassignDropdown)}
+                      disabled={bulkReassigning}
+                      className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <UserCheck size={15} />
+                      {bulkReassigning ? 'Reassigning...' : 'Reassign'}
+                      <ChevronDown size={12} />
+                    </button>
+                    {showReassignDropdown && (
+                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto">
+                        <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50">
+                          Reassign to
+                        </div>
+                        {teamMembers.map(member => (
+                          <button
+                            key={member.id}
+                            onClick={() => handleBulkReassign(member.id)}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                          >
+                            {member.avatar_url ? (
+                              <img src={member.avatar_url} className="w-5 h-5 rounded-full" alt="" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: member.color }}>
+                                {(member.full_name || member.email)?.[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <span className="truncate">{member.full_name || member.email}</span>
+                            {member.id === currentUserId && <span className="text-[10px] text-gray-400">(you)</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button
                   onClick={handleBulkDelete}
                   disabled={bulkDeleting}
@@ -577,7 +812,7 @@ export const Customers: React.FC = () => {
                   {bulkDeleting ? 'Deleting...' : 'Delete'}
                 </button>
                 <button
-                  onClick={() => setSelectedIds(new Set())}
+                  onClick={() => { setSelectedIds(new Set()); setShowReassignDropdown(false); }}
                   className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
                   title="Clear selection"
                 >

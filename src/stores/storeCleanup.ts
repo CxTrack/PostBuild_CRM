@@ -34,6 +34,7 @@ async function resetAllStores(): Promise<void> {
     { useQuoteStore },
     { useTaskStore },
     { useImpersonationStore },
+    { useTeamStore },
   ] = await Promise.all([
     import('./calendarStore'),
     import('./callStore'),
@@ -44,6 +45,7 @@ async function resetAllStores(): Promise<void> {
     import('./quoteStore'),
     import('./taskStore'),
     import('./impersonationStore'),
+    import('./teamStore'),
   ]);
 
   // If actively impersonating, end the session before clearing stores
@@ -66,6 +68,7 @@ async function resetAllStores(): Promise<void> {
     usePreferencesStore,
     useQuoteStore,
     useTaskStore,
+    useTeamStore,
   ];
 
   for (const store of stores) {

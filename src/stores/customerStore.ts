@@ -22,6 +22,7 @@ interface CustomerStore {
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
   deleteCustomers: (ids: string[]) => Promise<{ succeeded: number; failed: number }>;
+  bulkReassignCustomers: (ids: string[], newAssignedTo: string) => Promise<{ succeeded: number; failed: number }>;
 
   fetchNotes: (customerId: string) => Promise<void>;
   addNote: (note: Partial<CustomerNote>) => Promise<void>;
@@ -65,7 +66,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
@@ -91,7 +92,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
         .eq('id', id)
         .eq('organization_id', organizationId)
         .maybeSingle();
@@ -122,12 +123,20 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customer.last_name
       ].filter(Boolean).join(' ').trim() || 'New Customer';
 
+      // Auto-assign to current user if not explicitly set
+      let assignedTo = customer.assigned_to;
+      if (assignedTo === undefined) {
+        const { data: { user } } = await supabase.auth.getUser();
+        assignedTo = user?.id || null;
+      }
+
       const insertData: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { organization_id: string } = {
         ...customer,
         name: fullName,
         organization_id: organizationId,
         country: customer.country || 'CA',
         status: customer.status || 'Active',
+        assigned_to: assignedTo,
       };
 
       const { data, error } = await supabase
@@ -238,6 +247,34 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       set((state) => ({
         customers: state.customers.filter((c) => !deletedSet.has(c.id)),
       }));
+    }
+
+    return result;
+  },
+
+  bulkReassignCustomers: async (ids: string[], newAssignedTo: string) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) throw new Error('No organization selected');
+
+    const { data, error } = await supabase.rpc('bulk_reassign_customers', {
+      p_customer_ids: ids,
+      p_new_assigned_to: newAssignedTo,
+    });
+
+    if (error) throw error;
+
+    const result = data as { succeeded: number; failed: number };
+
+    if (result.succeeded > 0) {
+      // Update local state
+      const idSet = new Set(ids);
+      set((state) => ({
+        customers: state.customers.map((c) =>
+          idSet.has(c.id) ? { ...c, assigned_to: newAssignedTo } : c
+        ),
+      }));
+      // Refetch to get updated assigned_user joins
+      await get().fetchCustomers();
     }
 
     return result;

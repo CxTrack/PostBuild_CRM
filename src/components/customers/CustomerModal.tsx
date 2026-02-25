@@ -21,12 +21,15 @@ interface CustomerModalProps {
 export default function CustomerModal({ isOpen, onClose, customer, navigateToProfileAfterCreate = false }: CustomerModalProps) {
   const navigate = useNavigate();
   const { createCustomer, updateCustomer } = useCustomerStore();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, currentMembership, teamMembers } = useOrganizationStore();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState('');
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const [assignedTo, setAssignedTo] = useState('');
+
+  const canAssign = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
 
   const [formData, setFormData] = useState({
     customer_type: customer?.customer_type || 'personal',
@@ -220,7 +223,8 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
       } else {
         const newCustomer = await createCustomer({
           ...formData,
-          phone: formatPhoneForStorage(formData.phone)
+          phone: formatPhoneForStorage(formData.phone),
+          assigned_to: assignedTo || undefined,
         });
 
         if (!newCustomer) {
@@ -245,6 +249,7 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
           country: '',
           card_image_url: '',
         });
+        setAssignedTo('');
 
         onClose();
 
@@ -598,6 +603,27 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
               </div>
             )}
           </div>
+
+          {/* Assign To — only visible for owner/admin/manager, only on create */}
+          {canAssign && !customer && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assign To
+              </label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">Auto-assign to me</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name || member.email}{member.full_name ? ` (${member.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="pt-2 pb-1">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
