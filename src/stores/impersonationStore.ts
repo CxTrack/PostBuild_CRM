@@ -69,6 +69,13 @@ async function supabaseRpc<T = any>(fnName: string, params: Record<string, any> 
 
 const SESSION_KEY = 'cxtrack_impersonation_session';
 
+interface TargetProfile {
+  full_name: string | null;
+  email: string;
+  avatar_url: string | null;
+  profile_metadata: Record<string, any>;
+}
+
 interface SessionData {
   sessionId: string;
   targetUserId: string;
@@ -78,6 +85,7 @@ interface SessionData {
   targetOrgName: string;
   targetRole: string;
   adminOriginalOrgId: string | null;
+  targetProfile: TargetProfile | null;
 }
 
 function saveSession(data: SessionData): void {
@@ -114,6 +122,7 @@ interface ImpersonationState {
   targetOrgName: string | null;
   targetRole: string | null;
   adminOriginalOrgId: string | null;
+  targetProfile: TargetProfile | null;
   loading: boolean;
 
   startImpersonation: (params: {
@@ -141,6 +150,7 @@ const initialState = {
   targetOrgName: null as string | null,
   targetRole: null as string | null,
   adminOriginalOrgId: null as string | null,
+  targetProfile: null as TargetProfile | null,
   loading: false,
 };
 
@@ -166,6 +176,34 @@ export const useImpersonationStore = create<ImpersonationState>()((set, get) => 
         throw new Error('Impersonation start failed');
       }
 
+      // 2. Fetch target user's full profile (name, avatar, AI CoPilot preferences)
+      let targetProfile: TargetProfile | null = null;
+      try {
+        const token = getAuthToken();
+        const profileRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?id=eq.${targetUserId}&select=full_name,email,avatar_url,profile_metadata`,
+          {
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+        if (profileRes.ok) {
+          const profiles = await profileRes.json();
+          if (profiles?.[0]) {
+            targetProfile = {
+              full_name: profiles[0].full_name,
+              email: profiles[0].email,
+              avatar_url: profiles[0].avatar_url,
+              profile_metadata: profiles[0].profile_metadata || {},
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Impersonation] Could not fetch target profile:', err);
+      }
+
       const sessionData: SessionData = {
         sessionId: result.session_id,
         targetUserId,
@@ -175,27 +213,28 @@ export const useImpersonationStore = create<ImpersonationState>()((set, get) => 
         targetOrgName,
         targetRole: result.target_role,
         adminOriginalOrgId: null, // Will be set after org store reads
+        targetProfile,
       };
 
-      // 2. Get the admin's current org before switching
+      // 3. Get the admin's current org before switching
       const { useOrganizationStore } = await import('./organizationStore');
       const orgStore = useOrganizationStore.getState();
       sessionData.adminOriginalOrgId = orgStore.currentOrganization?.id || null;
 
-      // 3. Save session to sessionStorage BEFORE org switch
+      // 4. Save session to sessionStorage BEFORE org switch
       //    so a crash/refresh during the switch can still trigger cleanup
       saveSession(sessionData);
 
-      // 4. Refresh org list to pick up the temp membership
+      // 5. Refresh org list to pick up the temp membership
       const adminUserId = getAuthUserId();
       if (adminUserId) {
         await orgStore.fetchUserOrganizations(adminUserId);
       }
 
-      // 5. Switch to target org
+      // 6. Switch to target org
       await orgStore.setCurrentOrganization(targetOrgId);
 
-      // 6. Update store state
+      // 7. Update store state
       set({
         isImpersonating: true,
         sessionId: result.session_id,
@@ -206,6 +245,7 @@ export const useImpersonationStore = create<ImpersonationState>()((set, get) => 
         targetOrgName,
         targetRole: result.target_role,
         adminOriginalOrgId: sessionData.adminOriginalOrgId,
+        targetProfile,
         loading: false,
       });
 
@@ -284,6 +324,7 @@ export const useImpersonationStore = create<ImpersonationState>()((set, get) => 
       targetOrgName: session.targetOrgName,
       targetRole: session.targetRole,
       adminOriginalOrgId: session.adminOriginalOrgId,
+      targetProfile: session.targetProfile || null,
       loading: false,
     });
 

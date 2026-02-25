@@ -18,11 +18,25 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
+export interface JoinRequest {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'denied';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 interface OrganizationState {
   currentOrganization: Organization | null;
   currentMembership: OrganizationMember | null;
   organizations: Array<{ organization: Organization; membership: OrganizationMember }>;
   teamMembers: Array<UserProfile & { role: string; color: string }>;
+  joinRequests: JoinRequest[];
   loading: boolean;
   demoMode: boolean;
   allOrgsDeactivated: boolean;
@@ -30,6 +44,8 @@ interface OrganizationState {
   fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
   fetchTeamMembers: () => Promise<void>;
+  fetchJoinRequests: () => Promise<void>;
+  reviewJoinRequest: (requestId: string, action: 'approved' | 'denied', role?: string) => Promise<void>;
   updateOrganization: (data: Partial<Organization>) => Promise<void>;
   updateMember: (memberId: string, data: Partial<OrganizationMember>) => Promise<void>;
   inviteMember: (email: string, role: string) => Promise<void>;
@@ -60,6 +76,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       currentMembership: null,
       organizations: [],
       teamMembers: [],
+      joinRequests: [],
       loading: false,
       demoMode: false,
       allOrgsDeactivated: false,
@@ -84,6 +101,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           currentMembership: null,
           organizations: [],
           teamMembers: [],
+          joinRequests: [],
         });
       },
 
@@ -259,6 +277,67 @@ export const useOrganizationStore = create<OrganizationState>()(
         } catch (error) {
           const message = error instanceof Error ? error.message : 'An error occurred';
           throw error;
+        }
+      },
+
+      fetchJoinRequests: async () => {
+        const { currentOrganization } = get();
+        if (!currentOrganization) return;
+
+        const token = getAuthToken();
+        if (!token) return;
+
+        try {
+          const res = await fetch(
+            `${supabaseUrl}/rest/v1/organization_join_requests?organization_id=eq.${currentOrganization.id}&status=eq.pending&order=created_at.desc`,
+            {
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!res.ok) throw new Error(`Join requests fetch failed (${res.status})`);
+          const data = await res.json();
+          set({ joinRequests: data || [] });
+        } catch (error) {
+          console.error('[OrgStore] fetchJoinRequests failed:', error);
+        }
+      },
+
+      reviewJoinRequest: async (requestId: string, action: 'approved' | 'denied', role?: string) => {
+        const token = getAuthToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/rpc/review_join_request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            p_request_id: requestId,
+            p_action: action,
+            p_role: role || 'user',
+          }),
+        });
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(errBody || `Review failed (${res.status})`);
+        }
+
+        const result = await res.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to review request');
+        }
+
+        // Refresh join requests and team members
+        await get().fetchJoinRequests();
+        if (action === 'approved') {
+          await get().fetchTeamMembers();
         }
       },
 

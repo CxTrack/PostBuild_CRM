@@ -432,7 +432,7 @@ export default function SuccessPage() {
                   <p className="text-red-400 font-bold text-sm mb-2">Provisioning Failed</p>
                   <p className="text-white/50 text-sm">{provisionError}</p>
                 </div>
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   <button
                     onClick={handleProvisionAgent}
                     className="px-8 py-3 bg-[#FFD700] text-black font-black rounded-xl text-sm uppercase tracking-widest hover:bg-yellow-400 transition-all"
@@ -440,8 +440,14 @@ export default function SuccessPage() {
                     Try Again
                   </button>
                   <Link
+                    to={`/onboarding/voice-setup?plan=${plan || 'free'}`}
+                    className="px-8 py-3 bg-white/10 text-white font-bold rounded-xl text-sm hover:bg-white/15 transition-all"
+                  >
+                    Change Province
+                  </Link>
+                  <Link
                     to="/dashboard"
-                    className="px-8 py-3 bg-white/5 text-white font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
+                    className="px-8 py-3 bg-white/5 text-white/60 font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
                   >
                     Skip - Set Up Later
                   </Link>

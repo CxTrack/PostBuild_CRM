@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Phone } from 'lucide-react';
+import { ArrowRight, Phone, Building2, Users, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -24,6 +24,7 @@ function getAuthToken(): string | null {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [onboardingPath, setOnboardingPath] = useState<'choose' | 'new_business' | 'join_team'>('choose');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -122,6 +123,13 @@ export default function ProfilePage() {
             console.warn('[Onboarding] Resume check failed:', err);
             // Continue with normal profile setup flow
           }
+        }
+
+        // Check if there's a pending invite token -- auto-select join path
+        const pendingInvite = sessionStorage.getItem('pending_invite_token');
+        if (pendingInvite) {
+          navigate('/accept-invite?token=' + pendingInvite);
+          return;
         }
 
         // Track that we're on the profile step
@@ -282,6 +290,63 @@ export default function ProfilePage() {
     }
   };
 
+  // Fork: "Choose your path" screen
+  if (onboardingPath === 'choose') {
+    return (
+      <main className="min-h-screen bg-black pt-32 pb-20 px-6">
+        <OnboardingHeader />
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
+            <div className="flex flex-col items-center mb-10">
+              <h1 className="text-3xl font-bold text-white tracking-tight text-center">
+                Welcome to <span className="text-[#FFD700]">CxTrack</span>
+              </h1>
+              <p className="text-white/40 text-sm mt-2 text-center max-w-[320px]">
+                How would you like to get started?
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* New Business Path */}
+              <button
+                onClick={() => setOnboardingPath('new_business')}
+                className="w-full group flex items-start gap-4 p-5 bg-white/[0.03] border-2 border-white/[0.08] hover:border-[#FFD700]/40 rounded-2xl transition-all hover:bg-white/[0.05]"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#FFD700]/10 flex items-center justify-center shrink-0 group-hover:bg-[#FFD700]/20 transition-colors">
+                  <Briefcase className="w-6 h-6 text-[#FFD700]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-bold text-lg">Set up a new business</p>
+                  <p className="text-white/40 text-sm mt-0.5">
+                    Create your organization, choose your industry, and configure your CRM
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-white/20 group-hover:text-[#FFD700] mt-1 shrink-0 transition-colors" />
+              </button>
+
+              {/* Join Team Path */}
+              <button
+                onClick={() => navigate('/onboarding/join-team')}
+                className="w-full group flex items-start gap-4 p-5 bg-white/[0.03] border-2 border-white/[0.08] hover:border-blue-500/40 rounded-2xl transition-all hover:bg-white/[0.05]"
+              >
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
+                  <Users className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-bold text-lg">Join an existing team</p>
+                  <p className="text-white/40 text-sm mt-0.5">
+                    Have an invite link, or search for your organization to request access
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-white/20 group-hover:text-blue-400 mt-1 shrink-0 transition-colors" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-black pt-32 pb-20 px-6">
       <OnboardingHeader />
@@ -289,6 +354,12 @@ export default function ProfilePage() {
       <div className="max-w-md mx-auto">
         <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
           <div className="flex flex-col items-center mb-8">
+            <button
+              onClick={() => setOnboardingPath('choose')}
+              className="text-white/30 hover:text-white/60 text-xs font-bold uppercase tracking-widest mb-4 transition-colors"
+            >
+              &larr; Back
+            </button>
             <h1 className="text-3xl font-bold text-white tracking-tight text-center">
               Tell Us About You
             </h1>

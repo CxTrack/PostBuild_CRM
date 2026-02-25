@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import { CheckCircle2, XCircle, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, LogIn, UserPlus, User, Phone, ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const SESSION_KEY = 'pending_invite_token';
 
@@ -19,7 +20,7 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
-type AcceptState = 'loading' | 'accepting' | 'success' | 'already_member' | 'error' | 'need_auth';
+type AcceptState = 'loading' | 'accepting' | 'success' | 'already_member' | 'error' | 'need_auth' | 'profile_setup';
 
 interface AcceptResult {
   success: boolean;
@@ -38,6 +39,8 @@ export const AcceptInvite = () => {
   const [state, setState] = useState<AcceptState>('loading');
   const [result, setResult] = useState<AcceptResult | null>(null);
   const [error, setError] = useState('');
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const token = searchParams.get('token');
 
@@ -79,10 +82,85 @@ export const AcceptInvite = () => {
       sessionStorage.removeItem(SESSION_KEY);
 
       setResult(data);
-      setState(data.already_member ? 'already_member' : 'success');
+
+      if (data.already_member) {
+        setState('already_member');
+      } else {
+        // Check if user has a profile — if not, show mini profile form
+        const needsProfile = await checkUserProfile(authToken);
+        setState(needsProfile ? 'profile_setup' : 'success');
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
       setState('error');
+    }
+  };
+
+  const checkUserProfile = async (authToken: string): Promise<boolean> => {
+    try {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${user?.id}&select=full_name&limit=1`,
+        {
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${authToken}`,
+          },
+        }
+      );
+      if (!res.ok) return false;
+      const profiles = await res.json();
+      // Needs profile if no record or no name set
+      return !profiles?.length || !profiles[0].full_name;
+    } catch {
+      return false; // fail-open: skip profile form on error
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!profileForm.firstName.trim()) {
+      toast.error('Please enter your first name');
+      return;
+    }
+
+    setSavingProfile(true);
+    const authToken = getAuthToken();
+    if (!authToken || !user) {
+      toast.error('Session expired');
+      setSavingProfile(false);
+      return;
+    }
+
+    try {
+      const fullName = `${profileForm.firstName.trim()} ${profileForm.lastName.trim()}`.trim();
+
+      // Upsert user_profiles
+      const res = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${authToken}`,
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          full_name: fullName,
+          phone_number: profileForm.phone.trim() || null,
+          onboarding_step: 'complete',
+          onboarding_completed: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save profile');
+
+      toast.success('Profile saved!');
+      setState('success');
+    } catch (err) {
+      console.error('[AcceptInvite] Profile save error:', err);
+      toast.error('Failed to save profile. You can update it later in Settings.');
+      setState('success'); // Let them through anyway
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -177,6 +255,87 @@ export const AcceptInvite = () => {
                   <UserPlus className="w-4 h-4" />
                   Create Account
                 </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Mini Profile Form — shown for new users after invite acceptance */}
+          {state === 'profile_setup' && result && (
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                  Welcome to {result.organization_name}!
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Complete your profile to get started.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1">First Name *</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="First name"
+                        value={profileForm.firstName}
+                        onChange={(e) => setProfileForm(f => ({ ...f, firstName: e.target.value }))}
+                        className="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1">Last Name</label>
+                    <input
+                      type="text"
+                      placeholder="Last name"
+                      value={profileForm.lastName}
+                      onChange={(e) => setProfileForm(f => ({ ...f, lastName: e.target.value }))}
+                      className="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1">Phone (optional)</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="tel"
+                      placeholder="+1 (555) 123-4567"
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm(f => ({ ...f, phone: e.target.value }))}
+                      className="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={saveProfile}
+                  disabled={savingProfile || !profileForm.firstName.trim()}
+                  className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {savingProfile ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      Continue to Dashboard
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs font-medium transition-colors"
+                >
+                  Skip for now
+                </button>
               </div>
             </div>
           )}

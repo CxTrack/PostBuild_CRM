@@ -58,6 +58,7 @@ import { CoPilotIntro } from '../components/tour/SubtleHints';
 import CoPilotPanel from '../components/copilot/CoPilotPanel';
 import CoPilotButton from '../components/copilot/CoPilotButton';
 import { useImpersonationStore } from '../stores/impersonationStore';
+import { useEffectiveUser } from '../hooks/useEffectiveUser';
 import { ImpersonationBanner } from '../components/admin/ImpersonationBanner';
 import { NotificationBell } from '../components/ui/NotificationBell';
 
@@ -190,6 +191,7 @@ export const DashboardLayout = () => {
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences, saveSidebarOrder } = usePreferencesStore();
   const { isImpersonating, restoreFromSession } = useImpersonationStore();
+  const effectiveUser = useEffectiveUser();
 
   // DnD sensors — require 8px movement before dragging starts to avoid accidental drags on clicks
   const sensors = useSensors(
@@ -681,12 +683,14 @@ export const DashboardLayout = () => {
               ? 'hover:bg-gray-100 dark:hover:bg-gray-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-            title={sidebarCollapsed ? (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User') : undefined}
+            title={sidebarCollapsed ? effectiveUser.fullName : undefined}
           >
             <div className="flex items-center">
               {(() => {
-                const currentUserAvatar = teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
-                const initial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
+                const currentUserAvatar = effectiveUser.isImpersonated
+                  ? effectiveUser.avatarUrl
+                  : teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                const initial = (effectiveUser.fullName || 'U')[0].toUpperCase();
                 return currentUserAvatar ? (
                   <img src={currentUserAvatar} alt="" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
                 ) : (
@@ -698,7 +702,7 @@ export const DashboardLayout = () => {
               {!sidebarCollapsed && (
                 <div className="ml-3 text-left">
                   <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
-                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                    {effectiveUser.fullName}
                   </p>
                   {isSuperAdmin && !isImpersonating && (
                     <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
@@ -811,18 +815,20 @@ export const DashboardLayout = () => {
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
                   {(() => {
-                    const mobileAvatar = teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                    const mobileAvatar = effectiveUser.isImpersonated
+                      ? effectiveUser.avatarUrl
+                      : teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
                     return mobileAvatar ? (
                       <img src={mobileAvatar} alt="" className="w-10 h-10 rounded-full object-cover mr-3" />
                     ) : (
                       <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
-                        {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
+                        {(effectiveUser.fullName || 'U')[0].toUpperCase()}
                       </div>
                     );
                   })()}
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                      {effectiveUser.fullName}
                     </p>
                     {isSuperAdmin && (
                       <p className="text-sm text-purple-600 dark:text-purple-400">Super Admin</p>

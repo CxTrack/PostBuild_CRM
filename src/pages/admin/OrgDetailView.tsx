@@ -5,8 +5,9 @@ import {
   MessageSquare, Send, Bell, Clock, Shield, Crown, Loader2, X,
   AlertCircle, Calendar, Zap, ArrowUpDown, Trash2, ShieldOff,
   CheckCircle2, AlertTriangle, PlayCircle, ArrowDownLeft, ArrowUpRight,
-  ChevronLeft, ChevronRight, Search, Eye
+  ChevronLeft, ChevronRight, Search, Eye, ArrowRightLeft
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAdminStore } from '../../stores/adminStore';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
@@ -132,7 +133,7 @@ export const OrgDetailView = () => {
     selectedOrgId, selectedOrgContext, setSelectedOrg, setActiveTab,
     orgDetail, loading, errors, fetchOrgDetail,
     sendAdminNotification, sendAdminEmail, sendAdminSms,
-    deactivateOrganization
+    deactivateOrganization, moveUserToOrg, fetchAllOrgsSummary, allOrgsSummary,
   } = useAdminStore();
 
   const [commMode, setCommMode] = useState<CommMode>(null);
@@ -173,6 +174,46 @@ export const OrgDetailView = () => {
   const [orgSmsLoading, setOrgSmsLoading] = useState(false);
   const [selectedSms, setSelectedSms] = useState<any>(null);
   const SMS_PER_PAGE = 10;
+
+  // Move-user modal state
+  const [moveUser, setMoveUser] = useState<{ user_id: string; full_name: string; email: string; role: string } | null>(null);
+  const [moveTargetOrgId, setMoveTargetOrgId] = useState('');
+  const [moveNewRole, setMoveNewRole] = useState('member');
+  const [moveLoading, setMoveLoading] = useState(false);
+  const [moveOrgSearch, setMoveOrgSearch] = useState('');
+
+  const openMoveModal = (m: any) => {
+    setMoveUser({ user_id: m.user_id, full_name: m.full_name || 'Unknown', email: m.email, role: m.role });
+    setMoveTargetOrgId('');
+    setMoveNewRole('member');
+    setMoveOrgSearch('');
+    fetchAllOrgsSummary();
+  };
+
+  const closeMoveModal = () => {
+    setMoveUser(null);
+    setMoveTargetOrgId('');
+    setMoveNewRole('member');
+    setMoveOrgSearch('');
+  };
+
+  const handleMoveUser = async () => {
+    if (!moveUser || !moveTargetOrgId || !selectedOrgId) return;
+    setMoveLoading(true);
+    const result = await moveUserToOrg(moveUser.user_id, selectedOrgId, moveTargetOrgId, moveNewRole);
+    setMoveLoading(false);
+    if (result.success) {
+      const d = result.data;
+      toast.success(`Moved ${moveUser.full_name} to ${d?.to_org || 'target org'}${d?.source_org_deactivated ? ' (source org deactivated)' : ''}`);
+      closeMoveModal();
+      // If source org was deactivated (no members left), go back to org list
+      if (d?.source_org_deactivated) {
+        setSelectedOrg(null);
+      }
+    } else {
+      toast.error(result.error || 'Failed to move user');
+    }
+  };
 
   const fetchOrgCalls = useCallback(async (page = 0) => {
     if (!selectedOrgId) return;
@@ -277,23 +318,46 @@ export const OrgDetailView = () => {
           commSubject || 'Message from CxTrack Admin',
           commBody
         );
-        setCommResult({ success: true, message: 'In-app notification sent successfully.' });
+        toast.success('In-app notification sent successfully.');
+        closeCommModal();
       } else if (commMode === 'email' && ownerEmail) {
-        const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
-          <h2 style="color: #111827; font-size: 20px; margin-bottom: 16px;">${commSubject || 'Message from CxTrack'}</h2>
-          <p style="color: #4B5563; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${commBody}</p>
-          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;" />
-          <p style="color: #9CA3AF; font-size: 11px;">Powered by CxTrack | Ontario, Canada</p>
-        </div>`;
+        const subjectLine = commSubject || 'Message from CxTrack';
+        const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">CxTrack</h1>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="background-color:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+          <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#111827;">${subjectLine}</h2>
+          <div style="color:#4b5563;font-size:14px;line-height:1.7;white-space:pre-wrap;">${commBody}</div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background-color:#f9fafb;border-radius:0 0 12px 12px;padding:20px 32px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+          <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">Sent by CxTrack Admin</p>
+          <p style="margin:0;font-size:11px;color:#9ca3af;">CxTrack CRM &bull; Ontario, Canada</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
         await sendAdminEmail(
           ownerEmail,
-          commSubject || 'Message from CxTrack',
+          subjectLine,
           htmlBody,
           commBody,
           selectedOrgId || undefined,
           owner?.user_id || undefined
         );
-        setCommResult({ success: true, message: `Email sent to ${ownerEmail}.` });
+        toast.success(`Email sent to ${ownerEmail}`);
+        closeCommModal();
       } else if (commMode === 'sms' && ownerPhone) {
         await sendAdminSms(
           ownerPhone,
@@ -301,9 +365,11 @@ export const OrgDetailView = () => {
           selectedOrgId || undefined,
           owner?.user_id || undefined
         );
-        setCommResult({ success: true, message: `SMS sent to ${ownerPhone}.` });
+        toast.success(`SMS sent to ${ownerPhone}`);
+        closeCommModal();
       }
     } catch (e: any) {
+      toast.error(e.message || 'Failed to send.');
       setCommResult({ success: false, message: e.message || 'Failed to send.' });
     } finally {
       setCommSending(false);
@@ -544,11 +610,12 @@ export const OrgDetailView = () => {
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Member</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Role</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Last Login</th>
+                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {members.length === 0 ? (
-                    <tr><td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-400">No members found</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-400">No members found</td></tr>
                   ) : members.map((m: any) => {
                     const RoleIcon = ROLE_ICONS[m.role] || Users;
                     const loginAge = daysAgo(m.last_sign_in_at);
@@ -588,6 +655,16 @@ export const OrgDetailView = () => {
                             )}
                           </div>
                         </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={() => openMoveModal(m)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
+                            title="Move to another organization"
+                          >
+                            <ArrowRightLeft className="w-3 h-3" />
+                            Move
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -595,6 +672,119 @@ export const OrgDetailView = () => {
               </table>
             </div>
           </div>
+
+          {/* Move User Modal */}
+          {moveUser && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeMoveModal}>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                    Move User to Another Organization
+                  </h3>
+                  <button onClick={closeMoveModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* User being moved */}
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">Moving User</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{moveUser.full_name}</p>
+                    <p className="text-xs text-gray-500">{moveUser.email}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">From: <span className="font-medium text-gray-600 dark:text-gray-300">{org?.name || 'Current org'}</span></p>
+                  </div>
+
+                  {/* Target org selector */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-1.5">
+                      Target Organization
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Search organizations..."
+                      value={moveOrgSearch}
+                      onChange={(e) => setMoveOrgSearch(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 mb-2"
+                    />
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600">
+                      {loading.allOrgs ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        </div>
+                      ) : (
+                        allOrgsSummary
+                          .filter((o: any) => o.id !== selectedOrgId && o.is_active !== false)
+                          .filter((o: any) => !moveOrgSearch || o.name?.toLowerCase().includes(moveOrgSearch.toLowerCase()))
+                          .map((o: any) => (
+                            <button
+                              key={o.id}
+                              onClick={() => setMoveTargetOrgId(o.id)}
+                              className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors ${
+                                moveTargetOrgId === o.id
+                                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <div>
+                                <p className="font-medium">{o.name}</p>
+                                <p className="text-[10px] text-gray-400">{o.member_count} member{o.member_count !== 1 ? 's' : ''} · {o.subscription_tier || 'free'}</p>
+                              </div>
+                              {moveTargetOrgId === o.id && <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                            </button>
+                          ))
+                      )}
+                      {!loading.allOrgs && allOrgsSummary.filter((o: any) => o.id !== selectedOrgId && o.is_active !== false).filter((o: any) => !moveOrgSearch || o.name?.toLowerCase().includes(moveOrgSearch.toLowerCase())).length === 0 && (
+                        <p className="text-center text-sm text-gray-400 py-4">No matching organizations</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Role selector */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-1.5">
+                      Role in Target Org
+                    </label>
+                    <select
+                      value={moveNewRole}
+                      onChange={(e) => setMoveNewRole(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    >
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                  </div>
+
+                  {/* Warning */}
+                  {members.length === 1 && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        This is the last member. Moving them will deactivate this organization.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+                  <button onClick={closeMoveModal} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMoveUser}
+                    disabled={!moveTargetOrgId || moveLoading}
+                    className="px-5 py-2 text-sm font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    {moveLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+                    {moveLoading ? 'Moving...' : 'Move User'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Recent Activity */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -1555,13 +1745,9 @@ export const OrgDetailView = () => {
               />
             </div>
 
-            {/* Result */}
-            {commResult && (
-              <div className={`mb-4 p-3 rounded-lg text-sm ${
-                commResult.success
-                  ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30'
-                  : 'bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/30'
-              }`}>
+            {/* Error display (success auto-closes modal) */}
+            {commResult && !commResult.success && (
+              <div className="mb-4 p-3 rounded-lg text-sm bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/30">
                 {commResult.message}
               </div>
             )}
@@ -1576,7 +1762,7 @@ export const OrgDetailView = () => {
               </button>
               <button
                 onClick={handleSendComm}
-                disabled={commSending || !commBody.trim() || (commResult?.success === true)}
+                disabled={commSending || !commBody.trim()}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50 ${
                   commMode === 'notification' ? 'bg-purple-600 hover:bg-purple-700' :
                   commMode === 'email' ? 'bg-blue-600 hover:bg-blue-700' :
@@ -1588,7 +1774,7 @@ export const OrgDetailView = () => {
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                {commResult?.success ? 'Sent' : 'Send'}
+                Send
               </button>
             </div>
           </div>

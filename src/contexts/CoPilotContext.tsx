@@ -8,6 +8,7 @@ import type { ActionProposal, ActionStatus, ActionResult, ChoiceOption } from '@
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import { getAuthToken } from '@/utils/auth.utils';
+import { useImpersonationStore } from '@/stores/impersonationStore';
 
 export interface Message {
   id: string;
@@ -241,21 +242,29 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const org = useOrganizationStore.getState().currentOrganization;
       const membership = useOrganizationStore.getState().currentMembership;
 
-      // Read AI CoPilot Context from user profile
+      // Read AI CoPilot Context — use impersonated user's profile when active
+      const impersonation = useImpersonationStore.getState();
       const profile = useAuthStore.getState().profile;
-      const profileMeta = profile?.profile_metadata || {};
+
+      const effectiveMeta = impersonation.isImpersonating && impersonation.targetProfile
+        ? (impersonation.targetProfile.profile_metadata || {})
+        : (profile?.profile_metadata || {});
+      const effectiveName = impersonation.isImpersonating
+        ? (impersonation.targetUserName || '')
+        : (profile?.full_name || '');
+
       const userPreferences = {
-        full_name: profile?.full_name || '',
-        work_style: profileMeta.work_style || [],
-        communication_preference: profileMeta.communication_preference || [],
-        goals: profileMeta.goals || [],
-        expertise: profileMeta.expertise || [],
-        interests: profileMeta.interests || [],
+        full_name: effectiveName,
+        work_style: effectiveMeta.work_style || [],
+        communication_preference: effectiveMeta.communication_preference || [],
+        goals: effectiveMeta.goals || [],
+        expertise: effectiveMeta.expertise || [],
+        interests: effectiveMeta.interests || [],
       };
       const hasAIContext = !!(
-        profileMeta.work_style?.length ||
-        profileMeta.communication_preference?.length ||
-        profileMeta.goals?.length
+        effectiveMeta.work_style?.length ||
+        effectiveMeta.communication_preference?.length ||
+        effectiveMeta.goals?.length
       );
 
       const isAdminPage = currentContext?.page?.startsWith('Admin') ||
@@ -272,6 +281,13 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
           conversationHistory,
           userPreferences,
           hasUserProfile: hasAIContext,
+          // Pass impersonation context so edge function uses correct user for tokens + data
+          ...(impersonation.isImpersonating && impersonation.targetUserId && {
+            impersonation: {
+              targetUserId: impersonation.targetUserId,
+              targetOrgId: impersonation.targetOrgId,
+            },
+          }),
           context: {
             page: currentContext?.page || 'Dashboard',
             industry: org?.industry_template || 'general_business',

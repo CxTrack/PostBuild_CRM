@@ -1,8 +1,9 @@
-import React from 'react';
-import { Users, UserPlus, Calendar as CalendarIcon, TrendingUp, CheckCircle, FileText, DollarSign, Phone, Package, LayoutGrid, Building2, Link, Copy, Zap, Code, Key, MoreVertical, Loader2, X, Settings as SettingsIcon, Info } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Users, UserPlus, Calendar as CalendarIcon, TrendingUp, CheckCircle, FileText, DollarSign, Phone, Package, LayoutGrid, Building2, Link, Copy, Zap, Code, Key, MoreVertical, Loader2, X, Settings as SettingsIcon, Info, UserCheck, UserX, Clock, MessageSquare } from 'lucide-react';
 import { Webhook } from '@/services/webhook.service';
 import { ApiKey } from '@/services/apiKey.service';
 import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
+import { useOrganizationStore, type JoinRequest } from '@/stores/organizationStore';
 import toast from 'react-hot-toast';
 
 interface TeamMember {
@@ -57,6 +58,26 @@ export default function TeamIntegrationsTab({
   onDeleteApiKey,
   bookingUrl,
 }: TeamIntegrationsTabProps) {
+  const { joinRequests, fetchJoinRequests, reviewJoinRequest } = useOrganizationStore();
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [approveRole, setApproveRole] = useState<string>('user');
+
+  useEffect(() => {
+    fetchJoinRequests();
+  }, [currentOrganization?.id]);
+
+  const handleReviewRequest = async (requestId: string, action: 'approved' | 'denied') => {
+    setReviewingId(requestId);
+    try {
+      await reviewJoinRequest(requestId, action, action === 'approved' ? approveRole : undefined);
+      toast.success(action === 'approved' ? 'Request approved! User has been added to the team.' : 'Request denied.');
+    } catch (err: any) {
+      toast.error(err.message || `Failed to ${action === 'approved' ? 'approve' : 'deny'} request`);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
   const industry = currentOrganization?.industry_template || 'general_business';
   const industryModules = INDUSTRY_TEMPLATES[industry] || INDUSTRY_TEMPLATES.general_business;
   const shareableModules = industryModules.filter((m: string) => m !== 'dashboard');
@@ -160,6 +181,79 @@ export default function TeamIntegrationsTab({
           )}
         </div>
       </div>
+
+      {/* Join Requests */}
+      {joinRequests.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Join Requests</h3>
+              <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                {joinRequests.length}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">People requesting to join your organization</p>
+          </div>
+
+          <div className="p-6 space-y-3">
+            {joinRequests.map((request) => (
+              <div key={request.id} className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center shrink-0">
+                      <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {request.user_name || 'Unnamed User'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{request.user_email}</p>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                        <Clock className="w-3 h-3" />
+                        {new Date(request.created_at).toLocaleDateString()}
+                      </div>
+                      {request.message && (
+                        <div className="mt-2 flex items-start gap-1.5 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <MessageSquare className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+                          <p className="text-xs text-gray-600 dark:text-gray-300">{request.message}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={approveRole}
+                      onChange={(e) => setApproveRole(e.target.value)}
+                      className="px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      <option value="user">User</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button
+                      onClick={() => handleReviewRequest(request.id, 'approved')}
+                      disabled={reviewingId === request.id}
+                      className="p-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg transition-colors disabled:opacity-50"
+                      title="Approve"
+                    >
+                      {reviewingId === request.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleReviewRequest(request.id, 'denied')}
+                      disabled={reviewingId === request.id}
+                      className="p-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                      title="Deny"
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Shared Resources */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">

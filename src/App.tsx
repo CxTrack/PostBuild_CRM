@@ -62,6 +62,7 @@ const VoiceSetupPage = lazy(() => import('./pages/onboarding/VoiceSetupPage'));
 const CheckoutPage = lazy(() => import('./pages/onboarding/CheckoutPage'));
 const SuccessPage = lazy(() => import('./pages/onboarding/SuccessPage'));
 const CustomConfigPage = lazy(() => import('./pages/onboarding/CustomConfigPage'));
+const JoinTeamPage = lazy(() => import('./pages/onboarding/JoinTeamPage'));
 
 // Lazy-loaded — Auth
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
@@ -169,6 +170,7 @@ export default function App() {
             <Route path="/onboarding/checkout" element={<CheckoutPage />} />
             <Route path="/onboarding/success" element={<SuccessPage />} />
             <Route path="/onboarding/custom-config" element={<CustomConfigPage />} />
+            <Route path="/onboarding/join-team" element={<JoinTeamPage />} />
             <Route path="/book/:slug" element={<BookingPage />} />
             <Route path="/share/:type/:token" element={<SharedDocumentViewer />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />

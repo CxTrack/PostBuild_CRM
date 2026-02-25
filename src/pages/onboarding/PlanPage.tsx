@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { AlertTriangle, Users, X } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import OnboardingPageWrapper, { staggerContainer, staggerItem } from '@/components/onboarding/OnboardingPageWrapper';
 import PricingTierCard from '@/components/onboarding/PricingTierCard';
 import { pricingTiers, COUNTRY_OPTIONS } from '@/constants/onboarding';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { updateOnboardingStep } from '@/utils/onboarding';
+
+interface SimilarOrg {
+    org_id: string;
+    org_name: string;
+    similarity: number;
+}
 
 // Legal version constants
 const TERMS_VERSION = '1.0.0';
@@ -20,6 +27,9 @@ export default function PlanPage() {
     const [lead, setLead] = useState<any>(null);
     const [tosAccepted, setTosAccepted] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
+    const [similarOrgs, setSimilarOrgs] = useState<SimilarOrg[]>([]);
+    const [showSimilarWarning, setShowSimilarWarning] = useState(false);
+    const [similarityChecked, setSimilarityChecked] = useState(false);
 
     const countryInfo = COUNTRY_OPTIONS.find(c => c.code === lead?.country) || COUNTRY_OPTIONS[0];
 
@@ -72,11 +82,57 @@ export default function PlanPage() {
         return null;
     };
 
-    const handleConfirmWithTerms = () => {
+    const checkSimilarOrgs = async (): Promise<SimilarOrg[]> => {
+        const companyName = lead?.company;
+        if (!companyName || companyName.trim().length < 2) return [];
+
+        try {
+            const token = await getAuthToken();
+            if (!token) return [];
+
+            const res = await fetch(`${supabaseUrl}/rest/v1/rpc/check_similar_organizations`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseAnonKey,
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ p_name: companyName.trim() }),
+            });
+
+            if (!res.ok) return [];
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
+        } catch {
+            return [];
+        }
+    };
+
+    const handleConfirmWithTerms = async () => {
         if (!tosAccepted || !privacyAccepted) {
             toast.error('Please accept the Terms of Service and Privacy Policy to continue.');
             return;
         }
+
+        // If we already checked and user chose to continue, proceed
+        if (similarityChecked) {
+            handleConfirmPlan();
+            return;
+        }
+
+        // Check for similar org names before creating
+        setIsProcessing(true);
+        const similar = await checkSimilarOrgs();
+        setIsProcessing(false);
+
+        if (similar.length > 0) {
+            setSimilarOrgs(similar);
+            setShowSimilarWarning(true);
+            return;
+        }
+
+        // No similar orgs found, proceed
+        setSimilarityChecked(true);
         handleConfirmPlan();
     };
 
@@ -421,6 +477,78 @@ export default function PlanPage() {
                     </div>
                 </div>
             </OnboardingPageWrapper>
+
+            {/* Similar Organization Warning Modal */}
+            {showSimilarWarning && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+                    <div className="bg-gray-900 border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0">
+                                    <AlertTriangle className="w-6 h-6 text-amber-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Similar Organization Found</h2>
+                                    <p className="text-white/40 text-sm mt-0.5">
+                                        Are you sure you want to create a new organization?
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowSimilarWarning(false)}
+                                className="text-white/30 hover:text-white/60 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                            <p className="text-white/60 text-sm">
+                                We found {similarOrgs.length === 1 ? 'an organization' : 'organizations'} with a similar name to <span className="text-white font-semibold">"{lead?.company}"</span>:
+                            </p>
+                            <div className="space-y-2 mt-3">
+                                {similarOrgs.map((org) => (
+                                    <div
+                                        key={org.org_id}
+                                        className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.08] rounded-lg"
+                                    >
+                                        <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
+                                            <Users className="w-4 h-4 text-blue-400" />
+                                        </div>
+                                        <span className="text-white font-semibold text-sm">{org.org_name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-white/40 text-xs mt-2">
+                                If you're joining their team, ask an admin for an invite link instead.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowSimilarWarning(false);
+                                    navigate('/onboarding/join-team');
+                                }}
+                                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Users className="w-4 h-4" />
+                                Join Existing Team
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowSimilarWarning(false);
+                                    setSimilarityChecked(true);
+                                    handleConfirmPlan();
+                                }}
+                                className="flex-1 py-3 text-white/50 hover:text-white/80 text-sm font-bold rounded-xl border border-white/[0.08] hover:border-white/[0.15] transition-all"
+                            >
+                                Create New Anyway
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

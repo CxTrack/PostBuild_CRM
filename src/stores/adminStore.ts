@@ -269,6 +269,7 @@ interface AdminState {
   marketingSubscriptions: any[];
   orgDetail: any | null;
   usageOverview: any | null;
+  allOrgsSummary: any[];
 
   // UI State
   loading: Record<string, boolean>;
@@ -326,6 +327,9 @@ interface AdminState {
     releasePhoneNumbers: boolean;
     sendNotificationEmail: boolean;
   }) => Promise<{ success: boolean; actions?: any; errors?: string[]; error?: string }>;
+  fetchAllOrgsSummary: () => Promise<void>;
+  moveUserToOrg: (userId: string, fromOrgId: string, toOrgId: string, newRole?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
+  deleteEmptyOrg: (orgId: string) => Promise<{ success: boolean; error?: string }>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -355,6 +359,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   marketingSubscriptions: [],
   orgDetail: null,
   usageOverview: null,
+  allOrgsSummary: [],
 
   loading: {},
   errors: {},
@@ -906,6 +911,41 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
         await get().fetchOrgDetail(params.organizationId);
       }
       return data;
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  fetchAllOrgsSummary: async () => {
+    set((s) => ({ loading: { ...s.loading, allOrgs: true } }));
+    try {
+      const data = await supabaseRpc('admin_list_orgs_summary');
+      set((s) => ({ allOrgsSummary: Array.isArray(data) ? data : [], loading: { ...s.loading, allOrgs: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, allOrgs: false }, errors: { ...s.errors, allOrgs: e.message } }));
+    }
+  },
+
+  moveUserToOrg: async (userId: string, fromOrgId: string, toOrgId: string, newRole = 'member') => {
+    try {
+      const data = await supabaseRpc('admin_move_user_to_org', {
+        p_user_id: userId,
+        p_from_org_id: fromOrgId,
+        p_to_org_id: toOrgId,
+        p_new_role: newRole,
+      });
+      // Refresh org detail after move
+      await get().fetchOrgDetail(fromOrgId);
+      return { success: true, data };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  deleteEmptyOrg: async (orgId: string) => {
+    try {
+      await supabaseRpc('admin_delete_empty_org', { p_org_id: orgId });
+      return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message };
     }

@@ -5,6 +5,7 @@ import ActionCard from '@/components/copilot/ActionCard';
 import ChoiceCard from '@/components/copilot/ChoiceCard';
 import FeedbackButtons from '@/components/copilot/FeedbackButtons';
 import { useAuthStore } from '@/stores/authStore';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import {
   X,
   ChevronLeft,
@@ -409,14 +410,13 @@ const CoPilotPanel: React.FC = () => {
 };
 
 const EmptyState: React.FC = () => {
-  const profile = useAuthStore.getState().profile;
-  const profileMeta = profile?.profile_metadata || {};
+  const { fullName, profileMetadata } = useEffectiveUser();
   const hasAIContext = !!(
-    profileMeta.work_style?.length ||
-    profileMeta.communication_preference?.length ||
-    profileMeta.goals?.length
+    profileMetadata.work_style?.length ||
+    profileMetadata.communication_preference?.length ||
+    profileMetadata.goals?.length
   );
-  const firstName = profile?.full_name?.split(' ')[0];
+  const firstName = fullName?.split(' ')[0];
 
   return (
     <div className="text-center py-12">
