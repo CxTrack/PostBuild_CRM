@@ -308,7 +308,35 @@ const TicketsSection = () => {
     );
 };
 
-// ─── Ticket Detail Modal (Read-Only for Admin) ───────────────────────────────
+// ─── Ticket Detail Modal (Full Action Panel) ─────────────────────────────────
+
+const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
+const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'];
+const CATEGORY_OPTIONS = ['general', 'billing', 'technical', 'feature_request', 'bug', 'bug_report', 'data_request', 'account_issue', 'copilot_feedback'];
+
+const timeAgo = (dateStr: string) => {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diff = Math.floor((now - then) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+};
+
+const activityLabel = (a: TicketActivity) => {
+    const name = a.user_name || 'Admin';
+    switch (a.action) {
+        case 'status_changed': return <><strong>{name}</strong> changed status from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
+        case 'priority_changed': return <><strong>{name}</strong> changed priority from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
+        case 'category_changed': return <><strong>{name}</strong> changed category from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
+        case 'assigned': return <><strong>{name}</strong> assigned ticket from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
+        case 'replied': return <><strong>{name}</strong> replied</>;
+        case 'internal_note': return <><strong>{name}</strong> added an internal note</>;
+        default: return <><strong>{name}</strong> performed {a.action}</>;
+    }
+};
 
 const TicketDetailModal = ({
     ticket,
@@ -317,6 +345,62 @@ const TicketDetailModal = ({
     ticket: AdminTicket;
     onClose: () => void;
 }) => {
+    const {
+        currentTicketMessages, currentTicketActivities, adminUsers, loading,
+        fetchTicketDetail, updateTicket, replyToTicket, fetchAdminUsers, fetchAllTickets,
+    } = useAdminStore();
+
+    const [replyText, setReplyText] = useState('');
+    const [isInternal, setIsInternal] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [localTicket, setLocalTicket] = useState(ticket);
+    const [updating, setUpdating] = useState<string | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        fetchTicketDetail(ticket.id);
+        if (adminUsers.length === 0) fetchAdminUsers();
+    }, [ticket.id]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [currentTicketMessages]);
+
+    const handleFieldChange = async (field: string, value: string | null) => {
+        setUpdating(field);
+        try {
+            await updateTicket(ticket.id, { [field]: value });
+            setLocalTicket((prev) => ({ ...prev, [field]: value }));
+            if (field === 'assigned_to' && value) {
+                const admin = adminUsers.find((a) => a.id === value);
+                if (admin) setLocalTicket((prev) => ({ ...prev, assigned_to_name: admin.name }));
+            }
+            toast.success(`${field.replace('_', ' ')} updated`);
+        } catch {
+            toast.error(`Failed to update ${field}`);
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    const handleSendReply = async () => {
+        if (!replyText.trim()) return;
+        setSending(true);
+        try {
+            await replyToTicket(ticket.id, replyText.trim(), isInternal);
+            setReplyText('');
+            // Update local status if it was auto-transitioned
+            if (localTicket.status === 'open' && !isInternal) {
+                setLocalTicket((prev) => ({ ...prev, status: 'in_progress' }));
+            }
+            toast.success(isInternal ? 'Internal note added' : 'Reply sent');
+        } catch {
+            toast.error('Failed to send');
+        } finally {
+            setSending(false);
+        }
+    };
+
     const getSourceBadge = (source?: string) => {
         switch (source) {
             case 'help_center': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Help Center</span>;
@@ -328,76 +412,250 @@ const TicketDetailModal = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 pt-10 overflow-y-auto">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-3xl my-4 border border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 pt-6 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-5xl my-4 border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span className="font-mono text-sm text-gray-500">#{ticket.id.slice(-8)}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                ticket.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                                ticket.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                                ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-green-100 text-green-700'
-                            }`}>
-                                {ticket.priority}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                ticket.status === 'open' ? 'bg-blue-100 text-blue-700' :
-                                ticket.status === 'in_progress' ? 'bg-purple-100 text-purple-700' :
-                                ticket.status === 'resolved' ? 'bg-green-100 text-green-700' :
-                                'bg-gray-100 text-gray-700'
-                            }`}>
-                                {ticket.status.replace('_', ' ')}
-                            </span>
                             {getSourceBadge(ticket.source)}
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{ticket.subject}</h2>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{ticket.subject}</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            {ticket.organization_name || 'Unknown org'} {ticket.customer_name ? `/ ${ticket.customer_name}` : ''} &mdash; {new Date(ticket.created_at).toLocaleString()}
+                        </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button onClick={() => { onClose(); fetchAllTickets(); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg ml-2 flex-shrink-0">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
-                    {/* Description */}
-                    <div>
-                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</h3>
-                        <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{ticket.description}</p>
+                {/* Action Bar */}
+                <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+                    {/* Status */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Status</span>
+                        <select
+                            value={localTicket.status}
+                            onChange={(e) => handleFieldChange('status', e.target.value)}
+                            disabled={updating === 'status'}
+                            className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
+                        >
+                            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                        </select>
+                    </div>
+                    {/* Priority */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Priority</span>
+                        <select
+                            value={localTicket.priority}
+                            onChange={(e) => handleFieldChange('priority', e.target.value)}
+                            disabled={updating === 'priority'}
+                            className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
+                        >
+                            {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </div>
+                    {/* Category */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Category</span>
+                        <select
+                            value={localTicket.category || 'general'}
+                            onChange={(e) => handleFieldChange('category', e.target.value)}
+                            disabled={updating === 'category'}
+                            className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
+                        >
+                            {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
+                        </select>
+                    </div>
+                    {/* Assign */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Assigned</span>
+                        <select
+                            value={localTicket.assigned_to || ''}
+                            onChange={(e) => handleFieldChange('assigned_to', e.target.value || null)}
+                            disabled={updating === 'assigned_to'}
+                            className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
+                        >
+                            <option value="">Unassigned</option>
+                            {adminUsers.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                    </div>
+                    {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500" />}
+                </div>
+
+                {/* Main Content: Two columns */}
+                <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
+                    {/* Left: Conversation Thread */}
+                    <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 dark:border-gray-700">
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            {/* Original ticket description */}
+                            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
+                                        {(ticket.customer_name?.[0] || ticket.organization_name?.[0] || 'U').toUpperCase()}
+                                    </div>
+                                    <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                                        {ticket.customer_name || ticket.organization_name || 'User'}
+                                    </span>
+                                    <span className="text-xs text-gray-400">{timeAgo(ticket.created_at)}</span>
+                                </div>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
+                            </div>
+
+                            {/* Messages */}
+                            {loading.ticketDetail && currentTicketMessages.length === 0 ? (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                                </div>
+                            ) : (
+                                currentTicketMessages.map((msg) => (
+                                    <div
+                                        key={msg.id}
+                                        className={`rounded-xl p-4 ${
+                                            msg.is_internal
+                                                ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800'
+                                                : 'bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${
+                                                msg.is_internal ? 'bg-amber-500' : 'bg-purple-500'
+                                            }`}>
+                                                {(msg.user_name?.[0] || 'A').toUpperCase()}
+                                            </div>
+                                            <span className={`text-xs font-semibold ${
+                                                msg.is_internal ? 'text-amber-800 dark:text-amber-300' : 'text-purple-800 dark:text-purple-300'
+                                            }`}>
+                                                {msg.user_name || 'Admin'}
+                                            </span>
+                                            {msg.is_internal && (
+                                                <span className="px-1.5 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 text-[10px] font-bold rounded uppercase">
+                                                    Internal
+                                                </span>
+                                            )}
+                                            <span className="text-xs text-gray-400">{timeAgo(msg.created_at)}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{msg.message}</p>
+                                    </div>
+                                ))
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Reply Composer */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+                            <div className="flex items-center gap-2 mb-2">
+                                <button
+                                    onClick={() => setIsInternal(false)}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                        !isInternal
+                                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                                            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    }`}
+                                >
+                                    <Send className="w-3 h-3" /> Reply
+                                </button>
+                                <button
+                                    onClick={() => setIsInternal(true)}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                        isInternal
+                                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                                            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    }`}
+                                >
+                                    <EyeOff className="w-3 h-3" /> Internal Note
+                                </button>
+                            </div>
+                            <div className="flex gap-2">
+                                <textarea
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder={isInternal ? 'Add an internal note (only visible to admins)...' : 'Type your reply...'}
+                                    rows={2}
+                                    className={`flex-1 px-3 py-2 text-sm border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none ${
+                                        isInternal
+                                            ? 'border-amber-200 dark:border-amber-800 focus:border-amber-400'
+                                            : 'border-gray-200 dark:border-gray-600 focus:border-purple-400'
+                                    }`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                            e.preventDefault();
+                                            handleSendReply();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={handleSendReply}
+                                    disabled={sending || !replyText.trim()}
+                                    className={`px-4 py-2 rounded-xl text-white font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-1.5 self-end ${
+                                        isInternal
+                                            ? 'bg-amber-600 hover:bg-amber-700'
+                                            : 'bg-purple-600 hover:bg-purple-700'
+                                    }`}
+                                >
+                                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    Send
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">Ctrl+Enter to send</p>
+                        </div>
                     </div>
 
-                    {/* Meta info grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Organization</p>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{ticket.organization_name || 'N/A'}</p>
-                        </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Customer</p>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{ticket.customer_name || 'N/A'}</p>
-                            {ticket.customer_email && <p className="text-xs text-gray-500">{ticket.customer_email}</p>}
-                        </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Category</p>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{(ticket.category || 'general').replace('_', ' ')}</p>
-                        </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Created</p>
-                            <p className="text-sm text-gray-900 dark:text-white">{new Date(ticket.created_at).toLocaleString()}</p>
-                        </div>
-                        {ticket.resolved_at && (
-                            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Resolved</p>
-                                <p className="text-sm text-gray-900 dark:text-white">{new Date(ticket.resolved_at).toLocaleString()}</p>
+                    {/* Right: Meta + Activity Timeline */}
+                    <div className="w-full md:w-80 overflow-y-auto p-5 space-y-5 flex-shrink-0 bg-gray-50 dark:bg-gray-800/30">
+                        {/* Meta Info */}
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Details</h4>
+                            <div className="space-y-2.5">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase">Organization</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{ticket.organization_name || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase">Customer</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{ticket.customer_name || 'N/A'}</p>
+                                    {ticket.customer_email && <p className="text-xs text-gray-500">{ticket.customer_email}</p>}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase">Created</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{new Date(ticket.created_at).toLocaleString()}</p>
+                                </div>
+                                {localTicket.resolved_at && (
+                                    <div>
+                                        <p className="text-[10px] font-semibold text-gray-400 uppercase">Resolved</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{new Date(localTicket.resolved_at).toLocaleString()}</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        {ticket.assigned_to_name && (
-                            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Assigned To</p>
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">{ticket.assigned_to_name}</p>
-                            </div>
-                        )}
+                        </div>
+
+                        {/* Activity Timeline */}
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Activity</h4>
+                            {loading.ticketDetail && currentTicketActivities.length === 0 ? (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                                </div>
+                            ) : currentTicketActivities.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic">No activity yet</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {currentTicketActivities.map((a) => (
+                                        <div key={a.id} className="flex gap-2.5">
+                                            <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full mt-1.5 flex-shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                    {activityLabel(a)}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.created_at)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
