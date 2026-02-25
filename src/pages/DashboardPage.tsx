@@ -516,16 +516,17 @@ export const DashboardPage = () => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                    {isCall ? 'Call Logged' :
-                                                        isQuote ? `Quote #${(item as any).quote_number}` :
-                                                            isInvoice ? `Invoice #${(item as any).invoice_number}` : 'Activity'}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                     {isCall
                                                         ? ((item as any).customers
                                                             ? ([(item as any).customers.first_name, (item as any).customers.last_name].filter(Boolean).join(' ')
                                                                 || (item as any).customers.name || (item as any).customers.company)
                                                             : (item as any).customer_phone || 'Unknown Customer')
+                                                        : isQuote ? `Quote #${(item as any).quote_number}`
+                                                            : isInvoice ? `Invoice #${(item as any).invoice_number}` : 'Activity'}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {isCall
+                                                        ? 'Call Logged'
                                                         : ((item as any).customer_name || 'Unknown Customer')}
                                                 </p>
                                             </div>
