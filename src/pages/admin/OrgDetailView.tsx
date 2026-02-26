@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ArrowLeft, Building2, Users, Mail, Phone, Globe, MapPin,
   Brain, PhoneCall, FileText, UserCheck, Activity, Layers,
@@ -134,7 +134,7 @@ export const OrgDetailView = () => {
     orgDetail, loading, errors, fetchOrgDetail,
     sendAdminNotification, sendAdminEmail, sendAdminSms,
     deactivateOrganization, moveUserToOrg, fetchAllOrgsSummary, allOrgsSummary,
-    updateOrgStatus,
+    updateOrgStatus, updateOrgIndustryTemplate,
   } = useAdminStore();
 
   const [commMode, setCommMode] = useState<CommMode>(null);
@@ -163,6 +163,21 @@ export const OrgDetailView = () => {
   const [showStatusModal, setShowStatusModal] = useState<'merged' | 'suspended' | 'active' | null>(null);
   const [statusReason, setStatusReason] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
+
+  // Industry template switcher state
+  const [showTemplateSwitcher, setShowTemplateSwitcher] = useState(false);
+  const [templateUpdating, setTemplateUpdating] = useState(false);
+  const templateRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showTemplateSwitcher) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (templateRef.current && !templateRef.current.contains(e.target as Node)) {
+        setShowTemplateSwitcher(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTemplateSwitcher]);
 
   // Call History state
   const [orgCalls, setOrgCalls] = useState<any[]>([]);
@@ -569,9 +584,59 @@ export const OrgDetailView = () => {
               <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${TIER_COLORS[org?.subscription_tier] || TIER_COLORS.free}`}>
                 {(org?.subscription_tier || 'free').toUpperCase()}
               </span>
-              <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize">
-                {INDUSTRY_LABELS[org?.industry_template] || org?.industry_template || 'General'}
-              </span>
+              <div className="relative" ref={templateRef}>
+                <button
+                  onClick={() => setShowTemplateSwitcher(!showTemplateSwitcher)}
+                  className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                  title="Click to change industry template"
+                >
+                  {INDUSTRY_LABELS[org?.industry_template] || org?.industry_template || 'General'}
+                  <ArrowUpDown className="w-3 h-3 opacity-50" />
+                </button>
+                {showTemplateSwitcher && (
+                  <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Switch Industry Template</p>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {Object.entries(INDUSTRY_LABELS).map(([key, label]) => (
+                        <button
+                          key={key}
+                          disabled={templateUpdating}
+                          onClick={async () => {
+                            if (key === org?.industry_template) {
+                              setShowTemplateSwitcher(false);
+                              return;
+                            }
+                            setTemplateUpdating(true);
+                            const result = await updateOrgIndustryTemplate(selectedOrgId!, key);
+                            setTemplateUpdating(false);
+                            setShowTemplateSwitcher(false);
+                            if (result.success) {
+                              toast.success(result.message || `Switched to ${label}`);
+                            } else {
+                              toast.error(result.error || 'Failed to update template');
+                            }
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between ${
+                            key === org?.industry_template
+                              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                          } ${templateUpdating ? 'opacity-50' : ''}`}
+                        >
+                          {label}
+                          {key === org?.industry_template && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                    {templateUpdating && (
+                      <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Updating...
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {org?.status && org.status !== 'active' && (
                 <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
                   org.status === 'merged' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'

@@ -331,6 +331,7 @@ interface AdminState {
   updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }, comment?: string) => Promise<void>;
   replyToTicket: (ticketId: string, message: string, isInternal?: boolean) => Promise<void>;
   updateOrgStatus: (orgId: string, status: string, reason: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  updateOrgIndustryTemplate: (orgId: string, templateId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   fetchDeletionRequests: () => Promise<void>;
   updateDeletionRequest: (requestId: string, status: string, notes?: string) => Promise<void>;
   fetchPhoneLifecycle: () => Promise<void>;
@@ -1058,6 +1059,19 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       // Refresh priority alerts since merged/suspended orgs should disappear
       await get().fetchPriorityAlerts();
       return { success: true, message: data?.message || `Status changed to ${status}` };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateOrgIndustryTemplate: async (orgId: string, templateId: string) => {
+    try {
+      const data = await supabaseRpc<{ success: boolean; message?: string }>('admin_update_org_industry_template', {
+        p_org_id: orgId,
+        p_template: templateId,
+      });
+      await get().fetchOrgDetail(orgId);
+      return { success: true, message: data?.message || `Template changed to ${templateId}` };
     } catch (e: any) {
       return { success: false, error: e.message };
     }
