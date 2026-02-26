@@ -654,28 +654,32 @@ function ThreadDetail({
           const hasHtml = !!msg.body_html;
 
           return (
-            <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[95%] lg:max-w-[85%] rounded-xl px-3 py-2 ${
+            <div key={msg.id} className={`rounded-lg overflow-hidden ${
+              isOutbound
+                ? (isMidnight ? 'bg-blue-600/10 border border-blue-500/20 border-l-2 border-l-blue-500' : 'bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/60 dark:border-blue-800/40 border-l-2 border-l-blue-500')
+                : (isMidnight ? 'bg-gray-800/40 border border-gray-700/50' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700')
+            }`}>
+              {/* Sender + time */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 ${
                 isOutbound
-                  ? (isMidnight ? 'bg-blue-600/20 border border-blue-500/30' : 'bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50')
-                  : (isMidnight ? 'bg-gray-800/60 border border-gray-700/50' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700')
+                  ? 'border-b border-blue-100/50 dark:border-blue-800/30'
+                  : 'border-b border-gray-100 dark:border-gray-700/50'
               }`}>
-                {/* Sender + time */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-medium ${
-                    isOutbound ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-                  }`}>
-                    {isOutbound ? 'You' : (msg.sender_email || 'Unknown')}
-                  </span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                    {formatFullDate(msg.sent_at || msg.created_at)}
-                  </span>
-                </div>
+                <span className={`text-xs font-medium ${
+                  isOutbound ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                }`}>
+                  {isOutbound ? 'You' : (msg.sender_email || 'Unknown')}
+                </span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                  {formatFullDate(msg.sent_at || msg.created_at)}
+                </span>
+              </div>
 
-                {/* Body */}
+              {/* Body */}
+              <div className="px-3 py-2">
                 {hasHtml ? (
                   <div
-                    className={`email-body text-sm leading-relaxed break-words ${
+                    className={`email-body text-sm leading-relaxed ${
                       isOutbound ? 'text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-gray-300'
                     }`}
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body_html!) }}
