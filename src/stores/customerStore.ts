@@ -203,12 +203,26 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     }
 
     try {
-      // Delete related records first to avoid FK constraint errors
+      // Delete customer-owned tables (meaningless without customer)
       await supabase.from('customer_notes').delete().eq('customer_id', id);
       await supabase.from('customer_contacts').delete().eq('customer_id', id);
+      await supabase.from('customer_documents').delete().eq('customer_id', id);
+      await supabase.from('customer_files').delete().eq('customer_id', id);
+      await supabase.from('customer_subscriptions').delete().eq('customer_id', id);
+      await supabase.from('sms_consent').delete().eq('customer_id', id);
       await supabase.from('tasks').delete().eq('customer_id', id);
       await supabase.from('pipeline_items').delete().eq('customer_id', id);
       await supabase.from('calendar_events').delete().eq('customer_id', id);
+
+      // Unlink reference tables (preserve records, set customer_id to null)
+      await supabase.from('calls').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('conversations').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('email_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('invoices').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('payments').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('quotes').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('sms_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('support_tickets').update({ customer_id: null }).eq('customer_id', id);
 
       const { error } = await supabase
         .from('customers')
