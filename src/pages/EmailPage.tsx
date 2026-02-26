@@ -202,6 +202,19 @@ export default function EmailPage() {
     saveEmailLayout({ ...emailLayout, layout: newLayout });
   };
 
+  // ── Theme helpers ──
+  const isDark = theme === 'dark' || theme === 'midnight';
+  const isMidnight = theme === 'midnight';
+  const containerBg = isMidnight ? 'bg-black' : 'bg-gray-50 dark:bg-gray-900';
+  const panelBg = isMidnight ? 'bg-gray-900/50 border-gray-700/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+  const hoverBg = isMidnight ? 'hover:bg-gray-800/60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+  const activeBg = isMidnight ? 'bg-gray-800/80' : 'bg-blue-50 dark:bg-gray-700/70';
+
+  // ── Layout logic (must be defined BEFORE useCallback that references panelSizes) ──
+  const compactList = isDesktop && layout === 'bottom';
+  const useToggle = !isDesktop || layout === 'off';
+  const panelSizes = layout === 'right' ? emailLayout.panelSizes.right : emailLayout.panelSizes.bottom;
+
   // Debounced panel resize persistence
   const resizeTimer = useRef<ReturnType<typeof setTimeout>>();
   const handlePanelResize = useCallback((layoutMap: Record<string, number>) => {
@@ -222,19 +235,6 @@ export default function EmailPage() {
   useEffect(() => () => {
     if (resizeTimer.current) clearTimeout(resizeTimer.current);
   }, []);
-
-  // ── Theme helpers ──
-  const isDark = theme === 'dark' || theme === 'midnight';
-  const isMidnight = theme === 'midnight';
-  const containerBg = isMidnight ? 'bg-black' : 'bg-gray-50 dark:bg-gray-900';
-  const panelBg = isMidnight ? 'bg-gray-900/50 border-gray-700/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
-  const hoverBg = isMidnight ? 'hover:bg-gray-800/60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
-  const activeBg = isMidnight ? 'bg-gray-800/80' : 'bg-blue-50 dark:bg-gray-700/70';
-
-  // ── Layout logic ──
-  const compactList = isDesktop && layout === 'bottom';
-  const useToggle = !isDesktop || layout === 'off';
-  const panelSizes = layout === 'right' ? emailLayout.panelSizes.right : emailLayout.panelSizes.bottom;
 
   // ── Disconnected state ──
   if (connectionStatus === 'disconnected' && !loading) {
