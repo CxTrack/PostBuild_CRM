@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Search, Clock, User, Tag, MessageSquare, X, Send,
-    AlertTriangle, CheckCircle, Circle, MoreVertical,
+    AlertTriangle, AlertCircle, CheckCircle, Circle, MoreVertical,
     Trash2, ExternalLink, LayoutGrid, List,
     RefreshCw, Globe, FileText, UserX, Check, Loader2,
     Eye, EyeOff, ArrowRight, UserPlus
@@ -327,11 +327,12 @@ const timeAgo = (dateStr: string) => {
 
 const activityLabel = (a: TicketActivity) => {
     const name = a.user_name || 'Admin';
+    const comment = a.message ? <span className="block text-[10px] text-gray-500 dark:text-gray-400 italic mt-0.5">"{a.message}"</span> : null;
     switch (a.action) {
-        case 'status_changed': return <><strong>{name}</strong> changed status from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
-        case 'priority_changed': return <><strong>{name}</strong> changed priority from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
-        case 'category_changed': return <><strong>{name}</strong> changed category from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
-        case 'assigned': return <><strong>{name}</strong> assigned ticket from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span></>;
+        case 'status_changed': return <><strong>{name}</strong> changed status from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span>{comment}</>;
+        case 'priority_changed': return <><strong>{name}</strong> changed priority from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span>{comment}</>;
+        case 'category_changed': return <><strong>{name}</strong> changed category from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span>{comment}</>;
+        case 'assigned': return <><strong>{name}</strong> assigned ticket from <span className="font-mono text-xs">{a.old_value}</span> to <span className="font-mono text-xs">{a.new_value}</span>{comment}</>;
         case 'replied': return <><strong>{name}</strong> replied</>;
         case 'internal_note': return <><strong>{name}</strong> added an internal note</>;
         default: return <><strong>{name}</strong> performed {a.action}</>;
@@ -355,7 +356,10 @@ const TicketDetailModal = ({
     const [sending, setSending] = useState(false);
     const [localTicket, setLocalTicket] = useState(ticket);
     const [updating, setUpdating] = useState<string | null>(null);
+    const [pendingChange, setPendingChange] = useState<{ field: string; value: string | null; label: string; oldValue: string | null } | null>(null);
+    const [changeComment, setChangeComment] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         fetchTicketDetail(ticket.id);
@@ -366,10 +370,10 @@ const TicketDetailModal = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [currentTicketMessages]);
 
-    const handleFieldChange = async (field: string, value: string | null) => {
+    const handleFieldChange = async (field: string, value: string | null, comment: string) => {
         setUpdating(field);
         try {
-            await updateTicket(ticket.id, { [field]: value });
+            await updateTicket(ticket.id, { [field]: value }, comment);
             setLocalTicket((prev) => ({ ...prev, [field]: value }));
             if (field === 'assigned_to' && value) {
                 const admin = adminUsers.find((a) => a.id === value);
@@ -381,6 +385,36 @@ const TicketDetailModal = ({
         } finally {
             setUpdating(null);
         }
+    };
+
+    const initiateChange = (field: string, value: string | null, label: string) => {
+        const oldValue = field === 'assigned_to'
+            ? (localTicket.assigned_to ? (adminUsers.find((a) => a.id === localTicket.assigned_to)?.name || localTicket.assigned_to_name || 'Unknown') : 'Unassigned')
+            : ((localTicket as any)[field] || 'none');
+        setPendingChange({ field, value, label, oldValue });
+        setChangeComment('');
+        setTimeout(() => commentInputRef.current?.focus(), 50);
+    };
+
+    const confirmChange = async () => {
+        if (!pendingChange || !changeComment.trim()) return;
+        await handleFieldChange(pendingChange.field, pendingChange.value, changeComment.trim());
+        setPendingChange(null);
+        setChangeComment('');
+    };
+
+    const cancelChange = () => {
+        // Revert dropdown visually by resetting localTicket to current server state
+        setPendingChange(null);
+        setChangeComment('');
+    };
+
+    const getDisplayValue = (field: string, value: string | null): string => {
+        if (field === 'assigned_to') {
+            if (!value) return 'Unassigned';
+            return adminUsers.find((a) => a.id === value)?.name || 'Unknown';
+        }
+        return (value || 'none').replace(/_/g, ' ');
     };
 
     const handleSendReply = async () => {
@@ -438,8 +472,8 @@ const TicketDetailModal = ({
                         <span className="text-xs font-semibold text-gray-500 uppercase">Status</span>
                         <select
                             value={localTicket.status}
-                            onChange={(e) => handleFieldChange('status', e.target.value)}
-                            disabled={updating === 'status'}
+                            onChange={(e) => initiateChange('status', e.target.value, 'Status')}
+                            disabled={!!updating || !!pendingChange}
                             className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
                         >
                             {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
@@ -450,8 +484,8 @@ const TicketDetailModal = ({
                         <span className="text-xs font-semibold text-gray-500 uppercase">Priority</span>
                         <select
                             value={localTicket.priority}
-                            onChange={(e) => handleFieldChange('priority', e.target.value)}
-                            disabled={updating === 'priority'}
+                            onChange={(e) => initiateChange('priority', e.target.value, 'Priority')}
+                            disabled={!!updating || !!pendingChange}
                             className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
                         >
                             {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -462,8 +496,8 @@ const TicketDetailModal = ({
                         <span className="text-xs font-semibold text-gray-500 uppercase">Category</span>
                         <select
                             value={localTicket.category || 'general'}
-                            onChange={(e) => handleFieldChange('category', e.target.value)}
-                            disabled={updating === 'category'}
+                            onChange={(e) => initiateChange('category', e.target.value, 'Category')}
+                            disabled={!!updating || !!pendingChange}
                             className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
                         >
                             {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
@@ -474,8 +508,8 @@ const TicketDetailModal = ({
                         <span className="text-xs font-semibold text-gray-500 uppercase">Assigned</span>
                         <select
                             value={localTicket.assigned_to || ''}
-                            onChange={(e) => handleFieldChange('assigned_to', e.target.value || null)}
-                            disabled={updating === 'assigned_to'}
+                            onChange={(e) => initiateChange('assigned_to', e.target.value || null, 'Assignment')}
+                            disabled={!!updating || !!pendingChange}
                             className="px-2 py-1 text-xs font-medium border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
                         >
                             <option value="">Unassigned</option>
@@ -484,6 +518,52 @@ const TicketDetailModal = ({
                     </div>
                     {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500" />}
                 </div>
+
+                {/* Confirm Change Modal */}
+                {pendingChange && (
+                    <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/10 flex-shrink-0">
+                        <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                Change {pendingChange.label}: <span className="font-mono text-xs">{pendingChange.oldValue}</span> → <span className="font-mono text-xs">{getDisplayValue(pendingChange.field, pendingChange.value)}</span>
+                            </p>
+                        </div>
+                        <textarea
+                            ref={commentInputRef}
+                            value={changeComment}
+                            onChange={(e) => setChangeComment(e.target.value)}
+                            placeholder="Add a note explaining this change (required)..."
+                            rows={2}
+                            className="w-full px-3 py-2 text-sm border-2 border-amber-200 dark:border-amber-800 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:border-amber-400 focus:outline-none"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && changeComment.trim()) {
+                                    e.preventDefault();
+                                    confirmChange();
+                                }
+                                if (e.key === 'Escape') cancelChange();
+                            }}
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-gray-400">Ctrl+Enter to confirm, Esc to cancel</p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={cancelChange}
+                                    className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmChange}
+                                    disabled={!changeComment.trim() || !!updating}
+                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                    {updating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    Confirm Change
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Main Content: Two columns */}
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">

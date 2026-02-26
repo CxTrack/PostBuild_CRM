@@ -52,6 +52,7 @@ const Access = lazy(() => import('./website/Access'));
 const QuoteBuilder = lazy(() => import('./pages/quotes/QuoteBuilder'));
 const InvoiceBuilder = lazy(() => import('./pages/invoices/InvoiceBuilder'));
 const NewDealPage = lazy(() => import('./pages/pipeline/NewDealPage'));
+const EmailPage = lazy(() => import('./pages/EmailPage'));
 
 // Lazy-loaded — Onboarding
 const ProfilePage = lazy(() => import('./pages/onboarding/ProfilePage'));
@@ -202,6 +203,7 @@ export default function App() {
               <Route path="suppliers" element={<Suppliers />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="financials" element={<Financials />} />
+              <Route path="email" element={<EmailPage />} />
             </Route>
 
             {/* Builder Routes - Require Authentication */}

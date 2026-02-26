@@ -328,8 +328,9 @@ interface AdminState {
   fetchAdminUsers: () => Promise<void>;
   fetchAllTickets: () => Promise<void>;
   fetchTicketDetail: (ticketId: string) => Promise<void>;
-  updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }) => Promise<void>;
+  updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }, comment?: string) => Promise<void>;
   replyToTicket: (ticketId: string, message: string, isInternal?: boolean) => Promise<void>;
+  updateOrgStatus: (orgId: string, status: string, reason: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   fetchDeletionRequests: () => Promise<void>;
   updateDeletionRequest: (requestId: string, status: string, notes?: string) => Promise<void>;
   fetchPhoneLifecycle: () => Promise<void>;
@@ -596,7 +597,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     }
   },
 
-  updateTicket: async (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }) => {
+  updateTicket: async (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }, comment?: string) => {
     try {
       const params: Record<string, any> = { p_ticket_id: ticketId };
       if (updates.status) params.p_status = updates.status;
@@ -607,6 +608,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       } else if (updates.assigned_to) {
         params.p_assigned_to = updates.assigned_to;
       }
+      if (comment) params.p_comment = comment;
 
       const updatedTicket = await supabaseRpc<AdminTicket>('admin_update_ticket', params);
 
@@ -1039,6 +1041,23 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       await supabaseRpc('admin_delete_empty_org', { p_org_id: orgId });
       return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateOrgStatus: async (orgId: string, status: string, reason: string) => {
+    try {
+      const data = await supabaseRpc<{ success: boolean; message?: string }>('admin_update_org_status', {
+        p_org_id: orgId,
+        p_status: status,
+        p_reason: reason,
+      });
+      // Refresh org detail to reflect new status
+      await get().fetchOrgDetail(orgId);
+      // Refresh priority alerts since merged/suspended orgs should disappear
+      await get().fetchPriorityAlerts();
+      return { success: true, message: data?.message || `Status changed to ${status}` };
     } catch (e: any) {
       return { success: false, error: e.message };
     }

@@ -228,3 +228,110 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ========================================
+   EMAIL BODY — HTML email rendering
+   ======================================== */
+
+.email-body {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.email-body p {
+  margin-bottom: 0.5em;
+}
+
+.email-body br {
+  display: block;
+  content: "";
+  margin-top: 0.25em;
+}
+
+.email-body blockquote {
+  border-left: 3px solid rgba(107, 114, 128, 0.4);
+  padding-left: 0.75em;
+  margin: 0.75em 0;
+  color: rgba(156, 163, 175, 0.9);
+}
+
+.email-body a {
+  color: #3b82f6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.email-body a:hover {
+  color: #60a5fa;
+}
+
+.email-body ul,
+.email-body ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.email-body li {
+  margin-bottom: 0.25em;
+}
+
+.email-body hr {
+  border: none;
+  border-top: 1px solid rgba(107, 114, 128, 0.3);
+  margin: 0.75em 0;
+}
+
+.email-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.email-body table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+/* Don't force borders/padding on email table cells — marketing emails
+   use tables purely for layout and set their own spacing inline. */
+.email-body td,
+.email-body th {
+  vertical-align: top;
+}
+
+/* Respect center tag commonly used by email builders */
+.email-body center {
+  text-align: center;
+}
+
+.email-body pre,
+.email-body code {
+  font-size: 0.85em;
+  background: rgba(107, 114, 128, 0.1);
+  border-radius: 3px;
+  padding: 0.15em 0.3em;
+}
+
+.email-body pre {
+  padding: 0.75em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.email-body h1,
+.email-body h2,
+.email-body h3,
+.email-body h4 {
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
+  font-weight: 600;
+}
+
+/* Gmail/Outlook quoted text styling */
+.email-body div[style*="border-left"],
+.email-body .gmail_quote,
+.email-body .yahoo_quoted {
+  border-left: 3px solid rgba(107, 114, 128, 0.4) !important;
+  padding-left: 0.75em;
+  margin: 0.75em 0;
+  color: rgba(156, 163, 175, 0.9);
+}

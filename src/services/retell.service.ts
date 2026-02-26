@@ -504,6 +504,54 @@ export const retellService = {
   },
 
   /**
+   * Initiate an outbound AI agent call via Retell.
+   * The AI agent will call the given phone number and handle the conversation.
+   */
+  async makeOutboundCall(params: {
+    organizationId: string;
+    toNumber: string;
+    customerId?: string;
+    customerName?: string;
+    callReason?: string;
+    callContext?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{
+    success: boolean;
+    callId?: string;
+    callRecordId?: string;
+    fromNumber?: string;
+    toNumber?: string;
+    agentName?: string;
+    status?: string;
+    error?: string;
+    notConfigured?: boolean;
+  }> {
+    try {
+      const { data, error } = await invokeEdgeFunction<{
+        success: boolean;
+        callId?: string;
+        callRecordId?: string;
+        fromNumber?: string;
+        toNumber?: string;
+        agentId?: string;
+        agentName?: string;
+        status?: string;
+        error?: string;
+        notConfigured?: boolean;
+      }>('make-outbound-call', params);
+
+      if (error) {
+        return { success: false, error };
+      }
+
+      return data || { success: false, error: 'No response from edge function' };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      return { success: false, error: message };
+    }
+  },
+
+  /**
    * Get the webhook URL for this Supabase project.
    */
   getWebhookUrl(): string {

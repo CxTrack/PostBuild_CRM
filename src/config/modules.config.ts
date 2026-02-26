@@ -113,21 +113,30 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
     requiredPermissions: ['financials.read'],
     category: 'finance',
   },
+  email: {
+    id: 'email',
+    name: 'Email',
+    description: 'Inbox and email management',
+    icon: 'Mail',
+    route: '/email',
+    requiredPermissions: [],
+    category: 'operations',
+  },
 };
 
 export const INDUSTRY_TEMPLATES: Record<string, string[]> = {
-  tax_accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks', 'quotes', 'calls'],
-  distribution_logistics: ['dashboard', 'crm', 'products', 'inventory', 'suppliers', 'quotes', 'invoices', 'financials', 'pipeline', 'calls'],
-  gyms_fitness: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls', 'pipeline', 'products', 'inventory'],
-  contractors_home_services: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
-  healthcare: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls'],
-  real_estate: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'quotes'],
-  legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes'],
-  general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+  tax_accounting: ['dashboard', 'crm', 'calendar', 'invoices', 'financials', 'tasks', 'quotes', 'calls', 'email'],
+  distribution_logistics: ['dashboard', 'crm', 'products', 'inventory', 'suppliers', 'quotes', 'invoices', 'financials', 'pipeline', 'calls', 'email'],
+  gyms_fitness: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls', 'pipeline', 'products', 'inventory', 'email'],
+  contractors_home_services: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls', 'email'],
+  healthcare: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'calls', 'email'],
+  real_estate: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'quotes', 'email'],
+  legal_services: ['dashboard', 'crm', 'calendar', 'invoices', 'tasks', 'pipeline', 'calls', 'quotes', 'email'],
+  general_business: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls', 'email'],
   // New templates
-  agency: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'financials', 'quotes', 'products', 'calls'],
-  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'products', 'financials'],
-  construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls'],
+  agency: ['dashboard', 'crm', 'calendar', 'tasks', 'pipeline', 'invoices', 'financials', 'quotes', 'products', 'calls', 'email'],
+  mortgage_broker: ['dashboard', 'crm', 'calendar', 'pipeline', 'tasks', 'calls', 'products', 'financials', 'email'],
+  construction: ['dashboard', 'crm', 'calendar', 'quotes', 'invoices', 'tasks', 'pipeline', 'calls', 'email'],
 };
 
 export const INDUSTRY_LABELS: Record<string, any> = {
@@ -196,14 +205,14 @@ export const INDUSTRY_LABELS: Record<string, any> = {
 
 export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
   // Free tier gets all modules during 30-day trial, then restricted
-  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials'],
-  business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products'],
-  elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
-  enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials'],
+  free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials', 'email'],
+  business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'email'],
+  elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials', 'email'],
+  enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials', 'email'],
 };
 
 // Modules that are only available during free trial (30 days) - will be locked after
-export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials'];
+export const FREE_TRIAL_ONLY_MODULES = ['pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials', 'email'];
 
 // Trial duration in days
 export const FREE_TRIAL_DAYS = 30;

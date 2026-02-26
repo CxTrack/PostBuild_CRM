@@ -105,9 +105,13 @@ export const CallDetail = () => {
 
     const isDark = theme === 'dark' || theme === 'midnight';
 
+    // Card classes using Tailwind dark: prefix so midnight.css can override
+    const cardClass = 'rounded-2xl border-2 p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none';
+    const sideCardClass = 'rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none';
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
                 <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
             </div>
         );
@@ -115,7 +119,7 @@ export const CallDetail = () => {
 
     if (error) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
                 <div className="text-center">
                     <p className="text-red-500 mb-4">{error}</p>
                     <button onClick={() => navigate(-1)} className="px-4 py-2 bg-blue-600 text-white rounded-xl">
@@ -128,9 +132,9 @@ export const CallDetail = () => {
 
     if (!call) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
                 <div className="text-center">
-                    <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Call not found</p>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">Call not found</p>
                     <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl">
                         Go Back
                     </button>
@@ -161,7 +165,7 @@ export const CallDetail = () => {
     const sentimentColor = sentiment === 'positive' ? 'text-green-600' : sentiment === 'negative' ? 'text-red-600' : 'text-gray-600';
 
     return (
-        <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} p-4 sm:p-6`}>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-4 sm:p-6">
             <div className="max-w-[1920px] mx-auto">
 
                 {/* Header */}
@@ -169,9 +173,9 @@ export const CallDetail = () => {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate(-1)}
-                            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}
+                            className="p-2 rounded-xl transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                         >
-                            <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+                            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                         <div>
                             <div className="flex items-center gap-2">
@@ -210,7 +214,7 @@ export const CallDetail = () => {
                                     </span>
                                 )}
                             </div>
-                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {startTime?.toLocaleString() || 'Unknown time'}
                             </p>
                         </div>
@@ -218,14 +222,14 @@ export const CallDetail = () => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleExport}
-                            className={`px-4 py-2 border-2 rounded-xl flex items-center gap-2 transition-colors ${isDark ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                            className="px-4 py-2 border-2 rounded-xl flex items-center gap-2 transition-colors border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                             <Download className="w-4 h-4" />
                             Export
                         </button>
                         <button
                             onClick={handleShare}
-                            className={`px-4 py-2 border-2 rounded-xl flex items-center gap-2 transition-colors ${isDark ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                            className="px-4 py-2 border-2 rounded-xl flex items-center gap-2 transition-colors border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                             <Share2 className="w-4 h-4" />
                             Share
@@ -240,18 +244,18 @@ export const CallDetail = () => {
 
                         {/* Audio Player */}
                         {recordingUrl && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-bold flex items-center gap-2">
                                         <Volume2 className="w-5 h-5 text-blue-600" />
                                         Call Recording
                                     </h2>
-                                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">
                                         {formatDuration(durationMs)}
                                     </span>
                                 </div>
 
-                                <div className={`rounded-xl p-6 border ${isDark ? 'bg-blue-900/10 border-blue-800/30' : 'bg-blue-50 border-blue-100'}`}>
+                                <div className="rounded-xl p-6 border bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30">
                                     <audio
                                         src={recordingUrl}
                                         ref={audioRef}
@@ -260,13 +264,13 @@ export const CallDetail = () => {
                                     />
 
                                     <div className="mb-4">
-                                        <div className={`w-full rounded-full h-2 ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                        <div className="w-full rounded-full h-2 bg-gray-200 dark:bg-gray-700">
                                             <div
                                                 className="bg-blue-600 h-2 rounded-full transition-all duration-100"
                                                 style={{ width: durationMs > 0 ? `${(currentTime / (durationMs / 1000)) * 100}%` : '0%' }}
                                             />
                                         </div>
-                                        <div className={`flex justify-between text-xs mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        <div className="flex justify-between text-xs mt-2 text-gray-600 dark:text-gray-400">
                                             <span>{formatTime(currentTime)}</span>
                                             <span>{formatTime(durationMs / 1000)}</span>
                                         </div>
@@ -275,7 +279,7 @@ export const CallDetail = () => {
                                     <div className="flex items-center justify-center gap-6">
                                         <button
                                             onClick={() => { if (audioRef.current) audioRef.current.currentTime -= 10 }}
-                                            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800' : 'hover:bg-white/50'}`}
+                                            className="p-2 rounded-lg transition-colors hover:bg-white/50 dark:hover:bg-gray-700"
                                         >
                                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" /></svg>
                                         </button>
@@ -287,7 +291,7 @@ export const CallDetail = () => {
                                         </button>
                                         <button
                                             onClick={() => { if (audioRef.current) audioRef.current.currentTime += 10 }}
-                                            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800' : 'hover:bg-white/50'}`}
+                                            className="p-2 rounded-lg transition-colors hover:bg-white/50 dark:hover:bg-gray-700"
                                         >
                                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" /></svg>
                                         </button>
@@ -300,7 +304,7 @@ export const CallDetail = () => {
                                                     onClick={() => handlePlaybackRateChange(rate)}
                                                     className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${playbackRate === rate
                                                         ? 'bg-blue-600 text-white shadow-sm'
-                                                        : (isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-600 hover:bg-white hover:text-blue-600')
+                                                        : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-white'
                                                         }`}
                                                 >
                                                     {rate}x
@@ -314,34 +318,34 @@ export const CallDetail = () => {
 
                         {/* No Recording Available */}
                         {!recordingUrl && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <div className="flex items-center gap-2 text-center justify-center py-8">
-                                    <Volume2 className={`w-5 h-5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
-                                    <p className={isDark ? 'text-gray-500' : 'text-gray-400'}>No recording available for this call</p>
+                                    <Volume2 className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <p className="text-gray-400 dark:text-gray-500">No recording available for this call</p>
                                 </div>
                             </div>
                         )}
 
                         {/* AI Summary */}
-                        <div className={`rounded-2xl border-2 p-6 transition-all ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                        <div className={cardClass}>
                             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                 <MessageSquare className="w-5 h-5 text-purple-600" />
                                 AI Summary
                             </h2>
                             {summaryText ? (
-                                <p className={`leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <p className="leading-relaxed text-gray-700 dark:text-gray-300">
                                     {summaryText}
                                 </p>
                             ) : (
                                 <div className="flex items-center gap-3 py-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                        <MessageSquare className={`w-5 h-5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+                                        <MessageSquare className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                                     </div>
                                     <div>
-                                        <p className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                             No AI summary available
                                         </p>
-                                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">
                                             AI summaries are generated automatically for new calls handled by your voice agent
                                         </p>
                                     </div>
@@ -351,7 +355,7 @@ export const CallDetail = () => {
 
                         {/* Transcript */}
                         {transcript.length > 0 && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                     <FileText className="w-5 h-5 text-blue-600" />
                                     Full Transcript
@@ -370,18 +374,18 @@ export const CallDetail = () => {
                                             </div>
                                             <div className={`max-w-[80%] ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
                                                 <div className="flex items-center gap-2 mb-1 justify-inherit">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                                         {message.role === 'agent' ? (call.agent_name || 'AI Agent') : 'Customer'}
                                                     </span>
                                                     {message.timestamp != null && (
                                                         <span className="text-[10px] text-gray-400">{formatTime(message.timestamp)}</span>
                                                     )}
                                                 </div>
-                                                <div className={`inline-block px-4 py-3 rounded-2xl text-sm ${message.role === 'agent'
-                                                    ? (isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-100')
-                                                    : (isDark ? 'bg-indigo-900/20 border-indigo-800/50' : 'bg-indigo-50 border-indigo-100')
-                                                    } border`}>
-                                                    <p className={isDark ? 'text-gray-200' : 'text-gray-800'}>{message.content}</p>
+                                                <div className={`inline-block px-4 py-3 rounded-2xl text-sm border ${message.role === 'agent'
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/50'
+                                                    : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/50'
+                                                    }`}>
+                                                    <p className="text-gray-800 dark:text-gray-200">{message.content}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -392,12 +396,12 @@ export const CallDetail = () => {
 
                         {/* Plain text transcript fallback */}
                         {transcript.length === 0 && (call?.transcript || summary?.transcript) && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                     <FileText className="w-5 h-5 text-blue-600" />
                                     Transcript
                                 </h2>
-                                <p className={`whitespace-pre-wrap leading-relaxed text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <p className="whitespace-pre-wrap leading-relaxed text-sm text-gray-700 dark:text-gray-300">
                                     {summary?.transcript || call?.transcript}
                                 </p>
                             </div>
@@ -405,7 +409,7 @@ export const CallDetail = () => {
 
                         {/* Action Items */}
                         {actionItems.length > 0 && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                     <CheckCircle className="w-5 h-5 text-green-600" />
                                     Action Items
@@ -414,7 +418,7 @@ export const CallDetail = () => {
                                     {actionItems.map((item, index) => {
                                         const text = typeof item === 'string' ? item : item.description;
                                         return (
-                                            <div key={index} className={`flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                                            <div key={index} className="flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600">
                                                 <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">
                                                     {index + 1}
                                                 </div>
@@ -432,22 +436,22 @@ export const CallDetail = () => {
 
                         {/* Sentiment Analysis */}
                         {sentiment && (
-                            <div className={`rounded-2xl border-2 p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                            <div className={cardClass}>
                                 <div className="flex items-center gap-2 mb-4">
                                     <h3 className="text-lg font-bold">Sentiment Analysis</h3>
                                     <Tooltip text="AI-analyzed emotional tone of the conversation. Shows how the customer felt throughout the call.">
-                                        <HelpCircle className={`w-4 h-4 cursor-help ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                        <HelpCircle className="w-4 h-4 cursor-help text-gray-400 dark:text-gray-500" />
                                     </Tooltip>
                                 </div>
 
                                 <div className={`p-4 rounded-xl border-2 ${sentiment === 'positive'
-                                    ? (isDark ? 'bg-green-900/20 border-green-800/50' : 'bg-green-50 border-green-100')
+                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/50'
                                     : sentiment === 'negative'
-                                        ? (isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-100')
-                                        : (isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-100')
+                                        ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/50'
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600'
                                     }`}>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Overall</span>
+                                        <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Overall</span>
                                         <SentimentIcon className={`w-5 h-5 ${sentimentColor}`} />
                                     </div>
                                     <div className="flex items-baseline gap-2">
@@ -463,54 +467,52 @@ export const CallDetail = () => {
                         )}
 
                         {/* Call Metadata */}
-                        <div className={`rounded-2xl p-6 ${isDark ? 'bg-gray-900/50 border border-gray-800/50' : 'bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm'}`}>
-                            <h3 className={`text-sm font-medium tracking-tight mb-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Call Information</h3>
+                        <div className={sideCardClass}>
+                            <h3 className="text-sm font-medium tracking-tight mb-6 text-gray-500 dark:text-gray-400">Call Information</h3>
                             <div className="space-y-5">
                                 {/* Duration - Hero stat */}
-                                <div className="text-center pb-5 border-b border-gray-100 dark:border-gray-800/50">
-                                    <p className={`text-4xl font-light tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <div className="text-center pb-5 border-b border-gray-100 dark:border-gray-700">
+                                    <p className="text-4xl font-light tracking-tight text-gray-900 dark:text-white">
                                         {formatDuration(durationMs)}
                                     </p>
-                                    <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Duration</p>
+                                    <p className="text-xs mt-1 text-gray-400 dark:text-gray-500">Duration</p>
                                 </div>
 
                                 {/* Clean metadata rows */}
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Direction</span>
-                                        <span className={`text-sm font-medium capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>{call.direction}</span>
+                                        <span className="text-sm text-gray-500">Direction</span>
+                                        <span className="text-sm font-medium capitalize text-gray-900 dark:text-white">{call.direction}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Type</span>
-                                        <span className={`text-sm font-medium capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        <span className="text-sm text-gray-500">Type</span>
+                                        <span className="text-sm font-medium capitalize text-gray-900 dark:text-white">
                                             {call.call_type === 'ai_agent' ? 'AI Agent' : 'Human'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Status</span>
-                                        <span className={`text-sm font-medium capitalize ${call.status === 'completed' ? 'text-green-600' :
-                                            isDark ? 'text-white' : 'text-gray-900'
-                                            }`}>{call.status}</span>
+                                        <span className="text-sm text-gray-500">Status</span>
+                                        <span className={`text-sm font-medium capitalize ${call.status === 'completed' ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>{call.status}</span>
                                     </div>
                                     {displayPhone && (
                                         <div className="flex justify-between items-center">
-                                            <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Phone</span>
-                                            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{displayPhone}</span>
+                                            <span className="text-sm text-gray-500">Phone</span>
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">{displayPhone}</span>
                                         </div>
                                     )}
                                     {call.agent_name && (
                                         <div className="flex justify-between items-center">
-                                            <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Agent</span>
-                                            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{call.agent_name}</span>
+                                            <span className="text-sm text-gray-500">Agent</span>
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">{call.agent_name}</span>
                                         </div>
                                     )}
                                     {call.outcome && (
                                         <div className="flex justify-between items-center">
-                                            <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Outcome</span>
+                                            <span className="text-sm text-gray-500">Outcome</span>
                                             <span className={`text-sm font-medium capitalize ${
                                                 call.outcome === 'positive' ? 'text-green-600' :
                                                 call.outcome === 'negative' ? 'text-red-600' :
-                                                isDark ? 'text-white' : 'text-gray-900'
+                                                'text-gray-900 dark:text-white'
                                             }`}>{call.outcome}</span>
                                         </div>
                                     )}
@@ -520,18 +522,18 @@ export const CallDetail = () => {
 
                         {/* Key Topics */}
                         {keyTopics.length > 0 && (
-                            <div className={`rounded-2xl p-6 ${isDark ? 'bg-gray-900/50 border border-gray-800/50' : 'bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm'}`}>
+                            <div className={sideCardClass}>
                                 <div className="flex items-center gap-2 mb-4">
-                                    <h3 className={`text-sm font-medium tracking-tight ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Topics</h3>
+                                    <h3 className="text-sm font-medium tracking-tight text-gray-500 dark:text-gray-400">Topics</h3>
                                     <Tooltip text="Main subjects discussed during the call, automatically extracted by AI.">
-                                        <HelpCircle className={`w-3 h-3 cursor-help ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                        <HelpCircle className="w-3 h-3 cursor-help text-gray-400 dark:text-gray-500" />
                                     </Tooltip>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {keyTopics.map((topic, index) => (
                                         <span
                                             key={index}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${isDark ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}
+                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                                         >
                                             {topic}
                                         </span>
@@ -542,13 +544,13 @@ export const CallDetail = () => {
 
                         {/* Tags */}
                         {call.tags && call.tags.length > 0 && (
-                            <div className={`rounded-2xl p-6 ${isDark ? 'bg-gray-900/50 border border-gray-800/50' : 'bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm'}`}>
-                                <h3 className={`text-sm font-medium tracking-tight mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Tags</h3>
+                            <div className={sideCardClass}>
+                                <h3 className="text-sm font-medium tracking-tight mb-4 text-gray-500 dark:text-gray-400">Tags</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {call.tags.map((tag, index) => (
                                         <span
                                             key={index}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${isDark ? 'bg-purple-900/30 text-purple-300 border border-purple-800/30' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}
+                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/30"
                                         >
                                             {tag}
                                         </span>
@@ -559,9 +561,9 @@ export const CallDetail = () => {
 
                         {/* Notes */}
                         {call.notes && (
-                            <div className={`rounded-2xl p-6 ${isDark ? 'bg-gray-900/50 border border-gray-800/50' : 'bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm'}`}>
-                                <h3 className={`text-sm font-medium tracking-tight mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Notes</h3>
-                                <p className={`text-sm whitespace-pre-wrap ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{call.notes}</p>
+                            <div className={sideCardClass}>
+                                <h3 className="text-sm font-medium tracking-tight mb-4 text-gray-500 dark:text-gray-400">Notes</h3>
+                                <p className="text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">{call.notes}</p>
                             </div>
                         )}
                     </div>

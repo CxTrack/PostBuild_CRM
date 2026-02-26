@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   GripVertical,
+  Mail,
 } from 'lucide-react';
 
 import {
@@ -88,6 +89,7 @@ const MODULE_ICONS: Record<string, any> = {
   inventory: Package,
   suppliers: Users,
   financials: DollarSign,
+  email: Mail,
 };
 
 const MODULE_TOUR_IDS: Record<string, string> = {

@@ -134,6 +134,7 @@ export const OrgDetailView = () => {
     orgDetail, loading, errors, fetchOrgDetail,
     sendAdminNotification, sendAdminEmail, sendAdminSms,
     deactivateOrganization, moveUserToOrg, fetchAllOrgsSummary, allOrgsSummary,
+    updateOrgStatus,
   } = useAdminStore();
 
   const [commMode, setCommMode] = useState<CommMode>(null);
@@ -157,6 +158,11 @@ export const OrgDetailView = () => {
   const [confirmOrgName, setConfirmOrgName] = useState('');
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateResult, setDeactivateResult] = useState<{ success: boolean; message: string; actions?: any } | null>(null);
+
+  // Org status modal state
+  const [showStatusModal, setShowStatusModal] = useState<'merged' | 'suspended' | 'active' | null>(null);
+  const [statusReason, setStatusReason] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Call History state
   const [orgCalls, setOrgCalls] = useState<any[]>([]);
@@ -402,6 +408,25 @@ export const OrgDetailView = () => {
     setRefundAmount('');
   };
 
+  const handleOrgStatusChange = async () => {
+    if (!selectedOrgId || !showStatusModal || !statusReason.trim()) return;
+    setStatusUpdating(true);
+    try {
+      const result = await updateOrgStatus(selectedOrgId, showStatusModal, statusReason.trim());
+      if (result.success) {
+        toast.success(result.message || `Organization marked as ${showStatusModal}`);
+        setShowStatusModal(null);
+        setStatusReason('');
+      } else {
+        toast.error(result.error || 'Failed to update status');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update status');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   const handleDeactivate = async () => {
     if (!selectedOrgId) return;
     setDeactivating(true);
@@ -547,6 +572,15 @@ export const OrgDetailView = () => {
               <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize">
                 {INDUSTRY_LABELS[org?.industry_template] || org?.industry_template || 'General'}
               </span>
+              {org?.status && org.status !== 'active' && (
+                <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                  org.status === 'merged' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                    : org.status === 'suspended' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                }`}>
+                  {org.status.toUpperCase()}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
               {org?.business_email && (
@@ -1397,17 +1431,46 @@ export const OrgDetailView = () => {
                 <MessageSquare className="w-3.5 h-3.5" />
                 View Support Tickets
               </button>
-              {/* Deactivate / Reactivate */}
+              {/* Organization Status */}
               <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
-                {isDeactivated ? (
-                  <div className="w-full text-left px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500 rounded-lg flex items-center gap-2 cursor-not-allowed">
-                    <ShieldOff className="w-3.5 h-3.5" />
-                    <div>
-                      <span>Reactivate Organization</span>
-                      <p className="text-[10px] opacity-70">Coming soon</p>
-                    </div>
-                  </div>
-                ) : (
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-1.5">Organization Status</p>
+                <div className="flex items-center gap-1.5 px-3 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    org?.status === 'merged' ? 'bg-orange-500' : org?.status === 'suspended' ? 'bg-amber-500' : 'bg-green-500'
+                  }`} />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 capitalize">{org?.status || 'active'}</span>
+                </div>
+                {(!org?.status || org.status === 'active') && !isDeactivated && (
+                  <>
+                    <button
+                      onClick={() => { setShowStatusModal('merged'); setStatusReason(''); }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/10 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      Mark as Merged
+                    </button>
+                    <button
+                      onClick={() => { setShowStatusModal('suspended'); setStatusReason(''); }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <ShieldOff className="w-3.5 h-3.5" />
+                      Mark as Suspended
+                    </button>
+                  </>
+                )}
+                {org?.status && org.status !== 'active' && (
+                  <button
+                    onClick={() => { setShowStatusModal('active'); setStatusReason(''); }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Reactivate Organization
+                  </button>
+                )}
+              </div>
+              {/* Deactivate */}
+              {!isDeactivated && (!org?.status || org.status === 'active') && (
+                <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
                   <button
                     onClick={openDeactivateModal}
                     className="w-full text-left px-3 py-2 text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors flex items-center gap-2 border border-transparent hover:border-red-200 dark:hover:border-red-800/30"
@@ -1415,8 +1478,8 @@ export const OrgDetailView = () => {
                     <Trash2 className="w-3.5 h-3.5" />
                     Deactivate Organization
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1684,6 +1747,74 @@ export const OrgDetailView = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Org Status Change Modal */}
+      {showStatusModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={() => !statusUpdating && setShowStatusModal(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                showStatusModal === 'merged' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                showStatusModal === 'suspended' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                'bg-green-100 dark:bg-green-900/30'
+              }`}>
+                {showStatusModal === 'merged' ? <ArrowRightLeft className="w-5 h-5 text-orange-600 dark:text-orange-400" /> :
+                 showStatusModal === 'suspended' ? <ShieldOff className="w-5 h-5 text-amber-600 dark:text-amber-400" /> :
+                 <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white capitalize">
+                  {showStatusModal === 'active' ? 'Reactivate' : `Mark as ${showStatusModal}`}
+                </h3>
+                <p className="text-sm text-gray-500">{org?.name}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {showStatusModal === 'merged' && 'This will mark the organization as merged. It will be excluded from priority alerts and the Needs Attention list.'}
+              {showStatusModal === 'suspended' && 'This will suspend the organization. It will be excluded from priority alerts and the Needs Attention list.'}
+              {showStatusModal === 'active' && 'This will reactivate the organization and clear the deactivation status.'}
+            </p>
+
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={statusReason}
+              onChange={(e) => setStatusReason(e.target.value)}
+              placeholder={`Why is this org being ${showStatusModal === 'active' ? 'reactivated' : `marked as ${showStatusModal}`}?`}
+              rows={3}
+              className="w-full px-3 py-2.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-purple-500 resize-none mb-4"
+              autoFocus
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowStatusModal(null); setStatusReason(''); }}
+                disabled={statusUpdating}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleOrgStatusChange}
+                disabled={statusUpdating || !statusReason.trim()}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  showStatusModal === 'merged' ? 'bg-orange-600 hover:bg-orange-700' :
+                  showStatusModal === 'suspended' ? 'bg-amber-600 hover:bg-amber-700' :
+                  'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {statusUpdating ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
+                ) : (
+                  <>{showStatusModal === 'active' ? 'Reactivate' : `Mark as ${showStatusModal}`}</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

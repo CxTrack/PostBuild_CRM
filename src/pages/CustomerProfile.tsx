@@ -6,7 +6,7 @@ import {
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
   AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
-  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck
+  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck, Bot, PhoneCall, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -35,6 +35,8 @@ import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import { retellService } from '@/services/retell.service';
+import { useVoiceAgentStore } from '@/stores/voiceAgentStore';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
@@ -49,7 +51,7 @@ export const CustomerProfile: React.FC = () => {
   const quotesLabel = useIndustryLabel('quotes');
   const quotesLabels = usePageLabels('quotes');
   const invoicesLabels = usePageLabels('invoices');
-  const { visibleModules } = useVisibleModules();
+  const { visibleModules, planTier } = useVisibleModules();
   const enabledModuleIds = visibleModules.map(m => m.id);
   const {
     currentCustomer,
@@ -84,6 +86,9 @@ export const CustomerProfile: React.FC = () => {
   const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
   const [reassigning, setReassigning] = useState(false);
+  const [showAICallModal, setShowAICallModal] = useState(false);
+  const [aiCallLoading, setAiCallLoading] = useState(false);
+  const [aiCallReason, setAiCallReason] = useState('');
   const assignDropdownRef = useRef<HTMLDivElement>(null);
   const { confirm: confirmDeleteNote, DialogComponent: DeleteNoteDialog } = useConfirmDialog();
 
@@ -163,6 +168,33 @@ export const CustomerProfile: React.FC = () => {
 
   const handleAddTask = () => {
     setShowAddTaskModal(true);
+  };
+
+  const handleMakeAICall = async () => {
+    if (!currentOrganization?.id || !currentCustomer?.phone) return;
+    setAiCallLoading(true);
+    try {
+      const result = await retellService.makeOutboundCall({
+        organizationId: currentOrganization.id,
+        toNumber: currentCustomer.phone,
+        customerId: currentCustomer.id,
+        customerName: currentCustomer.name,
+        callReason: aiCallReason || undefined,
+      });
+      if (result.success) {
+        toast.success(`AI agent is calling ${currentCustomer.name}...`);
+        setShowAICallModal(false);
+        setAiCallReason('');
+      } else if (result.notConfigured) {
+        toast.error('Voice AI is not configured. Set up your agent in Settings first.');
+      } else {
+        toast.error(result.error || 'Failed to initiate call');
+      }
+    } catch {
+      toast.error('Failed to initiate AI call');
+    } finally {
+      setAiCallLoading(false);
+    }
   };
 
   return (
@@ -389,9 +421,11 @@ export const CustomerProfile: React.FC = () => {
             onEditCustomer={() => setShowEditModal(true)}
             onSendSMS={() => setShowSMSModal(true)}
             onSendEmail={() => setShowEmailModal(true)}
+            onMakeAICall={() => setShowAICallModal(true)}
             summaryRefreshTrigger={summaryRefreshTrigger}
             smsOptedOut={smsOptedOut}
             organizationId={currentOrganization?.id}
+            planTier={planTier}
           />
         )}
         {activeTab === 'communications' && (
@@ -479,6 +513,85 @@ export const CustomerProfile: React.FC = () => {
         onEmailSent={() => setSummaryRefreshTrigger(t => t + 1)}
       />
 
+      {/* AI Outbound Call Confirmation Modal */}
+      {showAICallModal && currentCustomer.phone && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiCallLoading && setShowAICallModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-500/20 rounded-full flex items-center justify-center">
+                <Bot size={20} className="text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Start AI Call</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your AI agent will call this customer</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Customer</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{currentCustomer.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{formatPhoneDisplay(currentCustomer.phone)}</span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Reason for calling <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={aiCallReason}
+                onChange={(e) => setAiCallReason(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="">General follow-up</option>
+                <option value="following up on a recent inquiry">Follow-up on inquiry</option>
+                <option value="confirming an upcoming appointment">Appointment confirmation</option>
+                <option value="a reminder about an upcoming payment or invoice">Payment reminder</option>
+                <option value="scheduling a meeting or consultation">Schedule a meeting</option>
+                <option value="providing an update on their account or service">Account update</option>
+                <option value="qualifying them as a potential lead">Lead qualification</option>
+                <option value="checking in on their satisfaction with our services">Customer check-in</option>
+              </select>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">
+              The AI agent will introduce itself, state the reason for calling, and handle the conversation. A recording and transcript will be available after the call ends.
+            </p>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAICallModal(false)}
+                disabled={aiCallLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMakeAICall}
+                disabled={aiCallLoading}
+                className="flex-1 flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+              >
+                {aiCallLoading ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Calling...
+                  </>
+                ) : (
+                  <>
+                    <PhoneCall size={16} className="mr-2" />
+                    Start Call
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEditModal && (
         <CustomerModal
           isOpen={showEditModal}
@@ -516,9 +629,11 @@ function OverviewTab({
   onEditCustomer,
   onSendSMS,
   onSendEmail,
+  onMakeAICall,
   summaryRefreshTrigger,
   smsOptedOut = false,
   organizationId,
+  planTier,
 }: {
   customer: any;
   quotes: any[];
@@ -540,9 +655,11 @@ function OverviewTab({
   onEditCustomer: () => void;
   onSendSMS: () => void;
   onSendEmail: () => void;
+  onMakeAICall: () => void;
   summaryRefreshTrigger: number;
   smsOptedOut?: boolean;
   organizationId?: string;
+  planTier?: string;
 }) {
   const navigate = useNavigate();
   const { currentOrganization, currentMembership } = useOrganizationStore();
@@ -867,6 +984,18 @@ function OverviewTab({
                 <MessageSquare size={16} className={`mr-3 ${smsOptedOut ? 'text-gray-400 dark:text-gray-600' : 'text-green-600 dark:text-green-400'}`} />
                 <span className="text-sm text-gray-900 dark:text-white">Send SMS</span>
                 {smsOptedOut && <span className="ml-auto text-xs text-red-500 dark:text-red-400">Opted out</span>}
+              </button>
+            )}
+
+            {/* AI Outbound Call — elite_premium and enterprise only */}
+            {customer.phone && enabledModuleIds.includes('calls') && (planTier === 'elite_premium' || planTier === 'enterprise') && (
+              <button
+                onClick={onMakeAICall}
+                className="w-full flex items-center px-4 py-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors text-left group"
+              >
+                <Bot size={16} className="mr-3 text-purple-600 dark:text-purple-400" />
+                <span className="text-sm text-gray-900 dark:text-white">AI Agent Call</span>
+                <PhoneOutgoing size={12} className="ml-auto text-purple-400 dark:text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             )}
 
