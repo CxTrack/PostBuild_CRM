@@ -40,7 +40,7 @@ export const NotificationBell: React.FC = () => {
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className={`relative ${open ? 'z-40' : ''}`} ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-all"

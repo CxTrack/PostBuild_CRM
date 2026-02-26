@@ -117,7 +117,7 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Title with Suggestions */}
-          <div className="relative">
+          <div className={`relative ${showSuggestions ? 'z-40' : ''}`}>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title <span className="text-red-500">*</span>
             </label>

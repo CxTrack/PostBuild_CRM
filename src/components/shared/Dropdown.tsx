@@ -42,7 +42,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   }, []);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={`relative ${isOpen ? 'z-40' : ''}`} ref={dropdownRef}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label} {required && '*'}

@@ -94,7 +94,7 @@ export default function TimePicker({
         <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
       </div>
 
-      <div className="relative">
+      <div className={`relative ${showManualInput ? 'z-40' : ''}`}>
         <button
           type="button"
           onClick={() => setShowManualInput(!showManualInput)}

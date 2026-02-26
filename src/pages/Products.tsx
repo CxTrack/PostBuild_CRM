@@ -265,12 +265,12 @@ export default function Products() {
 
   return (
     <PageContainer className="gap-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>

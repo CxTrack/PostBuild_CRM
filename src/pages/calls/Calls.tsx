@@ -202,19 +202,19 @@ export default function Calls() {
   return (
     <PageContainer className="gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>
 
         <button
           onClick={() => setShowLogCallModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+          className="flex items-center justify-center w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
         >
           <Plus size={18} className="mr-2" />
           {labels.newButton}
@@ -222,7 +222,7 @@ export default function Calls() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card hover className="flex items-center gap-4 p-4 h-24">
           <IconBadge
             icon={<Phone size={20} className="text-blue-600" />}

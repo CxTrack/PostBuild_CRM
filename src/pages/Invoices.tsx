@@ -320,34 +320,36 @@ export default function Invoices() {
 
   return (
     <PageContainer className="gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ExportButton onExport={(_format) => { }} />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="hidden md:block">
+            <ExportButton onExport={(_format) => { }} />
+          </div>
           <button
             onClick={() => setShowReportModal(true)}
-            className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
+            className="hidden md:flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
           >
             <Download size={16} className="mr-1.5" />
             Report
           </button>
           <button
             onClick={() => setShowExpenseModal(true)}
-            className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
+            className="hidden md:flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
           >
             <Receipt size={16} className="mr-1.5" />
             Log Expense
           </button>
           <Link
             to="/invoices/builder"
-            className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+            className="flex items-center justify-center flex-1 md:flex-initial px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
           >
             <Plus size={18} className="mr-2" />
             {labels.newButton}
@@ -355,7 +357,7 @@ export default function Invoices() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card hover className="flex items-center gap-4 p-4 group h-24">
           <IconBadge
             icon={<Wallet size={20} className="text-blue-600" />}

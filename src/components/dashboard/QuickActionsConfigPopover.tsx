@@ -64,7 +64,7 @@ export const QuickActionsConfigPopover: React.FC<QuickActionsConfigPopoverProps>
   const isSoftModern = theme === 'soft-modern';
 
   return (
-    <div className="relative" ref={popoverRef}>
+    <div className={`relative ${isOpen ? 'z-40' : ''}`} ref={popoverRef}>
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

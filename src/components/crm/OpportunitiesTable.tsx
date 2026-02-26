@@ -48,7 +48,7 @@ export default function OpportunitiesTable() {
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stage</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                <div className="flex items-center gap-1 relative">
+                                <div className={`flex items-center gap-1 relative ${showProbabilityInfo ? 'z-40' : ''}`}>
                                     Probability
                                     <button
                                         onClick={() => setShowProbabilityInfo(!showProbabilityInfo)}

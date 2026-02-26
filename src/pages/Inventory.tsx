@@ -66,7 +66,7 @@ export const Inventory: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card className="flex items-center p-4">
                     <IconBadge icon={<Package size={20} className="text-blue-600" />} gradient="bg-blue-50" />
                     <div className="ml-4">

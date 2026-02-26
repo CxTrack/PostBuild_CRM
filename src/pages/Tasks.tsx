@@ -308,10 +308,10 @@ export default function Tasks({ embedded = false }: TasksProps) {
           <div className={cardOuterClass}>
             <div className={cardClass}>
               {!embedded && (
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <div>
-                    <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">{labels.title}</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
+                    <p className="hidden md:block text-gray-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
                   </div>
 
                   <button
@@ -319,7 +319,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                       setSelectedTask(null);
                       setShowTaskModal(true);
                     }}
-                    className={theme === 'soft-modern' ? 'btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all' : 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors'}
+                    className={theme === 'soft-modern' ? 'btn-primary flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all w-full md:w-auto' : 'flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors w-full md:w-auto'}
                   >
                     <Plus size={18} />
                     {labels.newButton}

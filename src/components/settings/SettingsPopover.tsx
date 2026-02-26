@@ -76,7 +76,7 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({
     ];
 
     return (
-        <div className="relative" ref={popoverRef}>
+        <div className={`relative ${isOpen ? 'z-40' : ''}`} ref={popoverRef}>
             {/* Gear Icon Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}

@@ -140,7 +140,7 @@ export default function CRM() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card hover className="flex items-center gap-4 p-4 h-24">
                     <IconBadge
                         icon={<Users size={20} className="text-blue-600" />}

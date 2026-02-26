@@ -1029,7 +1029,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-2">
                                     {/* Emoji Button */}
-                                    <div className="relative">
+                                    <div className={`relative ${showEmojiPicker ? 'z-40' : ''}`}>
                                         <button
                                             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                             className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"

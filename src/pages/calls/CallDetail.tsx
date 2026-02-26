@@ -13,7 +13,7 @@ import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 
 // Tooltip Component for explanatory hints
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => (
-    <div className="relative group inline-flex items-center">
+    <div className="relative z-40 group inline-flex items-center">
         {children}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-normal w-48 text-center z-50 shadow-lg">
             {text}

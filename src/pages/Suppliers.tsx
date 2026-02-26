@@ -69,17 +69,17 @@ export const Suppliers: React.FC = () => {
     return (
         <PageContainer>
             <Card className="mb-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
+                        <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {labels.subtitle}
                         </p>
                     </div>
                     <Button
                         variant="primary"
                         onClick={openCreateModal}
-                        className="flex items-center"
+                        className="flex items-center justify-center w-full md:w-auto"
                     >
                         <Plus size={20} className="mr-2" />
                         {labels.newButton}

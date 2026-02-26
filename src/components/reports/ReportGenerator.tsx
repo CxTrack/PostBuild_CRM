@@ -273,7 +273,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="relative">
+        <div className={`relative ${isOpen ? 'z-40' : ''}`}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-1.5 font-medium border border-gray-200 dark:border-gray-700

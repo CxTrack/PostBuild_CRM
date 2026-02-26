@@ -293,22 +293,22 @@ export const Customers: React.FC = () => {
   return (
     <PageContainer>
       <Card className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
+            <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
               {labels.subtitle}
             </p>
           </div>
           <Button
             variant="primary"
             onClick={() => setShowCustomerModal(true)}
-            className="flex items-center"
+            className="hidden md:flex items-center"
           >
             <Plus size={20} className="mr-2" />
             {labels.newButton}
           </Button>
-          <div className="ml-2">
+          <div className="hidden md:block ml-2">
             <SettingsPopover
               onCustomFields={() => setShowCustomFields(true)}
               onImportCSV={() => setShowImporter(true)}
@@ -821,69 +821,57 @@ export const Customers: React.FC = () => {
               </div>
             )}
 
-            <div className="md:hidden space-y-4 px-4 pb-20">
+            <div className="md:hidden space-y-2 px-4 pb-20">
               {paginatedCustomers.map((customer) => (
                 <Link
                   key={customer.id}
                   to={`/dashboard/customers/${customer.id}`}
-                  className="block bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm active:scale-[0.98] transition-all"
+                  className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700 shadow-sm active:scale-[0.98] transition-all"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-lg ${customer.customer_type === 'business'
-                        ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
-                        : 'bg-gradient-to-br from-blue-500 to-cyan-600'
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm flex-shrink-0 ${customer.customer_type === 'business'
+                    ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
+                    : 'bg-gradient-to-br from-blue-500 to-cyan-600'
+                    }`}>
+                    {customer.customer_type === 'business' ? (
+                      <Building2 size={16} />
+                    ) : (
+                      getCustomerFullName(customer).charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                        {getCustomerFullName(customer)}
+                      </h3>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase flex-shrink-0 ${customer.status === 'Active'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                         }`}>
-                        {customer.customer_type === 'business' ? (
-                          <Building2 size={24} />
-                        ) : (
-                          getCustomerFullName(customer).charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white">
-                          {getCustomerFullName(customer)}
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {customer.company || (customer.customer_type === 'personal' ? 'Individual' : 'Business')}
-                        </p>
-                      </div>
+                        {customer.status}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase border ${customer.status === 'Active'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : 'bg-gray-50 text-gray-700 border-gray-100'
-                      }`}>
-                      {customer.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-900/50">
-                      <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Contact</p>
-                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
-                        <Mail size={12} className="mr-1.5 text-blue-500" />
-                        <span className="truncate">{customer.email || 'No email'}</span>
-                      </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {customer.company && (
+                        <span className="truncate max-w-[90px]">{customer.company}</span>
+                      )}
+                      {customer.company && (customer.email || customer.phone) && (
+                        <span className="text-gray-300 dark:text-gray-600">&#183;</span>
+                      )}
+                      {customer.email ? (
+                        <span className="truncate flex items-center gap-1">
+                          <Mail size={10} className="text-blue-500 flex-shrink-0" />
+                          {customer.email}
+                        </span>
+                      ) : customer.phone ? (
+                        <span className="truncate flex items-center gap-1">
+                          <Phone size={10} className="text-green-500 flex-shrink-0" />
+                          {formatPhoneDisplay(customer.phone)}
+                        </span>
+                      ) : null}
+                      <span className="ml-auto font-semibold text-gray-700 dark:text-gray-300 flex-shrink-0">
+                        ${customer.total_spent?.toLocaleString() || '0'}
+                      </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-900/50">
-                      <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Spent</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        ${customer.total_spent?.toLocaleString() || '0.00'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-gray-700">
-                    <div className="flex items-center -space-x-2">
-                      {/* Subtle visual indicator or action shortcuts if needed */}
-                      <div className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-blue-100 flex items-center justify-center">
-                        <Eye size={14} className="text-blue-600" />
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center">
-                      View Profile
-                      <Plus size={14} className="ml-1 rotate-45" />
-                    </span>
                   </div>
                 </Link>
               ))}

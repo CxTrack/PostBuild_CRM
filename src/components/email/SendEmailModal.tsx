@@ -325,7 +325,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
         <div className="p-6 space-y-4">
           {/* Template Picker */}
           {templates.length > 0 && (
-            <div className="relative">
+            <div className={`relative ${showTemplates ? 'z-40' : ''}`}>
               <button
                 onClick={() => setShowTemplates(!showTemplates)}
                 className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors w-full"

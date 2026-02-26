@@ -414,7 +414,7 @@ export const ReportingEngine = () => {
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
               Report Type
             </label>
-            <div className="relative">
+            <div className={`relative ${dropdownOpen ? 'z-40' : ''}`}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-left"

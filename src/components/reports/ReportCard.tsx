@@ -81,7 +81,7 @@ export const ReportCard = ({
             >
               <Star className={`w-4 h-4 ${report.is_favorite ? 'fill-current' : ''}`} />
             </button>
-            <div className="relative">
+            <div className={`relative ${showMenu ? 'z-40' : ''}`}>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
                 className={`p-1.5 rounded-lg transition-colors ${textSecondary} ${isMidnight ? 'hover:bg-white/[0.05]' : isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}

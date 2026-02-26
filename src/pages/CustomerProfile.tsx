@@ -238,7 +238,7 @@ export const CustomerProfile: React.FC = () => {
                   </span>
 
                   {/* Assigned User */}
-                  <div className="relative" ref={assignDropdownRef}>
+                  <div className={`relative ${showAssignDropdown ? 'z-40' : ''}`} ref={assignDropdownRef}>
                     <button
                       onClick={() => canReassign && setShowAssignDropdown(!showAssignDropdown)}
                       className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${

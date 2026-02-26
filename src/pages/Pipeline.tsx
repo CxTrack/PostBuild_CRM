@@ -516,12 +516,12 @@ const Pipeline: React.FC = () => {
   return (
     <PageContainer className="gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>
@@ -562,7 +562,7 @@ const Pipeline: React.FC = () => {
 
           <button
             onClick={() => setShowQuickAdd(true)}
-            className="flex items-center px-3 py-1.5 lg:px-4 lg:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm active:scale-95"
+            className="hidden md:flex items-center px-3 py-1.5 lg:px-4 lg:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm active:scale-95"
           >
             <Zap className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline">Quick Add</span>
@@ -579,7 +579,7 @@ const Pipeline: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="hidden md:grid md:grid-cols-3 gap-3">
         <Card hover className="flex items-center gap-3 p-3 lg:p-4 h-auto min-h-[64px]">
           <IconBadge
             icon={<FileText size={18} className="text-blue-600" />}

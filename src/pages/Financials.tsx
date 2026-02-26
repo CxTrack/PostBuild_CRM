@@ -258,7 +258,7 @@ export const Financials: React.FC = () => {
             {/* ==================== OVERVIEW TAB ==================== */}
             {activeTab === 'overview' && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <Card className="relative overflow-hidden group">
                             <div className="flex items-center justify-between mb-4">
                                 <IconBadge icon={<TrendingUp size={24} className="text-emerald-600" />} gradient="bg-emerald-50" />
@@ -454,7 +454,7 @@ export const Financials: React.FC = () => {
             {activeTab === 'recurring' && (
                 <>
                     {/* Recurring Revenue Stat Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <Card className="relative overflow-hidden group">
                             <div className="flex items-center justify-between mb-4">
                                 <IconBadge icon={<DollarSign size={24} className="text-blue-600" />} gradient="bg-blue-50" />
@@ -552,7 +552,7 @@ export const Financials: React.FC = () => {
             {/* ==================== EXPENSES TAB ==================== */}
             {activeTab === 'expenses' && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="hidden md:grid md:grid-cols-3 gap-6 mb-8">
                         <Card className="relative overflow-hidden group">
                             <div className="flex items-center justify-between mb-4">
                                 <IconBadge icon={<TrendingDown size={24} className="text-rose-600" />} gradient="bg-rose-50" />

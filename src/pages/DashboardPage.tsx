@@ -382,7 +382,7 @@ export const DashboardPage = () => {
             </div>
 
             {/* Mini Stat Cards Row (responsive to CoPilot panel) */}
-            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${isCoPilotOpen ? '2xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
+            <div className={`hidden md:grid md:grid-cols-3 gap-3 ${isCoPilotOpen ? '2xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
                 <CompactStatCard
                     label={crmLabels.entityPlural}
                     value={customers.length}
@@ -463,8 +463,10 @@ export const DashboardPage = () => {
                         strategy={rectSortingStrategy}
                     >
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            {quickActions.map((action) => (
-                                <SortableQuickAction key={action.id} action={action} />
+                            {quickActions.map((action, index) => (
+                                <div key={action.id} className={index >= 4 ? 'hidden md:block' : ''}>
+                                    <SortableQuickAction action={action} />
+                                </div>
                             ))}
                         </div>
                     </SortableContext>
