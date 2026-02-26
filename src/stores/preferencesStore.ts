@@ -13,11 +13,20 @@ interface DashboardWidget {
     minH?: number;
 }
 
+interface EmailLayoutPreference {
+    layout: 'right' | 'bottom' | 'off';
+    panelSizes: {
+        right: [number, number];
+        bottom: [number, number];
+    };
+}
+
 interface UserPreferences {
     sidebarOrder: string[];
     dashboardLayout: DashboardWidget[];
     quickActionsOrder: string[];
     mobileNavItems: string[];
+    emailLayout: EmailLayoutPreference;
 }
 
 interface PreferencesStore {
@@ -29,6 +38,7 @@ interface PreferencesStore {
     saveDashboardLayout: (layout: DashboardWidget[]) => Promise<void>;
     saveQuickActionsOrder: (order: string[]) => Promise<void>;
     saveMobileNavItems: (items: string[]) => Promise<void>;
+    saveEmailLayout: (layout: EmailLayoutPreference) => Promise<void>;
 }
 
 const initialPreferencesState = {
@@ -37,6 +47,10 @@ const initialPreferencesState = {
         dashboardLayout: [] as DashboardWidget[],
         quickActionsOrder: ['add-customer', 'schedule', 'create-quote', 'new-invoice', 'create-task'],
         mobileNavItems: ['/customers', '/calendar', '/products'],
+        emailLayout: {
+            layout: 'right',
+            panelSizes: { right: [35, 65], bottom: [50, 50] },
+        },
     },
     isLoading: false,
 };
@@ -77,6 +91,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                     if (p.preference_type === 'dashboard_layout') newPreferences.dashboardLayout = p.preference_value;
                     if (p.preference_type === 'quick_actions_order') newPreferences.quickActionsOrder = p.preference_value;
                     if (p.preference_type === 'mobile_nav_items') newPreferences.mobileNavItems = p.preference_value;
+                    if (p.preference_type === 'email_layout') newPreferences.emailLayout = p.preference_value;
                 });
                 set({ preferences: newPreferences });
             }
@@ -210,6 +225,35 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to update mobile navigation';
             toast.error(message);
+        }
+    },
+
+    saveEmailLayout: async (layout: EmailLayoutPreference) => {
+        // Optimistic update
+        set(state => ({
+            preferences: { ...state.preferences, emailLayout: layout }
+        }));
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!orgId) return;
+
+            await supabase
+                .from('user_preferences')
+                .upsert({
+                    user_id: user.id,
+                    organization_id: orgId,
+                    preference_type: 'email_layout',
+                    preference_value: layout,
+                    updated_at: new Date().toISOString(),
+                }, {
+                    onConflict: 'user_id,organization_id,preference_type'
+                });
+        } catch (error) {
+            console.error('Failed to save email layout:', error);
         }
     },
 }));

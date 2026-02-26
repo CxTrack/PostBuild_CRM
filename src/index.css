@@ -286,6 +286,12 @@
   height: auto;
 }
 
+/* Hide 1x1 tracking pixels commonly embedded in marketing emails */
+.email-body img[width="1"],
+.email-body img[height="1"] {
+  display: none !important;
+}
+
 .email-body table {
   border-collapse: collapse;
   max-width: 100%;
