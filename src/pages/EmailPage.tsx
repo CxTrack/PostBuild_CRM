@@ -18,6 +18,10 @@ import {
   Columns,
   Rows,
   Square,
+  Trash2,
+  CheckSquare,
+  MailCheck,
+  X,
 } from 'lucide-react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { useNavigate } from 'react-router-dom';
@@ -111,10 +115,12 @@ export default function EmailPage() {
   const navigate = useNavigate();
 
   const {
-    threads, selectedThreadId, filter, searchQuery,
+    threads, selectedThreadId, selectedThreadIds, filter, searchQuery,
     loading, syncing, unreadCount, connectionStatus,
-    fetchThreads, markAsRead, toggleStar, syncNow,
-    checkConnection, setFilter, setSelectedThread, setSearchQuery, sendReply,
+    fetchThreads, markAsRead, markThreadsAsRead, markAllAsRead, deleteThreads,
+    toggleStar, syncNow,
+    checkConnection, setFilter, setSelectedThread, setSearchQuery,
+    toggleThreadSelection, selectAllThreads, clearSelection, sendReply,
   } = useEmailStore();
 
   // Preferences (layout)
@@ -200,6 +206,35 @@ export default function EmailPage() {
 
   const handleLayoutChange = (newLayout: 'right' | 'bottom' | 'off') => {
     saveEmailLayout({ ...emailLayout, layout: newLayout });
+  };
+
+  const hasSelection = selectedThreadIds.size > 0;
+
+  const handleSelectAll = () => {
+    if (selectedThreadIds.size === filteredThreads.length) {
+      clearSelection();
+    } else {
+      selectAllThreads(filteredThreads.map(t => t.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedThreadIds.size;
+    if (count === 0) return;
+    await deleteThreads([...selectedThreadIds]);
+    toast.success(`Deleted ${count} conversation${count > 1 ? 's' : ''}`);
+  };
+
+  const handleBulkMarkRead = async () => {
+    if (selectedThreadIds.size === 0) return;
+    await markThreadsAsRead([...selectedThreadIds]);
+    clearSelection();
+    toast.success('Marked as read');
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAsRead();
+    toast.success('All emails marked as read');
   };
 
   // ── Theme helpers ──
@@ -330,22 +365,77 @@ export default function EmailPage() {
           />
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-1">
-          {FILTER_TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
-                filter === tab.key
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              <tab.icon size={12} />
-              {tab.label}
-            </button>
-          ))}
+        {/* Filter tabs + bulk actions */}
+        <div className="flex items-center gap-1">
+          {/* Select-all checkbox */}
+          <button
+            onClick={handleSelectAll}
+            className={`p-1 rounded transition-colors mr-0.5 ${
+              hasSelection
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+            }`}
+            title={hasSelection ? 'Deselect all' : 'Select all'}
+          >
+            <CheckSquare size={14} />
+          </button>
+
+          {hasSelection ? (
+            /* Bulk action bar */
+            <div className="flex items-center gap-1 flex-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">
+                {selectedThreadIds.size} selected
+              </span>
+              <button
+                onClick={handleBulkMarkRead}
+                className="p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Mark selected as read"
+              >
+                <MailCheck size={13} />
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="Delete selected"
+              >
+                <Trash2 size={13} />
+              </button>
+              <button
+                onClick={clearSelection}
+                className="p-1.5 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-auto"
+                title="Cancel selection"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            /* Normal filter tabs + mark all read */
+            <>
+              {FILTER_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilter(tab.key)}
+                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                    filter === tab.key
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <tab.icon size={12} />
+                  {tab.label}
+                </button>
+              ))}
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="ml-auto p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Mark all as read"
+                >
+                  <MailCheck size={13} />
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -369,13 +459,30 @@ export default function EmailPage() {
           </div>
         ) : (
           filteredThreads.map(thread => (
-            <button
+            <div
               key={thread.id}
-              onClick={() => handleThreadClick(thread)}
-              className={`w-full text-left px-3 py-2 border-b border-gray-100 dark:border-gray-700/50 transition-colors ${
+              className={`w-full text-left px-3 py-2 border-b border-gray-100 dark:border-gray-700/50 transition-colors flex items-start gap-2 ${
                 selectedThreadId === thread.id ? activeBg : hoverBg
-              }`}
+              } ${selectedThreadIds.has(thread.id) ? (isMidnight ? 'bg-blue-900/20' : 'bg-blue-50/50 dark:bg-blue-900/10') : ''}`}
             >
+              {/* Checkbox */}
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleThreadSelection(thread.id); }}
+                className={`mt-1 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                  selectedThreadIds.has(thread.id)
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                }`}
+              >
+                {selectedThreadIds.has(thread.id) && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4 7L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                )}
+              </button>
+              {/* Thread content (clickable) */}
+              <button
+                className="flex-1 min-w-0 text-left"
+                onClick={() => handleThreadClick(thread)}
+              >
               {compactList ? (
                 /* Compact single-row for bottom layout */
                 <div className="flex items-center gap-2">
@@ -458,7 +565,8 @@ export default function EmailPage() {
                   </div>
                 </div>
               )}
-            </button>
+              </button>
+            </div>
           ))
         )}
       </div>

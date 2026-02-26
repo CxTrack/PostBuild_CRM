@@ -48,6 +48,22 @@ async function supabasePatch(table: string, query: string, body: Record<string, 
   if (!res.ok) throw new Error(`PATCH ${table} failed: ${await res.text()}`);
 }
 
+async function supabaseDelete(table: string, query: string): Promise<void> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
+    method: 'DELETE',
+    headers: {
+      'apikey': supabaseAnonKey,
+      'Authorization': `Bearer ${token}`,
+      'Prefer': 'return=minimal',
+    },
+  });
+
+  if (!res.ok) throw new Error(`DELETE ${table} failed: ${await res.text()}`);
+}
+
 // Types
 export interface EmailMessage {
   id: string;
@@ -97,6 +113,7 @@ export type EmailFilter = 'all' | 'unread' | 'starred' | 'sent';
 interface EmailStore {
   threads: EmailThread[];
   selectedThreadId: string | null;
+  selectedThreadIds: Set<string>;
   filter: EmailFilter;
   searchQuery: string;
   loading: boolean;
@@ -106,12 +123,18 @@ interface EmailStore {
 
   fetchThreads: (orgId: string, userId: string) => Promise<void>;
   markAsRead: (emailIds: string[]) => Promise<void>;
+  markThreadsAsRead: (threadIds: string[]) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  deleteThreads: (threadIds: string[]) => Promise<void>;
   toggleStar: (emailId: string, currentStarred: boolean) => Promise<void>;
   syncNow: (orgId: string) => Promise<{ synced: number }>;
   checkConnection: (orgId: string, userId: string) => Promise<void>;
   setFilter: (filter: EmailFilter) => void;
   setSelectedThread: (threadId: string | null) => void;
   setSearchQuery: (query: string) => void;
+  toggleThreadSelection: (threadId: string) => void;
+  selectAllThreads: (threadIds: string[]) => void;
+  clearSelection: () => void;
   sendReply: (params: {
     to: string;
     subject: string;
@@ -126,6 +149,7 @@ interface EmailStore {
 const initialState = {
   threads: [] as EmailThread[],
   selectedThreadId: null as string | null,
+  selectedThreadIds: new Set<string>(),
   filter: 'all' as EmailFilter,
   searchQuery: '',
   loading: false,
@@ -233,6 +257,66 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
     } catch (err) {
       console.error('[emailStore] markAsRead error:', err);
     }
+  },
+
+  markThreadsAsRead: async (threadIds: string[]) => {
+    const state = get();
+    const emailIds = state.threads
+      .filter(t => threadIds.includes(t.id))
+      .flatMap(t => t.messages.filter(m => !m.is_read).map(m => m.id));
+    if (emailIds.length > 0) await get().markAsRead(emailIds);
+  },
+
+  markAllAsRead: async () => {
+    const state = get();
+    const unreadIds = state.threads.flatMap(t => t.messages.filter(m => !m.is_read).map(m => m.id));
+    if (unreadIds.length > 0) await get().markAsRead(unreadIds);
+  },
+
+  deleteThreads: async (threadIds: string[]) => {
+    const state = get();
+    const emailIds = state.threads
+      .filter(t => threadIds.includes(t.id))
+      .flatMap(t => t.messages.map(m => m.id));
+
+    if (emailIds.length === 0) return;
+
+    // Optimistic update
+    set(s => {
+      const threadSet = new Set(threadIds);
+      const threads = s.threads.filter(t => !threadSet.has(t.id));
+      const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0);
+      const selectedThreadId = threadSet.has(s.selectedThreadId || '') ? null : s.selectedThreadId;
+      return { threads, unreadCount, selectedThreadId, selectedThreadIds: new Set<string>() };
+    });
+
+    try {
+      // Delete in batches of 20 to avoid URL length limits
+      for (let i = 0; i < emailIds.length; i += 20) {
+        const batch = emailIds.slice(i, i + 20);
+        const ids = batch.map(id => `"${id}"`).join(',');
+        await supabaseDelete('email_log', `id=in.(${ids})`);
+      }
+    } catch (err) {
+      console.error('[emailStore] deleteThreads error:', err);
+    }
+  },
+
+  toggleThreadSelection: (threadId: string) => {
+    set(s => {
+      const next = new Set(s.selectedThreadIds);
+      if (next.has(threadId)) next.delete(threadId);
+      else next.add(threadId);
+      return { selectedThreadIds: next };
+    });
+  },
+
+  selectAllThreads: (threadIds: string[]) => {
+    set({ selectedThreadIds: new Set(threadIds) });
+  },
+
+  clearSelection: () => {
+    set({ selectedThreadIds: new Set<string>() });
   },
 
   toggleStar: async (emailId: string, currentStarred: boolean) => {
