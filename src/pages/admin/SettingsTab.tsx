@@ -91,12 +91,16 @@ export const SettingsTab = () => {
                       {admin.full_name || admin.email}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {admin.email} · {admin.admin_access_level} access · Since {new Date(admin.created_at).toLocaleDateString()}
+                      {admin.email} · {admin.admin_access_level || 'full'} access{admin.created_at ? ` · Since ${new Date(admin.created_at).toLocaleDateString()}` : ''}
                     </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                  Super Admin
+                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                  admin.admin_access_level === 'full'
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                }`}>
+                  {admin.admin_access_level === 'full' ? 'Super Admin' : admin.admin_access_level || 'Admin'}
                 </span>
               </div>
             ))
