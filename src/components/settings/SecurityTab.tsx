@@ -30,11 +30,41 @@ export const SecurityTab: React.FC = () => {
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [showEnable2FA, setShowEnable2FA] = useState(false);
 
-    const sessions: Session[] = [
-        { id: '1', device: 'Windows PC', browser: 'Chrome', location: 'New York, NY', lastActive: 'Active now', isCurrent: true },
-        { id: '2', device: 'iPhone 14', browser: 'Safari', location: 'New York, NY', lastActive: '2 hours ago', isCurrent: false },
-        { id: '3', device: 'MacBook Pro', browser: 'Firefox', location: 'Boston, MA', lastActive: '3 days ago', isCurrent: false },
-    ];
+    const [sessions, setSessions] = useState<Session[]>([]);
+
+    // Load real session from Supabase auth
+    React.useEffect(() => {
+        const loadSession = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const ua = navigator.userAgent;
+                    const browser = ua.includes('Firefox') ? 'Firefox'
+                        : ua.includes('Edg') ? 'Edge'
+                        : ua.includes('Chrome') ? 'Chrome'
+                        : ua.includes('Safari') ? 'Safari'
+                        : 'Browser';
+                    const device = /iPhone|iPad/.test(ua) ? 'iPhone'
+                        : /Android/.test(ua) ? 'Android'
+                        : /Mac/.test(ua) ? 'Mac'
+                        : /Windows/.test(ua) ? 'Windows PC'
+                        : 'Desktop';
+
+                    setSessions([{
+                        id: 'current',
+                        device,
+                        browser,
+                        location: 'Current device',
+                        lastActive: 'Active now',
+                        isCurrent: true,
+                    }]);
+                }
+            } catch {
+                // Fallback if session fetch fails
+            }
+        };
+        loadSession();
+    }, []);
 
     const [changingPassword, setChangingPassword] = useState(false);
 
