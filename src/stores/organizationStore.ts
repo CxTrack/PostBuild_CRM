@@ -198,8 +198,16 @@ export const useOrganizationStore = create<OrganizationState>()(
             console.log('[OrgStore] Setting current organization to:', activeOrgs[0].organization.name);
             await get().setCurrentOrganization(activeOrgs[0].organization.id);
           } else if (currentOrg && orgBelongsToUser) {
-            // Org already cached, but teamMembers aren't persisted — re-fetch them
-            console.log('[OrgStore] Org already set, refreshing team members...');
+            // Org is cached — update with fresh DB data (e.g. industry_template may have changed)
+            const freshOrgData = activeOrgs.find((o: { organization: Organization }) => o.organization.id === currentOrg.id);
+            if (freshOrgData) {
+              set({
+                currentOrganization: freshOrgData.organization,
+                currentMembership: freshOrgData.membership,
+              });
+            }
+            // teamMembers aren't persisted — re-fetch them
+            console.log('[OrgStore] Org refreshed from DB, refreshing team members...');
             try {
               await get().fetchTeamMembers();
             } catch (error) {
