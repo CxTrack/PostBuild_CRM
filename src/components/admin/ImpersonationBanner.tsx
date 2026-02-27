@@ -48,6 +48,7 @@ export const ImpersonationBanner = () => {
 
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templateUpdating, setTemplateUpdating] = useState(false);
+  const originalTemplateRef = useRef<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // Close picker on outside click
@@ -62,6 +63,17 @@ export const ImpersonationBanner = () => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showTemplatePicker]);
+
+  // Capture the original template when impersonation starts
+  useEffect(() => {
+    if (isImpersonating && currentOrganization?.industry_template && !originalTemplateRef.current) {
+      originalTemplateRef.current = currentOrganization.industry_template;
+      console.log('[ImpersonationBanner] Saved original template:', originalTemplateRef.current);
+    }
+    if (!isImpersonating) {
+      originalTemplateRef.current = null;
+    }
+  }, [isImpersonating, currentOrganization?.industry_template]);
 
   if (!isImpersonating) return null;
 
@@ -93,6 +105,13 @@ export const ImpersonationBanner = () => {
 
   const handleExit = async () => {
     try {
+      // Restore the original template if we changed it during impersonation
+      const savedOriginal = originalTemplateRef.current;
+      if (savedOriginal && targetOrgId && currentTemplate !== savedOriginal) {
+        console.log('[ImpersonationBanner] Restoring original template:', savedOriginal);
+        await updateOrgIndustryTemplate(targetOrgId, savedOriginal);
+      }
+      originalTemplateRef.current = null;
       await endImpersonation();
       navigate('/admin');
     } catch (err) {
