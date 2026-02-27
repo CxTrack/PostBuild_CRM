@@ -6,6 +6,7 @@ import {
     Bot, PhoneIncoming, PhoneOutgoing, Clock, Package, MessageSquare
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { fetchTodayOutlookEvents, type OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
 import {
     DndContext,
     closestCenter,
@@ -191,6 +192,8 @@ export const DashboardPage = () => {
 
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSMSModal, setShowSMSModal] = useState(false);
+    const [outlookEvents, setOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
+    const [outlookNeedsReauth, setOutlookNeedsReauth] = useState(false);
 
     // Define all quick actions with their module mapping
     const allQuickActions = [
@@ -337,8 +340,28 @@ export const DashboardPage = () => {
         return () => clearInterval(timer);
     }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchPipelineStats]);
 
+    // Fetch Outlook calendar events
+    useEffect(() => {
+        let cancelled = false;
+        const loadOutlookEvents = async () => {
+            try {
+                const result = await fetchTodayOutlookEvents();
+                if (cancelled) return;
+                setOutlookEvents(result.events);
+                setOutlookNeedsReauth(result.needsReauth);
+            } catch {
+                // Silently fail - Outlook integration is optional
+            }
+        };
+        if (currentOrganization?.id) {
+            loadOutlookEvents();
+        }
+        return () => { cancelled = true; };
+    }, [currentOrganization?.id]);
+
     const activeCustomers = customers.filter(c => c.status === 'Active').length;
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());
+    const totalTodaysEvents = todaysEvents.length + outlookEvents.length;
     const pendingTasks = tasks.filter(t => t.status !== 'completed');
     const pipelineValue = quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
     const revenueValue = invoices
@@ -363,6 +386,24 @@ export const DashboardPage = () => {
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 5);
+
+    // Merge local + Outlook events for today's schedule
+    const mergedTodaysSchedule = [
+        ...todaysAppointments.map(e => ({ ...e, source: 'local' as const })),
+        ...outlookEvents.map(e => ({
+            id: e.id,
+            title: e.title,
+            start_time: e.start_time,
+            end_time: e.end_time,
+            location: e.location,
+            is_all_day: e.is_all_day,
+            organizer: e.organizer,
+            meeting_url: e.meeting_url,
+            web_link: e.web_link,
+            attendees: e.attendees,
+            source: 'outlook' as const,
+        })),
+    ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
     return (
         <PageContainer className="gap-4">
@@ -393,7 +434,7 @@ export const DashboardPage = () => {
                 />
                 <CompactStatCard
                     label={calendarLabels.entityPlural}
-                    value={todaysEvents.length}
+                    value={totalTodaysEvents}
                     subValue="Today"
                     icon={Calendar}
                     color="green"
@@ -555,15 +596,26 @@ export const DashboardPage = () => {
                         }
                     >
                         <div className="h-full overflow-y-auto scrollbar-thin">
-                            {todaysAppointments.length === 0 && upcomingAppointments.length === 0 ? (
+                            {mergedTodaysSchedule.length === 0 && upcomingAppointments.length === 0 && !outlookNeedsReauth ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
                                     No appointments today
                                 </div>
                             ) : (
                                 <>
-                                    {todaysAppointments.length > 0 && todaysAppointments.map(event => (
-                                        <div key={event.id} onClick={() => navigate('/dashboard/calendar')} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                                    {outlookNeedsReauth && (
+                                        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                                Sign out and back in with Microsoft to sync your Outlook calendar.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {mergedTodaysSchedule.length > 0 && mergedTodaysSchedule.map(event => (
+                                        <div
+                                            key={`${event.source}-${event.id}`}
+                                            onClick={() => event.source === 'outlook' && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
+                                            className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                        >
                                             <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
                                                 <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
                                                     {format(new Date(event.start_time), 'MMM')}
@@ -574,19 +626,35 @@ export const DashboardPage = () => {
                                             </div>
                                             <div className="flex-1 min-w-0 py-0.5">
                                                 <div className="flex justify-between items-start">
-                                                    <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
-                                                    <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2">
-                                                        {format(new Date(event.start_time), 'HH:mm')}
+                                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                        <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
+                                                        {event.source === 'outlook' && (
+                                                            <span className="flex-shrink-0 text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                                                                Outlook
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2 flex-shrink-0">
+                                                        {event.is_all_day ? 'All day' : format(new Date(event.start_time), 'HH:mm')}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    <Users size={12} />
-                                                    {event.customer_id ? (customers.find(c => c.id === event.customer_id)?.name || 'Unknown User') : 'No Customer'}
+                                                    {event.source === 'outlook' ? (
+                                                        <>
+                                                            <Users size={12} />
+                                                            {(event as any).organizer || ((event as any).attendees?.length ? `${(event as any).attendees.length} attendees` : 'Outlook Calendar')}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Users size={12} />
+                                                            {(event as any).customer_id ? (customers.find(c => c.id === (event as any).customer_id)?.name || 'Unknown User') : 'No Customer'}
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
                                     ))}
-                                    {todaysAppointments.length === 0 && (
+                                    {mergedTodaysSchedule.length === 0 && !outlookNeedsReauth && (
                                         <div className="px-4 py-3 text-xs text-gray-400 text-center border-b border-gray-100 dark:border-gray-800">
                                             Nothing scheduled for today
                                         </div>

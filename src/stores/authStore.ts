@@ -145,7 +145,7 @@ export const useAuthStore = create<AuthState>()(
           provider: 'azure',
           options: {
             redirectTo: `${window.location.origin}/onboarding/profile`,
-            scopes: 'email profile openid offline_access https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Mail.ReadWrite',
+            scopes: 'email profile openid offline_access https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Calendars.Read',
           },
         });
         if (error) throw error;

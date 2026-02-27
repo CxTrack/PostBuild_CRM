@@ -290,7 +290,7 @@ async function handleCallStarted(
   // 2. Check memory settings
   const { data: config } = await supabase
     .from('voice_agent_configs')
-    .select('memory_enabled, memory_call_history, memory_customer_notes, memory_calendar_tasks')
+    .select('agent_name, memory_enabled, memory_call_history, memory_customer_notes, memory_calendar_tasks')
     .eq('organization_id', orgId)
     .maybeSingle()
 
@@ -452,6 +452,7 @@ async function handleCallStarted(
     direction: 'inbound',
     call_type: 'ai_agent',
     agent_id: call.agent_id,
+    agent_name: config?.agent_name || 'AI Phone Agent',
     agent_type: 'retell',
     customer_phone: callerPhone,
     phone_number: agentPhone,
