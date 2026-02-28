@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
+import { fetchTodayOutlookEvents, fetchOutlookEvents as fetchOutlookEventsApi } from '@/services/microsoftCalendar.service';
+import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
 
 interface CalendarPreferences {
   default_view: 'month' | 'week' | 'day' | 'agenda';
@@ -28,11 +30,16 @@ interface CalendarPreferences {
 
 interface CalendarState {
   events: CalendarEvent[];
+  outlookEvents: OutlookCalendarEvent[];
+  outlookLoading: boolean;
+  outlookNeedsReauth: boolean;
   preferences: CalendarPreferences | null;
   loading: boolean;
   error: string | null;
   reset: () => void;
   fetchEvents: (organizationId?: string, from?: Date, to?: Date) => Promise<void>;
+  fetchOutlookTodayEvents: () => Promise<void>;
+  fetchOutlookEventsRange: (startDate: string, endDate: string) => Promise<void>;
   getEventById: (id: string) => CalendarEvent | undefined;
   getEventsByCustomer: (customerId: string) => CalendarEvent[];
   getEventsByDate: (date: string) => CalendarEvent[];
@@ -45,6 +52,9 @@ interface CalendarState {
 
 const initialCalendarState = {
   events: [] as CalendarEvent[],
+  outlookEvents: [] as OutlookCalendarEvent[],
+  outlookLoading: false,
+  outlookNeedsReauth: false,
   preferences: null as CalendarPreferences | null,
   loading: false,
   error: null as string | null,
@@ -87,6 +97,36 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       set({ error: message });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchOutlookTodayEvents: async () => {
+    set({ outlookLoading: true });
+    try {
+      const result = await fetchTodayOutlookEvents();
+      set({
+        outlookEvents: result.events,
+        outlookNeedsReauth: result.needsReauth,
+      });
+      if (result.needsReauth) {
+        console.warn('[calendarStore] Outlook calendar needs re-authorization');
+      }
+    } catch (err) {
+      console.warn('[calendarStore] Outlook calendar fetch error:', err);
+    } finally {
+      set({ outlookLoading: false });
+    }
+  },
+
+  fetchOutlookEventsRange: async (startDate: string, endDate: string) => {
+    set({ outlookLoading: true });
+    try {
+      const events = await fetchOutlookEventsApi(startDate, endDate);
+      set({ outlookEvents: events });
+    } catch (err) {
+      console.warn('[calendarStore] Outlook calendar range fetch error:', err);
+    } finally {
+      set({ outlookLoading: false });
     }
   },
 

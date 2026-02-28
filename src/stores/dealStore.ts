@@ -39,8 +39,11 @@ export interface Deal {
   expected_close_date?: string;
   actual_close_date?: string;
   source: string;
-  revenue_type: 'one_time' | 'recurring';
+  revenue_type: 'one_time' | 'recurring' | 'hybrid';
   recurring_interval?: 'monthly' | 'quarterly' | 'annual';
+  setup_fee?: number;
+  recurring_amount?: number;
+  recurring_start_date?: string;
   products?: DealProduct[];
   tags?: string[];
   metadata?: Record<string, any>;
@@ -66,12 +69,10 @@ export interface PipelineStats {
   won_deals_count: number;
   lost_deals_count: number;
   total_won_value: number;
-  by_stage: {
-    lead: { count: number; value: number; weighted: number };
-    qualified: { count: number; value: number; weighted: number };
-    proposal: { count: number; value: number; weighted: number };
-    negotiation: { count: number; value: number; weighted: number };
-  };
+  total_mrr: number;
+  total_arr: number;
+  total_setup_revenue: number;
+  by_stage: Record<string, { count: number; value: number; weighted: number }>;
 }
 
 interface DealStore {
@@ -238,6 +239,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
         source: dealData.source || 'other',
         revenue_type: dealData.revenue_type || 'one_time',
         recurring_interval: dealData.recurring_interval,
+        setup_fee: dealData.setup_fee || 0,
+        recurring_amount: dealData.recurring_amount || 0,
+        recurring_start_date: dealData.recurring_start_date || null,
         products: dealData.products || [],
         tags: dealData.tags || [],
         metadata: dealData.metadata || {},
@@ -379,6 +383,9 @@ export const useDealStore = create<DealStore>((set, get) => ({
         source: 'quote',
         revenue_type: dealData.revenue_type || 'one_time',
         recurring_interval: dealData.recurring_interval,
+        setup_fee: dealData.setup_fee || 0,
+        recurring_amount: dealData.recurring_amount || 0,
+        recurring_start_date: dealData.recurring_start_date || null,
         products: dealData.products || [],
         tags: dealData.tags || [],
       };

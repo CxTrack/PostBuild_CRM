@@ -80,6 +80,35 @@ export default function ProfilePage() {
         const authFirst = nameParts[0] || '';
         const authLast = nameParts.slice(1).join(' ') || '';
 
+        // ---- RETURNING USER CHECK ----
+        // Use direct fetch() to avoid Supabase JS AbortController bug during auth transitions.
+        // If user already has an org, they're a returning member -- skip onboarding entirely.
+        try {
+          const token = getAuthToken();
+          if (token) {
+            const orgCheckRes = await fetch(
+              `${supabaseUrl}/rest/v1/organization_members?user_id=eq.${user.id}&select=organization_id&limit=1`,
+              {
+                headers: {
+                  'apikey': supabaseAnonKey,
+                  'Authorization': `Bearer ${token}`,
+                },
+              }
+            );
+            if (orgCheckRes.ok) {
+              const orgs = await orgCheckRes.json();
+              if (orgs?.length > 0 && orgs[0].organization_id) {
+                console.log(`[Onboarding] Returning user detected (org=${orgs[0].organization_id}), redirecting to dashboard`);
+                navigate('/dashboard');
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[Onboarding] Returning user check failed:', err);
+          // Continue with onboarding flow -- worst case new users see it again
+        }
+
         // Check if we have existing onboarding data in sessionStorage
         const leadData = sessionStorage.getItem('onboarding_lead');
         if (leadData) {

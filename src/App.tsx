@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { CoPilotProvider } from './contexts/CoPilotContext';
 import { RequireAdmin } from './components/admin/RequireAdmin';
+import ProtectedRoute from './guards/guard-route';
 import { CookieConsent } from './components/common/CookieConsent';
 import { checkOnboardingStatus } from './utils/onboarding';
 
@@ -187,23 +188,37 @@ export default function App() {
               <Route path="calendar" element={<Calendar />} />
               <Route path="quotes" element={<Quotes />} />
               <Route path="invoices" element={<Invoices />} />
-              <Route path="products" element={<Products />} />
-              <Route path="products/new" element={<ProductForm />} />
-              <Route path="products/:id/edit" element={<ProductForm />} />
-              <Route path="pipeline" element={<Pipeline />} />
-              <Route path="pipeline/new" element={<NewDealPage />} />
-              <Route path="calls" element={<Calls />} />
-              <Route path="calls/:callId" element={<CallDetail />} />
+              <Route element={<ProtectedRoute moduleId="products" />}>
+                <Route path="products" element={<Products />} />
+                <Route path="products/new" element={<ProductForm />} />
+                <Route path="products/:id/edit" element={<ProductForm />} />
+              </Route>
+              <Route element={<ProtectedRoute moduleId="pipeline" />}>
+                <Route path="pipeline" element={<Pipeline />} />
+                <Route path="pipeline/new" element={<NewDealPage />} />
+              </Route>
+              <Route element={<ProtectedRoute moduleId="calls" />}>
+                <Route path="calls" element={<Calls />} />
+                <Route path="calls/:callId" element={<CallDetail />} />
+              </Route>
               <Route path="tasks" element={<Tasks />} />
               <Route path="upgrade" element={<UpgradePage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="settings/stripe-callback" element={<StripeCallback />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="reports" element={<ReportsPage />} />
-              <Route path="suppliers" element={<Suppliers />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="financials" element={<Financials />} />
-              <Route path="email" element={<EmailPage />} />
+              <Route element={<ProtectedRoute moduleId="suppliers" />}>
+                <Route path="suppliers" element={<Suppliers />} />
+              </Route>
+              <Route element={<ProtectedRoute moduleId="inventory" />}>
+                <Route path="inventory" element={<Inventory />} />
+              </Route>
+              <Route element={<ProtectedRoute moduleId="financials" />}>
+                <Route path="financials" element={<Financials />} />
+              </Route>
+              <Route element={<ProtectedRoute moduleId="email" />}>
+                <Route path="email" element={<EmailPage />} />
+              </Route>
             </Route>
 
             {/* Builder Routes - Require Authentication */}

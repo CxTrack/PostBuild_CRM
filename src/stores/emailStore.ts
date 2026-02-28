@@ -354,12 +354,18 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       });
 
       const data = await res.json();
+      console.log('[emailStore] syncNow response:', data);
       set({ syncing: false });
-      return { synced: data.synced || 0 };
+      return {
+        synced: data.synced || 0,
+        message: data.message || '',
+        graph_error: data.graph_error || '',
+        steps: data.steps || [],
+      };
     } catch (err) {
       console.error('[emailStore] syncNow error:', err);
       set({ syncing: false });
-      return { synced: 0 };
+      return { synced: 0, message: '', graph_error: '', steps: [] };
     }
   },
 

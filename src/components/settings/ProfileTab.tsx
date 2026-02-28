@@ -40,6 +40,7 @@ const TIMEZONE_OPTIONS = (() => {
     }
 })();
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface ProfileData {
     full_name: string;
@@ -111,9 +112,11 @@ const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_na
 }; };
 
 export const ProfileTab: React.FC = () => {
-    const { user } = useAuthContext();
+    const { user: authUser } = useAuthContext();
+    const effectiveUser = useEffectiveUser();
+    const isImpersonated = effectiveUser.isImpersonated;
     const { fetchTeamMembers } = useOrganizationStore();
-    const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(user));
+    const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(authUser));
     const [avatar, setAvatar] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showCropper, setShowCropper] = useState(false);
@@ -127,36 +130,55 @@ export const ProfileTab: React.FC = () => {
     const pendingAvatarRemoved = useRef(false);
 
     // Load profile — show localStorage cache instantly, then fetch DB in background
+    // Uses effectiveUser so impersonation loads the target user's profile
     useEffect(() => {
-        // 1) Instant: load from localStorage cache
-        const saved = localStorage.getItem(PROFILE_KEY);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (user?.email && parsed.email === user.email) {
-                    // Migrate old profiles: split full_name into first/last if not present
-                    if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
-                        const spaceIdx = parsed.full_name.indexOf(' ');
-                        parsed.first_name = spaceIdx > -1 ? parsed.full_name.slice(0, spaceIdx) : parsed.full_name;
-                        parsed.last_name = spaceIdx > -1 ? parsed.full_name.slice(spaceIdx + 1) : '';
+        const userId = effectiveUser.id;
+        const userEmail = effectiveUser.email;
+
+        if (!userId) return;
+
+        // 1) Instant: load from localStorage cache (skip during impersonation — cache is admin's)
+        if (!isImpersonated) {
+            const saved = localStorage.getItem(PROFILE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (userEmail && parsed.email === userEmail) {
+                        // Migrate old profiles: split full_name into first/last if not present
+                        if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
+                            const spaceIdx = parsed.full_name.indexOf(' ');
+                            parsed.first_name = spaceIdx > -1 ? parsed.full_name.slice(0, spaceIdx) : parsed.full_name;
+                            parsed.last_name = spaceIdx > -1 ? parsed.full_name.slice(spaceIdx + 1) : '';
+                        }
+                        setProfile(parsed);
+                        if (parsed.avatar_url) {
+                            setAvatarPreview(parsed.avatar_url);
+                        }
                     }
-                    setProfile(parsed);
-                    if (parsed.avatar_url) {
-                        setAvatarPreview(parsed.avatar_url);
-                    }
+                } catch (e) {
+                    // Error handled silently
                 }
-            } catch (e) {
-                // Error handled silently
+            } else {
+                setProfile(createDefaultProfile(authUser));
             }
-        } else if (user) {
-            setProfile(createDefaultProfile(user));
+        } else {
+            // During impersonation, seed with effective user's basic info
+            setProfile(prev => ({
+                ...prev,
+                full_name: effectiveUser.fullName,
+                first_name: effectiveUser.fullName.split(' ')[0] || '',
+                last_name: effectiveUser.fullName.split(' ').slice(1).join(' ') || '',
+                email: effectiveUser.email,
+                avatar_url: effectiveUser.avatarUrl || null,
+            }));
+            if (effectiveUser.avatarUrl) {
+                setAvatarPreview(effectiveUser.avatarUrl);
+            }
         }
 
-        // 2) Background: fetch from user_profiles DB
-        if (user?.id) {
-            fetchProfileFromDb(user.id);
-        }
-    }, [user]);
+        // 2) Background: fetch from user_profiles DB (for effective user)
+        fetchProfileFromDb(userId);
+    }, [effectiveUser.id, effectiveUser.email, isImpersonated]);
 
     /** Fetch profile from user_profiles table (direct fetch to bypass AbortController) */
     const fetchProfileFromDb = async (userId: string) => {
@@ -191,7 +213,7 @@ export const ProfileTab: React.FC = () => {
                 full_name: fullName,
                 first_name: firstName,
                 last_name: lastName,
-                email: user?.email || '',
+                email: effectiveUser.email || '',
                 phone: meta.phone || '',
                 title: meta.title || '',
                 department: meta.department || '',
@@ -237,7 +259,7 @@ export const ProfileTab: React.FC = () => {
 
     /** Crop handler — immediately upload to Supabase Storage for persistence */
     const handleAvatarUpload = async () => {
-        if (!editorRef.current || !user?.id) return;
+        if (!editorRef.current || !authUser?.id) return;
 
         const canvas = editorRef.current.getImageScaledToCanvas();
 
@@ -254,7 +276,7 @@ export const ProfileTab: React.FC = () => {
                 const token = getAuthToken();
                 if (!token) throw new Error('No auth token');
 
-                const filePath = `${user.id}/avatar.png`;
+                const filePath = `${authUser.id}/avatar.png`;
 
                 // Upload to Supabase Storage immediately
                 const uploadRes = await fetch(
@@ -283,7 +305,7 @@ export const ProfileTab: React.FC = () => {
 
                 // Persist URL to user_profiles immediately
                 const patchRes = await fetch(
-                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
+                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
                     {
                         method: 'PATCH',
                         headers: {
@@ -342,7 +364,11 @@ export const ProfileTab: React.FC = () => {
 
     /** Save profile — persist all fields to user_profiles (avatar is uploaded separately on crop) */
     const handleSaveProfile = async () => {
-        if (!user?.id) {
+        if (isImpersonated) {
+            toast.error('Cannot edit profile while impersonating');
+            return;
+        }
+        if (!authUser?.id) {
             toast.error('Not authenticated');
             return;
         }
@@ -359,7 +385,7 @@ export const ProfileTab: React.FC = () => {
 
             // Handle avatar removal if user clicked "Remove"
             if (pendingAvatarRemoved.current) {
-                const filePath = `${user.id}/avatar.png`;
+                const filePath = `${authUser.id}/avatar.png`;
                 await fetch(
                     `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
                     {
@@ -401,10 +427,10 @@ export const ProfileTab: React.FC = () => {
                 avatar_url: avatarPublicUrl,
                 profile_metadata: profileMetadata,
             };
-            console.log('[ProfileTab] Saving profile:', { userId: user.id, avatar_url: avatarPublicUrl, metadataKeys: Object.keys(profileMetadata) });
+            console.log('[ProfileTab] Saving profile:', { userId: authUser.id, avatar_url: avatarPublicUrl, metadataKeys: Object.keys(profileMetadata) });
 
             const res = await fetch(
-                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
                 {
                     method: 'PATCH',
                     headers: {
@@ -453,6 +479,15 @@ export const ProfileTab: React.FC = () => {
 
     return (
         <div className="space-y-8">
+
+            {/* Impersonation read-only banner */}
+            {isImpersonated && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 flex items-center gap-2">
+                    <span className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+                        Viewing {effectiveUser.fullName}'s profile (read-only while impersonating)
+                    </span>
+                </div>
+            )}
 
             {/* Header */}
             <div>
@@ -835,14 +870,14 @@ export const ProfileTab: React.FC = () => {
             {/* Save Button */}
             <div className="flex justify-end gap-3 pb-8">
                 <button
-                    onClick={() => setProfile(createDefaultProfile(user))}
+                    onClick={() => setProfile(createDefaultProfile(authUser))}
                     className="px-6 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors"
                 >
                     Reset
                 </button>
                 <button
                     onClick={handleSaveProfile}
-                    disabled={saving}
+                    disabled={saving || isImpersonated}
                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
                 >
                     {saving ? (

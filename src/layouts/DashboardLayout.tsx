@@ -134,7 +134,7 @@ const SortableNavItem: React.FC<{
   return (
     <div ref={setNodeRef} style={style} className="group/drag relative">
       <Link
-        to={item.isLocked ? '/dashboard/upgrade' : item.path}
+        to={item.path}
         className={
           theme === 'soft-modern'
             ? `nav-item flex items-center px-4 py-3 ${active ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
@@ -350,6 +350,7 @@ export const DashboardLayout = () => {
 
         if (res.ok) {
           const data = await res.json();
+          console.log('[InboxSync] response:', data);
           localStorage.setItem('cxtrack_last_email_sync', Date.now().toString());
           if (data.synced > 0) {
             console.log(`[InboxSync] ${data.synced} new emails synced`);

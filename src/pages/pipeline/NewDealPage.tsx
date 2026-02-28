@@ -58,8 +58,11 @@ export default function NewDealPage() {
         probability: '',
         expected_close_date: '',
         source: 'other',
-        revenue_type: 'one_time' as 'one_time' | 'recurring',
+        revenue_type: 'one_time' as 'one_time' | 'recurring' | 'hybrid',
         recurring_interval: 'monthly' as 'monthly' | 'quarterly' | 'annual',
+        setup_fee: '',
+        recurring_amount: '',
+        recurring_start_date: '',
         description: '',
         tags: [] as string[],
         product_id: '',
@@ -93,6 +96,9 @@ export default function NewDealPage() {
                     source: deal.source || 'other',
                     revenue_type: deal.revenue_type || 'one_time',
                     recurring_interval: deal.recurring_interval || 'monthly',
+                    setup_fee: deal.setup_fee?.toString() || '',
+                    recurring_amount: deal.recurring_amount?.toString() || '',
+                    recurring_start_date: deal.recurring_start_date ? deal.recurring_start_date.split('T')[0] : '',
                     description: deal.description || '',
                     tags: deal.tags || [],
                     product_id: deal.product_id || '',
@@ -163,6 +169,34 @@ export default function NewDealPage() {
         }));
     };
 
+    const getAnnualizationFactor = (interval: string): number => {
+        switch (interval) {
+            case 'monthly': return 12;
+            case 'quarterly': return 4;
+            case 'annual': return 1;
+            default: return 12;
+        }
+    };
+
+    const getIntervalLabel = (interval: string): string => {
+        switch (interval) {
+            case 'monthly': return '/mo';
+            case 'quarterly': return '/qtr';
+            case 'annual': return '/yr';
+            default: return '/mo';
+        }
+    };
+
+    const computedTotalValue = useMemo(() => {
+        if (formData.revenue_type === 'hybrid') {
+            const setup = parseFloat(formData.setup_fee || '0');
+            const recurring = parseFloat(formData.recurring_amount || '0');
+            const factor = getAnnualizationFactor(formData.recurring_interval);
+            return setup + (recurring * factor);
+        }
+        return parseFloat(formData.value || '0');
+    }, [formData.revenue_type, formData.setup_fee, formData.recurring_amount, formData.recurring_interval, formData.value]);
+
     const handleLoanProductChange = (productId: string) => {
         const product = loanProducts.find(p => p.id === productId);
         setFormData(prev => ({
@@ -223,23 +257,41 @@ export default function NewDealPage() {
             toast.error('Please select a customer');
             return;
         }
-        if (!formData.value || parseFloat(formData.value) <= 0) {
+        if (formData.revenue_type === 'hybrid') {
+            if (!formData.recurring_amount || parseFloat(formData.recurring_amount) <= 0) {
+                toast.error('Please enter a valid recurring amount');
+                return;
+            }
+        } else if (!formData.value || parseFloat(formData.value) <= 0) {
             toast.error('Please enter a valid amount');
             return;
         }
 
         setIsSubmitting(true);
-        const dealData = {
+        const isRecurringOrHybrid = formData.revenue_type === 'recurring' || formData.revenue_type === 'hybrid';
+        const dealValue = formData.revenue_type === 'hybrid'
+            ? computedTotalValue
+            : parseFloat(formData.value);
+
+        const dealData: Record<string, any> = {
             title: formData.title.trim(),
             customer_id: formData.customer_id,
-            value: parseFloat(formData.value),
+            value: dealValue,
             currency: formData.currency,
             stage: formData.stage,
             probability: parseFloat(formData.probability) || 0,
             expected_close_date: formData.expected_close_date || undefined,
             source: formData.source,
             revenue_type: formData.revenue_type,
-            recurring_interval: formData.revenue_type === 'recurring' ? formData.recurring_interval : undefined,
+            recurring_interval: isRecurringOrHybrid ? formData.recurring_interval : undefined,
+            setup_fee: formData.revenue_type === 'hybrid' ? parseFloat(formData.setup_fee || '0') : 0,
+            recurring_amount: formData.revenue_type === 'hybrid'
+                ? parseFloat(formData.recurring_amount || '0')
+                : formData.revenue_type === 'recurring'
+                    ? parseFloat(formData.value || '0')
+                    : 0,
+            recurring_start_date: formData.revenue_type === 'hybrid' && formData.recurring_start_date
+                ? formData.recurring_start_date : undefined,
             description: formData.description || undefined,
             tags: formData.tags,
             product_id: formData.product_id || undefined,
@@ -520,36 +572,35 @@ export default function NewDealPage() {
                                 Revenue Model
                             </h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-5">
+                                {/* Revenue Type Toggle */}
                                 <div>
                                     <label className={labelClasses}>Type</label>
-                                    <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, revenue_type: 'one_time' })}
-                                            className={`py-2 text-sm font-medium rounded-lg transition-all ${formData.revenue_type === 'one_time'
-                                                ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                                                }`}
-                                        >
-                                            One-time
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, revenue_type: 'recurring' })}
-                                            className={`py-2 text-sm font-medium rounded-lg transition-all ${formData.revenue_type === 'recurring'
-                                                ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                                                }`}
-                                        >
-                                            Recurring
-                                        </button>
+                                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                                        {([
+                                            { key: 'one_time', label: 'One-time' },
+                                            { key: 'recurring', label: 'Recurring' },
+                                            { key: 'hybrid', label: 'Setup + Recurring' },
+                                        ] as const).map(opt => (
+                                            <button
+                                                key={opt.key}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, revenue_type: opt.key })}
+                                                className={`py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${formData.revenue_type === opt.key
+                                                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
-                                {formData.revenue_type === 'recurring' && (
+                                {/* Interval dropdown (recurring & hybrid) */}
+                                {(formData.revenue_type === 'recurring' || formData.revenue_type === 'hybrid') && (
                                     <div>
-                                        <label className={labelClasses}>Interval</label>
+                                        <label className={labelClasses}>Billing Interval</label>
                                         <select
                                             value={formData.recurring_interval}
                                             onChange={(e) => setFormData({ ...formData, recurring_interval: e.target.value as any })}
@@ -559,6 +610,77 @@ export default function NewDealPage() {
                                             <option value="quarterly">Quarterly</option>
                                             <option value="annual">Annual</option>
                                         </select>
+                                    </div>
+                                )}
+
+                                {/* Hybrid: Setup Fee + Recurring Amount */}
+                                {formData.revenue_type === 'hybrid' && (
+                                    <div className="space-y-4 p-4 bg-gradient-to-br from-primary-50/50 to-transparent dark:from-primary-950/20 rounded-xl border border-primary-100 dark:border-primary-900/30">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className={labelClasses}>
+                                                    Setup Fee
+                                                    <span className="ml-1.5 text-[10px] font-normal text-gray-400 dark:text-gray-500">(one-time)</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={formData.setup_fee}
+                                                        onChange={(e) => setFormData({ ...formData, setup_fee: e.target.value })}
+                                                        className={`${inputClasses} pl-8`}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>
+                                                    Recurring Amount
+                                                    <span className="ml-1.5 text-[10px] font-normal text-gray-400 dark:text-gray-500">{getIntervalLabel(formData.recurring_interval)}</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={formData.recurring_amount}
+                                                        onChange={(e) => setFormData({ ...formData, recurring_amount: e.target.value })}
+                                                        className={`${inputClasses} pl-8`}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Recurring Start Date */}
+                                        <div>
+                                            <label className={labelClasses}>
+                                                <Calendar className="mr-1.5 text-gray-400" size={14} />
+                                                Recurring Starts
+                                                <span className="ml-1.5 text-[10px] font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={formData.recurring_start_date}
+                                                onChange={(e) => setFormData({ ...formData, recurring_start_date: e.target.value })}
+                                                className={inputClasses}
+                                            />
+                                        </div>
+
+                                        {/* Auto-calculated annual preview */}
+                                        {(parseFloat(formData.setup_fee || '0') > 0 || parseFloat(formData.recurring_amount || '0') > 0) && (
+                                            <div className="flex items-center justify-between pt-3 border-t border-primary-100 dark:border-primary-900/30">
+                                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                    Year 1 Total
+                                                </span>
+                                                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
+                                                    ${computedTotalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -787,20 +909,37 @@ export default function NewDealPage() {
                             <div className="space-y-6">
                                 <div>
                                     <label className={labelClasses}>
-                                        Value <span className="text-red-500 ml-1">*</span>
+                                        {formData.revenue_type === 'hybrid' ? 'Total Deal Value' : 'Value'} <span className="text-red-500 ml-1">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={formData.value}
-                                            onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                                            className={`${inputClasses} pl-8`}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
+                                    {formData.revenue_type === 'hybrid' ? (
+                                        <div>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                <input
+                                                    type="text"
+                                                    readOnly
+                                                    value={computedTotalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    className={`${inputClasses} pl-8 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed text-gray-600 dark:text-gray-300`}
+                                                />
+                                            </div>
+                                            <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+                                                ${parseFloat(formData.setup_fee || '0').toLocaleString()} setup + ${parseFloat(formData.recurring_amount || '0').toLocaleString()}{getIntervalLabel(formData.recurring_interval)} annualized
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.value}
+                                                onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                                                className={`${inputClasses} pl-8`}
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -893,32 +1032,71 @@ export default function NewDealPage() {
                                 <TrendingUp size={16} />
                                 Forecast Summary
                             </h4>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-xs opacity-80">Projected Value</span>
-                                    <span className="text-xl font-bold">
-                                        ${parseFloat(formData.value || '0').toLocaleString()}
-                                    </span>
-                                </div>
+                            <div className="space-y-3">
+                                {/* Hybrid breakdown */}
+                                {formData.revenue_type === 'hybrid' && (
+                                    <>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-xs opacity-80">Setup Fee</span>
+                                            <span className="text-sm font-semibold">
+                                                ${parseFloat(formData.setup_fee || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-xs opacity-80">Recurring</span>
+                                            <span className="text-sm font-semibold text-green-300">
+                                                ${parseFloat(formData.recurring_amount || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{getIntervalLabel(formData.recurring_interval)}
+                                            </span>
+                                        </div>
+                                        {formData.recurring_start_date && (
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-xs opacity-80">Recurring Starts</span>
+                                                <span className="text-xs font-medium text-blue-200">
+                                                    {new Date(formData.recurring_start_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-end border-t border-white/20 pt-3">
+                                            <span className="text-xs font-bold opacity-90">Year 1 Total</span>
+                                            <span className="text-xl font-bold">
+                                                ${computedTotalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Standard projected value (one_time / recurring) */}
+                                {formData.revenue_type !== 'hybrid' && (
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-xs opacity-80">Projected Value</span>
+                                        <span className="text-xl font-bold">
+                                            ${computedTotalValue.toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Weighted value (all types) */}
                                 <div className="flex justify-between items-end border-t border-white/20 pt-3">
                                     <span className="text-xs opacity-80">Weighted Value ({formData.probability || '0'}%)</span>
                                     <span className="text-lg font-semibold">
-                                        ${((parseFloat(formData.value || '0') * (parseFloat(formData.probability || '0') / 100)) || 0).toLocaleString()}
+                                        ${((computedTotalValue * (parseFloat(formData.probability || '0') / 100)) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
+
+                                {/* Mortgage commission (uses computedTotalValue) */}
                                 {isMortgage && parseFloat(formData.commission_percentage) > 0 && (
                                     <>
                                         <div className="flex justify-between items-end border-t border-white/20 pt-3">
                                             <span className="text-xs opacity-80">Projected Commission ({formData.commission_percentage}%)</span>
                                             <span className="text-lg font-semibold text-green-300">
-                                                ${((parseFloat(formData.value || '0') * (parseFloat(formData.commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                ${((computedTotalValue * (parseFloat(formData.commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         {parseFloat(formData.volume_commission_percentage) > 0 && (
                                             <div className="flex justify-between items-end">
                                                 <span className="text-xs opacity-80">Volume Bonus ({formData.volume_commission_percentage}%)</span>
                                                 <span className="text-sm font-medium text-blue-300">
-                                                    +${((parseFloat(formData.value || '0') * (parseFloat(formData.volume_commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    +${((computedTotalValue * (parseFloat(formData.volume_commission_percentage) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         )}
@@ -926,8 +1104,8 @@ export default function NewDealPage() {
                                             <span className="text-xs font-bold opacity-90">Total Earnings</span>
                                             <span className="text-xl font-bold text-green-200">
                                                 ${(
-                                                    ((parseFloat(formData.value || '0') * (parseFloat(formData.commission_percentage) || 0) / 100)) +
-                                                    ((parseFloat(formData.value || '0') * (parseFloat(formData.volume_commission_percentage) || 0) / 100))
+                                                    ((computedTotalValue * (parseFloat(formData.commission_percentage) || 0) / 100)) +
+                                                    ((computedTotalValue * (parseFloat(formData.volume_commission_percentage) || 0) / 100))
                                                 ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>

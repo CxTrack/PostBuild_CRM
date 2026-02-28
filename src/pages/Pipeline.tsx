@@ -7,7 +7,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import {
   Plus, Search, FileText, DollarSign, TrendingUp,
   LayoutGrid, List, Columns, MoreVertical, Send, Mouse, Zap,
-  ChevronLeft, ChevronRight, Trash2, ArrowRightCircle, MessageSquare
+  ChevronLeft, ChevronRight, Trash2, ArrowRightCircle, MessageSquare, Repeat
 } from 'lucide-react';
 import { Card, PageContainer, IconBadge } from '@/components/theme/ThemeComponents';
 import { FilterBar } from '@/components/shared/FilterBar';
@@ -36,6 +36,9 @@ interface PipelineItem {
   created_at: string;
   stage: string;
   probability: number;
+  revenue_type?: 'one_time' | 'recurring' | 'hybrid';
+  recurring_interval?: 'monthly' | 'quarterly' | 'annual';
+  recurring_amount?: number;
 }
 
 type ViewMode = 'kanban' | 'table' | 'split';
@@ -219,6 +222,9 @@ const Pipeline: React.FC = () => {
           created_at: deal.created_at,
           stage: deal.stage || 'lead',
           probability: deal.probability || 0,
+          revenue_type: deal.revenue_type || 'one_time',
+          recurring_interval: deal.recurring_interval,
+          recurring_amount: deal.recurring_amount ? Number(deal.recurring_amount) : undefined,
         });
       });
 
@@ -1161,6 +1167,17 @@ const Pipeline: React.FC = () => {
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
                         </div>
+
+                        {/* Revenue type indicator for recurring/hybrid deals */}
+                        {item.type === 'deal' && item.revenue_type && item.revenue_type !== 'one_time' && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <Repeat size={10} className="text-emerald-500 flex-shrink-0" />
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 truncate">
+                              {item.revenue_type === 'hybrid' ? 'Setup + Recurring' : 'Recurring'}
+                              {item.recurring_interval ? ` (${item.recurring_interval})` : ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

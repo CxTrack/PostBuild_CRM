@@ -94,6 +94,107 @@ function formatPhoneDisplay(phone: string): string {
   return phone
 }
 
+// ── Customer Info Extraction Helpers ──────────────────────────────
+
+function extractEmailFromText(text: string): string | null {
+  if (!text) return null
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/gi
+  const matches = text.match(emailRegex)
+  if (!matches || matches.length === 0) return null
+  const filtered = matches.filter(email => {
+    const lower = email.toLowerCase()
+    return !lower.includes('noreply')
+      && !lower.includes('no-reply')
+      && !lower.includes('@example.')
+      && !lower.includes('@test.')
+  })
+  return filtered.length > 0 ? filtered[0].toLowerCase() : null
+}
+
+function extractNameFromText(text: string): string | null {
+  if (!text) return null
+  const summaryPatterns = [
+    /(?:The (?:user|caller|customer)),?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/,
+    /(?:user|caller|customer)\s+named?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/i,
+  ]
+  for (const pattern of summaryPatterns) {
+    const match = text.match(pattern)
+    if (match?.[1]) {
+      const name = match[1].trim()
+      if (name.length >= 2 && !isCommonWord(name)) return name
+    }
+  }
+  return null
+}
+
+function extractNameFromTranscript(transcript: string): string | null {
+  if (!transcript) return null
+  const patterns = [
+    /(?:my name is|this is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/gi,
+    /(?:it's|its)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*[.,!]/gi,
+  ]
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0
+    const match = pattern.exec(transcript)
+    if (match?.[1]) {
+      const name = match[1].trim()
+      if (name.length >= 2 && !isCommonWord(name)) return name
+    }
+  }
+  return null
+}
+
+function isCommonWord(text: string): boolean {
+  const common = new Set([
+    'the', 'this', 'that', 'just', 'here', 'there', 'calling', 'call',
+    'about', 'today', 'hello', 'thanks', 'thank', 'good', 'great',
+    'morning', 'afternoon', 'evening', 'yes', 'yeah', 'sure', 'okay',
+  ])
+  return common.has(text.toLowerCase())
+}
+
+async function findExistingCustomer(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
+  phone: string | null,
+  email: string | null
+): Promise<{ id: string } | null> {
+  if (phone) {
+    const normalized = normalizeE164(phone)
+    if (normalized) {
+      const { data: byPhone } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('phone', normalized)
+        .maybeSingle()
+      if (byPhone) return byPhone
+
+      // Also try without + prefix for format mismatches
+      const withoutPlus = normalized.replace(/^\+/, '')
+      const { data: byPhoneAlt } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('organization_id', orgId)
+        .or(`phone.eq.${withoutPlus},phone.eq.+${withoutPlus}`)
+        .maybeSingle()
+      if (byPhoneAlt) return byPhoneAlt
+    }
+  }
+
+  if (email) {
+    const { data: byEmail } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('organization_id', orgId)
+      .ilike('email', email)
+      .maybeSingle()
+    if (byEmail) return byEmail
+  }
+
+  return null
+}
+
 async function sendBrokerNotificationSMS(
   supabase: ReturnType<typeof createClient>,
   callRecord: { id: string; organization_id: string; customer_phone: string | null },
@@ -607,13 +708,35 @@ async function handleCallAnalyzed(
     )
   }
 
-  // Process any customer data captured via function calling during the call
-  if (customData.customer_name || customData.customer_email) {
+  // ── Extract customer info from multiple sources (cascading) ──
+  let extractedName: string | null = customData.customer_name || null
+  let extractedEmail: string | null = customData.customer_email || null
+
+  // Source 2: call summary text
+  const summaryText = call.call_analysis?.call_summary || ''
+  if (!extractedName && summaryText) {
+    extractedName = extractNameFromText(summaryText)
+  }
+  if (!extractedEmail && summaryText) {
+    extractedEmail = extractEmailFromText(summaryText)
+  }
+
+  // Source 3: transcript (fallback)
+  if (!extractedName && call.transcript) {
+    extractedName = extractNameFromTranscript(call.transcript)
+  }
+  if (!extractedEmail && call.transcript) {
+    extractedEmail = extractEmailFromText(call.transcript)
+  }
+
+  if (extractedName || extractedEmail) {
+    console.log(`[call_analyzed] Extracted customer data: name="${extractedName}" email="${extractedEmail}" (has_customer_id=${!!callRecord.customer_id})`)
     await processCustomerDataFromAnalysis(
       supabase,
       callRecord,
       call.from_number || '',
-      customData
+      extractedName,
+      extractedEmail
     )
   }
 
@@ -626,29 +749,114 @@ async function processCustomerDataFromAnalysis(
   supabase: ReturnType<typeof createClient>,
   callRecord: { id: string; organization_id: string; customer_id: string | null; customer_phone: string | null },
   callerPhone: string,
-  customData: Record<string, string>
+  customerName: string | null,
+  customerEmail: string | null
 ) {
-  const { customer_name, customer_email } = customData
-
-  if (callRecord.customer_id) {
-    // Update existing customer
-    const updates: Record<string, any> = {}
-    if (customer_name) {
-      updates.name = customer_name
-      const parts = customer_name.trim().split(/\s+/)
-      updates.first_name = parts[0] || ''
-      updates.last_name = parts.slice(1).join(' ') || ''
+  try {
+    if (!customerName && !customerEmail) {
+      console.log('[processCustomerData] No name or email to process, skipping')
+      return
     }
-    if (customer_email) updates.email = customer_email
 
-    if (Object.keys(updates).length > 0) {
-      await supabase
+    const phone = callerPhone || callRecord.customer_phone || null
+
+    if (callRecord.customer_id) {
+      // ── Update existing customer ──
+      const updates: Record<string, any> = {}
+      if (customerName) {
+        updates.name = customerName
+        const parts = customerName.trim().split(/\s+/)
+        updates.first_name = parts[0] || ''
+        updates.last_name = parts.slice(1).join(' ') || ''
+      }
+      if (customerEmail) updates.email = customerEmail
+
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from('customers')
+          .update(updates)
+          .eq('id', callRecord.customer_id)
+        if (error) console.error(`[processCustomerData] Update failed: ${error.message}`)
+        else console.log(`[processCustomerData] Updated customer ${callRecord.customer_id}`)
+      }
+    } else {
+      // ── Create new customer ──
+
+      // 1. Duplicate check by phone or email
+      const existing = await findExistingCustomer(
+        supabase,
+        callRecord.organization_id,
+        phone,
+        customerEmail
+      )
+
+      if (existing) {
+        // Link existing customer to this call instead of creating a duplicate
+        console.log(`[processCustomerData] Found existing customer ${existing.id}, linking to call`)
+        await supabase
+          .from('calls')
+          .update({ customer_id: existing.id })
+          .eq('id', callRecord.id)
+
+        // Update with any new info they provided
+        const updates: Record<string, any> = {}
+        if (customerName) {
+          updates.name = customerName
+          const parts = customerName.trim().split(/\s+/)
+          updates.first_name = parts[0] || ''
+          updates.last_name = parts.slice(1).join(' ') || ''
+        }
+        if (customerEmail) updates.email = customerEmail
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('customers').update(updates).eq('id', existing.id)
+        }
+        return
+      }
+
+      // 2. Build customer name
+      const nameParts = (customerName || '').trim().split(/\s+/)
+      const firstName = nameParts[0] || null
+      const lastName = nameParts.slice(1).join(' ') || null
+      const displayName = customerName || 'Phone Caller'
+
+      // 3. Create the customer
+      const { data: newCustomer, error: insertError } = await supabase
         .from('customers')
-        .update(updates)
-        .eq('id', callRecord.customer_id)
+        .insert({
+          organization_id: callRecord.organization_id,
+          name: displayName,
+          first_name: firstName,
+          last_name: lastName,
+          email: customerEmail || null,
+          phone: phone ? normalizeE164(phone) : null,
+          status: 'Active',
+          priority: 'Medium',
+          country: 'CA',
+          total_spent: 0,
+          custom_fields: {},
+          tags: ['phone-lead'],
+        })
+        .select('id')
+        .single()
+
+      if (insertError) {
+        console.error(`[processCustomerData] Insert failed: ${insertError.message}`)
+        return
+      }
+
+      // 4. Link the new customer to the call
+      if (newCustomer) {
+        await supabase
+          .from('calls')
+          .update({ customer_id: newCustomer.id })
+          .eq('id', callRecord.id)
+        console.log(`[processCustomerData] Created customer ${newCustomer.id} and linked to call ${callRecord.id}`)
+      }
     }
+  } catch (err) {
+    // Non-blocking: log but don't throw
+    console.error(`[processCustomerData] Unexpected error:`, err)
   }
-  // New customer creation handled by retell-function-handler during live calls (Phase 2)
 }
 
 // ── Main Handler ───────────────────────────────────────────────────

@@ -199,6 +199,8 @@ export default function EmailPage() {
     if (result.synced > 0) {
       toast.success(`Synced ${result.synced} new email${result.synced > 1 ? 's' : ''}`);
       if (userId) fetchThreads(orgId, userId);
+    } else if (result.graph_error) {
+      toast.error(`Sync failed: ${result.graph_error}`);
     } else {
       toast('Inbox is up to date', { icon: '📬' });
     }
