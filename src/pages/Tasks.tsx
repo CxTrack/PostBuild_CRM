@@ -489,7 +489,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                           <th className="min-w-[250px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Task
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="w-40 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Status
                           </th>
                           <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
