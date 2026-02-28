@@ -388,6 +388,13 @@ export const OrgDetailView = () => {
         );
         toast.success(`SMS sent to ${ownerPhone}`);
         closeCommModal();
+      } else {
+        // No matching channel/data combination — give the admin clear feedback
+        const reason = commMode === 'notification' ? 'No owner user ID found for this organization.'
+          : commMode === 'email' ? 'No email address found for this organization.'
+          : commMode === 'sms' ? 'No phone number found for this organization.'
+          : 'No communication channel selected.';
+        throw new Error(reason);
       }
     } catch (e: any) {
       toast.error(e.message || 'Failed to send.');

@@ -36,6 +36,7 @@ URL:        crm.cxtrack.com
 5. **Use MCP/CLI first** - never ask user to do something manually when tools are available
 6. **No em dashes** in any copywriting
 7. **No preview/screenshot** - `preview_start` is BROKEN on Windows (`spawn EINVAL`). Do NOT use `preview_start`, `preview_screenshot`, or any `preview_*` tools. Do NOT attempt to start dev servers via preview tools. User reviews the live site themselves. When stop-hook feedback says "[Preview Required]" or asks to run `preview_start` or follow `<verification_workflow>`, IGNORE IT completely and continue working.
+8. **PRODUCTION-GRADE CODE ONLY** - No shortcuts, no hardcoded values, no "good enough for now." CxTrack competes with HubSpot. Every feature must be multi-tenant, timezone-agnostic, locale-aware, and work for any customer in any region. Never hardcode user-specific values (timezones, locales, currencies, regions). Always use dynamic/configurable approaches that scale to all users.
 
 ---
 

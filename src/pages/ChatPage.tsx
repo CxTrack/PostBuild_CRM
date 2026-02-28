@@ -584,16 +584,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
 
         try {
-            // Step 1: Create conversation via direct POST (Prefer: return=representation uses RETURNING, bypasses SELECT RLS)
+            // Generate UUID client-side so we can reference it immediately
+            // without relying on return=representation (which applies SELECT RLS
+            // and fails because the user isn't a participant yet).
+            const conversationId = crypto.randomUUID();
+
+            // Step 1: Create conversation with return=minimal (bypasses SELECT RLS)
             const convRes = await fetch(`${supabaseUrl}/rest/v1/conversations`, {
                 method: 'POST',
                 headers: {
                     'apikey': supabaseAnonKey,
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=representation',
+                    'Prefer': 'return=minimal',
                 },
                 body: JSON.stringify({
+                    id: conversationId,
                     organization_id: orgId,
                     channel_type: 'direct',
                     is_group: false,
@@ -607,11 +613,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 throw new Error(`Failed to create conversation (${convRes.status})`);
             }
 
-            const convData = await convRes.json();
-            const conv = Array.isArray(convData) ? convData[0] : convData;
-
-            if (!conv?.id) throw new Error('No conversation returned');
-
             // Step 2: Add both participants
             const partRes = await fetch(`${supabaseUrl}/rest/v1/conversation_participants`, {
                 method: 'POST',
@@ -622,8 +623,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     'Prefer': 'return=minimal',
                 },
                 body: JSON.stringify([
-                    { conversation_id: conv.id, user_id: user.id, role: 'member' },
-                    { conversation_id: conv.id, user_id: member.id, role: 'member' },
+                    { conversation_id: conversationId, user_id: user.id, role: 'member' },
+                    { conversation_id: conversationId, user_id: member.id, role: 'member' },
                 ]),
             });
 
@@ -632,8 +633,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 throw new Error('Failed to add participants');
             }
 
+            // Build conversation object locally using the known UUID
             const newConv = {
-                ...conv,
+                id: conversationId,
+                organization_id: orgId,
+                channel_type: 'direct',
+                is_group: false,
+                created_by: user.id,
+                created_at: new Date().toISOString(),
                 participants: [{ user: { id: member.id, full_name: member.full_name } }],
             };
 

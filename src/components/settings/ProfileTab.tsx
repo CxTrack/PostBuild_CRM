@@ -128,6 +128,7 @@ export const ProfileTab: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pendingAvatarBlob = useRef<Blob | null>(null);
     const pendingAvatarRemoved = useRef(false);
+    const userHasEdited = useRef(false);
 
     // Load profile — show localStorage cache instantly, then fetch DB in background
     // Uses effectiveUser so impersonation loads the target user's profile
@@ -177,6 +178,7 @@ export const ProfileTab: React.FC = () => {
         }
 
         // 2) Background: fetch from user_profiles DB (for effective user)
+        userHasEdited.current = false;
         fetchProfileFromDb(userId);
     }, [effectiveUser.id, effectiveUser.email, isImpersonated]);
 
@@ -231,6 +233,13 @@ export const ProfileTab: React.FC = () => {
                 expertise: meta.expertise || [],
                 learning_topics: meta.learning_topics || [],
             };
+
+            // Skip overwriting state if user already started editing (race condition guard)
+            if (userHasEdited.current) {
+                console.log('[ProfileTab] Skipping DB overwrite — user has pending edits');
+                setLoadedFromDb(true);
+                return;
+            }
 
             setProfile(merged);
             if (merged.avatar_url) {
@@ -312,7 +321,7 @@ export const ProfileTab: React.FC = () => {
                             'apikey': supabaseAnonKey,
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
-                            'Prefer': 'return=minimal',
+                            'Prefer': 'return=representation',
                         },
                         body: JSON.stringify({ avatar_url: avatarPublicUrl }),
                     }
@@ -322,6 +331,14 @@ export const ProfileTab: React.FC = () => {
                     const errText = await patchRes.text();
                     console.error('[ProfileTab] Avatar URL save failed:', patchRes.status, errText);
                     toast.error(`Failed to save avatar URL: ${patchRes.status}`);
+                    return;
+                }
+
+                // Validate the row was actually updated
+                const avatarRows = await patchRes.json();
+                if (!Array.isArray(avatarRows) || avatarRows.length === 0) {
+                    console.error('[ProfileTab] Avatar PATCH returned 0 rows');
+                    toast.error('Failed to save avatar. Please refresh and try again.');
                     return;
                 }
 
@@ -354,12 +371,75 @@ export const ProfileTab: React.FC = () => {
         }, 'image/png');
     };
 
-    /** Remove avatar handler */
-    const handleRemoveAvatar = () => {
+    /** Remove avatar handler — immediately removes from Storage + DB (matches upload behavior) */
+    const handleRemoveAvatar = async () => {
+        if (!authUser?.id) return;
+
+        // Immediately clear UI
         setAvatarPreview(null);
         setProfile(prev => ({ ...prev, avatar_url: null }));
         pendingAvatarBlob.current = null;
-        pendingAvatarRemoved.current = true;
+        pendingAvatarRemoved.current = false; // handled immediately, no need to defer to save
+
+        try {
+            const token = getAuthToken();
+            if (!token) throw new Error('No auth token');
+
+            // Delete from Supabase Storage
+            const filePath = `${authUser.id}/avatar.png`;
+            await fetch(
+                `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+
+            // Clear avatar_url in user_profiles
+            const patchRes = await fetch(
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation',
+                    },
+                    body: JSON.stringify({ avatar_url: null }),
+                }
+            );
+
+            if (!patchRes.ok) {
+                throw new Error(`Failed to remove avatar (${patchRes.status})`);
+            }
+
+            const rows = await patchRes.json();
+            if (!Array.isArray(rows) || rows.length === 0) {
+                throw new Error('Avatar removal failed: no rows affected');
+            }
+
+            // Update localStorage cache
+            const cached = localStorage.getItem(PROFILE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    parsed.avatar_url = null;
+                    localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+                } catch { /* skip */ }
+            }
+
+            // Refresh team members
+            try { await fetchTeamMembers(); } catch { /* non-critical */ }
+
+            toast.success('Photo removed!');
+        } catch (error) {
+            console.error('[ProfileTab] Avatar removal error:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to remove avatar');
+        }
     };
 
     /** Save profile — persist all fields to user_profiles (avatar is uploaded separately on crop) */
@@ -379,26 +459,9 @@ export const ProfileTab: React.FC = () => {
             const token = getAuthToken();
             if (!token) throw new Error('No auth token found');
 
-            // Avatar URL: use current profile value (already persisted by handleAvatarUpload)
+            // Avatar URL: use current profile value (already persisted by handleAvatarUpload/handleRemoveAvatar)
             // Never persist data: URLs — those are transient previews
-            let avatarPublicUrl: string | null = profile.avatar_url?.startsWith('data:') ? null : (profile.avatar_url || null);
-
-            // Handle avatar removal if user clicked "Remove"
-            if (pendingAvatarRemoved.current) {
-                const filePath = `${authUser.id}/avatar.png`;
-                await fetch(
-                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
-                    {
-                        method: 'DELETE',
-                        headers: {
-                            'apikey': supabaseAnonKey,
-                            'Authorization': `Bearer ${token}`,
-                        },
-                    }
-                );
-                avatarPublicUrl = null;
-                pendingAvatarRemoved.current = false;
-            }
+            const avatarPublicUrl: string | null = profile.avatar_url?.startsWith('data:') ? null : (profile.avatar_url || null);
 
             // Build profile_metadata JSONB
             const profileMetadata = {
@@ -437,7 +500,7 @@ export const ProfileTab: React.FC = () => {
                         'apikey': supabaseAnonKey,
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal',
+                        'Prefer': 'return=representation',
                     },
                     body: JSON.stringify(patchBody),
                 }
@@ -448,7 +511,14 @@ export const ProfileTab: React.FC = () => {
                 console.error('[ProfileTab] Profile PATCH failed:', res.status, errText);
                 throw new Error(`Profile update failed (${res.status}): ${errText}`);
             }
-            console.log('[ProfileTab] Profile saved successfully');
+
+            // Validate that the row was actually updated (return=representation returns the updated row)
+            const updatedRows = await res.json();
+            if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+                console.error('[ProfileTab] PATCH returned 0 rows — RLS may have blocked the update');
+                throw new Error('Profile update failed: no rows affected. Please refresh and try again.');
+            }
+            console.log('[ProfileTab] Profile saved successfully:', { metadataKeys: Object.keys(updatedRows[0]?.profile_metadata || {}) });
 
             // 4) Update local state with the persisted public URL
             const updatedProfile = {
@@ -467,6 +537,8 @@ export const ProfileTab: React.FC = () => {
                 await fetchTeamMembers();
             } catch { /* non-critical */ }
 
+            // Reset edit tracking after successful save
+            userHasEdited.current = false;
             toast.success('Profile saved successfully!');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to save profile';
@@ -643,7 +715,7 @@ export const ProfileTab: React.FC = () => {
                         <input
                             type="text"
                             value={profile.first_name}
-                            onChange={(e) => setProfile({ ...profile, first_name: e.target.value, full_name: `${e.target.value} ${profile.last_name}`.trim() })}
+                            onChange={(e) => { userHasEdited.current = true; const val = e.target.value; setProfile(prev => ({ ...prev, first_name: val, full_name: `${val} ${prev.last_name}`.trim() })); }}
                             placeholder="John"
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
@@ -656,7 +728,7 @@ export const ProfileTab: React.FC = () => {
                         <input
                             type="text"
                             value={profile.last_name}
-                            onChange={(e) => setProfile({ ...profile, last_name: e.target.value, full_name: `${profile.first_name} ${e.target.value}`.trim() })}
+                            onChange={(e) => { userHasEdited.current = true; const val = e.target.value; setProfile(prev => ({ ...prev, last_name: val, full_name: `${prev.first_name} ${val}`.trim() })); }}
                             placeholder="Doe"
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
@@ -671,7 +743,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="email"
                                 value={profile.email}
-                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, email: e.target.value })); }}
                                 placeholder="john@example.com"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -684,7 +756,7 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <PhoneInput
                             value={profile.phone}
-                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, phone: e.target.value })); }}
                             className="py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                     </div>
@@ -698,7 +770,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="text"
                                 value={profile.title}
-                                onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, title: e.target.value })); }}
                                 placeholder="Sales Manager"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -725,15 +797,16 @@ export const ProfileTab: React.FC = () => {
                                     <select
                                         value={deptOtherMode ? '__other__' : (isPreset ? currentVal : '')}
                                         onChange={(e) => {
+                                            userHasEdited.current = true;
                                             if (e.target.value === '__other__') {
                                                 setDeptOtherMode(true);
-                                                setProfile({ ...profile, department: '' });
+                                                setProfile(prev => ({ ...prev, department: '' }));
                                                 setTimeout(() => {
                                                     document.getElementById('department-other-input')?.focus();
                                                 }, 50);
                                             } else {
                                                 setDeptOtherMode(false);
-                                                setProfile({ ...profile, department: e.target.value });
+                                                setProfile(prev => ({ ...prev, department: e.target.value }));
                                             }
                                         }}
                                         className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -749,7 +822,7 @@ export const ProfileTab: React.FC = () => {
                                             id="department-other-input"
                                             type="text"
                                             value={currentVal}
-                                            onChange={(e) => setProfile({ ...profile, department: e.target.value })}
+                                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, department: e.target.value })); }}
                                             placeholder="Enter department name..."
                                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                         />
@@ -765,11 +838,11 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <AddressAutocomplete
                             value={profile.location}
-                            onChange={(value) => setProfile({ ...profile, location: value })}
+                            onChange={(value) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, location: value })); }}
                             onAddressSelect={(components: AddressComponents) => {
-                                // Format as "City, State, Country" for profile location
+                                userHasEdited.current = true;
                                 const parts = [components.city, components.state, components.country].filter(Boolean);
-                                setProfile({ ...profile, location: parts.join(', ') });
+                                setProfile(prev => ({ ...prev, location: parts.join(', ') }));
                             }}
                             placeholder="Start typing your city..."
                             searchTypes={['(cities)']}
@@ -783,7 +856,7 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <select
                             value={profile.timezone}
-                            onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, timezone: e.target.value })); }}
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         >
                             {TIMEZONE_OPTIONS.map(tz => (
@@ -801,7 +874,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="date"
                                 value={profile.birthday}
-                                onChange={(e) => setProfile({ ...profile, birthday: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, birthday: e.target.value })); }}
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
                         </div>
@@ -815,7 +888,7 @@ export const ProfileTab: React.FC = () => {
                     </label>
                     <textarea
                         value={profile.bio}
-                        onChange={(e) => setProfile({ ...profile, bio: e.target.value.slice(0, 500) })}
+                        onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, bio: e.target.value.slice(0, 500) })); }}
                         placeholder="Tell us about yourself..."
                         rows={4}
                         className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -842,7 +915,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="url"
                                 value={profile.linkedin}
-                                onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, linkedin: e.target.value })); }}
                                 placeholder="linkedin.com/in/johndoe"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -858,7 +931,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="url"
                                 value={profile.website}
-                                onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, website: e.target.value })); }}
                                 placeholder="johndoe.com"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
