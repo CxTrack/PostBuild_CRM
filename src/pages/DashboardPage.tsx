@@ -6,7 +6,7 @@ import {
     Bot, PhoneIncoming, PhoneOutgoing, Clock, Package, MessageSquare
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
-import { fetchTodayOutlookEvents, type OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import { fetchTodayOutlookEvents, fetchOutlookEvents, type OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
 import {
     DndContext,
     closestCenter,
@@ -193,7 +193,9 @@ export const DashboardPage = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSMSModal, setShowSMSModal] = useState(false);
     const [outlookEvents, setOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
+    const [upcomingOutlookEvents, setUpcomingOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
     const [outlookNeedsReauth, setOutlookNeedsReauth] = useState(false);
+    const [scheduleMode, setScheduleMode] = useState<'upcoming' | 'today'>('upcoming');
 
     // Define all quick actions with their module mapping
     const allQuickActions = [
@@ -340,7 +342,7 @@ export const DashboardPage = () => {
         return () => clearInterval(timer);
     }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchPipelineStats]);
 
-    // Fetch Outlook calendar events
+    // Fetch Outlook calendar events (today + upcoming 30 days)
     useEffect(() => {
         let cancelled = false;
         const loadOutlookEvents = async () => {
@@ -349,6 +351,13 @@ export const DashboardPage = () => {
                 if (cancelled) return;
                 setOutlookEvents(result.events);
                 setOutlookNeedsReauth(result.needsReauth);
+
+                // Also fetch upcoming 30 days for the "Upcoming" toggle
+                const now = new Date();
+                const thirtyDaysOut = new Date(now);
+                thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                const upcoming = await fetchOutlookEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                if (!cancelled) setUpcomingOutlookEvents(upcoming);
             } catch {
                 // Silently fail - Outlook integration is optional
             }
@@ -379,14 +388,6 @@ export const DashboardPage = () => {
             return date >= startOfDay && date <= endOfDay;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-    const upcomingAppointments = events
-        .filter(event => {
-            const date = new Date(event.start_time);
-            return date > endOfDay;
-        })
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 5);
-
     // Merge local + Outlook events for today's schedule
     const mergedTodaysSchedule = [
         ...todaysAppointments.map(e => ({ ...e, source: 'local' as const })),
@@ -404,6 +405,30 @@ export const DashboardPage = () => {
             source: 'outlook' as const,
         })),
     ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+    // Merge local + Outlook for upcoming view (next 5 from now onward)
+    const mergedUpcoming = [
+        ...events.filter(e => new Date(e.start_time) >= startOfDay)
+            .map(e => ({ ...e, source: 'local' as const })),
+        ...upcomingOutlookEvents.map(e => ({
+            id: e.id,
+            title: e.title,
+            start_time: e.start_time,
+            end_time: e.end_time,
+            location: e.location,
+            is_all_day: e.is_all_day,
+            organizer: e.organizer,
+            meeting_url: e.meeting_url,
+            web_link: e.web_link,
+            attendees: e.attendees,
+            source: 'outlook' as const,
+        })),
+    ]
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .slice(0, 5);
+
+    // What to display based on toggle
+    const displayedSchedule = scheduleMode === 'today' ? mergedTodaysSchedule : mergedUpcoming;
 
     return (
         <PageContainer className="gap-4">
@@ -584,33 +609,51 @@ export const DashboardPage = () => {
                         </div>
                     </CompactWidget>
 
-                    {/* Today's Schedule */}
-                    <CompactWidget
-                        title="Today's Schedule"
-                        className="h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm"
-                        onClick={() => navigate('/dashboard/calendar')}
-                        action={
-                            <button onClick={(e) => { e.stopPropagation(); navigate('/dashboard/calendar'); }} className="text-primary-600 hover:text-primary-700">
-                                <Plus size={16} />
+                    {/* Schedule Widget with Today/Upcoming Toggle */}
+                    <Card className="flex flex-col h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setScheduleMode('today')}
+                                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                        scheduleMode === 'today'
+                                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                    Today
+                                </button>
+                                <button
+                                    onClick={() => setScheduleMode('upcoming')}
+                                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                        scheduleMode === 'upcoming'
+                                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                    Upcoming
+                                </button>
+                            </div>
+                            <button onClick={() => navigate('/dashboard/calendar')} className="text-primary-600 hover:text-primary-700">
+                                <Calendar size={16} />
                             </button>
-                        }
-                    >
-                        <div className="h-full overflow-y-auto scrollbar-thin">
-                            {mergedTodaysSchedule.length === 0 && upcomingAppointments.length === 0 && !outlookNeedsReauth ? (
+                        </div>
+                        <div className="flex-1 overflow-y-auto scrollbar-thin">
+                            {outlookNeedsReauth && (
+                                <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        Sign out and back in with Microsoft to sync your Outlook calendar.
+                                    </p>
+                                </div>
+                            )}
+                            {displayedSchedule.length === 0 && !outlookNeedsReauth ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
-                                    No appointments today
+                                    {scheduleMode === 'today' ? 'No appointments today' : 'No upcoming appointments'}
                                 </div>
                             ) : (
                                 <>
-                                    {outlookNeedsReauth && (
-                                        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
-                                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                                Sign out and back in with Microsoft to sync your Outlook calendar.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {mergedTodaysSchedule.length > 0 && mergedTodaysSchedule.map(event => (
+                                    {displayedSchedule.map(event => (
                                         <div
                                             key={`${event.source}-${event.id}`}
                                             onClick={() => event.source === 'outlook' && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
@@ -635,7 +678,7 @@ export const DashboardPage = () => {
                                                         )}
                                                     </div>
                                                     <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2 flex-shrink-0">
-                                                        {event.is_all_day ? 'All day' : format(new Date(event.start_time), 'HH:mm')}
+                                                        {(event as any).is_all_day ? 'All day' : format(new Date(event.start_time), 'HH:mm')}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
@@ -654,47 +697,11 @@ export const DashboardPage = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    {mergedTodaysSchedule.length === 0 && !outlookNeedsReauth && (
-                                        <div className="px-4 py-3 text-xs text-gray-400 text-center border-b border-gray-100 dark:border-gray-800">
-                                            Nothing scheduled for today
-                                        </div>
-                                    )}
-                                    {upcomingAppointments.length > 0 && (
-                                        <>
-                                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50">
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Upcoming</span>
-                                            </div>
-                                            {upcomingAppointments.map(event => (
-                                                <div key={event.id} onClick={() => navigate('/dashboard/calendar')} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors opacity-70 cursor-pointer">
-                                                    <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
-                                                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
-                                                            {format(new Date(event.start_time), 'MMM')}
-                                                        </span>
-                                                        <span className="text-lg font-bold text-primary-600">
-                                                            {format(new Date(event.start_time), 'dd')}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 py-0.5">
-                                                        <div className="flex justify-between items-start">
-                                                            <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
-                                                            <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2">
-                                                                {format(new Date(event.start_time), 'HH:mm')}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                            <Users size={12} />
-                                                            {event.customer_id ? (customers.find(c => c.id === event.customer_id)?.name || 'Unknown User') : 'No Customer'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </>
-                                    )}
                                     <div className="h-4" />
                                 </>
                             )}
                         </div>
-                    </CompactWidget>
+                    </Card>
                 </div>
 
                 {/* Bottom Row: Tasks - Full Width */}
