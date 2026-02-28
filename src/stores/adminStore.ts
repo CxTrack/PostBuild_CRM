@@ -326,6 +326,8 @@ interface AdminState {
   fetchFinancialSummary: (days?: number) => Promise<void>;
   fetchActivityLog: (limit?: number, offset?: number, entityType?: string, action?: string) => Promise<void>;
   fetchAdminUsers: () => Promise<void>;
+  setAdminStatus: (userId: string, isAdmin: boolean, accessLevel?: string) => Promise<{ success: boolean; error?: string }>;
+  searchUsersForAdmin: (search: string) => Promise<Array<{ user_id: string; email: string; full_name: string; is_admin: boolean; admin_access_level: string }>>;
   fetchAllTickets: () => Promise<void>;
   fetchTicketDetail: (ticketId: string) => Promise<void>;
   updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }, comment?: string) => Promise<void>;
@@ -571,6 +573,30 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set((s) => ({ adminUsers: Array.isArray(data) ? data : [], loading: { ...s.loading, adminUsers: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, adminUsers: false }, errors: { ...s.errors, adminUsers: e.message } }));
+    }
+  },
+
+  setAdminStatus: async (userId: string, isAdmin: boolean, accessLevel = 'full') => {
+    try {
+      const data = await supabaseRpc<{ success: boolean }>('admin_set_admin_status', {
+        p_user_id: userId,
+        p_is_admin: isAdmin,
+        p_access_level: accessLevel,
+      });
+      // Refresh admin list
+      await get().fetchAdminUsers();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  searchUsersForAdmin: async (search: string) => {
+    try {
+      const data = await supabaseRpc<Array<{ user_id: string; email: string; full_name: string; is_admin: boolean; admin_access_level: string }>>('admin_search_users', { p_search: search });
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
     }
   },
 

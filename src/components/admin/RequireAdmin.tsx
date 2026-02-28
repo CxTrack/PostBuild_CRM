@@ -4,10 +4,12 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
-const ADMIN_EMAILS = [
+// Bootstrap emails: if these users don't have an admin_settings record yet,
+// one will be auto-created. This is a safety net only -- all admin management
+// should happen through the Admin Panel > Settings tab.
+const BOOTSTRAP_ADMIN_EMAILS = [
   'cto@cxtrack.com',
   'manik.sharma@cxtrack.com',
-  'abdullah.nassar@cxtrack.com',
   'info@cxtrack.com',
 ];
 
@@ -33,16 +35,7 @@ export const RequireAdmin = ({ children }: { children: JSX.Element }) => {
         return;
       }
 
-      // Fast path: email whitelist
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isLocalDev || (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
-        sessionStorage.setItem(cacheKey, 'true');
-        setIsAdmin(true);
-        setChecking(false);
-        return;
-      }
-
-      // Fallback: check admin_settings table
+      // Primary check: admin_settings table (DB is source of truth)
       try {
         const { data } = await supabase
           .from('admin_settings')
@@ -50,9 +43,33 @@ export const RequireAdmin = ({ children }: { children: JSX.Element }) => {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const adminStatus = !!data?.is_admin;
-        sessionStorage.setItem(cacheKey, String(adminStatus));
-        setIsAdmin(adminStatus);
+        if (data) {
+          const adminStatus = !!data.is_admin;
+          sessionStorage.setItem(cacheKey, String(adminStatus));
+          setIsAdmin(adminStatus);
+          setChecking(false);
+          return;
+        }
+
+        // No record found -- check bootstrap list and auto-seed if matched
+        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocalDev || (user.email && BOOTSTRAP_ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
+          // Auto-create admin_settings record for bootstrap admin
+          await supabase.from('admin_settings').upsert({
+            user_id: user.id,
+            is_admin: true,
+            admin_access_level: 'full',
+          }, { onConflict: 'user_id' });
+
+          sessionStorage.setItem(cacheKey, 'true');
+          setIsAdmin(true);
+          setChecking(false);
+          return;
+        }
+
+        // Not admin
+        sessionStorage.setItem(cacheKey, 'false');
+        setIsAdmin(false);
       } catch {
         setIsAdmin(false);
       }

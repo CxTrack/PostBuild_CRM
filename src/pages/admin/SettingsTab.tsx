@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Shield, Users, Server, Key, Copy, Check,
-  ExternalLink, RefreshCw, Zap
+  ExternalLink, RefreshCw, Zap, UserPlus, X, ShieldOff, Search, AlertTriangle
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
+import { useAuthContext } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const PROJECT_REF = 'zkpfzrbbupgiqkzqydji';
 const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
@@ -53,8 +55,16 @@ const SMS_TIERS = [
 ];
 
 export const SettingsTab = () => {
-  const { adminUsers, loading, fetchAdminUsers } = useAdminStore();
+  const { user } = useAuthContext();
+  const { adminUsers, loading, fetchAdminUsers, setAdminStatus, searchUsersForAdmin } = useAdminStore();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{ user_id: string; email: string; full_name: string; is_admin: boolean; admin_access_level: string }>>([]);
+  const [searching, setSearching] = useState(false);
+  const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchAdminUsers();
@@ -66,14 +76,124 @@ export const SettingsTab = () => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      const results = await searchUsersForAdmin(value);
+      setSearchResults(results);
+      setSearching(false);
+    }, 300);
+  };
+
+  const handleGrantAdmin = async (userId: string, email: string) => {
+    setActionLoading(userId);
+    const result = await setAdminStatus(userId, true, 'full');
+    if (result.success) {
+      toast.success(`Admin access granted to ${email}`);
+      setSearchQuery('');
+      setSearchResults([]);
+      setShowAddAdmin(false);
+    } else {
+      toast.error(result.error || 'Failed to grant admin access');
+    }
+    setActionLoading(null);
+  };
+
+  const handleRevokeAdmin = async (userId: string, email: string) => {
+    if (userId === user?.id) {
+      toast.error('You cannot revoke your own admin access');
+      return;
+    }
+    setActionLoading(userId);
+    const result = await setAdminStatus(userId, false);
+    if (result.success) {
+      toast.success(`Admin access revoked from ${email}`);
+      setRevokeConfirm(null);
+    } else {
+      toast.error(result.error || 'Failed to revoke admin access');
+    }
+    setActionLoading(null);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Admin Users */}
+      {/* Admin Users - Full Management */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-purple-600" />
-          Admin Users
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Shield className="w-4 h-4 text-purple-600" />
+            Admin Users
+          </h3>
+          <button
+            onClick={() => setShowAddAdmin(!showAddAdmin)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+          >
+            {showAddAdmin ? <X className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+            {showAddAdmin ? 'Cancel' : 'Add Admin'}
+          </button>
+        </div>
+
+        {/* Add Admin Search */}
+        {showAddAdmin && (
+          <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2 font-medium">
+              Search for a user by name or email to grant admin access
+            </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Type email or name..."
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-400"
+                autoFocus
+              />
+              {searching && <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {searchResults.map((u) => (
+                  <div key={u.user_id} className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{u.full_name || u.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{u.email}</p>
+                    </div>
+                    {u.is_admin ? (
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                        Already Admin
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleGrantAdmin(u.user_id, u.email)}
+                        disabled={actionLoading === u.user_id}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        {actionLoading === u.user_id ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Shield className="w-3 h-3" />
+                        )}
+                        Grant Admin
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+              <p className="text-xs text-gray-400 mt-2 text-center py-2">No users found matching "{searchQuery}"</p>
+            )}
+          </div>
+        )}
+
+        {/* Current Admins List */}
         <div className="space-y-2">
           {loading.adminUsers ? (
             <div className="h-20 flex items-center justify-center">
@@ -89,24 +209,63 @@ export const SettingsTab = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {admin.full_name || admin.email}
+                      {admin.user_id === user?.id && (
+                        <span className="ml-1.5 text-[10px] text-purple-500 font-normal">(you)</span>
+                      )}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {admin.email} · {admin.admin_access_level || 'full'} access{admin.created_at ? ` · Since ${new Date(admin.created_at).toLocaleDateString()}` : ''}
                     </p>
                   </div>
                 </div>
-                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                  admin.admin_access_level === 'full'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                }`}>
-                  {admin.admin_access_level === 'full' ? 'Super Admin' : admin.admin_access_level || 'Admin'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                    admin.admin_access_level === 'full'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {admin.admin_access_level === 'full' ? 'Super Admin' : admin.admin_access_level || 'Admin'}
+                  </span>
+                  {admin.user_id !== user?.id && (
+                    revokeConfirm === admin.user_id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleRevokeAdmin(admin.user_id, admin.email)}
+                          disabled={actionLoading === admin.user_id}
+                          className="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {actionLoading === admin.user_id ? 'Revoking...' : 'Confirm'}
+                        </button>
+                        <button
+                          onClick={() => setRevokeConfirm(null)}
+                          className="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setRevokeConfirm(admin.user_id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Revoke admin access"
+                      >
+                        <ShieldOff className="w-3.5 h-3.5" />
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             ))
           ) : (
             <p className="text-sm text-gray-400 py-4 text-center">No admin users configured</p>
           )}
+        </div>
+
+        <div className="mt-3 flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800/30">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Admin access grants full platform control including user management, billing, and data access. Only grant to trusted team members.
+          </p>
         </div>
       </div>
 

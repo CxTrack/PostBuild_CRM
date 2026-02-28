@@ -366,9 +366,6 @@ export const DashboardLayout = () => {
     return () => clearTimeout(timer);
   }, [currentOrganization?.id]);
 
-  const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com', 'info@cxtrack.com'];
-  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
@@ -376,12 +373,7 @@ export const DashboardLayout = () => {
         return;
       }
 
-      // Allow admin in local dev OR for authorized emails
-      if (isLocalDev || (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
-        setIsSuperAdmin(true);
-        return;
-      }
-
+      // DB is source of truth for admin status
       try {
         const { data, error } = await supabase
           .from('admin_settings')
@@ -397,7 +389,7 @@ export const DashboardLayout = () => {
     };
 
     checkAdminStatus();
-  }, [user, isLocalDev]);
+  }, [user]);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return location.pathname === '/dashboard';
