@@ -15,6 +15,7 @@ import {
   MapPin,
   Video,
   CheckCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { CalendarEvent, EventStatus } from '@/types/database.types';
 import { FEATURE_FLAGS } from '@/config/features.config';
@@ -288,16 +289,24 @@ function ViewMode({
         )}
 
         {appointment.meeting_url && (
-          <div className="flex items-center gap-2 text-sm col-span-2">
-            <Video size={16} className="text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400">Meeting URL:</span>
+          <div className="flex items-center gap-3 col-span-2 mt-2">
             <a
               href={appointment.meeting_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-primary-600 dark:text-primary-400 hover:underline"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-sm font-semibold transition-colors shadow-sm"
             >
+              <Video size={16} />
               Join Meeting
+            </a>
+            <a
+              href={`https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(appointment.title)}&startdt=${encodeURIComponent(new Date(appointment.start_time).toISOString())}&enddt=${encodeURIComponent(new Date(appointment.end_time).toISOString())}${appointment.location ? `&location=${encodeURIComponent(appointment.location)}` : ''}${appointment.description ? `&body=${encodeURIComponent(appointment.description)}` : ''}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-colors shadow-sm"
+            >
+              <ExternalLink size={16} />
+              Open in Outlook
             </a>
           </div>
         )}
