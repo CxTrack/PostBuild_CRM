@@ -52,6 +52,14 @@ export interface UpdateAgentParams {
   model?: string;
   modelTemperature?: number;
   knowledgeBaseIds?: string[];
+  // Booking availability (updates agent prompt with BOOKING RULES)
+  businessHours?: {
+    timezone: string;
+    meeting_duration_minutes: number;
+    meeting_title: string;
+    schedule: Record<string, Array<{ start: string; end: string }>>;
+  };
+  fixTools?: boolean; // Convert legacy Cal.com native tools to custom webhook tools
   // DB-only settings
   brokerPhone?: string;
   brokerName?: string;

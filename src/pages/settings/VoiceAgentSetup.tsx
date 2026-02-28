@@ -12,6 +12,8 @@ import { INDUSTRY_TEMPLATES } from '@/config/modules.config';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import MemoryContextSettings, { type MemorySettings } from '@/components/voice/MemoryContextSettings';
+import BookingAvailabilityEditor from '@/components/voice/BookingAvailabilityEditor';
+import { type BookingAvailability, getDefaultBookingAvailability } from '@/utils/bookingPrompt';
 import toast from 'react-hot-toast';
 
 const STEPS = [
@@ -56,7 +58,7 @@ export const VoiceAgentSetup = () => {
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge' | 'memory'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge' | 'memory' | 'scheduling'>('settings');
     const [memorySettings, setMemorySettings] = useState<MemorySettings>({
         memory_enabled: true,
         memory_call_history: true,
@@ -64,6 +66,8 @@ export const VoiceAgentSetup = () => {
         memory_calendar_tasks: true,
     });
     const [memorySaving, setMemorySaving] = useState(false);
+    const [bookingAvailability, setBookingAvailability] = useState<BookingAvailability>(getDefaultBookingAvailability());
+    const [schedulingSaving, setSchedulingSaving] = useState(false);
     // Voice selection state
     const [voiceSearch, setVoiceSearch] = useState('');
     const [voiceGenderFilter, setVoiceGenderFilter] = useState<'all' | 'male' | 'female'>('all');
@@ -123,6 +127,17 @@ export const VoiceAgentSetup = () => {
         fetchKnowledgeBases();
         fetchVoices();
     }, [fetchConfig, fetchUsage, fetchKnowledgeBases, fetchVoices]);
+
+    // Load booking availability from org metadata
+    useEffect(() => {
+        const meta = currentOrganization?.metadata as Record<string, unknown> | undefined;
+        if (meta?.business_hours) {
+            const bh = meta.business_hours as BookingAvailability;
+            if (bh.timezone && bh.schedule) {
+                setBookingAvailability(bh);
+            }
+        }
+    }, [currentOrganization]);
 
     // Cleanup audio on unmount
     useEffect(() => {
@@ -991,6 +1006,7 @@ export const VoiceAgentSetup = () => {
                             { id: 'prompt' as const, label: 'Prompt & Personality', icon: Brain },
                             { id: 'knowledge' as const, label: 'Knowledge Base', icon: BookOpen },
                             { id: 'memory' as const, label: 'Memory & Context', icon: Brain },
+                            { id: 'scheduling' as const, label: 'Scheduling', icon: Clock },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -1567,6 +1583,132 @@ export const VoiceAgentSetup = () => {
                             saving={memorySaving}
                             isProvisioned={isProvisioned()}
                         />
+                    )}
+
+                    {activeTab === 'scheduling' && (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
+                            <BookingAvailabilityEditor
+                                value={bookingAvailability}
+                                onChange={setBookingAvailability}
+                                showPreview={true}
+                            />
+
+                            {/* Save Button */}
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    disabled={schedulingSaving || !isProvisioned()}
+                                    onClick={async () => {
+                                        setSchedulingSaving(true);
+                                        try {
+                                            const orgId = currentOrganization?.id;
+                                            if (!orgId) throw new Error('No organization');
+
+                                            // 1. Save to org metadata
+                                            const token = (() => {
+                                                for (const key of Object.keys(localStorage)) {
+                                                    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                                                        try {
+                                                            const parsed = JSON.parse(localStorage.getItem(key) || '');
+                                                            return parsed?.access_token;
+                                                        } catch { /* skip */ }
+                                                    }
+                                                }
+                                                return null;
+                                            })();
+
+                                            if (!token) throw new Error('Not authenticated');
+
+                                            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                                            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+                                            // Merge with existing metadata
+                                            const existingMeta = (currentOrganization?.metadata || {}) as Record<string, unknown>;
+                                            const updatedMeta = { ...existingMeta, business_hours: bookingAvailability };
+
+                                            const metaRes = await fetch(
+                                                `${supabaseUrl}/rest/v1/organizations?id=eq.${orgId}`,
+                                                {
+                                                    method: 'PATCH',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': `Bearer ${token}`,
+                                                        'apikey': supabaseKey || '',
+                                                        'Prefer': 'return=minimal',
+                                                    },
+                                                    body: JSON.stringify({ metadata: updatedMeta }),
+                                                }
+                                            );
+
+                                            if (!metaRes.ok) throw new Error('Failed to save availability');
+
+                                            // 2. Update Retell agent prompt with new booking rules
+                                            await updateRetellAgent({
+                                                businessHours: bookingAvailability,
+                                            });
+
+                                            toast.success('Booking availability saved and agent updated');
+                                        } catch (err) {
+                                            console.error('Failed to save scheduling:', err);
+                                            toast.error('Failed to save booking availability');
+                                        } finally {
+                                            setSchedulingSaving(false);
+                                        }
+                                    }}
+                                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed
+                                               text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    {schedulingSaving ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-4 w-4" />
+                                            Save Availability
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Fix legacy Cal.com tools for existing agents */}
+                            {isProvisioned() && (
+                                <div className="border border-gray-700 rounded-lg p-4 bg-gray-900/30">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-300">Legacy Tool Migration</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                If your agent was set up before the booking system update, click here to convert legacy Cal.com tools to the new webhook-based tools.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                try {
+                                                    toast.loading('Fixing booking tools...', { id: 'fix-tools' });
+                                                    await updateRetellAgent({ fixTools: true });
+                                                    toast.success('Booking tools updated successfully', { id: 'fix-tools' });
+                                                } catch {
+                                                    toast.error('Failed to fix tools', { id: 'fix-tools' });
+                                                }
+                                            }}
+                                            className="px-4 py-2 text-xs font-medium text-amber-400 border border-amber-500/30 rounded-lg
+                                                       hover:bg-amber-500/10 transition-colors whitespace-nowrap flex items-center gap-1.5"
+                                        >
+                                            <Zap className="h-3.5 w-3.5" />
+                                            Fix Tools
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isProvisioned() && (
+                                <p className="text-sm text-amber-400">
+                                    Provision your voice agent first to configure booking availability.
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
             )}

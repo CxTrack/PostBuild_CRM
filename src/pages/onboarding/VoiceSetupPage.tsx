@@ -6,6 +6,7 @@ import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { CA_PROVINCES, US_STATES } from '@/constants/onboarding';
 import { updateOnboardingStep } from '@/utils/onboarding';
+import { getDefaultBookingAvailability } from '@/utils/bookingPrompt';
 
 // 4 curated voices for quick onboarding — covers female/male, professional/friendly
 // Voice IDs must match Retell's actual catalog (verified via /list-voices API)
@@ -228,6 +229,7 @@ export default function VoiceSetupPage() {
                   ...lead.metadata,
                   voice_config: config,
                   voice_setup_completed: true,
+                  business_hours: getDefaultBookingAvailability(),
                 },
               }),
             }
