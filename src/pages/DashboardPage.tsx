@@ -610,35 +610,40 @@ export const DashboardPage = () => {
                     </CompactWidget>
 
                     {/* Schedule Widget with Today/Upcoming Toggle */}
-                    <Card className="flex flex-col h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setScheduleMode('today')}
-                                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                                        scheduleMode === 'today'
-                                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
-                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                                    }`}
-                                >
-                                    Today
-                                </button>
-                                <button
-                                    onClick={() => setScheduleMode('upcoming')}
-                                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                                        scheduleMode === 'upcoming'
-                                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
-                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                                    }`}
-                                >
-                                    Upcoming
+                    <CompactWidget
+                        title=""
+                        className="h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm"
+                        action={
+                            <div className="flex items-center gap-2 w-full">
+                                <div className="flex items-center gap-1 flex-1">
+                                    <button
+                                        onClick={() => setScheduleMode('today')}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                            scheduleMode === 'today'
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        Today
+                                    </button>
+                                    <button
+                                        onClick={() => setScheduleMode('upcoming')}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                            scheduleMode === 'upcoming'
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        Upcoming
+                                    </button>
+                                </div>
+                                <button onClick={() => navigate('/dashboard/calendar')} className="text-primary-600 hover:text-primary-700">
+                                    <Calendar size={16} />
                                 </button>
                             </div>
-                            <button onClick={() => navigate('/dashboard/calendar')} className="text-primary-600 hover:text-primary-700">
-                                <Calendar size={16} />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto scrollbar-thin">
+                        }
+                    >
+                        <div className="h-full overflow-y-auto scrollbar-thin">
                             {outlookNeedsReauth && (
                                 <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
                                     <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -657,51 +662,36 @@ export const DashboardPage = () => {
                                         <div
                                             key={`${event.source}-${event.id}`}
                                             onClick={() => event.source === 'outlook' && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
-                                            className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                            className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                                         >
-                                            <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
-                                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
+                                            <div className="flex flex-col items-center justify-center w-10 shrink-0">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase leading-tight">
                                                     {format(new Date(event.start_time), 'MMM')}
                                                 </span>
-                                                <span className="text-lg font-bold text-primary-600">
-                                                    {format(new Date(event.start_time), 'dd')}
+                                                <span className="text-base font-bold text-primary-600 leading-tight">
+                                                    {format(new Date(event.start_time), 'd')}
                                                 </span>
                                             </div>
-                                            <div className="flex-1 min-w-0 py-0.5">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                        <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
-                                                        {event.source === 'outlook' && (
-                                                            <span className="flex-shrink-0 text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                                                                Outlook
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2 flex-shrink-0">
-                                                        {(event as any).is_all_day ? 'All day' : format(new Date(event.start_time), 'HH:mm')}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    {event.source === 'outlook' ? (
-                                                        <>
-                                                            <Users size={12} />
-                                                            {(event as any).organizer || ((event as any).attendees?.length ? `${(event as any).attendees.length} attendees` : 'Outlook Calendar')}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Users size={12} />
-                                                            {(event as any).customer_id ? (customers.find(c => c.id === (event as any).customer_id)?.name || 'Unknown User') : 'No Customer'}
-                                                        </>
-                                                    )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{event.title}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                    {(event as any).is_all_day
+                                                        ? 'All day'
+                                                        : format(new Date(event.start_time), 'h:mm a')}
+                                                    {event.source === 'outlook' && (event as any).organizer
+                                                        ? ` · ${(event as any).organizer}`
+                                                        : (event as any).customer_id
+                                                            ? ` · ${customers.find(c => c.id === (event as any).customer_id)?.name || ''}`
+                                                            : ''}
                                                 </p>
                                             </div>
                                         </div>
                                     ))}
-                                    <div className="h-4" />
+                                    <div className="h-2" />
                                 </>
                             )}
                         </div>
-                    </Card>
+                    </CompactWidget>
                 </div>
 
                 {/* Bottom Row: Tasks - Full Width */}
