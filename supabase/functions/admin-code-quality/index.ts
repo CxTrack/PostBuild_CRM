@@ -47,7 +47,8 @@ Deno.serve(async (req: Request) => {
     const { data: adminRow } = await supabase
       .from("admin_settings")
       .select("id")
-      .eq("admin_email", user.email)
+      .eq("user_id", user.id)
+      .eq("is_admin", true)
       .maybeSingle();
 
     if (!adminRow) {
