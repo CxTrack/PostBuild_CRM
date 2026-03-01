@@ -5,7 +5,7 @@ import {
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug, Mail, Building2, GitMerge
+  FileBarChart, Plug, Mail, Building2, GitMerge, Code2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -34,6 +34,7 @@ import { SmsComplianceTab } from '../../components/admin/SmsComplianceTab';
 import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
 import { OrgDetailView } from './OrgDetailView';
 import { OrgMergeTool } from '../../components/admin/OrgMergeTool';
+import { CodeQualityTab } from './CodeQualityTab';
 
 interface TabItem {
   id: string;
@@ -81,6 +82,7 @@ const TAB_GROUPS: TabGroup[] = [
     label: 'System',
     tabs: [
       { id: 'api-monitoring', label: 'API Monitoring', icon: Activity, component: APIMonitoringTab },
+      { id: 'code-quality', label: 'Code Quality', icon: Code2, component: CodeQualityTab },
       { id: 'audit', label: 'Audit Logs', icon: Shield, component: AuditLogsTab },
       { id: 'broadcasts', label: 'Broadcasts', icon: Send, component: BroadcastPanel },
       { id: 'mcp', label: 'MCP / AI Ops', icon: Plug, component: MCPConnectionPanel },

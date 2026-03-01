@@ -1,7 +1,7 @@
 
 
 [build]
-  command = "npm run build"
+  command = "node scripts/generate-quality-report.js && npm run test && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 

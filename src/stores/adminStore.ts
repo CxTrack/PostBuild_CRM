@@ -194,6 +194,95 @@ export interface DeletionRequest {
   notes?: string;
 }
 
+// Code Quality Report Types
+export interface CodeQualityTestFile {
+  file: string;
+  tests: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  duration_ms: number;
+}
+
+export interface CodeQualityTests {
+  passed: number;
+  failed: number;
+  skipped: number;
+  total: number;
+  duration_ms: number;
+  success: boolean;
+  files: CodeQualityTestFile[];
+}
+
+export interface CodeQualityTSDetail {
+  file: string;
+  line: number;
+  code: string;
+  message: string;
+}
+
+export interface CodeQualityTS {
+  errors: number;
+  files_with_errors: number;
+  details: CodeQualityTSDetail[];
+}
+
+export interface CodeQualityLintDetail {
+  file: string;
+  errors: number;
+  warnings: number;
+  fixable: number;
+}
+
+export interface CodeQualityLint {
+  errors: number;
+  warnings: number;
+  fixable: number;
+  files_with_issues: number;
+  details: CodeQualityLintDetail[];
+}
+
+export interface CodeQualityReport {
+  generated_at: string;
+  git_sha: string;
+  git_branch: string;
+  tests: CodeQualityTests;
+  typescript: CodeQualityTS;
+  lint: CodeQualityLint;
+}
+
+export interface NetlifyDeploy {
+  id: string;
+  state: 'ready' | 'building' | 'error' | 'enqueued';
+  error_message: string | null;
+  branch: string;
+  commit_ref: string | null;
+  commit_message: string;
+  committer: string | null;
+  deploy_time: number | null;
+  created_at: string;
+  published_at: string | null;
+  deploy_url: string | null;
+  context: string;
+  review_id: string | null;
+}
+
+export interface NetlifyDeploySummary {
+  total_deploys: number;
+  successful: number;
+  failed: number;
+  success_rate: number;
+  avg_build_time_seconds: number;
+  deploys_last_30d: number;
+  last_deploy: NetlifyDeploy | null;
+}
+
+export interface CodeQualityData {
+  report: CodeQualityReport | null;
+  deploys: NetlifyDeploy[];
+  deploySummary: NetlifyDeploySummary | null;
+}
+
 // Phone Number Lifecycle Types
 export interface PhoneOrphanEntry {
   phone_number_id: string;
@@ -297,6 +386,7 @@ interface AdminState {
   orgDetail: any | null;
   usageOverview: any | null;
   allOrgsSummary: any[];
+  codeQuality: CodeQualityData;
 
   // UI State
   loading: Record<string, boolean>;
@@ -364,6 +454,8 @@ interface AdminState {
   fetchAllOrgsSummary: () => Promise<void>;
   moveUserToOrg: (userId: string, fromOrgId: string, toOrgId: string, newRole?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
   deleteEmptyOrg: (orgId: string) => Promise<{ success: boolean; error?: string }>;
+  fetchCodeQualityDeploys: () => Promise<void>;
+  fetchCodeQualityReport: () => Promise<void>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -396,6 +488,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   orgDetail: null,
   usageOverview: null,
   allOrgsSummary: [],
+  codeQuality: { report: null, deploys: [], deploySummary: null },
 
   loading: {},
   errors: {},
@@ -1100,6 +1193,56 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       return { success: true, message: data?.message || `Template changed to ${templateId}` };
     } catch (e: any) {
       return { success: false, error: e.message };
+    }
+  },
+
+  fetchCodeQualityDeploys: async () => {
+    set((s) => ({ loading: { ...s.loading, codeQualityDeploys: true }, errors: { ...s.errors, codeQualityDeploys: null } }));
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-code-quality`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      set((s) => ({
+        codeQuality: {
+          ...s.codeQuality,
+          deploys: data.deploys || [],
+          deploySummary: data.summary || null,
+        },
+        loading: { ...s.loading, codeQualityDeploys: false },
+      }));
+    } catch (e: any) {
+      set((s) => ({
+        loading: { ...s.loading, codeQualityDeploys: false },
+        errors: { ...s.errors, codeQualityDeploys: e.message },
+      }));
+    }
+  },
+
+  fetchCodeQualityReport: async () => {
+    set((s) => ({ loading: { ...s.loading, codeQualityReport: true }, errors: { ...s.errors, codeQualityReport: null } }));
+    try {
+      const res = await fetch('/code-quality-report.json');
+      if (!res.ok) throw new Error(`Report not available (${res.status})`);
+      const data = await res.json();
+      set((s) => ({
+        codeQuality: { ...s.codeQuality, report: data },
+        loading: { ...s.loading, codeQualityReport: false },
+      }));
+    } catch (e: any) {
+      set((s) => ({
+        loading: { ...s.loading, codeQualityReport: false },
+        errors: { ...s.errors, codeQualityReport: e.message },
+      }));
     }
   },
 
