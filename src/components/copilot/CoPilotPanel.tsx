@@ -44,6 +44,7 @@ const CoPilotPanel: React.FC = () => {
     setMessageFeedback,
     advancePersonalization,
     isPersonalizationInterview,
+    pAcknowledgmentLoading,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
@@ -138,8 +139,11 @@ const CoPilotPanel: React.FC = () => {
       content: answerText,
     });
 
-    // Advance the deterministic interview (no AI call until final question)
-    advancePersonalization(answerText);
+    // Detect if user typed only freeform text (no predefined option selected)
+    const isOtherOnly = selectedIds.length === 0 && !!otherText?.trim();
+
+    // Advance the deterministic interview -- acknowledgment injected inside
+    advancePersonalization(answerText, isOtherOnly);
   }, [messages, markChoicesSelected, addAssistantMessage, advancePersonalization]);
 
   useEffect(() => {
@@ -276,12 +280,12 @@ const CoPilotPanel: React.FC = () => {
           })
         )}
 
-        {isLoading && (
+        {(isLoading || pAcknowledgmentLoading) && (
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-            <span className="text-sm ml-2">CoPilot is thinking...</span>
+            <span className="text-sm ml-2">{pAcknowledgmentLoading ? 'Processing...' : 'CoPilot is thinking...'}</span>
           </div>
         )}
 
@@ -565,8 +569,8 @@ const MessageBubble: React.FC<{
           {new Date(message.timestamp).toLocaleTimeString()}
         </p>
       </div>
-      {/* Feedback buttons for assistant messages */}
-      {!isUser && onFeedbackGiven && (
+      {/* Feedback buttons for assistant messages (skip for acknowledgment bubbles) */}
+      {!isUser && onFeedbackGiven && !message.isAcknowledgment && (
         <FeedbackButtons
           messageId={message.id}
           messageContent={message.content}

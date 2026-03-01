@@ -27,6 +27,8 @@ export interface Message {
   feedbackRating?: 'positive' | 'negative';
   /** Stored when disambiguation is needed -- the action waiting for customer selection */
   pendingAction?: ActionProposal;
+  /** True for ephemeral acknowledgment messages (no feedback buttons) */
+  isAcknowledgment?: boolean;
 }
 
 interface ContextData {
@@ -70,8 +72,9 @@ interface CoPilotContextType {
   setMessageFeedback: (messageId: string, rating: 'positive' | 'negative') => void;
   // Personalization interview
   startPersonalizationInterview: (industry: string, businessName: string, agentName: string, currentValues: Record<string, string>) => void;
-  advancePersonalization: (answerText: string) => void;
+  advancePersonalization: (answerText: string, isOtherOnly?: boolean) => void;
   isPersonalizationInterview: boolean;
+  pAcknowledgmentLoading: boolean;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -95,6 +98,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [pIndex, setPIndex] = useState(0);
   const [pAnswers, setPAnswers] = useState<Record<string, string>>({});
   const [pIndustry, setPIndustry] = useState('general_business');
+  const [pAcknowledgmentLoading, setPAcknowledgmentLoading] = useState(false);
   const isPersonalizationInterview = pQuestions.length > 0 && pIndex < pQuestions.length;
 
   // Clear CoPilot conversation when the impersonation target changes
@@ -533,7 +537,79 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTimeout(() => injectPersonalizationQuestion(questions, 0), 150);
   }, [injectPersonalizationQuestion]);
 
-  const advancePersonalization = useCallback((answerText: string) => {
+  // Inject an acknowledgment bubble (no feedback buttons, no choices)
+  const injectAcknowledgmentMessage = useCallback((text: string) => {
+    const msg: Message = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      role: 'assistant',
+      content: text,
+      isAcknowledgment: true,
+    };
+    setMessages(prev => [...prev, msg]);
+  }, []);
+
+  // Call the edge function in acknowledgmentMode for AI-generated acknowledgments
+  const generateAIAcknowledgment = useCallback(async (
+    answerText: string,
+    questionText: string,
+  ): Promise<{ text: string }> => {
+    try {
+      const accessToken = await getAuthToken();
+      if (!accessToken) return { text: 'Got it, thanks!' };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const org = useOrganizationStore.getState().currentOrganization;
+      const impersonation = useImpersonationStore.getState();
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          message: answerText,
+          acknowledgmentMode: true,
+          acknowledgmentContext: { questionText },
+          ...(impersonation.isImpersonating && impersonation.targetUserId && {
+            impersonation: {
+              targetUserId: impersonation.targetUserId,
+              targetOrgId: impersonation.targetOrgId,
+            },
+          }),
+          context: {
+            industry: org?.industry_template || 'general_business',
+            orgName: org?.name || 'Your Organization',
+          },
+        }),
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) return { text: 'Got it, thanks!' };
+
+      const data = await response.json();
+
+      // Update token usage from response
+      if (data.tokensRemaining !== undefined) {
+        setTokenUsage({
+          tokensUsed: data.tokensUsed || 0,
+          tokensRemaining: data.tokensRemaining,
+          tokensAllocated: data.tokensAllocated || 0,
+        });
+      }
+
+      return { text: data.response || 'Got it, thanks!' };
+    } catch {
+      return { text: 'Got it, thanks!' };
+    }
+  }, []);
+
+  const advancePersonalization = useCallback(async (answerText: string, isOtherOnly?: boolean) => {
     const currentQ = pQuestions[pIndex];
     if (!currentQ) return;
 
@@ -544,19 +620,36 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const nextIndex = pIndex + 1;
     setPIndex(nextIndex);
 
-    if (nextIndex < pQuestions.length) {
-      // More questions -- inject the next one
-      setTimeout(() => injectPersonalizationQuestion(pQuestions, nextIndex), 300);
+    // Generate acknowledgment
+    let ackText: string;
+    if (isOtherOnly) {
+      // Freeform "Other" text -- use AI acknowledgment (may include Firecrawl for URLs)
+      setPAcknowledgmentLoading(true);
+      try {
+        const result = await generateAIAcknowledgment(answerText, currentQ.text);
+        ackText = result.text;
+      } finally {
+        setPAcknowledgmentLoading(false);
+      }
     } else {
-      // All questions answered -- send to AI for ACTION_PROPOSAL
+      // Standard selection -- use instant template
+      ackText = (currentQ.acknowledgmentTemplate || 'Got it!').replace('{answer}', answerText);
+    }
+
+    // Inject the acknowledgment bubble
+    injectAcknowledgmentMessage(ackText);
+
+    // After a brief pause, show the next question or finalize
+    if (nextIndex < pQuestions.length) {
+      setTimeout(() => injectPersonalizationQuestion(pQuestions, nextIndex), 700);
+    } else {
       setPQuestions([]); // Exit interview mode
       const summaryMsg = buildPersonalizationSummaryMessage(newAnswers, pIndustry);
-      // Small delay so the UI shows the last answer before loading
       setTimeout(() => {
         sendMessage(summaryMsg);
-      }, 400);
+      }, 700);
     }
-  }, [pQuestions, pIndex, pAnswers, pIndustry, injectPersonalizationQuestion, sendMessage]);
+  }, [pQuestions, pIndex, pAnswers, pIndustry, injectPersonalizationQuestion, sendMessage, generateAIAcknowledgment, injectAcknowledgmentMessage]);
 
   return (
     <CoPilotContext.Provider
@@ -584,6 +677,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         startPersonalizationInterview,
         advancePersonalization,
         isPersonalizationInterview,
+        pAcknowledgmentLoading,
       }}
     >
       {children}

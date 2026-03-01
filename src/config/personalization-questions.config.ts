@@ -15,6 +15,9 @@ export interface PersonalizationQuestion {
   fieldKey: string;
   text: string;
   choicesConfig: ChoicesConfig;
+  /** Template for instant acknowledgment when user picks a predefined option.
+   *  Use {answer} as placeholder for the selected label(s). */
+  acknowledgmentTemplate?: string;
 }
 
 // Industry-specific service options
@@ -221,6 +224,7 @@ export function buildPersonalizationQuestions(
       id: 'q_business_name',
       fieldKey: 'business_name',
       text: `Let's personalize your AI phone agent! First, let me confirm your business name.`,
+      acknowledgmentTemplate: '**{answer}** -- got it! That\'s the name callers will hear.',
       choicesConfig: {
         options: [
           ...(businessName ? [{ id: 'current', label: businessName, description: 'Use current name', icon: 'Building2' }] : []),
@@ -238,6 +242,7 @@ export function buildPersonalizationQuestions(
       id: 'q_agent_name',
       fieldKey: 'agent_name',
       text: `What should your AI phone agent call itself when speaking to callers?`,
+      acknowledgmentTemplate: 'Nice -- **{answer}** has a great ring to it.',
       choicesConfig: {
         options: [
           { id: 'alex', label: 'Alex', description: 'Friendly and gender-neutral', icon: 'Briefcase' },
@@ -259,6 +264,7 @@ export function buildPersonalizationQuestions(
       id: 'q_services',
       fieldKey: 'services_offered',
       text: `What services does your business offer? Select all that apply.`,
+      acknowledgmentTemplate: 'Solid lineup. I\'ll make sure your agent knows how to talk about each of those.',
       choicesConfig: {
         options: services,
         multiSelect: true,
@@ -273,6 +279,7 @@ export function buildPersonalizationQuestions(
       id: 'q_tone',
       fieldKey: 'agent_tone',
       text: `How should your AI agent sound when speaking to callers?`,
+      acknowledgmentTemplate: 'A **{answer}** approach -- that\'ll set the right feel for your callers.',
       choicesConfig: {
         options: [
           { id: 'professional', label: 'Professional & Formal', description: 'Polished and business-like', icon: 'Briefcase' },
@@ -292,6 +299,7 @@ export function buildPersonalizationQuestions(
       id: 'q_call_reasons',
       fieldKey: 'common_call_reasons',
       text: `What do callers usually need when they reach your business? Select all that apply.`,
+      acknowledgmentTemplate: 'Good to know. Your agent will be ready for those common scenarios.',
       choicesConfig: {
         options: callReasons,
         multiSelect: true,
@@ -306,6 +314,7 @@ export function buildPersonalizationQuestions(
       id: 'q_hours',
       fieldKey: 'business_hours',
       text: `When is your business open?`,
+      acknowledgmentTemplate: 'Noted. Your agent will know exactly when you\'re available.',
       choicesConfig: {
         options: [
           { id: 'mon_fri_9_5', label: 'Mon-Fri 9am-5pm', description: 'Standard business hours', icon: 'Clock' },
