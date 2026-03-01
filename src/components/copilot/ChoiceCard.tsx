@@ -79,8 +79,8 @@ const MultiSelectChoices: React.FC<{
   const [otherActive, setOtherActive] = useState(false);
   const [otherInput, setOtherInput] = useState('');
 
-  // Already submitted -- show locked state
-  if (choicesSelected && choicesSelected.length > 0) {
+  // Already submitted -- show locked state (trigger on selections OR freeform text)
+  if ((choicesSelected && choicesSelected.length > 0) || savedOtherText) {
     const labels = choicesSelected
       .map(id => config.options.find(o => o.id === id)?.label)
       .filter(Boolean);

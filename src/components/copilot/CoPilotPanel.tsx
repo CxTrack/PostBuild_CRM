@@ -139,11 +139,11 @@ const CoPilotPanel: React.FC = () => {
       content: answerText,
     });
 
-    // Detect if user typed only freeform text (no predefined option selected)
-    const isOtherOnly = selectedIds.length === 0 && !!otherText?.trim();
+    // Detect if user typed any freeform text (triggers AI acknowledgment path)
+    const hasOtherText = !!otherText?.trim();
 
     // Advance the deterministic interview -- acknowledgment injected inside
-    advancePersonalization(answerText, isOtherOnly);
+    advancePersonalization(answerText, hasOtherText);
   }, [messages, markChoicesSelected, addAssistantMessage, advancePersonalization]);
 
   useEffect(() => {
