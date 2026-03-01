@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  Plus, List, CheckCircle
+  Plus, List, CheckCircle, Loader2
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -63,7 +63,7 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
 
-  const { events, fetchEvents, updateEvent, deleteEvent, outlookEvents, fetchOutlookTodayEvents, fetchOutlookEventsRange } = useCalendarStore();
+  const { events, fetchEvents, updateEvent, deleteEvent, outlookEvents, fetchOutlookTodayEvents, fetchOutlookEventsRange, loading, outlookLoading } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
   const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
   const { fetchTasks, getTasksByDate, updateTask, deleteTask } = useTaskStore();
@@ -275,8 +275,16 @@ export default function Calendar() {
         </div>
       </Card>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <div className={`flex-1 overflow-y-auto ${showAgendaPanel ? 'pr-0' : ''}`}>
+      <div className="flex-1 flex flex-col lg:flex-row gap-[5px] overflow-hidden">
+        <div className={`flex-1 overflow-y-auto relative ${showAgendaPanel ? 'pr-0' : ''}`}>
+          {(loading || outlookLoading) && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-[1px] rounded-xl">
+              <div className="flex items-center gap-3 px-5 py-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <Loader2 size={20} className="animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Loading events...</span>
+              </div>
+            </div>
+          )}
           {view === 'month' && (
             <Card className="overflow-hidden p-0">
               <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
