@@ -367,16 +367,16 @@ export function buildPersonalizationQuestions(
       },
     },
 
-    // Q5: Agent Goal (NEW, adaptive)
+    // Q5: Agent Goal (NEW, adaptive, multi-select)
     {
       id: 'q_agent_goal',
       fieldKey: 'agent_goal',
-      text: `What should your AI agent primarily try to accomplish on calls?`,
-      acknowledgmentTemplate: 'Perfect -- your agent will focus on **{answer}** as its main objective.',
+      text: `What should your AI agent primarily try to accomplish on calls? Select all that apply.`,
+      acknowledgmentTemplate: 'Perfect -- your agent will focus on **{answer}** as its main objectives.',
       isAdaptive: true,
       choicesConfig: {
         options: agentGoals,
-        multiSelect: false,
+        multiSelect: true,
         allowOther: true,
         otherPlaceholder: 'Describe your agent\'s primary goal...',
         progressLabel: `Question 5 of ${totalQuestions}`,
