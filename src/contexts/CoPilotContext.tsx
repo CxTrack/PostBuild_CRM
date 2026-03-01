@@ -552,20 +552,24 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   // Call the edge function in acknowledgmentMode for AI-generated acknowledgments.
-  // Supports accumulated context, next-question merging, and site context caching.
+  // Supports accumulated context, next-question merging, site context caching,
+  // and adaptive options generation for isAdaptive questions.
   const generateAIAcknowledgment = useCallback(async (
     answerText: string,
     questionText: string,
     accumulatedAnswers?: Record<string, string>,
     nextQuestionText?: string,
     cachedSiteContext?: string,
-  ): Promise<{ text: string; siteContext?: string }> => {
+    nextQuestionFieldKey?: string | null,
+    isNextQuestionAdaptive?: boolean,
+    nextQuestionDefaultOptions?: Array<{ id: string; label: string; description: string; icon: string }> | null,
+  ): Promise<{ text: string; siteContext?: string; adaptedChoicesConfig?: import('@/types/copilot-actions.types').ChoicesConfig }> => {
     try {
       const accessToken = await getAuthToken();
       if (!accessToken) return { text: 'Got it, thanks!' };
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 12000); // Extended for adaptive calls
 
       const org = useOrganizationStore.getState().currentOrganization;
       const impersonation = useImpersonationStore.getState();
@@ -585,6 +589,9 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             accumulatedAnswers: accumulatedAnswers || {},
             nextQuestionText: nextQuestionText || null,
             cachedSiteContext: cachedSiteContext || null,
+            nextQuestionFieldKey: nextQuestionFieldKey || null,
+            isNextQuestionAdaptive: isNextQuestionAdaptive || false,
+            nextQuestionDefaultOptions: isNextQuestionAdaptive ? (nextQuestionDefaultOptions || null) : null,
           },
           ...(impersonation.isImpersonating && impersonation.targetUserId && {
             impersonation: {
@@ -617,6 +624,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return {
         text: data.response || 'Got it, thanks!',
         siteContext: data.siteContext || undefined,
+        adaptedChoicesConfig: data.adaptedChoicesConfig || undefined,
       };
     } catch {
       return { text: 'Got it, thanks!' };
@@ -645,6 +653,9 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
           newAnswers,
           nextQ?.text || undefined,
           pSiteContext || undefined,
+          nextQ?.fieldKey || null,
+          nextQ?.isAdaptive || false,
+          nextQ?.isAdaptive ? nextQ.choicesConfig.options : null,
         );
 
         // Cache site context for subsequent questions (scrape once, reuse)
@@ -653,6 +664,11 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         if (nextQ) {
+          // Use adapted options if the edge function returned them, otherwise use static defaults
+          const resolvedChoicesConfig = result.adaptedChoicesConfig
+            ? { ...nextQ.choicesConfig, options: result.adaptedChoicesConfig.options }
+            : nextQ.choicesConfig;
+
           // MERGED message: AI ack + transition text with next question's choice cards attached
           const mergedMsg: Message = {
             id: Date.now().toString(),
@@ -660,7 +676,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
             role: 'assistant',
             content: result.text,
             isAcknowledgment: true,
-            choicesConfig: nextQ.choicesConfig,
+            choicesConfig: resolvedChoicesConfig,
           };
           setMessages(prev => [...prev, mergedMsg]);
         } else {

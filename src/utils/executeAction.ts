@@ -325,16 +325,16 @@ export async function executeAction(
         // 1. Fetch the industry template
         const { data: templateData, error: templateError } = await supabase
           .from('industry_voice_templates')
-          .select('system_prompt, default_greeting')
-          .eq('industry_key', industry)
+          .select('default_instructions, default_greeting')
+          .eq('industry', industry)
           .maybeSingle();
 
         if (templateError || !templateData) {
           // Fallback to general_business
           const { data: fallback } = await supabase
             .from('industry_voice_templates')
-            .select('system_prompt, default_greeting')
-            .eq('industry_key', 'general_business')
+            .select('default_instructions, default_greeting')
+            .eq('industry', 'general_business')
             .single();
 
           if (!fallback) {
@@ -354,8 +354,18 @@ export async function executeAction(
         }
 
         // 3. Interpolate the template with personalization values
-        const interpolatedPrompt = interpolateTemplate(template.system_prompt, variables);
+        let interpolatedPrompt = interpolateTemplate(template.default_instructions, variables);
         const interpolatedGreeting = interpolateTemplate(template.default_greeting || '', variables);
+
+        // 3b. Override the default goal sentence if user specified a custom agent_goal
+        // This is a post-interpolation override -- the original goal text stays in the template
+        // as a safe default, and gets replaced only when agent_goal is explicitly provided.
+        if (variables.agent_goal) {
+          interpolatedPrompt = interpolatedPrompt.replace(
+            /Your primary goal is to [^.]+\./,
+            `Your primary goal is to ${variables.agent_goal}.`
+          );
+        }
 
         // 4. Push updated prompt to Retell via the store
         const voiceStore = useVoiceAgentStore.getState();

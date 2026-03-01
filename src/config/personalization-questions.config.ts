@@ -18,6 +18,9 @@ export interface PersonalizationQuestion {
   /** Template for instant acknowledgment when user picks a predefined option.
    *  Use {answer} as placeholder for the selected label(s). */
   acknowledgmentTemplate?: string;
+  /** When true, the edge function may return AI-adapted options for this question
+   *  based on website context or accumulated answers. Falls back to static options. */
+  isAdaptive?: boolean;
 }
 
 // Industry-specific service options
@@ -204,6 +207,76 @@ const INDUSTRY_CALL_REASONS: Record<string, Array<{ id: string; label: string; d
   ],
 };
 
+// Industry-specific agent goals
+const INDUSTRY_AGENT_GOALS: Record<string, Array<{ id: string; label: string; description: string; icon: string }>> = {
+  tax_accounting: [
+    { id: 'book_appointments', label: 'Book Appointments', description: 'Schedule consultations and tax prep sessions', icon: 'Clock' },
+    { id: 'collect_info', label: 'Collect Contact Info', description: 'Gather caller details for team follow-up', icon: 'Briefcase' },
+    { id: 'answer_questions', label: 'Answer Tax Questions', description: 'Provide general tax info and deadlines', icon: 'BookOpen' },
+    { id: 'qualify_leads', label: 'Qualify New Clients', description: 'Ask about filing needs and route to advisors', icon: 'TrendingUp' },
+  ],
+  healthcare: [
+    { id: 'book_appointments', label: 'Book Appointments', description: 'Schedule patient visits and consultations', icon: 'Clock' },
+    { id: 'triage_calls', label: 'Triage Calls', description: 'Assess urgency and route appropriately', icon: 'Shield' },
+    { id: 'collect_info', label: 'Collect Patient Info', description: 'Gather details for intake and follow-up', icon: 'Briefcase' },
+    { id: 'provide_info', label: 'Provide Office Info', description: 'Share hours, location, and insurance details', icon: 'Heart' },
+  ],
+  real_estate: [
+    { id: 'book_showings', label: 'Book Property Showings', description: 'Schedule viewings for listed properties', icon: 'Building2' },
+    { id: 'qualify_leads', label: 'Qualify Buyers/Sellers', description: 'Assess readiness and match with agents', icon: 'TrendingUp' },
+    { id: 'collect_info', label: 'Collect Contact Info', description: 'Capture lead details for agent follow-up', icon: 'Briefcase' },
+    { id: 'provide_listings', label: 'Share Listing Details', description: 'Answer questions about available properties', icon: 'BookOpen' },
+  ],
+  contractors_home_services: [
+    { id: 'book_estimates', label: 'Book Estimates', description: 'Schedule on-site quotes and assessments', icon: 'Clock' },
+    { id: 'collect_info', label: 'Collect Job Details', description: 'Gather project scope and contact info', icon: 'Briefcase' },
+    { id: 'handle_emergency', label: 'Handle Emergencies', description: 'Triage urgent repair requests', icon: 'Shield' },
+    { id: 'provide_quotes', label: 'Provide Rough Quotes', description: 'Give ballpark pricing for common jobs', icon: 'DollarSign' },
+  ],
+  mortgage_broker: [
+    { id: 'book_consultations', label: 'Book Consultations', description: 'Schedule mortgage strategy sessions', icon: 'Clock' },
+    { id: 'qualify_leads', label: 'Pre-Qualify Applicants', description: 'Assess borrowing capacity and needs', icon: 'TrendingUp' },
+    { id: 'collect_info', label: 'Collect Applicant Info', description: 'Gather financial details for applications', icon: 'Briefcase' },
+    { id: 'compare_rates', label: 'Discuss Rate Options', description: 'Share current rates and product options', icon: 'DollarSign' },
+  ],
+  legal_services: [
+    { id: 'book_consultations', label: 'Book Consultations', description: 'Schedule initial case review meetings', icon: 'Clock' },
+    { id: 'qualify_cases', label: 'Qualify Cases', description: 'Assess case type and urgency', icon: 'Scale' },
+    { id: 'collect_info', label: 'Collect Case Details', description: 'Gather preliminary case information', icon: 'Briefcase' },
+    { id: 'provide_info', label: 'Provide General Info', description: 'Share office policies and practice areas', icon: 'BookOpen' },
+  ],
+  gyms_fitness: [
+    { id: 'book_tours', label: 'Book Facility Tours', description: 'Schedule visits and trial sessions', icon: 'Building2' },
+    { id: 'sell_memberships', label: 'Sell Memberships', description: 'Present plans and close signups', icon: 'DollarSign' },
+    { id: 'book_training', label: 'Book Training Sessions', description: 'Schedule personal training appointments', icon: 'Clock' },
+    { id: 'collect_info', label: 'Collect Lead Info', description: 'Capture prospect details for follow-up', icon: 'Briefcase' },
+  ],
+  construction: [
+    { id: 'book_consultations', label: 'Book Project Consultations', description: 'Schedule meetings with project managers', icon: 'Clock' },
+    { id: 'qualify_projects', label: 'Qualify Projects', description: 'Assess scope, timeline, and budget range', icon: 'TrendingUp' },
+    { id: 'collect_info', label: 'Collect Project Details', description: 'Gather specs and contact information', icon: 'Briefcase' },
+    { id: 'provide_updates', label: 'Provide Project Updates', description: 'Share status on active projects', icon: 'Building2' },
+  ],
+  agency: [
+    { id: 'book_discovery', label: 'Book Discovery Calls', description: 'Schedule strategy and discovery sessions', icon: 'Clock' },
+    { id: 'qualify_leads', label: 'Qualify Prospects', description: 'Assess project scope and budget fit', icon: 'TrendingUp' },
+    { id: 'collect_info', label: 'Collect Contact Info', description: 'Capture lead details for team follow-up', icon: 'Briefcase' },
+    { id: 'share_portfolio', label: 'Share Portfolio/Case Studies', description: 'Discuss past work and capabilities', icon: 'BookOpen' },
+  ],
+  distribution_logistics: [
+    { id: 'process_orders', label: 'Process Orders', description: 'Take orders and coordinate fulfillment', icon: 'Wrench' },
+    { id: 'track_shipments', label: 'Track Shipments', description: 'Provide shipment status updates', icon: 'Globe' },
+    { id: 'collect_info', label: 'Collect Account Info', description: 'Onboard new accounts and gather details', icon: 'Briefcase' },
+    { id: 'handle_issues', label: 'Handle Delivery Issues', description: 'Triage missing, damaged, or late shipments', icon: 'Shield' },
+  ],
+  general_business: [
+    { id: 'book_appointments', label: 'Book Appointments', description: 'Schedule meetings or demos directly', icon: 'Clock' },
+    { id: 'collect_info', label: 'Collect Contact Info', description: 'Gather caller details for team follow-up', icon: 'Briefcase' },
+    { id: 'qualify_leads', label: 'Qualify Leads', description: 'Ask discovery questions and route to sales', icon: 'TrendingUp' },
+    { id: 'customer_support', label: 'Provide Support', description: 'Answer questions and resolve issues', icon: 'Heart' },
+  ],
+};
+
 /**
  * Build the sequence of personalization questions for the interview.
  * Skips questions where values already exist (confirms them instead).
@@ -216,7 +289,8 @@ export function buildPersonalizationQuestions(
 ): PersonalizationQuestion[] {
   const services = INDUSTRY_SERVICES[industry] || INDUSTRY_SERVICES.general_business;
   const callReasons = INDUSTRY_CALL_REASONS[industry] || INDUSTRY_CALL_REASONS.general_business;
-  const totalQuestions = 6;
+  const agentGoals = INDUSTRY_AGENT_GOALS[industry] || INDUSTRY_AGENT_GOALS.general_business;
+  const totalQuestions = 8;
 
   const questions: PersonalizationQuestion[] = [
     // Q1: Business Name
@@ -259,22 +333,57 @@ export function buildPersonalizationQuestions(
       },
     },
 
-    // Q3: Services Offered (multi-select)
+    // Q3: Website URL (NEW -- trigger point for adaptive options)
+    {
+      id: 'q_website_url',
+      fieldKey: 'website_url',
+      text: `Got a website? Share it and I'll tailor the rest of this interview to your business!`,
+      acknowledgmentTemplate: 'No worries -- I\'ll use what you\'ve already told me.',
+      choicesConfig: {
+        options: [
+          { id: 'no_website', label: 'No website yet', description: 'Skip this step', icon: 'Globe' },
+          { id: 'skip', label: 'Skip for now', description: 'I\'ll set this up later', icon: 'Clock' },
+        ],
+        multiSelect: false,
+        allowOther: true,
+        otherPlaceholder: 'Enter your website (e.g., cxtrack.com)...',
+        progressLabel: `Question 3 of ${totalQuestions}`,
+      },
+    },
+
+    // Q4: Services Offered (multi-select, adaptive)
     {
       id: 'q_services',
       fieldKey: 'services_offered',
       text: `What services does your business offer? Select all that apply.`,
       acknowledgmentTemplate: 'Solid lineup. I\'ll make sure your agent knows how to talk about each of those.',
+      isAdaptive: true,
       choicesConfig: {
         options: services,
         multiSelect: true,
         allowOther: true,
         otherPlaceholder: 'Add a service not listed...',
-        progressLabel: `Question 3 of ${totalQuestions}`,
+        progressLabel: `Question 4 of ${totalQuestions}`,
       },
     },
 
-    // Q4: Agent Tone
+    // Q5: Agent Goal (NEW, adaptive)
+    {
+      id: 'q_agent_goal',
+      fieldKey: 'agent_goal',
+      text: `What should your AI agent primarily try to accomplish on calls?`,
+      acknowledgmentTemplate: 'Perfect -- your agent will focus on **{answer}** as its main objective.',
+      isAdaptive: true,
+      choicesConfig: {
+        options: agentGoals,
+        multiSelect: false,
+        allowOther: true,
+        otherPlaceholder: 'Describe your agent\'s primary goal...',
+        progressLabel: `Question 5 of ${totalQuestions}`,
+      },
+    },
+
+    // Q6: Agent Tone
     {
       id: 'q_tone',
       fieldKey: 'agent_tone',
@@ -290,26 +399,27 @@ export function buildPersonalizationQuestions(
         multiSelect: false,
         allowOther: true,
         otherPlaceholder: 'Describe your preferred tone...',
-        progressLabel: `Question 4 of ${totalQuestions}`,
+        progressLabel: `Question 6 of ${totalQuestions}`,
       },
     },
 
-    // Q5: Common Call Reasons (multi-select)
+    // Q7: Common Call Reasons (multi-select, adaptive)
     {
       id: 'q_call_reasons',
       fieldKey: 'common_call_reasons',
       text: `What do callers usually need when they reach your business? Select all that apply.`,
       acknowledgmentTemplate: 'Good to know. Your agent will be ready for those common scenarios.',
+      isAdaptive: true,
       choicesConfig: {
         options: callReasons,
         multiSelect: true,
         allowOther: true,
         otherPlaceholder: 'Add a reason not listed...',
-        progressLabel: `Question 5 of ${totalQuestions}`,
+        progressLabel: `Question 7 of ${totalQuestions}`,
       },
     },
 
-    // Q6: Business Hours
+    // Q8: Business Hours
     {
       id: 'q_hours',
       fieldKey: 'business_hours',
@@ -325,7 +435,7 @@ export function buildPersonalizationQuestions(
         multiSelect: false,
         allowOther: true,
         otherPlaceholder: 'Enter your custom hours...',
-        progressLabel: `Question 6 of ${totalQuestions}`,
+        progressLabel: `Question 8 of ${totalQuestions}`,
       },
     },
   ];
