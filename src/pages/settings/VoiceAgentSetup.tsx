@@ -14,6 +14,8 @@ import CallForwardingInstructions from '@/components/voice/CallForwardingInstruc
 import MemoryContextSettings, { type MemorySettings } from '@/components/voice/MemoryContextSettings';
 import BookingAvailabilityEditor from '@/components/voice/BookingAvailabilityEditor';
 import { type BookingAvailability, getDefaultBookingAvailability } from '@/utils/bookingPrompt';
+import AgentPersonalizationPanel from '@/components/voice/AgentPersonalizationPanel';
+import { useCoPilot } from '@/contexts/CoPilotContext';
 import toast from 'react-hot-toast';
 
 const STEPS = [
@@ -55,6 +57,7 @@ export const VoiceAgentSetup = () => {
         fetchVoices,
         setVoice,
     } = useVoiceAgentStore();
+    const { openPanel, setContext, clearMessages, sendMessage } = useCoPilot();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
@@ -1325,82 +1328,37 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Prompt & Personality */}
                     {activeTab === 'prompt' && (
-                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Prompt & Personality</h3>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Customize your AI agent's instructions and opening message. Changes are synced directly to the Retell AI engine.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Opening Message
-                                </label>
-                                <textarea
-                                    value={formData.begin_message}
-                                    onChange={(e) => setFormData({ ...formData, begin_message: e.target.value })}
-                                    rows={3}
-                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                    placeholder="Hello! Thank you for calling. How can I help you today?"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    The first thing your agent says when it answers. Leave empty for dynamic greeting.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Agent Instructions (System Prompt)
-                                </label>
-                                <textarea
-                                    value={formData.general_prompt}
-                                    onChange={(e) => setFormData({ ...formData, general_prompt: e.target.value })}
-                                    rows={12}
-                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white font-mono text-sm"
-                                    placeholder={`You are a professional AI assistant for [Business Name]. Your role is to help callers with:\n- Scheduling appointments\n- Answering common questions\n- Taking messages when the team is unavailable\n\nBe polite, professional, and helpful. If you don't know the answer, offer to take a message and have someone call back.\n\nBusiness hours: Monday-Friday 9am-5pm\nServices offered: ...`}
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This is the core personality and instruction set for your AI agent. Include business details, services, hours, policies, and how to handle common scenarios.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Business Description
-                                </label>
-                                <textarea
-                                    value={formData.business_description}
-                                    onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
-                                    rows={4}
-                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                    placeholder="Describe your business, services, and what makes you unique..."
-                                />
-                            </div>
-
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                    <Brain className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="font-medium text-blue-800 dark:text-blue-200">How it works</p>
-                                        <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                            The <strong>Agent Instructions</strong> control your AI's behavior on every call. Include your business hours, services, pricing FAQs, and call handling rules. The <strong>Opening Message</strong> is the first thing callers hear.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={handleSaveSettings}
-                                    disabled={saving}
-                                    className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {saving ? 'Saving & Syncing...' : 'Save & Sync to Agent'}
-                                </button>
-                            </div>
-                        </div>
+                        <AgentPersonalizationPanel
+                            formData={{
+                                general_prompt: formData.general_prompt,
+                                begin_message: formData.begin_message,
+                                business_description: formData.business_description,
+                            }}
+                            setFormData={(updater) => setFormData((prev) => {
+                                const partial = typeof updater === 'function' ? updater(prev) : updater;
+                                return { ...prev, ...partial };
+                            })}
+                            onSave={handleSaveSettings}
+                            saving={saving}
+                            isProvisioned={isProvisioned()}
+                            onOpenCoPilot={() => {
+                                clearMessages();
+                                setContext({
+                                    page: 'VoiceAgentSetup',
+                                    data: {
+                                        personalizationMode: true,
+                                        industry: currentOrganization?.industry_template || 'general_business',
+                                        currentValues: config?.personalization_values || {},
+                                        agentName: config?.agent_name || '',
+                                        businessName: config?.business_name || currentOrganization?.name || '',
+                                    },
+                                });
+                                openPanel();
+                                setTimeout(() => {
+                                    sendMessage('I want to personalize my AI phone agent.');
+                                }, 200);
+                            }}
+                        />
                     )}
 
                     {/* Tab: Knowledge Base */}

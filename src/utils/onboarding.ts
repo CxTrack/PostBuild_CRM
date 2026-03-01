@@ -99,6 +99,62 @@ export const ONBOARDING_STEP_ROUTES: Record<string, string> = {
 };
 
 /**
+ * Detect the calendar provider based on the user's auth method and set it
+ * on the organization. This feeds into retell-function-handler's
+ * resolveCalendarProvider() cascade for booking appointments.
+ *
+ * - Microsoft OAuth → 'outlook'
+ * - Google OAuth → 'google'
+ * - Email signup → 'native' (CRM built-in calendar)
+ *
+ * Fire-and-forget: failures are silently logged.
+ */
+export function detectCalendarProvider(organizationId: string): void {
+  (async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const authProvider = user.app_metadata?.provider as string | undefined;
+
+      let calendarProvider: string;
+      if (authProvider === 'azure' || authProvider === 'microsoft') {
+        calendarProvider = 'outlook';
+      } else if (authProvider === 'google') {
+        calendarProvider = 'google';
+      } else {
+        calendarProvider = 'native';
+      }
+
+      const token = getAuthToken();
+      if (!token) return;
+
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/organizations?id=eq.${organizationId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey': supabaseAnonKey || '',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ calendar_booking_provider: calendarProvider }),
+        }
+      );
+
+      if (res.ok) {
+        console.log(`[Onboarding] Calendar provider set to: ${calendarProvider} (auth: ${authProvider || 'email'})`);
+      } else {
+        console.warn('[Onboarding] Failed to set calendar provider:', res.status);
+      }
+    } catch (err) {
+      console.warn('[Onboarding] Calendar provider detection failed:', err);
+    }
+  })();
+}
+
+/**
  * Check if a user has completed onboarding (dual-signal: flag OR org).
  * Returns { complete, step } or null on error.
  */

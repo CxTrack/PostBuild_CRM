@@ -3,8 +3,10 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useDealStore } from '@/stores/dealStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useVoiceAgentStore } from '@/stores/voiceAgentStore';
 import { DEFAULT_PERMISSIONS } from '@/config/modules.config';
 import { getAuthToken } from '@/utils/auth.utils';
+import { interpolateTemplate } from '@/utils/interpolateTemplate';
 import { supabase } from '@/lib/supabase';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
@@ -17,6 +19,7 @@ const PERMISSION_MAP: Record<ActionType, string> = {
   send_email: 'customers.read',
   send_sms: 'customers.read',
   draft_call_script: 'customers.read',
+  update_voice_agent: 'customers.read', // Any authenticated user can personalize their own agent
 };
 
 export function checkActionPermission(actionType: ActionType): boolean {
@@ -308,6 +311,87 @@ export async function executeAction(
           success: true,
           message: `Call script for ${editedFields.customer_name || 'customer'} is ready. Good luck on the call!`,
           recordType: 'call_script',
+        };
+      }
+
+      case 'update_voice_agent': {
+        const orgId = useOrganizationStore.getState().currentOrganization?.id;
+        const industry = useOrganizationStore.getState().currentOrganization?.industry_template || 'general_business';
+
+        if (!orgId) {
+          return { success: false, message: 'No organization found. Please refresh and try again.' };
+        }
+
+        // 1. Fetch the industry template
+        const { data: templateData, error: templateError } = await supabase
+          .from('industry_voice_templates')
+          .select('system_prompt, default_greeting')
+          .eq('industry_key', industry)
+          .maybeSingle();
+
+        if (templateError || !templateData) {
+          // Fallback to general_business
+          const { data: fallback } = await supabase
+            .from('industry_voice_templates')
+            .select('system_prompt, default_greeting')
+            .eq('industry_key', 'general_business')
+            .single();
+
+          if (!fallback) {
+            return { success: false, message: 'Could not load voice agent template. Please try again.' };
+          }
+          Object.assign(templateData || {}, fallback);
+        }
+
+        const template = templateData!;
+
+        // 2. Build variables from editedFields
+        const variables: Record<string, string> = {};
+        for (const [key, value] of Object.entries(editedFields)) {
+          if (value && typeof value === 'string') {
+            variables[key] = value;
+          }
+        }
+
+        // 3. Interpolate the template with personalization values
+        const interpolatedPrompt = interpolateTemplate(template.system_prompt, variables);
+        const interpolatedGreeting = interpolateTemplate(template.default_greeting || '', variables);
+
+        // 4. Push updated prompt to Retell via the store
+        const voiceStore = useVoiceAgentStore.getState();
+        const updateResult = await voiceStore.updateRetellAgent({
+          generalPrompt: interpolatedPrompt,
+          beginMessage: interpolatedGreeting || undefined,
+        });
+
+        if (!updateResult.success) {
+          return {
+            success: false,
+            message: updateResult.error || 'Failed to update voice agent. Please try again.',
+          };
+        }
+
+        // 5. Save personalization values to voice_agent_configs
+        const config = useVoiceAgentStore.getState().config;
+        if (config) {
+          await supabase
+            .from('voice_agent_configs')
+            .update({
+              personalization_values: variables,
+              general_prompt: interpolatedPrompt,
+              begin_message: interpolatedGreeting || config.begin_message,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', config.id);
+
+          // Refresh store
+          await useVoiceAgentStore.getState().fetchConfig();
+        }
+
+        return {
+          success: true,
+          message: 'Your AI phone agent has been personalized and updated successfully!',
+          recordType: 'voice_agent',
         };
       }
 

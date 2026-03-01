@@ -38,6 +38,8 @@ export interface VoiceAgentConfig {
     broker_name?: string;
     general_prompt?: string;
     begin_message?: string;
+    // Personalization
+    personalization_values?: Record<string, string>;
     // Memory/RAG settings
     memory_enabled?: boolean;
     memory_call_history?: boolean;

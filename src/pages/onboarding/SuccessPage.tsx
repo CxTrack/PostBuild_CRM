@@ -7,7 +7,7 @@ import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import { retellService } from '@/services/retell.service';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import { markOnboardingComplete } from '@/utils/onboarding';
+import { markOnboardingComplete, detectCalendarProvider } from '@/utils/onboarding';
 
 function getAuthToken(): string | null {
   try {
@@ -47,12 +47,20 @@ export default function SuccessPage() {
     window.scrollTo(0, 0);
 
     const leadData = sessionStorage.getItem('onboarding_lead');
+    let parsedLead: any = null;
     if (leadData) {
-      setLead(JSON.parse(leadData));
+      parsedLead = JSON.parse(leadData);
+      setLead(parsedLead);
     }
 
     // Mark onboarding as complete in the database (fire-and-forget)
     markOnboardingComplete();
+
+    // Auto-detect calendar provider from auth method (fire-and-forget)
+    // This sets outlook/google/native on the org for the voice agent booking flow
+    if (parsedLead?.organizationId) {
+      detectCalendarProvider(parsedLead.organizationId);
+    }
 
     // Trigger confetti effect
     triggerConfetti();

@@ -314,6 +314,15 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
               insightType: currentContext.data.insightType,
               insightData: currentContext.data.insightData,
             }),
+            // Voice agent personalization mode
+            ...(currentContext?.data?.personalizationMode && {
+              personalizationMode: true,
+              personalizationData: {
+                currentValues: currentContext.data.currentValues,
+                agentName: currentContext.data.agentName,
+                businessName: currentContext.data.businessName,
+              },
+            }),
           },
         }),
       });

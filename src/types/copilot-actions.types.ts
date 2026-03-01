@@ -5,7 +5,8 @@ export type ActionType =
   | 'add_note'
   | 'send_email'
   | 'send_sms'
-  | 'draft_call_script';
+  | 'draft_call_script'
+  | 'update_voice_agent';
 
 export type ActionStatus = 'proposed' | 'executing' | 'completed' | 'failed' | 'cancelled';
 
