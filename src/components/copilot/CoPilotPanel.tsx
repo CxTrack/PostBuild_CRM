@@ -42,6 +42,8 @@ const CoPilotPanel: React.FC = () => {
     markChoicesSelected,
     addAssistantMessage,
     setMessageFeedback,
+    advancePersonalization,
+    isPersonalizationInterview,
   } = useCoPilot();
 
   const { theme } = useThemeStore();
@@ -109,7 +111,7 @@ const CoPilotPanel: React.FC = () => {
   }, [currentContext, sendMessage, markChoiceSelected, messages, addAssistantMessage]);
 
   // Handle personalization interview multi-select answers
-  const handlePersonalizationAnswer = useCallback(async (
+  const handlePersonalizationAnswer = useCallback((
     messageId: string,
     selectedIds: string[],
     otherText?: string,
@@ -128,8 +130,17 @@ const CoPilotPanel: React.FC = () => {
 
     if (parts.length === 0) return;
 
-    await sendMessage(`[PERSONALIZATION_ANSWER] ${parts.join(', ')}`);
-  }, [messages, markChoicesSelected, sendMessage]);
+    const answerText = parts.join(', ');
+
+    // Inject user's answer as a visible message
+    addAssistantMessage({
+      role: 'user' as const,
+      content: answerText,
+    });
+
+    // Advance the deterministic interview (no AI call until final question)
+    advancePersonalization(answerText);
+  }, [messages, markChoicesSelected, addAssistantMessage, advancePersonalization]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

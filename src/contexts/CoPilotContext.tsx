@@ -9,6 +9,7 @@ import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import { getAuthToken } from '@/utils/auth.utils';
 import { useImpersonationStore } from '@/stores/impersonationStore';
+import { buildPersonalizationQuestions, buildPersonalizationSummaryMessage, type PersonalizationQuestion } from '@/config/personalization-questions.config';
 
 export interface Message {
   id: string;
@@ -67,6 +68,10 @@ interface CoPilotContextType {
   markChoiceSelected: (messageId: string, choiceId: string) => void;
   markChoicesSelected: (messageId: string, selectedIds: string[], otherText?: string) => void;
   setMessageFeedback: (messageId: string, rating: 'positive' | 'negative') => void;
+  // Personalization interview
+  startPersonalizationInterview: (industry: string, businessName: string, agentName: string, currentValues: Record<string, string>) => void;
+  advancePersonalization: (answerText: string) => void;
+  isPersonalizationInterview: boolean;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -84,6 +89,13 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     provider: 'internal',
     model: 'internal-assistant',
   });
+
+  // Personalization interview state
+  const [pQuestions, setPQuestions] = useState<PersonalizationQuestion[]>([]);
+  const [pIndex, setPIndex] = useState(0);
+  const [pAnswers, setPAnswers] = useState<Record<string, string>>({});
+  const [pIndustry, setPIndustry] = useState('general_business');
+  const isPersonalizationInterview = pQuestions.length > 0 && pIndex < pQuestions.length;
 
   // Clear CoPilot conversation when the impersonation target changes
   // (e.g., switching from Alex -> Josie, or starting/ending impersonation)
@@ -491,6 +503,61 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [customers, addNote, fetchCustomers, messages, currentContext]);
 
+  // --- Personalization Interview Methods (must be after sendMessage) ---
+  const injectPersonalizationQuestion = useCallback((questions: PersonalizationQuestion[], index: number) => {
+    const q = questions[index];
+    if (!q) return;
+    const msg: Message = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      role: 'assistant',
+      content: q.text,
+      choicesConfig: q.choicesConfig,
+    };
+    setMessages(prev => [...prev, msg]);
+  }, []);
+
+  const startPersonalizationInterview = useCallback((
+    industry: string,
+    businessName: string,
+    agentName: string,
+    currentValues: Record<string, string>
+  ) => {
+    const questions = buildPersonalizationQuestions(industry, businessName, agentName, currentValues);
+    setPQuestions(questions);
+    setPIndex(0);
+    setPAnswers({});
+    setPIndustry(industry);
+    setMessages([]);
+    // Inject the first question after a brief delay so the panel is visible
+    setTimeout(() => injectPersonalizationQuestion(questions, 0), 150);
+  }, [injectPersonalizationQuestion]);
+
+  const advancePersonalization = useCallback((answerText: string) => {
+    const currentQ = pQuestions[pIndex];
+    if (!currentQ) return;
+
+    // Store answer
+    const newAnswers = { ...pAnswers, [currentQ.fieldKey]: answerText };
+    setPAnswers(newAnswers);
+
+    const nextIndex = pIndex + 1;
+    setPIndex(nextIndex);
+
+    if (nextIndex < pQuestions.length) {
+      // More questions -- inject the next one
+      setTimeout(() => injectPersonalizationQuestion(pQuestions, nextIndex), 300);
+    } else {
+      // All questions answered -- send to AI for ACTION_PROPOSAL
+      setPQuestions([]); // Exit interview mode
+      const summaryMsg = buildPersonalizationSummaryMessage(newAnswers, pIndustry);
+      // Small delay so the UI shows the last answer before loading
+      setTimeout(() => {
+        sendMessage(summaryMsg);
+      }, 400);
+    }
+  }, [pQuestions, pIndex, pAnswers, pIndustry, injectPersonalizationQuestion, sendMessage]);
+
   return (
     <CoPilotContext.Provider
       value={{
@@ -514,6 +581,9 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         markChoiceSelected,
         markChoicesSelected,
         setMessageFeedback,
+        startPersonalizationInterview,
+        advancePersonalization,
+        isPersonalizationInterview,
       }}
     >
       {children}

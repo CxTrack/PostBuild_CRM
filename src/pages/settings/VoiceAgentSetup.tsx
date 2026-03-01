@@ -57,7 +57,7 @@ export const VoiceAgentSetup = () => {
         fetchVoices,
         setVoice,
     } = useVoiceAgentStore();
-    const { openPanel, setContext, clearMessages, sendMessage } = useCoPilot();
+    const { openPanel, setContext, clearMessages, startPersonalizationInterview } = useCoPilot();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
@@ -1342,21 +1342,23 @@ export const VoiceAgentSetup = () => {
                             saving={saving}
                             isProvisioned={isProvisioned()}
                             onOpenCoPilot={() => {
+                                const industry = currentOrganization?.industry_template || 'general_business';
+                                const businessName = config?.business_name || currentOrganization?.name || '';
+                                const agentName = config?.agent_name || '';
+                                const currentValues = config?.personalization_values || {};
                                 clearMessages();
                                 setContext({
                                     page: 'VoiceAgentSetup',
                                     data: {
                                         personalizationMode: true,
-                                        industry: currentOrganization?.industry_template || 'general_business',
-                                        currentValues: config?.personalization_values || {},
-                                        agentName: config?.agent_name || '',
-                                        businessName: config?.business_name || currentOrganization?.name || '',
+                                        industry,
+                                        currentValues,
+                                        agentName,
+                                        businessName,
                                     },
                                 });
                                 openPanel();
-                                setTimeout(() => {
-                                    sendMessage('I want to personalize my AI phone agent.');
-                                }, 200);
+                                startPersonalizationInterview(industry, businessName, agentName, currentValues);
                             }}
                         />
                     )}
