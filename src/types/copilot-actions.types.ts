@@ -44,3 +44,12 @@ export interface ChoiceOption {
   disabled?: boolean;
   disabledReason?: string;
 }
+
+// Structured choices with multi-select support (personalization interview)
+export interface ChoicesConfig {
+  options: ChoiceOption[];
+  multiSelect?: boolean;
+  allowOther?: boolean;
+  otherPlaceholder?: string;
+  progressLabel?: string;
+}

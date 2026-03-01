@@ -39,6 +39,7 @@ const CoPilotPanel: React.FC = () => {
     confirmAction,
     cancelAction,
     markChoiceSelected,
+    markChoicesSelected,
     addAssistantMessage,
     setMessageFeedback,
   } = useCoPilot();
@@ -106,6 +107,29 @@ const CoPilotPanel: React.FC = () => {
 
     await sendMessage(prompt);
   }, [currentContext, sendMessage, markChoiceSelected, messages, addAssistantMessage]);
+
+  // Handle personalization interview multi-select answers
+  const handlePersonalizationAnswer = useCallback(async (
+    messageId: string,
+    selectedIds: string[],
+    otherText?: string,
+  ) => {
+    markChoicesSelected(messageId, selectedIds, otherText);
+
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg?.choicesConfig) return;
+
+    const selectedLabels = selectedIds
+      .map(id => msg.choicesConfig!.options.find(o => o.id === id)?.label)
+      .filter(Boolean);
+
+    const parts = [...selectedLabels];
+    if (otherText?.trim()) parts.push(otherText.trim());
+
+    if (parts.length === 0) return;
+
+    await sendMessage(`[PERSONALIZATION_ANSWER] ${parts.join(', ')}`);
+  }, [messages, markChoicesSelected, sendMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -234,6 +258,7 @@ const CoPilotPanel: React.FC = () => {
                 onConfirmAction={confirmAction}
                 onCancelAction={cancelAction}
                 onChoiceSelect={handleChoiceSelect}
+                onPersonalizationAnswer={handlePersonalizationAnswer}
                 onFeedbackGiven={setMessageFeedback}
               />
             );
@@ -488,13 +513,17 @@ const MessageBubble: React.FC<{
   onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
   onCancelAction?: (messageId: string) => void;
   onChoiceSelect?: (messageId: string, choiceId: string) => void;
+  onPersonalizationAnswer?: (messageId: string, selectedIds: string[], otherText?: string) => void;
   onFeedbackGiven?: (messageId: string, rating: 'positive' | 'negative') => void;
-}> = ({ message, previousUserMessage, contextPage, onConfirmAction, onCancelAction, onChoiceSelect, onFeedbackGiven }) => {
+}> = ({ message, previousUserMessage, contextPage, onConfirmAction, onCancelAction, onChoiceSelect, onPersonalizationAnswer, onFeedbackGiven }) => {
   const isUser = message.role === 'user';
 
   // Render markdown-like bold text (**text**) in assistant messages
+  // For user messages, strip structured prefixes before display
   const renderContent = (text: string) => {
-    if (isUser) return text;
+    if (isUser) {
+      return text.replace(/^\[PERSONALIZATION_ANSWER\]\s*/, '');
+    }
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -536,13 +565,24 @@ const MessageBubble: React.FC<{
           onFeedbackGiven={onFeedbackGiven}
         />
       )}
-      {/* Choice Card - Quarterback options */}
-      {message.choices && onChoiceSelect && (
+      {/* Choice Card - Quarterback options (legacy single-select) */}
+      {message.choices && !message.choicesConfig && onChoiceSelect && (
         <div className="max-w-[85%] w-full">
           <ChoiceCard
             choices={message.choices}
             selectedChoice={message.choiceSelected}
             onSelect={(choiceId) => onChoiceSelect(message.id, choiceId)}
+          />
+        </div>
+      )}
+      {/* Choice Card - Personalization interview (multi-select) */}
+      {message.choicesConfig && onPersonalizationAnswer && (
+        <div className="max-w-[85%] w-full">
+          <ChoiceCard
+            choicesConfig={message.choicesConfig}
+            choicesSelected={message.choicesSelected}
+            otherText={message.otherText}
+            onMultiSelect={(ids, other) => onPersonalizationAnswer(message.id, ids, other)}
           />
         </div>
       )}

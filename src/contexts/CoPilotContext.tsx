@@ -4,7 +4,7 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import type { ActionProposal, ActionStatus, ActionResult, ChoiceOption } from '@/types/copilot-actions.types';
+import type { ActionProposal, ActionStatus, ActionResult, ChoiceOption, ChoicesConfig } from '@/types/copilot-actions.types';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import { getAuthToken } from '@/utils/auth.utils';
@@ -20,6 +20,9 @@ export interface Message {
   actionResult?: ActionResult;
   choices?: ChoiceOption[];
   choiceSelected?: string;
+  choicesConfig?: ChoicesConfig;
+  choicesSelected?: string[];
+  otherText?: string;
   feedbackRating?: 'positive' | 'negative';
   /** Stored when disambiguation is needed -- the action waiting for customer selection */
   pendingAction?: ActionProposal;
@@ -62,6 +65,7 @@ interface CoPilotContextType {
   cancelAction: (messageId: string) => void;
   addAssistantMessage: (msg: Omit<Message, 'id' | 'timestamp'>) => void;
   markChoiceSelected: (messageId: string, choiceId: string) => void;
+  markChoicesSelected: (messageId: string, selectedIds: string[], otherText?: string) => void;
   setMessageFeedback: (messageId: string, rating: 'positive' | 'negative') => void;
 }
 
@@ -119,6 +123,12 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const markChoiceSelected = useCallback((messageId: string, choiceId: string) => {
     setMessages(prev => prev.map(m =>
       m.id === messageId ? { ...m, choiceSelected: choiceId } : m
+    ));
+  }, []);
+
+  const markChoicesSelected = useCallback((messageId: string, selectedIds: string[], otherText?: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, choicesSelected: selectedIds, otherText: otherText || undefined } : m
     ));
   }, []);
 
@@ -462,6 +472,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
           timestamp: new Date(),
           action: actionToShow || undefined,
           actionStatus: actionToShow ? 'proposed' : undefined,
+          choicesConfig: parsed.choicesConfig || undefined,
         };
         setMessages(prev => [...prev, assistantMessage]);
       }
@@ -501,6 +512,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         cancelAction,
         addAssistantMessage,
         markChoiceSelected,
+        markChoicesSelected,
         setMessageFeedback,
       }}
     >
