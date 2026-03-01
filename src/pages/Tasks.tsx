@@ -472,10 +472,20 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 {/* Desktop Table View */}
                 <div className={theme === 'soft-modern' ? 'hidden md:block card overflow-hidden' : 'hidden md:block overflow-hidden bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700'}>
                   <div className="w-full overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[900px]">
+                    <table className="w-full table-fixed">
+                      <colgroup>
+                        <col className="w-10" />
+                        <col className="w-10" />
+                        <col />
+                        <col className="w-[140px]" />
+                        <col className="w-[90px]" />
+                        <col className="w-[100px]" />
+                        <col className="w-[130px]" />
+                        <col className="w-[80px]" />
+                      </colgroup>
                       <thead className={theme === 'soft-modern' ? 'bg-base border-b-2 border-default' : 'bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600'}>
                         <tr>
-                          <th className="w-12 px-3 py-3 text-left">
+                          <th className="px-2 py-3 text-left">
                             <input
                               type="checkbox"
                               checked={selectAll}
@@ -483,25 +493,25 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                             />
                           </th>
-                          <th className="w-12 text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="text-center px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             #
                           </th>
-                          <th className="min-w-[250px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Task
                           </th>
-                          <th className="w-40 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Status
                           </th>
-                          <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Priority
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Due Date
                           </th>
-                          <th className="w-36 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Customer
                           </th>
-                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Actions
                           </th>
                         </tr>
@@ -516,7 +526,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700 ${overdue ? 'border-l-4 border-l-rose-500' : ''
                                 }`}
                             >
-                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   checked={selectedTasks.has(task.id)}
@@ -524,14 +534,14 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                   className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                                 />
                               </td>
-                              <td className="text-center px-3 py-3">
+                              <td className="text-center px-2 py-3">
                                 <span className="text-sm font-medium text-gray-400">
                                   {index + 1}
                                 </span>
                               </td>
 
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
+                              <td className="px-3 py-3">
+                                <div className="flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -558,7 +568,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3">
                                 <select
                                   value={task.status}
                                   onChange={(e) => {
@@ -566,7 +576,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                     updateTaskStatus(task.id, e.target.value);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className={`px-2 py-1.5 rounded-lg text-sm font-medium border-2 transition-colors w-full ${statusStyles[task.status]
+                                  className={`px-2 py-1.5 rounded-lg text-xs font-medium border-2 transition-colors max-w-full ${statusStyles[task.status]
                                     }`}
                                 >
                                   <option value="To Do">To Do</option>
@@ -575,10 +585,10 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </select>
                               </td>
 
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
+                              <td className="px-2 py-3">
+                                <div className="flex items-center gap-1.5">
                                   <div
-                                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityColors[task.priority]
+                                    className={`w-2 h-2 rounded-full flex-shrink-0 ${priorityColors[task.priority]
                                       }`}
                                   />
                                   <span className="text-sm text-gray-700 dark:text-gray-300 capitalize truncate">
@@ -587,9 +597,9 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {overdue && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+                              <td className="px-2 py-3">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {overdue && <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
                                   <span
                                     className={`text-sm truncate ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'
                                       }`}
@@ -599,7 +609,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3">
                                 {task.customer ? (
                                   <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer}>
                                     {task.customer}
@@ -611,7 +621,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 )}
                               </td>
 
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     onClick={(e) => {
