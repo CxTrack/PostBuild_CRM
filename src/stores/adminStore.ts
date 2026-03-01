@@ -92,6 +92,22 @@ export interface ApiUsageSummary {
   total_tokens: number;
 }
 
+export interface ApiErrorDetail {
+  id: string;
+  service_name: string;
+  endpoint: string;
+  method: string;
+  status_code: number;
+  error_message: string | null;
+  response_time_ms: number;
+  organization_id: string | null;
+  organization_name: string | null;
+  user_id: string | null;
+  user_email: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
 export interface ActivityLogEntry {
   id: string;
   user_id: string;
@@ -365,6 +381,7 @@ interface AdminState {
   orgBreakdown: OrgBreakdown[];
   moduleUsage: ModuleUsage[];
   apiUsage: ApiUsageSummary[];
+  apiErrorDetails: ApiErrorDetail[];
   priorityAlerts: PriorityAlerts | null;
   aiAnalytics: any;
   voiceAnalytics: any;
@@ -410,6 +427,7 @@ interface AdminState {
   fetchOrgBreakdown: () => Promise<void>;
   fetchModuleUsage: () => Promise<void>;
   fetchApiUsage: (days?: number) => Promise<void>;
+  fetchApiErrorDetails: (serviceName?: string, days?: number) => Promise<void>;
   fetchPriorityAlerts: () => Promise<void>;
   fetchAIAnalytics: (days?: number) => Promise<void>;
   fetchVoiceAnalytics: (days?: number) => Promise<void>;
@@ -467,6 +485,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   orgBreakdown: [],
   moduleUsage: [],
   apiUsage: [],
+  apiErrorDetails: [],
   priorityAlerts: null,
   aiAnalytics: null,
   voiceAnalytics: null,
@@ -603,6 +622,18 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set((s) => ({ apiUsage: data, loading: { ...s.loading, apiUsage: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, apiUsage: false }, errors: { ...s.errors, apiUsage: e.message } }));
+    }
+  },
+
+  fetchApiErrorDetails: async (serviceName?: string, days?: number) => {
+    set((s) => ({ loading: { ...s.loading, apiErrorDetails: true }, errors: { ...s.errors, apiErrorDetails: null } }));
+    try {
+      const params: Record<string, any> = { p_days: days || get().dateRangeDays, p_limit: 50 };
+      if (serviceName) params.p_service_name = serviceName;
+      const data = await supabaseRpc<ApiErrorDetail[]>('admin_get_api_error_details', params);
+      set((s) => ({ apiErrorDetails: data, loading: { ...s.loading, apiErrorDetails: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, apiErrorDetails: false }, errors: { ...s.errors, apiErrorDetails: e.message } }));
     }
   },
 
