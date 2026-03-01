@@ -13,7 +13,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -41,6 +41,18 @@ export interface QuarterbackInsight {
   email_received_at?: string;
   email_log_id?: string;
   conversation_id?: string;
+  /** Meeting-specific fields for upcoming_meeting insights */
+  meeting_title?: string;
+  meeting_start_time?: string;
+  meeting_end_time?: string;
+  meeting_location?: string;
+  meeting_url?: string;
+  meeting_description?: string;
+  meeting_attendees?: Array<{ email: string; name: string; status?: string }>;
+  meeting_company_domains?: Array<{ domain: string; companyName: string; attendeeNames: string[] }>;
+  meeting_source?: 'local' | 'outlook';
+  meeting_event_id?: string;
+  meeting_web_link?: string;
 }
 
 const MAX_VISIBLE_INSIGHTS = 5;
@@ -180,7 +192,172 @@ export function useQuarterbackInsights() {
     }
   }, [orgId]);
 
-  // Fetch insights from the RPC function + email insights
+  // Fetch upcoming meeting insights (client-side supplement, same pattern as email insights)
+  const fetchMeetingInsights = useCallback(async (token: string): Promise<QuarterbackInsight[]> => {
+    try {
+      const now = new Date();
+      const fortyEightHoursOut = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+      // 1. Fetch local CRM calendar events in the next 48 hours
+      const localRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/calendar_events?organization_id=eq.${orgId}&start_time=gte.${now.toISOString()}&start_time=lte.${fortyEightHoursOut.toISOString()}&status=in.(scheduled,confirmed)&select=id,title,description,start_time,end_time,location,meeting_url,attendees,customer_id,event_type&order=start_time.asc&limit=10`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        }
+      );
+
+      let localEvents: any[] = [];
+      if (localRes.ok) {
+        localEvents = await localRes.json();
+      }
+
+      // 2. Fetch Outlook events for the same window (optional integration)
+      let outlookEvents: any[] = [];
+      try {
+        const { fetchOutlookEvents } = await import('@/services/microsoftCalendar.service');
+        outlookEvents = await fetchOutlookEvents(now.toISOString(), fortyEightHoursOut.toISOString());
+      } catch {
+        // Outlook integration is optional -- silent if unavailable
+      }
+
+      // 3. For events linked to a CRM customer, batch-fetch customer data
+      const customerIds = localEvents
+        .filter(e => e.customer_id)
+        .map(e => e.customer_id);
+
+      const customerMap = new Map<string, any>();
+      if (customerIds.length > 0) {
+        const uniqueIds = [...new Set(customerIds)];
+        const custRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/customers?id=in.(${uniqueIds.join(',')})&select=id,name,email,phone,company,total_spent`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': SUPABASE_ANON_KEY,
+            },
+          }
+        );
+        if (custRes.ok) {
+          const custs = await custRes.json();
+          (custs || []).forEach((c: any) => customerMap.set(c.id, c));
+        }
+      }
+
+      // 4. Build meeting insights
+      const { extractCompanyDomains } = await import('@/utils/domain.utils');
+      const insights: QuarterbackInsight[] = [];
+      const seenKeys = new Set<string>();
+
+      const buildTimeLabel = (startTime: string): string => {
+        const hoursUntil = Math.round((new Date(startTime).getTime() - now.getTime()) / (1000 * 60 * 60));
+        if (hoursUntil < 1) return 'less than an hour';
+        if (hoursUntil === 1) return '1 hour';
+        if (hoursUntil < 24) return `${hoursUntil} hours`;
+        return 'tomorrow';
+      };
+
+      const buildMessage = (
+        title: string,
+        startTime: string,
+        attendees: Array<{ email: string; name?: string }>,
+        companyDomains: Array<{ domain: string; companyName: string; attendeeNames: string[] }>,
+        customer?: any,
+      ): string => {
+        const timeLabel = buildTimeLabel(startTime);
+        let msg = `"${title}" starts in ${timeLabel}`;
+        if (customer) {
+          msg += ` with ${customer.name}`;
+        } else if (attendees.length > 0) {
+          const first = attendees[0].name || attendees[0].email;
+          msg += attendees.length === 1
+            ? ` with ${first}`
+            : ` with ${first} and ${attendees.length - 1} other${attendees.length > 2 ? 's' : ''}`;
+        }
+        if (companyDomains.length > 0) {
+          msg += ` (${companyDomains.map(d => d.companyName).join(', ')})`;
+        }
+        return msg;
+      };
+
+      // Process local CRM events
+      for (const event of localEvents) {
+        const dedupeKey = `${event.title}_${event.start_time}`;
+        if (seenKeys.has(dedupeKey)) continue;
+        seenKeys.add(dedupeKey);
+
+        const customer = event.customer_id ? customerMap.get(event.customer_id) : null;
+        const attendees = Array.isArray(event.attendees) ? event.attendees : [];
+        const companyDomains = extractCompanyDomains(attendees);
+
+        insights.push({
+          id: `meeting_${event.id}`,
+          type: 'upcoming_meeting',
+          title: event.title,
+          customer_name: customer?.name || attendees[0]?.name || undefined,
+          customer_id: event.customer_id || undefined,
+          email: customer?.email || attendees[0]?.email || undefined,
+          phone: customer?.phone || undefined,
+          total_spent: customer?.total_spent || undefined,
+          message: buildMessage(event.title, event.start_time, attendees, companyDomains, customer),
+          meeting_title: event.title,
+          meeting_start_time: event.start_time,
+          meeting_end_time: event.end_time,
+          meeting_location: event.location,
+          meeting_url: event.meeting_url,
+          meeting_description: event.description,
+          meeting_attendees: attendees,
+          meeting_company_domains: companyDomains,
+          meeting_source: 'local',
+          meeting_event_id: event.id,
+        });
+      }
+
+      // Process Outlook events
+      for (const event of outlookEvents) {
+        const dedupeKey = `${event.title}_${event.start_time}`;
+        if (seenKeys.has(dedupeKey)) continue;
+        seenKeys.add(dedupeKey);
+
+        const attendees = Array.isArray(event.attendees) ? event.attendees : [];
+        const companyDomains = extractCompanyDomains(attendees);
+
+        insights.push({
+          id: `meeting_outlook_${event.id || event.outlook_id}`,
+          type: 'upcoming_meeting',
+          title: event.title,
+          customer_name: attendees[0]?.name || undefined,
+          email: attendees[0]?.email || undefined,
+          message: buildMessage(event.title, event.start_time, attendees, companyDomains),
+          meeting_title: event.title,
+          meeting_start_time: event.start_time,
+          meeting_end_time: event.end_time,
+          meeting_location: event.location,
+          meeting_url: event.meeting_url,
+          meeting_description: event.description || undefined,
+          meeting_attendees: attendees,
+          meeting_company_domains: companyDomains,
+          meeting_source: 'outlook',
+          meeting_event_id: event.id || event.outlook_id,
+          meeting_web_link: event.web_link || undefined,
+        });
+      }
+
+      // Sort nearest first, cap at 3 to leave room for other insight types
+      insights.sort((a, b) =>
+        new Date(a.meeting_start_time!).getTime() - new Date(b.meeting_start_time!).getTime()
+      );
+
+      return insights.slice(0, 3);
+    } catch (err) {
+      console.error('[QB] Error fetching meeting insights:', err);
+      return [];
+    }
+  }, [orgId]);
+
+  // Fetch insights from the RPC function + email insights + meeting insights
   const fetchInsights = useCallback(async () => {
     if (!orgId || !userId) return;
 
@@ -192,8 +369,8 @@ export function useQuarterbackInsights() {
         return;
       }
 
-      // Fetch RPC insights and email insights in parallel
-      const [rpcResponse, emailInsights] = await Promise.all([
+      // Fetch RPC insights, email insights, and meeting insights in parallel
+      const [rpcResponse, emailInsights, meetingInsights] = await Promise.all([
         fetch(
           `${SUPABASE_URL}/rest/v1/rpc/generate_quarterback_insights`,
           {
@@ -211,6 +388,7 @@ export function useQuarterbackInsights() {
           }
         ),
         fetchEmailInsights(token),
+        fetchMeetingInsights(token),
       ]);
 
       let insights: QuarterbackInsight[] = [];
@@ -222,8 +400,8 @@ export function useQuarterbackInsights() {
         console.error('[QB] Failed to fetch RPC insights:', rpcResponse.status);
       }
 
-      // Merge: email insights first (high priority), then existing
-      const combined = [...emailInsights, ...insights];
+      // Merge: meetings first (time-sensitive), then emails, then RPC insights
+      const combined = [...meetingInsights, ...emailInsights, ...insights];
       setAllInsights(combined);
       setLastUpdated(new Date());
     } catch (err) {

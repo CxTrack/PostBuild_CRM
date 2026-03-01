@@ -65,6 +65,30 @@ const COLOR_MAP: Record<string, { bg: string; border: string; text: string; icon
     text: 'text-purple-600 dark:text-purple-400',
     iconBg: 'bg-purple-50 dark:bg-purple-900/30',
   },
+  meeting_research: {
+    bg: 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+    border: 'border-gray-200 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500/60',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-indigo-50 dark:bg-indigo-900/30',
+  },
+  meeting_agenda: {
+    bg: 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+    border: 'border-gray-200 dark:border-gray-600 hover:border-emerald-400 dark:hover:border-emerald-500/60',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',
+  },
+  meeting_prep_notes: {
+    bg: 'hover:bg-sky-50 dark:hover:bg-sky-900/20',
+    border: 'border-gray-200 dark:border-gray-600 hover:border-sky-400 dark:hover:border-sky-500/60',
+    text: 'text-sky-600 dark:text-sky-400',
+    iconBg: 'bg-sky-50 dark:bg-sky-900/30',
+  },
+  meeting_ask_questions: {
+    bg: 'hover:bg-violet-50 dark:hover:bg-violet-900/20',
+    border: 'border-gray-200 dark:border-gray-600 hover:border-violet-400 dark:hover:border-violet-500/60',
+    text: 'text-violet-600 dark:text-violet-400',
+    iconBg: 'bg-violet-50 dark:bg-violet-900/30',
+  },
 };
 
 // --- Multi-select mode (personalization interview) ---

@@ -99,6 +99,48 @@ const CoPilotPanel: React.FC = () => {
     const insightType = currentContext?.data?.insightType;
     if (!insightData) return;
 
+    // Meeting prep flow -- route to MEETING_PREP_MODE instead of QUARTERBACK_MODE
+    if (insightType === 'upcoming_meeting') {
+      const attendeeList = (insightData.meeting_attendees || [])
+        .map((a: any) => `${a.name || 'Unknown'} (${a.email})`).join(', ');
+      const domainList = (insightData.meeting_company_domains || [])
+        .map((d: any) => d.domain).join(', ');
+
+      const meetingContext = `Meeting title: "${insightData.meeting_title}". ` +
+        `Starts: ${insightData.meeting_start_time}. ` +
+        `Ends: ${insightData.meeting_end_time || 'N/A'}. ` +
+        `Location: ${insightData.meeting_location || 'Not specified'}. ` +
+        `Meeting URL: ${insightData.meeting_url || 'None'}. ` +
+        `Description: ${insightData.meeting_description || 'None provided'}. ` +
+        `Attendees: ${attendeeList || 'None listed'}. ` +
+        `Company domains: ${domainList || 'None identified'}. ` +
+        (insightData.customer_name ? `CRM Customer: ${insightData.customer_name}. ` : '') +
+        (insightData.total_spent ? `Lifetime value: $${insightData.total_spent.toLocaleString()}. ` : '');
+
+      let prompt = '';
+
+      switch (choiceId) {
+        case 'meeting_research':
+          prompt = `[MEETING_PREP_MODE] Action: Research attendees. ${meetingContext}Research the people and companies I'm meeting with. Use the company domains to describe what each company likely does. Summarize what I should know about each attendee and their company before the meeting.`;
+          break;
+        case 'meeting_agenda':
+          prompt = `[MEETING_PREP_MODE] Action: Prepare meeting agenda. ${meetingContext}Create a professional meeting agenda based on the meeting title, description, and any known customer context. Include time allocations, discussion points, and suggested outcomes.`;
+          break;
+        case 'meeting_prep_notes':
+          prompt = `[MEETING_PREP_MODE] Action: Draft prep notes. ${meetingContext}Create concise meeting preparation notes. Include: key talking points, what I should know about the attendees, any CRM relationship history, and 2-3 smart questions I should ask.`;
+          break;
+        case 'meeting_ask_questions':
+          prompt = `[MEETING_PREP_MODE] Action: Interactive preparation. ${meetingContext}You are helping me prepare for this meeting by asking ME questions. Ask me 3-4 focused questions one at a time to understand what I want to accomplish, what my relationship with the attendees is, and what outcomes I am hoping for. After I answer, synthesize my responses into actionable prep notes.`;
+          break;
+        default:
+          prompt = `[MEETING_PREP_MODE] ${meetingContext}Help me prepare for this meeting.`;
+      }
+
+      await sendMessage(prompt);
+      return;
+    }
+
+    // Standard quarterback flow (email/SMS/call script for non-meeting insights)
     const choiceLabel: Record<string, string> = {
       draft_email: 'email',
       draft_sms: 'text message',

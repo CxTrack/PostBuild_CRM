@@ -20,6 +20,47 @@ export function buildQuarterbackChoices(
   const hasPhone = !!insight.phone;
   const isCallTierEligible = planTier === 'elite_premium' || planTier === 'enterprise';
 
+  // For upcoming meetings, offer meeting prep actions
+  if (insight.type === 'upcoming_meeting') {
+    const hasAttendees = insight.meeting_attendees && insight.meeting_attendees.length > 0;
+    const hasCompanyDomains = insight.meeting_company_domains && insight.meeting_company_domains.length > 0;
+
+    return [
+      {
+        id: 'meeting_research',
+        label: 'Research attendees',
+        description: hasCompanyDomains
+          ? `Look up ${insight.meeting_company_domains!.map(d => d.companyName).join(', ')}`
+          : hasAttendees
+            ? `Look up ${insight.meeting_attendees![0]?.name || 'attendees'}`
+            : 'Research who you are meeting with',
+        icon: 'Globe',
+      },
+      {
+        id: 'meeting_agenda',
+        label: 'Prepare a meeting agenda',
+        description: insight.meeting_description
+          ? 'Based on meeting details and past interactions'
+          : 'Generate a professional agenda',
+        icon: 'BookOpen',
+      },
+      {
+        id: 'meeting_prep_notes',
+        label: 'Draft prep notes',
+        description: insight.customer_name
+          ? `Review your history with ${insight.customer_name}`
+          : 'Summarize what you know about the attendees',
+        icon: 'Briefcase',
+      },
+      {
+        id: 'meeting_ask_questions',
+        label: 'Help me prepare',
+        description: 'CoPilot asks you questions to get you ready',
+        icon: 'MessageSquare',
+      },
+    ];
+  }
+
   // For incoming emails, the primary action is "Draft a reply"
   if (insight.type === 'new_email_received') {
     return [
@@ -127,6 +168,42 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
       const hoursAgo = receivedAt ? Math.round((Date.now() - receivedAt.getTime()) / (1000 * 60 * 60)) : 0;
       const timeLabel = hoursAgo < 1 ? 'just now' : hoursAgo === 1 ? '1 hour ago' : `${hoursAgo} hours ago`;
       return `**${insight.customer_name}** sent you an email **"${insight.email_subject || insight.title}"** ${timeLabel}. No reply has been sent yet -- don't leave them waiting.\n\nHow would you like to respond?`;
+    }
+
+    case 'upcoming_meeting': {
+      const startDate = insight.meeting_start_time ? new Date(insight.meeting_start_time) : null;
+      const hoursUntil = startDate
+        ? Math.round((startDate.getTime() - Date.now()) / (1000 * 60 * 60))
+        : 0;
+      const meetingTimeLabel = hoursUntil < 1 ? 'less than an hour'
+        : hoursUntil === 1 ? '1 hour'
+        : hoursUntil < 24 ? `${hoursUntil} hours`
+        : 'tomorrow';
+
+      let intro = `Your meeting **"${insight.meeting_title}"** is in **${meetingTimeLabel}**`;
+
+      // Add attendee context
+      const attendees = insight.meeting_attendees || [];
+      if (attendees.length > 0) {
+        const names = attendees.slice(0, 3).map(a => a.name || a.email).join(', ');
+        intro += ` with ${names}`;
+        if (attendees.length > 3) intro += ` and ${attendees.length - 3} others`;
+      }
+      intro += '.';
+
+      // Add company context
+      const domains = insight.meeting_company_domains || [];
+      if (domains.length > 0) {
+        intro += ` They're from **${domains.map(d => d.companyName).join(', ')}**.`;
+      }
+
+      // Add customer relationship context if available
+      if (insight.customer_name && insight.total_spent) {
+        intro += ` **${insight.customer_name}** has a lifetime value of **$${insight.total_spent.toLocaleString()}** with you.`;
+      }
+
+      intro += '\n\nHow would you like to prepare?';
+      return intro;
     }
 
     default:

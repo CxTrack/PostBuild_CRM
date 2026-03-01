@@ -17,6 +17,7 @@ import {
   PhoneForwarded,
   RefreshCw,
   Zap,
+  Calendar,
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
@@ -81,6 +82,14 @@ const INSIGHT_CONFIG: Record<string, {
     rowBg: 'hover:bg-teal-50/50 dark:hover:bg-teal-900/20',
     borderColor: 'border-teal-200/60 dark:border-teal-700/30',
     label: 'Follow-up Due',
+  },
+  upcoming_meeting: {
+    icon: Calendar,
+    accentColor: 'text-indigo-500 dark:text-indigo-400',
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/40',
+    rowBg: 'hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20',
+    borderColor: 'border-indigo-200/60 dark:border-indigo-700/30',
+    label: 'Meeting Prep',
   },
 };
 
