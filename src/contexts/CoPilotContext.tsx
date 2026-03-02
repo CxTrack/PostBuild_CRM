@@ -359,24 +359,37 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error === 'token_limit_reached') {
+        const status = response.status;
+        const errorCode = data.error || '';
+        console.error('[CoPilot] API error', { status, error: errorCode, debug: data.debug });
+
+        let errorContent: string;
+
+        if (errorCode === 'token_limit_reached') {
           setTokenUsage({
             tokensUsed: data.tokensUsed || 0,
             tokensRemaining: 0,
             tokensAllocated: data.tokensAllocated || 0,
           });
-
-          const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: "🚫 **Out of AI tokens**\n\nYou've used all your AI tokens for this month. To continue using CoPilot AI:\n\n• **Upgrade your plan** for more monthly tokens\n• Tokens reset at the start of each billing period\n\nI can still help with basic CRM actions like adding notes!",
-            timestamp: new Date(),
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-          return;
+          errorContent = "🚫 **Out of AI tokens**\n\nYou've used all your AI tokens for this month. To continue using CoPilot AI:\n\n• **Upgrade your plan** for more monthly tokens\n• Tokens reset at the start of each billing period\n\nI can still help with basic CRM actions like adding notes!";
+        } else if (status === 401) {
+          errorContent = "Your session has expired. Please refresh the page to sign in again.";
+        } else if (status === 403) {
+          errorContent = "I couldn't find your organization. Please make sure you're signed into a valid account.";
+        } else if (status === 429) {
+          errorContent = "The AI service is currently rate-limited. Please wait a moment and try again.";
+        } else {
+          errorContent = `I encountered an issue (error ${status}). Please try again in a moment.`;
         }
 
-        throw new Error(data.error || 'Failed to get AI response');
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: errorContent,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
       }
 
       // Update token usage
@@ -499,11 +512,22 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
     } catch (error) {
-      console.error('CoPilot error:', error);
+      console.error('[CoPilot] Unexpected error', error);
+
+      let errorContent: string;
+
+      if (error instanceof TypeError && String(error.message).includes('fetch')) {
+        errorContent = "Couldn't reach the AI service. Please check your internet connection and try again.";
+      } else if (error instanceof DOMException && error.name === 'AbortError') {
+        errorContent = "The request was cancelled. Please try again.";
+      } else {
+        errorContent = "Something unexpected went wrong. Please check your connection and try again.";
+      }
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I apologize, but I encountered an error processing your request. Please try again or rephrase your question.",
+        content: errorContent,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
