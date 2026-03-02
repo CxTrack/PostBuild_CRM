@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { logApiCall } from '../_shared/api-logger.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -7,25 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
-
-// API USAGE LOGGER
-async function logApiCall(params: {
-  serviceName: string; endpoint: string; method: string; statusCode: number;
-  responseTimeMs: number; costCents?: number;
-  organizationId?: string; userId?: string; errorMessage?: string;
-  metadata?: Record<string, unknown>;
-}) {
-  try {
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    await admin.from('api_usage_log').insert({
-      service_name: params.serviceName, endpoint: params.endpoint, method: params.method,
-      status_code: params.statusCode, response_time_ms: params.responseTimeMs,
-      tokens_used: null, cost_cents: params.costCents || null,
-      organization_id: params.organizationId || null, user_id: params.userId || null,
-      error_message: params.errorMessage || null, metadata: params.metadata || null,
-    });
-  } catch (e) { console.error('API usage log failed:', e); }
 }
 
 interface OutboundCallRequest {

@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { logApiCall } from '../_shared/api-logger.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -87,6 +88,7 @@ Deno.serve(async (req: Request) => {
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilio_account_sid}/Calls.json`
         const twilioAuth = btoa(`${twilio_account_sid}:${twilio_auth_token}`)
 
+        const callStart = Date.now()
         const twilioResponse = await fetch(twilioUrl, {
             method: 'POST',
             headers: {
@@ -101,6 +103,13 @@ Deno.serve(async (req: Request) => {
         })
 
         const twilioData = await twilioResponse.json()
+
+        logApiCall({
+            serviceName: 'twilio', endpoint: `/2010-04-01/Accounts/${twilio_account_sid}/Calls.json`,
+            method: 'POST', statusCode: twilioResponse.status, responseTimeMs: Date.now() - callStart,
+            organizationId, userId: user.id,
+            errorMessage: twilioResponse.ok ? null : JSON.stringify(twilioData),
+        })
 
         if (!twilioResponse.ok) {
             console.error('Twilio Voice API Error:', twilioData)

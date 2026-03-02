@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logApiCall } from "../_shared/api-logger.ts";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -72,6 +73,7 @@ Deno.serve(async (req: Request) => {
             );
         }
 
+        const visionStart = Date.now();
         const visionResponse = await fetch(
             `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
             {
@@ -88,6 +90,11 @@ Deno.serve(async (req: Request) => {
 
         if (!visionResponse.ok) {
             const errorText = await visionResponse.text();
+            logApiCall({
+                serviceName: 'google_vision', endpoint: '/v1/images:annotate',
+                method: 'POST', statusCode: visionResponse.status, responseTimeMs: Date.now() - visionStart,
+                errorMessage: errorText,
+            });
             return new Response(
                 JSON.stringify({ error: 'Vision API error: ' + errorText }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -95,6 +102,10 @@ Deno.serve(async (req: Request) => {
         }
 
         const visionData = await visionResponse.json();
+        logApiCall({
+            serviceName: 'google_vision', endpoint: '/v1/images:annotate',
+            method: 'POST', statusCode: 200, responseTimeMs: Date.now() - visionStart,
+        });
         const rawText = visionData.responses?.[0]?.fullTextAnnotation?.text || '';
 
         // Parse the extracted text into contact fields

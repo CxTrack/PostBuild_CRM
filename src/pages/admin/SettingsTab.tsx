@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { FeatureFlagsPanel } from '../../components/admin/FeatureFlagsPanel';
 import toast from 'react-hot-toast';
 
 const PROJECT_REF = 'zkpfzrbbupgiqkzqydji';
@@ -401,6 +402,9 @@ export const SettingsTab = () => {
         </div>
         <p className="text-xs text-gray-400 mt-2">Enforced in send-sms (outbound) and receive-sms (inbound) edge functions. Quota resets on the 1st of each month.</p>
       </div>
+
+      {/* Feature Flags */}
+      <FeatureFlagsPanel />
     </div>
   );
 };

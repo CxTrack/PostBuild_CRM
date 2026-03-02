@@ -354,6 +354,104 @@ export interface PhoneAssignmentEvent {
   created_at: string;
 }
 
+// ─── Technology Evaluation Center Types ─────────────────────────────
+export interface PerformanceTrend {
+  bucket: string;
+  service_name: string;
+  total_calls: number;
+  error_count: number;
+  error_rate: number;
+  avg_response_ms: number;
+  p50_response_ms: number;
+  p95_response_ms: number;
+  p99_response_ms: number;
+  total_cost_cents: number;
+  total_tokens: number;
+}
+
+export interface CostForecast {
+  by_service: Array<{
+    service_name: string;
+    actual_cost_cents: number;
+    actual_calls: number;
+    daily_cost_rate_cents: number;
+    projected_30d_cents: number;
+    daily_call_rate: number;
+  }>;
+  totals: {
+    total_actual_cents: number;
+    projected_30d_cents: number;
+    total_calls: number;
+    daily_call_rate: number;
+  };
+  period_days: number;
+}
+
+export interface CostPerTransaction {
+  action_name: string;
+  service_name: string;
+  transaction_count: number;
+  total_cost_cents: number;
+  avg_cost_per_transaction_cents: number;
+  avg_response_ms: number;
+}
+
+export interface FeatureFlag {
+  id: string;
+  flag_key: string;
+  description: string | null;
+  is_enabled: boolean;
+  rollout_percentage: number;
+  target_org_ids: string[];
+  target_industry_templates: string[];
+  target_subscription_tiers: string[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string | null;
+  metadata: Record<string, any>;
+  is_expired: boolean;
+  audit_count: number;
+}
+
+export interface FlagAuditEntry {
+  id: string;
+  action: string;
+  changed_by: string | null;
+  changed_by_email: string | null;
+  old_value: Record<string, any> | null;
+  new_value: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface SlaStatus {
+  service_name: string;
+  display_name: string;
+  total_calls: number;
+  error_count: number;
+  actual_error_rate: number;
+  actual_p95_ms: number;
+  actual_cost_cents: number;
+  sla_max_error_rate: number;
+  sla_max_p95_ms: number;
+  sla_max_monthly_cost: number | null;
+  error_rate_ok: boolean;
+  p95_ok: boolean;
+  cost_ok: boolean;
+  overall_ok: boolean;
+  alert_on_violation: boolean;
+}
+
+export interface HealthCheckResult {
+  service_name: string;
+  status: 'up' | 'degraded' | 'down' | 'unknown';
+  response_time_ms: number | null;
+  error_message: string | null;
+  checked_at: string;
+  checks_last_24h: number;
+  avg_response_24h: number | null;
+}
+
 export interface PhoneCostSummary {
   total_numbers: number;
   active_numbers: number;
@@ -404,6 +502,15 @@ interface AdminState {
   usageOverview: any | null;
   allOrgsSummary: any[];
   codeQuality: CodeQualityData;
+
+  // Technology Evaluation Center
+  performanceTrends: PerformanceTrend[];
+  costForecast: CostForecast | null;
+  costPerTransaction: CostPerTransaction[];
+  featureFlags: FeatureFlag[];
+  flagAudit: FlagAuditEntry[];
+  slaStatus: SlaStatus[];
+  healthChecks: HealthCheckResult[];
 
   // UI State
   loading: Record<string, boolean>;
@@ -474,6 +581,22 @@ interface AdminState {
   deleteEmptyOrg: (orgId: string) => Promise<{ success: boolean; error?: string }>;
   fetchCodeQualityDeploys: () => Promise<void>;
   fetchCodeQualityReport: () => Promise<void>;
+  // Technology Evaluation Center actions
+  fetchPerformanceTrends: (days?: number, bucket?: string) => Promise<void>;
+  fetchCostForecast: (days?: number) => Promise<void>;
+  fetchCostPerTransaction: (days?: number) => Promise<void>;
+  fetchFeatureFlags: () => Promise<void>;
+  upsertFeatureFlag: (params: {
+    flagKey: string; description?: string; isEnabled?: boolean;
+    rolloutPercentage?: number; targetOrgIds?: string[];
+    targetIndustryTemplates?: string[]; targetSubscriptionTiers?: string[];
+    expiresAt?: string | null; metadata?: Record<string, any>;
+  }) => Promise<{ success: boolean; error?: string }>;
+  toggleFeatureFlag: (flagKey: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+  fetchFlagAudit: (flagKey: string) => Promise<void>;
+  fetchSlaStatus: (days?: number) => Promise<void>;
+  runHealthCheck: () => Promise<void>;
+  fetchHealthCheckStatus: () => Promise<void>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -508,6 +631,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   usageOverview: null,
   allOrgsSummary: [],
   codeQuality: { report: null, deploys: [], deploySummary: null },
+  performanceTrends: [],
+  costForecast: null,
+  costPerTransaction: [],
+  featureFlags: [],
+  flagAudit: [],
+  slaStatus: [],
+  healthChecks: [],
 
   loading: {},
   errors: {},
@@ -1274,6 +1404,157 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
         loading: { ...s.loading, codeQualityReport: false },
         errors: { ...s.errors, codeQualityReport: e.message },
       }));
+    }
+  },
+
+  // ─── Technology Evaluation Center Actions ──────────────────────────
+
+  fetchPerformanceTrends: async (days?: number, bucket = 'day') => {
+    set((s) => ({ loading: { ...s.loading, performanceTrends: true }, errors: { ...s.errors, performanceTrends: null } }));
+    try {
+      const data = await supabaseRpc<PerformanceTrend[]>('admin_get_api_performance_trends', {
+        p_days: days || get().dateRangeDays,
+        p_bucket: bucket,
+      });
+      set((s) => ({ performanceTrends: data || [], loading: { ...s.loading, performanceTrends: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, performanceTrends: false }, errors: { ...s.errors, performanceTrends: e.message } }));
+    }
+  },
+
+  fetchCostForecast: async (days?: number) => {
+    set((s) => ({ loading: { ...s.loading, costForecast: true }, errors: { ...s.errors, costForecast: null } }));
+    try {
+      const data = await supabaseRpc<CostForecast>('admin_get_cost_forecast', {
+        p_days: days || get().dateRangeDays,
+      });
+      set((s) => ({ costForecast: data || null, loading: { ...s.loading, costForecast: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, costForecast: false }, errors: { ...s.errors, costForecast: e.message } }));
+    }
+  },
+
+  fetchCostPerTransaction: async (days?: number) => {
+    set((s) => ({ loading: { ...s.loading, costPerTransaction: true }, errors: { ...s.errors, costPerTransaction: null } }));
+    try {
+      const data = await supabaseRpc<CostPerTransaction[]>('admin_get_cost_per_transaction', {
+        p_days: days || get().dateRangeDays,
+      });
+      set((s) => ({ costPerTransaction: data || [], loading: { ...s.loading, costPerTransaction: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, costPerTransaction: false }, errors: { ...s.errors, costPerTransaction: e.message } }));
+    }
+  },
+
+  fetchFeatureFlags: async () => {
+    set((s) => ({ loading: { ...s.loading, featureFlags: true }, errors: { ...s.errors, featureFlags: null } }));
+    try {
+      const data = await supabaseRpc<FeatureFlag[]>('admin_list_feature_flags');
+      set((s) => ({ featureFlags: data || [], loading: { ...s.loading, featureFlags: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, featureFlags: false }, errors: { ...s.errors, featureFlags: e.message } }));
+    }
+  },
+
+  upsertFeatureFlag: async (params) => {
+    try {
+      await supabaseRpc('admin_upsert_feature_flag', {
+        p_flag_key: params.flagKey,
+        p_description: params.description ?? null,
+        p_is_enabled: params.isEnabled ?? false,
+        p_rollout_percentage: params.rolloutPercentage ?? 100,
+        p_target_org_ids: params.targetOrgIds ?? [],
+        p_target_industry_templates: params.targetIndustryTemplates ?? [],
+        p_target_subscription_tiers: params.targetSubscriptionTiers ?? [],
+        p_expires_at: params.expiresAt ?? null,
+        p_metadata: params.metadata ?? {},
+      });
+      await get().fetchFeatureFlags();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  toggleFeatureFlag: async (flagKey, enabled) => {
+    try {
+      await supabaseRpc('admin_toggle_feature_flag', {
+        p_flag_key: flagKey,
+        p_enabled: enabled,
+      });
+      // Optimistic update
+      set((s) => ({
+        featureFlags: s.featureFlags.map((f) =>
+          f.flag_key === flagKey ? { ...f, is_enabled: enabled, updated_at: new Date().toISOString() } : f
+        ),
+      }));
+      return { success: true };
+    } catch (e: any) {
+      // Revert optimistic update
+      await get().fetchFeatureFlags();
+      return { success: false, error: e.message };
+    }
+  },
+
+  fetchFlagAudit: async (flagKey) => {
+    set((s) => ({ loading: { ...s.loading, flagAudit: true }, errors: { ...s.errors, flagAudit: null } }));
+    try {
+      const data = await supabaseRpc<FlagAuditEntry[]>('admin_get_flag_audit', {
+        p_flag_key: flagKey,
+        p_limit: 50,
+      });
+      set((s) => ({ flagAudit: data || [], loading: { ...s.loading, flagAudit: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, flagAudit: false }, errors: { ...s.errors, flagAudit: e.message } }));
+    }
+  },
+
+  fetchSlaStatus: async (days?: number) => {
+    set((s) => ({ loading: { ...s.loading, slaStatus: true }, errors: { ...s.errors, slaStatus: null } }));
+    try {
+      const data = await supabaseRpc<SlaStatus[]>('admin_get_sla_status', {
+        p_days: days || get().dateRangeDays,
+      });
+      set((s) => ({ slaStatus: data || [], loading: { ...s.loading, slaStatus: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, slaStatus: false }, errors: { ...s.errors, slaStatus: e.message } }));
+    }
+  },
+
+  runHealthCheck: async () => {
+    set((s) => ({ loading: { ...s.loading, healthChecks: true }, errors: { ...s.errors, healthChecks: null } }));
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-health-check`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || `Health check failed (${res.status})`);
+      }
+      const data = await res.json();
+      set((s) => ({
+        healthChecks: data.results || [],
+        loading: { ...s.loading, healthChecks: false },
+      }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, healthChecks: false }, errors: { ...s.errors, healthChecks: e.message } }));
+    }
+  },
+
+  fetchHealthCheckStatus: async () => {
+    set((s) => ({ loading: { ...s.loading, healthChecks: true }, errors: { ...s.errors, healthChecks: null } }));
+    try {
+      const data = await supabaseRpc<HealthCheckResult[]>('admin_get_health_check_status');
+      set((s) => ({ healthChecks: data || [], loading: { ...s.loading, healthChecks: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, healthChecks: false }, errors: { ...s.errors, healthChecks: e.message } }));
     }
   },
 

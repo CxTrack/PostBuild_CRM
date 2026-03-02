@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { logApiCall } from '../_shared/api-logger.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,6 +100,7 @@ Deno.serve(async (req: Request) => {
     const reoptLink = `${crmUrl}/sms-reopt-in/${reoptToken}`
     const customerName = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || 'Valued Customer'
 
+    const emailStart = Date.now()
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -135,6 +137,13 @@ Deno.serve(async (req: Request) => {
           </div>
         `,
       }),
+    })
+
+    logApiCall({
+      serviceName: 'resend', endpoint: '/emails', method: 'POST',
+      statusCode: emailRes.status, responseTimeMs: Date.now() - emailStart,
+      organizationId: organization_id, userId: user.id,
+      errorMessage: emailRes.ok ? null : await emailRes.clone().text(),
     })
 
     if (!emailRes.ok) {
