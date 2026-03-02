@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
-import { Check, X, Loader2, AlertCircle, Zap, Mail, MessageSquare, Phone } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Zap, Mail, MessageSquare, Phone, Calendar } from 'lucide-react';
 
 interface ActionCardProps {
   action: ActionProposal;
@@ -93,6 +93,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, status, result, onConfi
         return { Icon: MessageSquare, gradient: 'from-teal-500/10 to-teal-600/10 dark:from-teal-500/20 dark:to-teal-600/20', iconColor: 'text-teal-600 dark:text-teal-400' };
       case 'draft_call_script':
         return { Icon: Phone, gradient: 'from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20', iconColor: 'text-amber-600 dark:text-amber-400' };
+      case 'update_task':
+        return { Icon: Calendar, gradient: 'from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20', iconColor: 'text-green-600 dark:text-green-400' };
       default:
         return { Icon: Zap, gradient: 'from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20', iconColor: 'text-purple-600 dark:text-purple-400' };
     }
@@ -115,7 +117,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, status, result, onConfi
 
       {/* Fields */}
       <div className="p-4 space-y-3">
-        {action.fields.map(field => (
+        {action.fields.filter(f => f.type !== 'hidden').map(field => (
           <div key={field.key} className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               {field.label}
@@ -188,7 +190,9 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, status, result, onConfi
                 ? 'bg-gradient-to-br from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700'
                 : action.actionType === 'draft_call_script'
                   ? 'bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700'
-                  : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
+                  : action.actionType === 'update_task'
+                    ? 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                    : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
           }`}
         >
           <span className="flex items-center gap-1.5">
@@ -198,6 +202,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, status, result, onConfi
               <><MessageSquare className="w-4 h-4" /> Send SMS</>
             ) : action.actionType === 'draft_call_script' ? (
               <><Phone className="w-4 h-4" /> Save Script</>
+            ) : action.actionType === 'update_task' ? (
+              <><Calendar className="w-4 h-4" /> Update Task</>
             ) : (
               <><Check className="w-4 h-4" /> Confirm</>
             )}

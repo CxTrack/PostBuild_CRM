@@ -4,7 +4,7 @@ import {
   Mail, MessageSquare, Phone, Pencil, Lock, ArrowUpRight, User,
   Building2, Calculator, BookOpen, DollarSign, TrendingUp,
   Clock, Globe, Shield, Briefcase, Heart, Wrench, Scale,
-  CheckSquare, Square, ArrowRight, Reply,
+  CheckSquare, Square, ArrowRight, Reply, Calendar,
 } from 'lucide-react';
 
 interface ChoiceCardProps {
@@ -38,6 +38,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Wrench,
   Scale,
   Reply,
+  Calendar,
 };
 
 const COLOR_MAP: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
@@ -58,6 +59,12 @@ const COLOR_MAP: Record<string, { bg: string; border: string; text: string; icon
     border: 'border-gray-200 dark:border-gray-600 hover:border-amber-400 dark:hover:border-amber-500/60',
     text: 'text-amber-600 dark:text-amber-400',
     iconBg: 'bg-amber-50 dark:bg-amber-900/30',
+  },
+  update_task: {
+    bg: 'hover:bg-green-50 dark:hover:bg-green-900/20',
+    border: 'border-gray-200 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-500/60',
+    text: 'text-green-600 dark:text-green-400',
+    iconBg: 'bg-green-50 dark:bg-green-900/30',
   },
   other: {
     bg: 'hover:bg-purple-50 dark:hover:bg-purple-900/20',

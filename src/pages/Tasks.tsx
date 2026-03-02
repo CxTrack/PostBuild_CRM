@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useTaskStore } from '@/stores/taskStore';
 import { supabase } from '@/lib/supabase';
 import {
   Plus,
@@ -867,6 +868,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
             fetchTasks();
           }}
           onUpdate={async (id, data) => {
+            await useTaskStore.getState().updateTask(id, data);
             setShowTaskDetailModal(false);
             setSelectedTask(null);
             fetchTasks();

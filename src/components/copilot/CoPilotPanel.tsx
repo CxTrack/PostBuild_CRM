@@ -140,6 +140,13 @@ const CoPilotPanel: React.FC = () => {
       return;
     }
 
+    // Handle update_task choice -- ask AI to propose an update_task ACTION_PROPOSAL
+    if (choiceId === 'update_task') {
+      const prompt = `[QUARTERBACK_MODE] The user chose to reschedule/update this task. Insight type: ${insightType}. Task ID: ${insightData.id}. Task title: "${insightData.title}". Customer: ${insightData.customer_name || 'unassigned'}. Current due date: ${insightData.due_date || 'unknown'}. Current priority: ${insightData.priority || 'medium'}. Days overdue: ${insightData.days_overdue || 'N/A'}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Propose an update_task ACTION_PROPOSAL so the user can reschedule the task. Pre-fill the task_id and suggest a reasonable new due date (the next business day from today). After the user confirms the task update, offer to also draft a follow-up message to the customer about the new timeline.`;
+      await sendMessage(prompt);
+      return;
+    }
+
     // Standard quarterback flow (email/SMS/call script for non-meeting insights)
     const choiceLabel: Record<string, string> = {
       draft_email: 'email',

@@ -61,6 +61,52 @@ export function buildQuarterbackChoices(
     ];
   }
 
+  // For overdue tasks, lead with "Reschedule" before communication options
+  if (insight.type === 'overdue_task') {
+    return [
+      {
+        id: 'update_task',
+        label: 'Reschedule this task',
+        description: `Change the due date or priority`,
+        icon: 'Calendar',
+      },
+      {
+        id: 'draft_email',
+        label: 'Draft a follow-up email',
+        description: hasEmail
+          ? `Send to ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_sms',
+        label: 'Draft a quick text',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script an outgoing call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
   // For incoming emails, the primary action is "Draft a reply"
   if (insight.type === 'new_email_received') {
     return [

@@ -15,6 +15,7 @@ const PERMISSION_MAP: Record<ActionType, string> = {
   create_customer: 'customers.write',
   create_deal: 'pipeline.write',
   create_task: 'tasks.write',
+  update_task: 'tasks.write',
   add_note: 'customers.write',
   send_email: 'customers.read',
   send_sms: 'customers.read',
@@ -54,6 +55,45 @@ async function resolveCustomerId(customerName: string): Promise<string | null> {
     });
     if (match) return match.id;
   }
+
+  return null;
+}
+
+async function resolveTaskId(
+  taskId: string | null,
+  taskTitle: string | null,
+  customerName: string | null
+): Promise<string | null> {
+  // Direct UUID from quarterback context -- most reliable path
+  if (taskId && taskId.length > 10) return taskId;
+
+  // Fuzzy match by title + optional customer name
+  if (!taskTitle) return null;
+
+  const store = useTaskStore.getState();
+  if (store.tasks.length === 0) {
+    await store.fetchTasks();
+  }
+  const tasks = useTaskStore.getState().tasks;
+  const lowerTitle = taskTitle.toLowerCase().trim();
+
+  // Narrow candidates by customer name if provided
+  let candidates = tasks;
+  if (customerName) {
+    const lowerCustomer = customerName.toLowerCase().trim();
+    const filtered = tasks.filter(t =>
+      t.customer_name?.toLowerCase().includes(lowerCustomer)
+    );
+    if (filtered.length > 0) candidates = filtered;
+  }
+
+  // Exact title match
+  const exact = candidates.find(t => t.title?.toLowerCase() === lowerTitle);
+  if (exact) return exact.id;
+
+  // Partial title match
+  const partial = candidates.find(t => t.title?.toLowerCase().includes(lowerTitle));
+  if (partial) return partial.id;
 
   return null;
 }
@@ -184,6 +224,66 @@ export async function executeAction(
           success: true,
           message: `Task "${task.title}" created successfully`,
           recordId: task.id,
+          recordType: 'task',
+        };
+      }
+
+      case 'update_task': {
+        const taskId = await resolveTaskId(
+          editedFields.task_id || null,
+          editedFields.title || null,
+          editedFields.customer_name || null
+        );
+
+        if (!taskId) {
+          return {
+            success: false,
+            message: 'Could not find the task to update. Check the task title or try again from the dashboard.',
+          };
+        }
+
+        const updatePayload: Record<string, any> = {};
+        if (editedFields.due_date !== undefined && editedFields.due_date !== '') {
+          updatePayload.due_date = editedFields.due_date;
+        }
+        if (editedFields.priority !== undefined && editedFields.priority !== '') {
+          updatePayload.priority = editedFields.priority;
+        }
+        if (editedFields.status !== undefined && editedFields.status !== '') {
+          updatePayload.status = editedFields.status;
+        }
+        if (editedFields.new_title !== undefined && editedFields.new_title !== '') {
+          updatePayload.title = editedFields.new_title;
+        }
+        if (editedFields.description !== undefined) {
+          updatePayload.description = editedFields.description;
+        }
+
+        if (Object.keys(updatePayload).length === 0) {
+          return {
+            success: false,
+            message: 'No changes specified. Update at least one field (due date, priority, status, etc.).',
+          };
+        }
+
+        const updatedTask = await useTaskStore.getState().updateTask(taskId, updatePayload);
+
+        // Log activity if customer is linked
+        if (editedFields.customer_name) {
+          const changeDesc = Object.entries(updatePayload)
+            .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+            .join(', ');
+          logQuarterbackActivity(
+            'update_task' as ActionType,
+            editedFields.customer_name,
+            `Task "${updatedTask.title}" updated -- ${changeDesc}`
+          );
+        }
+
+        return {
+          success: true,
+          message: `Task "${updatedTask.title}" updated successfully`,
+          recordId: updatedTask.id,
           recordType: 'task',
         };
       }
