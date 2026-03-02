@@ -28,6 +28,7 @@ deploy_crm
 .env
 .env.production
 .env.local
+envs/
 
 # Supabase temp files
 supabase/.temp/

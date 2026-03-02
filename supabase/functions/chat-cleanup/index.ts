@@ -27,6 +27,47 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Authenticate: require either a valid admin JWT or a cron secret
+    const authHeader = req.headers.get('Authorization')
+    const cronSecret = req.headers.get('x-cron-secret')
+    const expectedCronSecret = Deno.env.get('CRON_SECRET')
+
+    const isCron = expectedCronSecret && cronSecret === expectedCronSecret
+    if (!isCron) {
+      // Manual trigger: require admin JWT
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const authClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      )
+      const { data: { user }, error: authErr } = await authClient.auth.getUser()
+      if (authErr || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      // Check if user is platform admin
+      const { data: adminCheck } = await authClient
+        .from('admin_settings')
+        .select('is_admin')
+        .eq('user_id', user.id)
+        .eq('is_admin', true)
+        .maybeSingle()
+      if (!adminCheck) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''

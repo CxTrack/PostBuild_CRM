@@ -51,6 +51,18 @@ Deno.serve(async (req: Request) => {
             throw new Error('Missing required fields: to, organizationId')
         }
 
+        // Verify user belongs to this organization (prevent cross-tenant abuse)
+        const { data: membership } = await supabaseClient
+            .from('organization_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('organization_id', organizationId)
+            .maybeSingle()
+
+        if (!membership) {
+            throw new Error('Unauthorized: you do not belong to this organization')
+        }
+
         // Fetch Twilio credentials from sms_settings (we reuse the same table for voice)
         const { data: settings, error: settingsError } = await supabaseClient
             .from('sms_settings')

@@ -52,6 +52,18 @@ Deno.serve(async (req: Request) => {
             throw new Error('Missing required fields: to, body, organizationId')
         }
 
+        // Verify user belongs to this organization (prevent cross-tenant abuse)
+        const { data: membership } = await supabaseClient
+            .from('organization_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('organization_id', organizationId)
+            .maybeSingle()
+
+        if (!membership) {
+            throw new Error('Unauthorized: you do not belong to this organization')
+        }
+
         // --- SMS CONSENT CHECK ---
         if (customerId) {
             const { data: consent } = await supabaseClient

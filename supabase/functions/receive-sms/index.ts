@@ -26,6 +26,48 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Validate Twilio webhook signature to prevent spoofed SMS
+    const twilioAuthToken = Deno.env.get('TWILIO_MASTER_AUTH_TOKEN') ?? ''
+    if (twilioAuthToken) {
+      const twilioSignature = req.headers.get('X-Twilio-Signature') ?? ''
+      if (!twilioSignature) {
+        console.error('[receive-sms] Missing X-Twilio-Signature header')
+        return new Response('Forbidden', { status: 403, headers: corsHeaders })
+      }
+
+      // Clone request to read body for validation while preserving for formData parsing
+      const clonedReq = req.clone()
+      const rawBody = await clonedReq.text()
+      const params = new URLSearchParams(rawBody)
+      const requestUrl = Deno.env.get('SUPABASE_URL')?.replace('//', '//') + '/functions/v1/receive-sms'
+
+      // Build the data string: URL + sorted params
+      let dataString = requestUrl || ''
+      const sortedKeys = [...params.keys()].sort()
+      for (const key of sortedKeys) {
+        dataString += key + params.get(key)
+      }
+
+      // Compute HMAC-SHA1
+      const encoder = new TextEncoder()
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(twilioAuthToken),
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+      )
+      const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(dataString))
+      const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)))
+
+      if (twilioSignature !== expectedSignature) {
+        console.error('[receive-sms] Invalid Twilio signature')
+        return new Response('Forbidden', { status: 403, headers: corsHeaders })
+      }
+    } else {
+      console.warn('[receive-sms] TWILIO_MASTER_AUTH_TOKEN not set -- signature validation skipped')
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''

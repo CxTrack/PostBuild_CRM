@@ -52,8 +52,7 @@ export const RequireAdmin = ({ children }: { children: JSX.Element }) => {
         }
 
         // No record found -- check bootstrap list and auto-seed if matched
-        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (isLocalDev || (user.email && BOOTSTRAP_ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
+        if (user.email && BOOTSTRAP_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
           // Auto-create admin_settings record for bootstrap admin
           await supabase.from('admin_settings').upsert({
             user_id: user.id,

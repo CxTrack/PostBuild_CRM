@@ -308,13 +308,13 @@ async function verifyRetellSignature(req: Request, body: string): Promise<boolea
 
   const apiKey = Deno.env.get('RETELL_API_KEY')
   if (!apiKey) {
-    console.warn('RETELL_API_KEY not set, skipping signature verification')
-    return true
+    console.error('[retell-webhook] RETELL_API_KEY not set -- rejecting request')
+    return false
   }
 
   if (!signature) {
-    console.warn('[retell-webhook] No x-retell-signature header, allowing request (check Retell config)')
-    return true
+    console.error('[retell-webhook] Missing x-retell-signature header -- rejecting request')
+    return false
   }
 
   try {
@@ -335,12 +335,11 @@ async function verifyRetellSignature(req: Request, body: string): Promise<boolea
       return true
     }
 
-    // Signature mismatch - log but allow through to prevent blocking legitimate calls
-    console.warn(`[retell-webhook] Signature mismatch. Expected=${expectedSignature.substring(0, 16)}... Got=${signature.substring(0, 16)}... Allowing request.`)
-    return true
+    console.error(`[retell-webhook] Signature mismatch. Expected=${expectedSignature.substring(0, 16)}... Got=${signature.substring(0, 16)}...`)
+    return false
   } catch (err) {
-    console.error('Signature verification error:', err)
-    return true // Allow through on error to prevent blocking
+    console.error('[retell-webhook] Signature verification error:', err)
+    return false
   }
 }
 

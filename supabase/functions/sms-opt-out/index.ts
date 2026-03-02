@@ -23,6 +23,30 @@ Deno.serve(async (req: Request) => {
       throw new Error('Missing required fields: customer_id, organization_id')
     }
 
+    // Validate UUID format to prevent injection
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(customer_id) || !uuidRegex.test(organization_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verify the customer actually belongs to this organization
+    const { data: customer_check } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('id', customer_id)
+      .eq('organization_id', organization_id)
+      .maybeSingle()
+
+    if (!customer_check) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Customer not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Check if consent record already exists
     const { data: existing } = await supabase
       .from('sms_consent')
