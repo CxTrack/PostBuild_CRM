@@ -9,17 +9,20 @@ interface ParsedResponse {
 }
 
 export function parseActionProposal(rawResponse: string): ParsedResponse {
+  // Normalize escaped backticks that some AI models produce (\` → `)
+  const normalized = rawResponse.replace(/\\`/g, '`');
+
   const actionRegex = /```ACTION_PROPOSAL\s*\n([\s\S]*?)\n```/;
   const choiceRegex = /```CHOICE_OPTIONS\s*\n([\s\S]*?)\n```/;
   const choiceProposalRegex = /```CHOICE_PROPOSAL\s*\n([\s\S]*?)\n```/;
 
-  let textContent = rawResponse;
+  let textContent = normalized;
   let action: ActionProposal | null = null;
   let choicesConfig: ChoicesConfig | null = null;
   let followUpChoices: ChoiceOption[] | null = null;
 
   // Parse ACTION_PROPOSAL block
-  const actionMatch = rawResponse.match(actionRegex);
+  const actionMatch = normalized.match(actionRegex);
   if (actionMatch) {
     try {
       const actionData = JSON.parse(actionMatch[1]);
