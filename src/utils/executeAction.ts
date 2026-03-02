@@ -99,6 +99,72 @@ async function resolveTaskId(
 }
 
 /**
+ * Fetch an industry voice template from the database.
+ * Returns null if not found or on error.
+ */
+async function fetchIndustryTemplate(
+  industry: string
+): Promise<{ default_instructions: string; default_greeting: string } | null> {
+  const { data, error } = await supabase
+    .from('industry_voice_templates')
+    .select('default_instructions, default_greeting')
+    .eq('industry', industry)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data;
+}
+
+/**
+ * Build the interpolated voice agent prompt from personalization fields.
+ * Returns the prompt + greeting for preview WITHOUT applying them to Retell.
+ * Used by ActionCard to show a prompt preview before the user confirms.
+ */
+export async function previewVoiceAgentPrompt(
+  editedFields: Record<string, any>
+): Promise<{ prompt: string; greeting: string } | { error: string }> {
+  try {
+    const orgId = useOrganizationStore.getState().currentOrganization?.id;
+    const industry = useOrganizationStore.getState().currentOrganization?.industry_template || 'general_business';
+
+    if (!orgId) return { error: 'No organization found. Please refresh and try again.' };
+
+    // 1. Fetch the industry template (with general_business fallback)
+    let templateData = await fetchIndustryTemplate(industry);
+    if (!templateData) {
+      templateData = await fetchIndustryTemplate('general_business');
+    }
+    if (!templateData) {
+      return { error: 'Could not load voice agent template. Please try again.' };
+    }
+
+    // 2. Build variables from editedFields
+    const variables: Record<string, string> = {};
+    for (const [key, value] of Object.entries(editedFields)) {
+      if (value && typeof value === 'string') {
+        variables[key] = value;
+      }
+    }
+
+    // 3. Interpolate the template with personalization values
+    let interpolatedPrompt = interpolateTemplate(templateData.default_instructions, variables);
+    const interpolatedGreeting = interpolateTemplate(templateData.default_greeting || '', variables);
+
+    // 4. Post-interpolation goal override
+    if (variables.agent_goal) {
+      interpolatedPrompt = interpolatedPrompt.replace(
+        /Your primary goal is to [^.]+\./,
+        `Your primary goal is to ${variables.agent_goal}.`
+      );
+    }
+
+    return { prompt: interpolatedPrompt, greeting: interpolatedGreeting };
+  } catch (err: any) {
+    return { error: err?.message || 'Failed to generate prompt preview.' };
+  }
+}
+
+/**
  * Log a Quarterback action as a customer note so it appears in the
  * customer profile timeline and feeds into the AICustomerSummary RAG.
  * Fire-and-forget: failures are silently logged to console.
@@ -415,37 +481,16 @@ export async function executeAction(
       }
 
       case 'update_voice_agent': {
-        const orgId = useOrganizationStore.getState().currentOrganization?.id;
-        const industry = useOrganizationStore.getState().currentOrganization?.industry_template || 'general_business';
-
-        if (!orgId) {
-          return { success: false, message: 'No organization found. Please refresh and try again.' };
+        // Use shared preview function to build the interpolated prompt
+        const previewResult = await previewVoiceAgentPrompt(editedFields);
+        if ('error' in previewResult) {
+          return { success: false, message: previewResult.error };
         }
 
-        // 1. Fetch the industry template
-        const { data: templateData, error: templateError } = await supabase
-          .from('industry_voice_templates')
-          .select('default_instructions, default_greeting')
-          .eq('industry', industry)
-          .maybeSingle();
+        const interpolatedPrompt = previewResult.prompt;
+        const interpolatedGreeting = previewResult.greeting;
 
-        if (templateError || !templateData) {
-          // Fallback to general_business
-          const { data: fallback } = await supabase
-            .from('industry_voice_templates')
-            .select('default_instructions, default_greeting')
-            .eq('industry', 'general_business')
-            .single();
-
-          if (!fallback) {
-            return { success: false, message: 'Could not load voice agent template. Please try again.' };
-          }
-          Object.assign(templateData || {}, fallback);
-        }
-
-        const template = templateData!;
-
-        // 2. Build variables from editedFields
+        // Build variables for DB persistence
         const variables: Record<string, string> = {};
         for (const [key, value] of Object.entries(editedFields)) {
           if (value && typeof value === 'string') {
@@ -453,21 +498,7 @@ export async function executeAction(
           }
         }
 
-        // 3. Interpolate the template with personalization values
-        let interpolatedPrompt = interpolateTemplate(template.default_instructions, variables);
-        const interpolatedGreeting = interpolateTemplate(template.default_greeting || '', variables);
-
-        // 3b. Override the default goal sentence if user specified a custom agent_goal
-        // This is a post-interpolation override -- the original goal text stays in the template
-        // as a safe default, and gets replaced only when agent_goal is explicitly provided.
-        if (variables.agent_goal) {
-          interpolatedPrompt = interpolatedPrompt.replace(
-            /Your primary goal is to [^.]+\./,
-            `Your primary goal is to ${variables.agent_goal}.`
-          );
-        }
-
-        // 4. Push updated prompt to Retell via the store
+        // Push updated prompt to Retell via the store
         const voiceStore = useVoiceAgentStore.getState();
         const updateResult = await voiceStore.updateRetellAgent({
           generalPrompt: interpolatedPrompt,
