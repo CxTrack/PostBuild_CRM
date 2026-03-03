@@ -252,8 +252,8 @@ export default function TeamIntegrationsTab({
       </div>
 
       {/* Teams */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Teams</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize members into teams for better collaboration</p>
@@ -364,7 +364,7 @@ export default function TeamIntegrationsTab({
                           <UserPlus className="w-4 h-4" />
                         </button>
                         {addMemberDropdown === team.id && (
-                          <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-10 max-h-48 overflow-y-auto">
+                          <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 max-h-48 overflow-y-auto">
                             {availableMembers.length > 0 ? (
                               availableMembers.map((m) => (
                                 <button
