@@ -32,6 +32,7 @@ interface TaskStore {
   tasks: Task[];
   loading: boolean;
   error: string | null;
+  lastTaskUpdate: number;
   reset: () => void;
   fetchTasks: () => Promise<void>;
   createTask: (data: Partial<Task>) => Promise<Task>;
@@ -48,6 +49,7 @@ const initialTaskState = {
   tasks: [] as Task[],
   loading: false,
   error: null as string | null,
+  lastTaskUpdate: 0,
 };
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -220,6 +222,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? updatedTask : t),
+        lastTaskUpdate: Date.now(),
       }));
 
       return updatedTask;
@@ -245,6 +248,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
       set((state) => ({
         tasks: state.tasks.filter(task => task.id !== id),
+        lastTaskUpdate: Date.now(),
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';

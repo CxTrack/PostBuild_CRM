@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
-import { useTaskStore } from '@/stores/taskStore';
+import { useTaskStore, type TaskStatus } from '@/stores/taskStore';
 import { supabase } from '@/lib/supabase';
 import {
   Plus,
@@ -56,10 +56,26 @@ const priorityColors: Record<Priority, string> = {
   urgent: 'bg-rose-500',
 };
 
-const statusStyles: Record<Status, string> = {
+// Bidirectional status mapping between display labels and DB values
+const DB_TO_DISPLAY: Record<string, Status> = {
+  pending: 'To Do',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+};
+const DISPLAY_TO_DB: Record<Status, TaskStatus> = {
+  'To Do': 'pending',
+  'In Progress': 'in_progress',
+  'Completed': 'completed',
+};
+
+const statusStyles: Record<string, string> = {
   'To Do': 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
   'In Progress': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
   'Completed': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
+  // DB-value aliases (fallback if raw DB status leaks through)
+  pending: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+  in_progress: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
 };
 
 
@@ -105,7 +121,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
       description: t.description,
       type: t.type || 'other',
       priority: t.priority || 'medium',
-      status: t.status || 'To Do',
+      status: DB_TO_DISPLAY[t.status] || 'To Do',
       dueDate: new Date(t.due_date),
       customer: t.customer?.name || '',
       showOnCalendar: t.show_on_calendar,
@@ -230,12 +246,19 @@ export default function Tasks({ embedded = false }: TasksProps) {
     setSelectAll(false);
   };
 
-  const bulkDelete = () => {
-    setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
-    setSelectedTasks(new Set());
-    setSelectAll(false);
-    setShowDeleteModal(false);
-    toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
+  const bulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedTasks);
+      const { error } = await supabase.from('tasks').delete().in('id', ids);
+      if (error) throw error;
+      setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
+      setSelectedTasks(new Set());
+      setSelectAll(false);
+      setShowDeleteModal(false);
+      toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
+    } catch {
+      toast.error('Failed to delete');
+    }
   };
 
   const deleteTask = async (taskId: string) => {
@@ -246,14 +269,29 @@ export default function Tasks({ embedded = false }: TasksProps) {
       confirmText: 'Delete',
     });
     if (!confirmed) return;
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-    toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+      if (error) throw error;
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
+    } catch {
+      toast.error('Failed to delete');
+    }
   };
 
-  const updateTaskStatus = (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    const displayStatus = newStatus as Status;
+    const dbStatus = DISPLAY_TO_DB[displayStatus] || newStatus;
+    // Optimistic UI update
     setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, status: newStatus as Status } : task))
+      prev.map((task) => (task.id === taskId ? { ...task, status: displayStatus } : task))
     );
+    try {
+      await useTaskStore.getState().updateTask(taskId, { status: dbStatus as TaskStatus });
+    } catch {
+      toast.error('Failed to update status');
+      fetchTasks(); // Revert on failure
+    }
   };
 
   const openTaskDetail = (task: Task) => {
@@ -750,9 +788,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
               <KanbanBoard
                 tasks={filteredTasks}
                 onTaskMove={(taskId, newStatus) => {
-                  setTasks((prev) =>
-                    prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task))
-                  );
+                  updateTaskStatus(taskId, newStatus);
                 }}
                 onTaskClick={openTaskDetail}
               />

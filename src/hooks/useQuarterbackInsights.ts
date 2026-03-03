@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useTaskStore } from '@/stores/taskStore';
 import { getAuthToken } from '@/utils/auth.utils';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
@@ -464,6 +465,14 @@ export function useQuarterbackInsights() {
   useEffect(() => {
     hasFetched.current = false;
   }, [orgId]);
+
+  // Auto-refresh when tasks are updated (e.g. status changed to completed)
+  const lastTaskUpdate = useTaskStore((s) => s.lastTaskUpdate);
+  useEffect(() => {
+    if (lastTaskUpdate > 0 && hasFetched.current) {
+      fetchInsights();
+    }
+  }, [lastTaskUpdate, fetchInsights]);
 
   // Filter out dismissed, limit visible count
   const visibleInsights = allInsights
