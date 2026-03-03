@@ -571,6 +571,15 @@ async function handleCallStarted(
       : customer.name || 'Caller')
     : 'Caller'
 
+  // Inject caller phone awareness into context so the agent confirms instead of asking
+  if (callerPhone) {
+    contextParts.unshift(
+      `CALLER PHONE: ${callerPhone} (from caller ID). ` +
+      `Do NOT ask for this phone number. Instead, confirm it: ` +
+      `"I have your number as ${callerPhone}. Is that the best number to reach you, or would you prefer a different one?"`
+    )
+  }
+
   const contextStr = contextParts.length > 0
     ? truncateContext(contextParts.join('\n'))
     : 'New caller, no previous history found.'
@@ -579,6 +588,7 @@ async function handleCallStarted(
     customer_name: customerName,
     customer_email: customer?.email || '',
     customer_id: customer?.id || '',
+    customer_phone: callerPhone || '',
     customer_context: contextStr,
     is_returning_customer: customer ? 'true' : 'false',
   }

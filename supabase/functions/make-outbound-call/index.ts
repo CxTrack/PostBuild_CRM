@@ -256,6 +256,7 @@ Deno.serve(async (req: Request) => {
     const dynamicVars: Record<string, string> = {
       customer_name: customerName || 'there',
       customer_id: customerId || '',
+      customer_phone: formattedTo || '',
       call_reason: callReason || 'a follow-up regarding your recent inquiry',
       customer_context: callContext || 'No additional context provided.',
     };
