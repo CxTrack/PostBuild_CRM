@@ -1,9 +1,22 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
 import { fetchTodayOutlookEvents, fetchOutlookEvents as fetchOutlookEventsApi } from '@/services/microsoftCalendar.service';
 import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+
+// Read auth token directly from localStorage to bypass AbortController issues
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* skip */ }
+    }
+  }
+  return null;
+};
 
 interface CalendarPreferences {
   default_view: 'month' | 'week' | 'day' | 'agenda';
@@ -75,22 +88,30 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      let query = supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('organization_id', orgId);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
+      let url = `${supabaseUrl}/rest/v1/calendar_events?organization_id=eq.${orgId}&select=*&order=start_time.asc`;
       if (from) {
-        query = query.gte('start_time', from.toISOString());
+        url += `&start_time=gte.${encodeURIComponent(from.toISOString())}`;
       }
-
       if (to) {
-        query = query.lte('start_time', to.toISOString());
+        url += `&start_time=lte.${encodeURIComponent(to.toISOString())}`;
       }
 
-      const { data, error } = await query.order('start_time', { ascending: true });
+      const res = await fetch(url, {
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Events fetch failed (${res.status}): ${errBody}`);
+      }
+
+      const data = await res.json();
       set({ events: data || [] });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
@@ -148,13 +169,26 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   createEvent: async (event) => {
     set({ loading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([event])
-        .select()
-        .single();
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(`${supabaseUrl}/rest/v1/calendar_events`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(event),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event creation failed (${res.status}): ${errBody}`);
+      }
+
+      const [data] = await res.json();
 
       set((state) => ({
         events: [...state.events, data],
@@ -173,12 +207,27 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   updateEvent: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .update(updates)
-        .eq('id', id);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/calendar_events?id=eq.${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event update failed (${res.status}): ${errBody}`);
+      }
 
       set((state) => ({
         events: state.events.map((e) =>
@@ -197,12 +246,24 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   deleteEvent: async (id) => {
     set({ loading: true, error: null });
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', id);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/calendar_events?id=eq.${id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event deletion failed (${res.status}): ${errBody}`);
+      }
 
       set((state) => ({
         events: state.events.filter((e) => e.id !== id),

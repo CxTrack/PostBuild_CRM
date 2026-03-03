@@ -50,7 +50,7 @@ export const CustomFieldsPanel: React.FC<CustomFieldsPanelProps> = ({
     onClose,
     entityType = 'customer'
 }) => {
-    const { fields, loading, fetchFields, createField, updateField, deleteField } = useCustomFieldsStore();
+    const { fields, loading, error: storeError, fetchFields, createField, updateField, deleteField } = useCustomFieldsStore();
     const [showEditor, setShowEditor] = useState(false);
     const [editingField, setEditingField] = useState<CustomFieldDefinition | null>(null);
     const [formData, setFormData] = useState<CustomFieldFormData>({
@@ -105,16 +105,24 @@ export const CustomFieldsPanel: React.FC<CustomFieldsPanelProps> = ({
             return;
         }
 
-        if (editingField) {
-            await updateField(editingField.id, formData);
-            toast.success('Field updated');
-        } else {
-            const result = await createField(formData, entityType);
-            if (result) {
-                toast.success('Field created');
+        try {
+            if (editingField) {
+                await updateField(editingField.id, formData);
+                toast.success('Field updated');
+            } else {
+                const result = await createField(formData, entityType);
+                if (result) {
+                    toast.success('Field created');
+                } else {
+                    toast.error('Failed to create field');
+                    return;
+                }
             }
+            setShowEditor(false);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'An error occurred';
+            toast.error(message);
         }
-        setShowEditor(false);
     };
 
     const handleDeleteField = async (field: CustomFieldDefinition) => {
@@ -180,7 +188,21 @@ export const CustomFieldsPanel: React.FC<CustomFieldsPanelProps> = ({
                             </button>
 
                             {/* Fields List */}
-                            {loading ? (
+                            {storeError ? (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <AlertCircle size={32} className="text-red-500" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Failed to Load Fields</h3>
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{storeError}</p>
+                                    <button
+                                        onClick={() => fetchFields(entityType)}
+                                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : loading ? (
                                 <div className="text-center py-12">
                                     <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
                                     <p className="text-gray-500">Loading fields...</p>

@@ -122,7 +122,7 @@ export default function Calendar() {
 
   const getTasksForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return getTasksByDate(dateStr);
+    return getTasksByDate(dateStr).filter(task => task.show_on_calendar);
   };
 
   const getCalendarDays = () => {
@@ -433,7 +433,7 @@ export default function Calendar() {
           <AgendaPanel
             selectedDate={selectedDate}
             events={getEventsForDate(selectedDate)}
-            tasks={getTasksByDate(format(selectedDate, 'yyyy-MM-dd'))}
+            tasks={getTasksForDate(selectedDate)}
             onEventClick={handleEventClick}
             onTaskClick={(task) => {
               setSelectedTask(task);

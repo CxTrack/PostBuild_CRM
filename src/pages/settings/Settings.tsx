@@ -70,7 +70,7 @@ function resolveTabFromUrl(): { tab: SettingsTabId; subTab?: string } {
 }
 
 export default function Settings() {
-  const { currentOrganization, teamMembers, updateMember, updateOrganization, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
+  const { currentOrganization, teamMembers, updateMember, removeOrgMember, updateOrganization, fetchUserOrganizations, _hasHydrated } = useOrganizationStore();
   const { logout, user } = useAuthContext();
   const navigate = useNavigate();
 
@@ -429,6 +429,7 @@ export default function Settings() {
             onShowZapierModal={() => setShowZapierModal(true)}
             onDeleteWebhook={handleDeleteWebhook}
             onDeleteApiKey={handleDeleteApiKey}
+            onRemoveMember={removeOrgMember}
             bookingUrl={bookingUrl}
           />
         )}

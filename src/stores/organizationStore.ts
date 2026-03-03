@@ -48,6 +48,7 @@ interface OrganizationState {
   reviewJoinRequest: (requestId: string, action: 'approved' | 'denied', role?: string) => Promise<void>;
   updateOrganization: (data: Partial<Organization>) => Promise<void>;
   updateMember: (memberId: string, data: Partial<OrganizationMember>) => Promise<void>;
+  removeOrgMember: (userId: string) => Promise<void>;
   inviteMember: (email: string, role: string) => Promise<void>;
   getOrganizationId: () => string;
   clearCache: () => void;
@@ -377,6 +378,22 @@ export const useOrganizationStore = create<OrganizationState>()(
           .from('organization_members')
           .update(data)
           .eq('id', memberId);
+
+        if (error) throw error;
+
+        // Refresh team members
+        await get().fetchTeamMembers();
+      },
+
+      removeOrgMember: async (userId: string) => {
+        const { currentOrganization } = get();
+        if (!currentOrganization) throw new Error('No organization selected');
+
+        const { error } = await supabase
+          .from('organization_members')
+          .delete()
+          .eq('user_id', userId)
+          .eq('organization_id', currentOrganization.id);
 
         if (error) throw error;
 

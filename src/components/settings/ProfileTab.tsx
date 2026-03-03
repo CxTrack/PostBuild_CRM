@@ -453,6 +453,12 @@ export const ProfileTab: React.FC = () => {
             return;
         }
 
+        // Validate birthday is not in the future
+        if (profile.birthday && profile.birthday > new Date().toISOString().split('T')[0]) {
+            toast.error('Birthday cannot be in the future');
+            return;
+        }
+
         setSaving(true);
 
         try {
@@ -874,6 +880,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="date"
                                 value={profile.birthday}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, birthday: e.target.value })); }}
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />

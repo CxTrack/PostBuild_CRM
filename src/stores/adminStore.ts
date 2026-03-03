@@ -834,7 +834,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     set((s) => ({ loading: { ...s.loading, userGrowth: true }, errors: { ...s.errors, userGrowth: null } }));
     try {
       const data = await supabaseRpc<UserGrowthPoint[]>('admin_get_user_growth', { p_months: months });
-      set((s) => ({ userGrowth: data, loading: { ...s.loading, userGrowth: false } }));
+      // PostgREST returns bigint as strings - coerce to numbers for Recharts
+      const parsed = (data || []).map(d => ({
+        ...d,
+        new_users: Number(d.new_users),
+        cumulative_users: Number(d.cumulative_users),
+      }));
+      set((s) => ({ userGrowth: parsed, loading: { ...s.loading, userGrowth: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, userGrowth: false }, errors: { ...s.errors, userGrowth: e.message } }));
     }
@@ -844,7 +850,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     set((s) => ({ loading: { ...s.loading, orgBreakdown: true }, errors: { ...s.errors, orgBreakdown: null } }));
     try {
       const data = await supabaseRpc<OrgBreakdown[]>('admin_get_org_breakdown');
-      set((s) => ({ orgBreakdown: data, loading: { ...s.loading, orgBreakdown: false } }));
+      // PostgREST returns bigint as strings - coerce to numbers for charts
+      const parsed = (data || []).map(d => ({
+        ...d,
+        org_count: Number(d.org_count),
+        total_members: Number(d.total_members),
+      }));
+      set((s) => ({ orgBreakdown: parsed, loading: { ...s.loading, orgBreakdown: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, orgBreakdown: false }, errors: { ...s.errors, orgBreakdown: e.message } }));
     }
@@ -854,7 +866,14 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     set((s) => ({ loading: { ...s.loading, moduleUsage: true }, errors: { ...s.errors, moduleUsage: null } }));
     try {
       const data = await supabaseRpc<ModuleUsage[]>('admin_get_module_usage');
-      set((s) => ({ moduleUsage: data, loading: { ...s.loading, moduleUsage: false } }));
+      // PostgREST returns bigint/numeric as strings - coerce to numbers
+      const parsed = (data || []).map(d => ({
+        ...d,
+        record_count: Number(d.record_count),
+        active_orgs: Number(d.active_orgs),
+        avg_per_org: Number(d.avg_per_org),
+      }));
+      set((s) => ({ moduleUsage: parsed, loading: { ...s.loading, moduleUsage: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, moduleUsage: false }, errors: { ...s.errors, moduleUsage: e.message } }));
     }

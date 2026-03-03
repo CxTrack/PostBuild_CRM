@@ -119,6 +119,12 @@ export default function CustomerForm() {
       return;
     }
 
+    // Validate date of birth is not in the future
+    if (formData.date_of_birth && formData.date_of_birth > new Date().toISOString().split('T')[0]) {
+      toast.error('Date of birth cannot be in the future');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -565,6 +571,7 @@ export default function CustomerForm() {
                     <input
                       type="date"
                       value={formData.date_of_birth}
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                       className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     />

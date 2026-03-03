@@ -39,6 +39,7 @@ interface TeamIntegrationsTabProps {
   onShowZapierModal: () => void;
   onDeleteWebhook: (id: string) => void;
   onDeleteApiKey: (id: string) => void;
+  onRemoveMember: (memberId: string) => Promise<void>;
   bookingUrl: string;
 }
 
@@ -57,6 +58,7 @@ export default function TeamIntegrationsTab({
   onShowZapierModal,
   onDeleteWebhook,
   onDeleteApiKey,
+  onRemoveMember,
   bookingUrl,
 }: TeamIntegrationsTabProps) {
   const { joinRequests, fetchJoinRequests, reviewJoinRequest, currentMembership } = useOrganizationStore();
@@ -71,6 +73,9 @@ export default function TeamIntegrationsTab({
   const [addMemberDropdown, setAddMemberDropdown] = useState<string | null>(null);
   const [confirmDeleteTeam, setConfirmDeleteTeam] = useState<string | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ teamId: string; userId: string; name: string } | null>(null);
+  const [memberMenuId, setMemberMenuId] = useState<string | null>(null);
+  const [confirmRemoveOrgMember, setConfirmRemoveOrgMember] = useState<{ id: string; name: string } | null>(null);
+  const [removingOrgMember, setRemovingOrgMember] = useState(false);
 
   const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
 
@@ -147,6 +152,28 @@ export default function TeamIntegrationsTab({
     }
   };
 
+  // Close member menu when clicking outside
+  useEffect(() => {
+    if (!memberMenuId) return;
+    const handleClick = () => setMemberMenuId(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [memberMenuId]);
+
+  const handleRemoveOrgMember = async () => {
+    if (!confirmRemoveOrgMember) return;
+    setRemovingOrgMember(true);
+    try {
+      await onRemoveMember(confirmRemoveOrgMember.id);
+      toast.success(`${confirmRemoveOrgMember.name} has been removed from the organization`);
+      setConfirmRemoveOrgMember(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
+    } finally {
+      setRemovingOrgMember(false);
+    }
+  };
+
   const industry = currentOrganization?.industry_template || 'general_business';
   const industryModules = INDUSTRY_TEMPLATES[industry] || INDUSTRY_TEMPLATES.general_business;
   const shareableModules = industryModules.filter((m: string) => m !== 'dashboard');
@@ -182,8 +209,8 @@ export default function TeamIntegrationsTab({
   return (
     <div className="space-y-6">
       {/* Team Members */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Team Members</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage who has access to your CRM data</p>
@@ -233,9 +260,29 @@ export default function TeamIntegrationsTab({
                       <option value="manager">Manager</option>
                       <option value="user">User</option>
                     </select>
-                    <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                      <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMemberMenuId(memberMenuId === member.id ? null : member.id); }}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                      {memberMenuId === member.id && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMemberMenuId(null);
+                              setConfirmRemoveOrgMember({ id: member.id, name: member.full_name || member.email });
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove from Organization
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Full Access</div>
@@ -882,6 +929,42 @@ export default function TeamIntegrationsTab({
           </div>
         </div>
       </div>
+      {/* Remove Member Confirmation Modal */}
+      {confirmRemoveOrgMember && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => !removingOrgMember && setConfirmRemoveOrgMember(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-xl p-6 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Remove Team Member</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
+              Are you sure you want to remove <strong>{confirmRemoveOrgMember.name}</strong> from this organization? They will lose access to all shared data immediately.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmRemoveOrgMember(null)}
+                disabled={removingOrgMember}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemoveOrgMember}
+                disabled={removingOrgMember}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {removingOrgMember ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Remove Member
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

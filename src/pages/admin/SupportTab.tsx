@@ -7,7 +7,21 @@ import {
     Eye, EyeOff, ArrowRight, UserPlus
 } from 'lucide-react';
 import { useAdminStore, AdminTicket, DeletionRequest, TicketMessage, TicketActivity } from '@/stores/adminStore';
+import { supabaseUrl } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+
+// Read auth token from localStorage (AbortController workaround)
+const getAuthToken = (): string | null => {
+    for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try {
+                const stored = JSON.parse(localStorage.getItem(key) || '');
+                if (stored?.access_token) return stored.access_token;
+            } catch { /* skip */ }
+        }
+    }
+    return null;
+};
 
 type SubTab = 'tickets' | 'dsar';
 
@@ -421,13 +435,34 @@ const TicketDetailModal = ({
         if (!replyText.trim()) return;
         setSending(true);
         try {
-            await replyToTicket(ticket.id, replyText.trim(), isInternal);
+            const replyContent = replyText.trim();
+            await replyToTicket(ticket.id, replyContent, isInternal);
             setReplyText('');
             // Update local status if it was auto-transitioned
             if (localTicket.status === 'open' && !isInternal) {
                 setLocalTicket((prev) => ({ ...prev, status: 'in_progress' }));
             }
             toast.success(isInternal ? 'Internal note added' : 'Reply sent');
+
+            // Send email notification to ticket submitter for non-internal replies
+            if (!isInternal) {
+                const token = getAuthToken();
+                if (token) {
+                    fetch(`${supabaseUrl}/functions/v1/send-ticket-notification`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            type: 'ticket_reply',
+                            ticketId: ticket.id,
+                            subject: ticket.subject,
+                            replyMessage: replyContent,
+                        }),
+                    }).catch(() => { /* non-blocking */ });
+                }
+            }
         } catch {
             toast.error('Failed to send');
         } finally {

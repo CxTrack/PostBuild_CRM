@@ -437,7 +437,7 @@ export const SmsComplianceTab: React.FC = () => {
                 {(smsUsageData.recent_sms || []).map((sms: any, idx: number) => (
                   <tr key={sms.id || idx} className="border-b border-gray-100 dark:border-gray-700/30 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/20">
                     <td className="py-2.5 px-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {new Date(sms.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(sms.sent_at || sms.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="py-2.5 px-4 text-xs text-gray-600 dark:text-gray-400">{sms.org_name || '—'}</td>
                     <td className="py-2.5 px-4 text-center">
@@ -451,8 +451,8 @@ export const SmsComplianceTab: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-xs font-mono text-gray-600 dark:text-gray-400">{sms.to_number || sms.from_number || '—'}</td>
-                    <td className="py-2.5 px-4 text-xs text-gray-600 dark:text-gray-300 max-w-48 truncate">{sms.body || '—'}</td>
+                    <td className="py-2.5 px-4 text-xs font-mono text-gray-600 dark:text-gray-400">{sms.recipient_phone || sms.to_number || sms.from_number || '—'}</td>
+                    <td className="py-2.5 px-4 text-xs text-gray-600 dark:text-gray-300 max-w-48 truncate">{sms.message_body || sms.body || '—'}</td>
                     <td className="py-2.5 px-4 text-center">
                       <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                         sms.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
