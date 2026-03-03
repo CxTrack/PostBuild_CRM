@@ -371,9 +371,10 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
 
   checkConnection: async (_orgId: string, userId: string) => {
     try {
+      // Include 'expired' status — edge functions handle token refresh automatically
       const connections = await supabaseGet(
         'email_oauth_connections',
-        `user_id=eq.${userId}&status=eq.active&limit=1`
+        `user_id=eq.${userId}&status=in.(active,expired)&limit=1`
       );
       set({ connectionStatus: connections.length > 0 ? 'connected' : 'disconnected' });
     } catch {

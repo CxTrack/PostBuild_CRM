@@ -1884,6 +1884,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
   const { getTasksByCustomer } = useTaskStore();
   const { quotes } = useQuoteStore();
   const { invoices } = useInvoiceStore();
+  const { notes } = useCustomerStore();
   const [smsLogs, setSmsLogs] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
 
@@ -2000,6 +2001,15 @@ function ActivityTab({ customer }: { customer: Customer }) {
       date: new Date(email.sent_at || email.created_at),
       status: email.status,
     })),
+    ...notes
+      .filter(n => n.customer_id === customer.id)
+      .map(note => ({
+        type: 'note',
+        title: `Note: ${note.note_type === 'general' ? 'General' : note.note_type === 'call' ? 'Call Note' : note.note_type === 'meeting' ? 'Meeting Note' : note.note_type === 'follow_up' ? 'Follow-up' : note.note_type}`,
+        description: note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content,
+        date: new Date(note.created_at),
+        status: note.is_pinned ? 'pinned' : null,
+      })),
     {
       type: 'created',
       title: 'Customer created',
@@ -2034,6 +2044,8 @@ function ActivityTab({ customer }: { customer: Customer }) {
                   return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
                 case 'email_received':
                   return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
+                case 'note':
+                  return { icon: Edit2, bg: 'bg-amber-100 dark:bg-amber-900/20', color: 'text-amber-600 dark:text-amber-400' };
                 default:
                   return { icon: Activity, bg: 'bg-primary-100 dark:bg-primary-900/20', color: 'text-primary-600 dark:text-primary-400' };
               }

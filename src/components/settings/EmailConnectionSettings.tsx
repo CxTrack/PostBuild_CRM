@@ -380,8 +380,9 @@ const EmailConnectionSettings: React.FC = () => {
     setShowSmtpForm(true);
   };
 
-  const googleConnection = connections.find(c => c.provider === 'google' && c.status === 'active');
-  const microsoftConnection = connections.find(c => c.provider === 'microsoft' && c.status === 'active');
+  // Include 'expired' — edge functions auto-refresh tokens on next use
+  const googleConnection = connections.find(c => c.provider === 'google' && (c.status === 'active' || c.status === 'expired'));
+  const microsoftConnection = connections.find(c => c.provider === 'microsoft' && (c.status === 'active' || c.status === 'expired'));
 
   const hasAnyConnection = !!(googleConnection || microsoftConnection || smtpSettings);
 
@@ -457,8 +458,10 @@ const EmailConnectionSettings: React.FC = () => {
               {googleConnection ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span className="text-green-600 dark:text-green-400 font-medium">Connected</span>
+                    <CheckCircle className={`w-4 h-4 ${googleConnection.status === 'expired' ? 'text-yellow-500' : 'text-green-500'}`} />
+                    <span className={`font-medium ${googleConnection.status === 'expired' ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {googleConnection.status === 'expired' ? 'Connected (refreshing)' : 'Connected'}
+                    </span>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{googleConnection.email_address}</p>
@@ -519,8 +522,10 @@ const EmailConnectionSettings: React.FC = () => {
               {microsoftConnection ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span className="text-green-600 dark:text-green-400 font-medium">Connected</span>
+                    <CheckCircle className={`w-4 h-4 ${microsoftConnection.status === 'expired' ? 'text-yellow-500' : 'text-green-500'}`} />
+                    <span className={`font-medium ${microsoftConnection.status === 'expired' ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {microsoftConnection.status === 'expired' ? 'Connected (refreshing)' : 'Connected'}
+                    </span>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{microsoftConnection.email_address}</p>
