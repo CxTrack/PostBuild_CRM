@@ -320,6 +320,13 @@ export const APIMonitoringTab = () => {
 
   const isLoading = loading.apiUsage;
 
+  // Build SLA lookup for service cards (must be above conditional returns to satisfy Rules of Hooks)
+  const slaLookup = useMemo(() => {
+    const map: Record<string, SlaStatus> = {};
+    slaStatus.forEach((s) => { map[s.service_name] = s; });
+    return map;
+  }, [slaStatus]);
+
   // If a service is selected (error drill-down), show the detail panel
   if (selectedService === '_all') {
     return (
@@ -340,13 +347,6 @@ export const APIMonitoringTab = () => {
       />
     );
   }
-
-  // Build SLA lookup for service cards
-  const slaLookup = useMemo(() => {
-    const map: Record<string, SlaStatus> = {};
-    slaStatus.forEach((s) => { map[s.service_name] = s; });
-    return map;
-  }, [slaStatus]);
 
   return (
     <div className="space-y-4 md:space-y-6">
