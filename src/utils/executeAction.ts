@@ -439,6 +439,11 @@ export async function executeAction(
           return { success: false, message: 'Authentication required. Please refresh and try again.' };
         }
 
+        const smsOrgId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!smsOrgId) {
+          return { success: false, message: 'No organization found. Please refresh and try again.' };
+        }
+
         const smsResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
           method: 'POST',
           headers: {
@@ -448,6 +453,7 @@ export async function executeAction(
           body: JSON.stringify({
             to: toPhone,
             body: messageBody,
+            organizationId: smsOrgId,
           }),
         });
 

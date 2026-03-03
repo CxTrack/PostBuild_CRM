@@ -308,6 +308,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 try {
                     // For SMS conversations, send the message as an SMS too
                     if (activeConversation.channel_type === 'sms' && (activeConversation as any).customer_phone) {
+                        const chatOrgId = useOrganizationStore.getState().currentOrganization?.id;
                         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
                             method: 'POST',
                             headers: {
@@ -316,7 +317,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             },
                             body: JSON.stringify({
                                 to: (activeConversation as any).customer_phone,
-                                message: messageContent,
+                                body: messageContent,
+                                organizationId: chatOrgId,
                                 customer_id: (activeConversation as any).customer_id,
                                 document_type: 'custom',
                             }),
