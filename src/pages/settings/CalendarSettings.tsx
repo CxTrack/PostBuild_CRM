@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 import {
-  Calendar, ExternalLink, Palette, Cloud, CheckCircle2, AlertCircle
+  Calendar, ExternalLink, Palette, Cloud, CheckCircle2, AlertCircle, Loader2, Unlink
 } from 'lucide-react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { supabase } from '@/lib/supabase';
+import { calComOAuthService } from '@/services/calcom.service';
 import toast from 'react-hot-toast';
+
+interface CalComState {
+  loading: boolean;
+  connected: boolean;
+  expired: boolean;
+  email: string | null;
+  username: string | null;
+  defaultEventTypeId: string | null;
+  eventTypes: Array<{ id: number; title: string; length: number }>;
+  disconnecting: boolean;
+}
 
 export default function CalendarSettings() {
   const { currentOrganization } = useOrganizationStore();
@@ -31,16 +42,26 @@ export default function CalendarSettings() {
     booking_slug: ''
   });
 
+  const [calcom, setCalcom] = useState<CalComState>({
+    loading: true,
+    connected: false,
+    expired: false,
+    email: null,
+    username: null,
+    defaultEventTypeId: null,
+    eventTypes: [],
+    disconnecting: false,
+  });
+
   useEffect(() => {
     loadSettings();
     fetchOutlookTodayEvents();
+    loadCalComSettings();
   }, [currentOrganization]);
 
   const loadSettings = async () => {
     if (!currentOrganization?.id) return;
-
     try {
-      // Load organization booking settings
       if (currentOrganization?.metadata) {
         setSettings(prev => ({
           ...prev,
@@ -48,8 +69,78 @@ export default function CalendarSettings() {
           booking_slug: currentOrganization.slug || ''
         }));
       }
-    } catch (error) {
+    } catch {
       // Error handled silently
+    }
+  };
+
+  const loadCalComSettings = async () => {
+    if (!currentOrganization?.id) return;
+    setCalcom(prev => ({ ...prev, loading: true }));
+
+    try {
+      const settings = await calComOAuthService.getSettings(currentOrganization.id);
+      if (settings && settings.connection_status !== 'disconnected') {
+        setCalcom(prev => ({
+          ...prev,
+          loading: false,
+          connected: settings.connection_status === 'connected',
+          expired: settings.connection_status === 'expired',
+          email: settings.calcom_user_email,
+          username: settings.calcom_username,
+          defaultEventTypeId: settings.default_event_type_id,
+        }));
+
+        // Fetch event types if connected
+        if (settings.connection_status === 'connected') {
+          const eventTypes = await calComOAuthService.getEventTypes(currentOrganization.id);
+          setCalcom(prev => ({ ...prev, eventTypes }));
+        }
+      } else {
+        setCalcom(prev => ({ ...prev, loading: false, connected: false, expired: false }));
+      }
+    } catch {
+      setCalcom(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCalComConnect = () => {
+    if (!currentOrganization?.id) return;
+    const authUrl = calComOAuthService.getAuthUrl(currentOrganization.id);
+    window.location.href = authUrl;
+  };
+
+  const handleCalComDisconnect = async () => {
+    if (!currentOrganization?.id) return;
+    setCalcom(prev => ({ ...prev, disconnecting: true }));
+
+    try {
+      await calComOAuthService.disconnect(currentOrganization.id);
+      setCalcom({
+        loading: false,
+        connected: false,
+        expired: false,
+        email: null,
+        username: null,
+        defaultEventTypeId: null,
+        eventTypes: [],
+        disconnecting: false,
+      });
+      toast.success('Cal.com disconnected');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to disconnect Cal.com');
+      setCalcom(prev => ({ ...prev, disconnecting: false }));
+    }
+  };
+
+  const handleEventTypeChange = async (eventTypeId: string) => {
+    if (!currentOrganization?.id) return;
+    try {
+      await calComOAuthService.setDefaultEventType(currentOrganization.id, eventTypeId);
+      setCalcom(prev => ({ ...prev, defaultEventTypeId: eventTypeId }));
+      toast.success('Default event type updated');
+    } catch {
+      toast.error('Failed to update event type');
     }
   };
 
@@ -73,7 +164,6 @@ export default function CalendarSettings() {
     if (!currentOrganization?.id) return;
 
     try {
-      // Update organization metadata and slug
       await useOrganizationStore.getState().updateOrganization({
         slug: settings.booking_slug,
         metadata: {
@@ -81,9 +171,8 @@ export default function CalendarSettings() {
           booking_provider: settings.booking_provider
         }
       });
-
       toast.success('Settings saved successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to save settings');
     }
   };
@@ -181,6 +270,137 @@ export default function CalendarSettings() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Cal.com Integration */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              <Calendar size={20} className="mr-2 text-indigo-600 dark:text-indigo-400" />
+              Cal.com Scheduling
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Connect Cal.com to let your AI voice agent check availability and book appointments
+            </p>
+          </div>
+
+          {!calcom.loading && (
+            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${
+              calcom.connected
+                ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                : calcom.expired
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}>
+              {calcom.connected ? (
+                <>
+                  <CheckCircle2 size={12} />
+                  Connected
+                </>
+              ) : calcom.expired ? (
+                <>
+                  <AlertCircle size={12} />
+                  Expired
+                </>
+              ) : (
+                'Not Connected'
+              )}
+            </span>
+          )}
+        </div>
+
+        {calcom.loading ? (
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Loader2 size={16} className="animate-spin" />
+            Loading Cal.com settings...
+          </div>
+        ) : calcom.connected ? (
+          <div className="space-y-4">
+            {/* Connected status */}
+            <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <CheckCircle2 size={20} className="text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-300">
+                    Connected to Cal.com
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-400">
+                    {calcom.email ? `Signed in as ${calcom.email}` : calcom.username ? `@${calcom.username}` : 'Account linked'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Default event type selector */}
+            {calcom.eventTypes.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Default Event Type for Voice Bookings
+                </label>
+                <select
+                  value={calcom.defaultEventTypeId || ''}
+                  onChange={(e) => handleEventTypeChange(e.target.value)}
+                  className="w-full max-w-md px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select an event type...</option>
+                  {calcom.eventTypes.map(et => (
+                    <option key={et.id} value={et.id.toString()}>
+                      {et.title} ({et.length} min)
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  This event type is used when your AI voice agent books appointments on your behalf.
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleCalComDisconnect}
+              disabled={calcom.disconnecting}
+              className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              <Unlink size={14} />
+              {calcom.disconnecting ? 'Disconnecting...' : 'Disconnect Cal.com'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {calcom.expired && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                    <AlertCircle size={20} className="text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-300">Connection expired</p>
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      Your Cal.com session has expired. Please reconnect to restore scheduling access.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Connecting Cal.com allows your AI voice agent to check your real-time availability
+                and create bookings during phone calls. Appointments sync automatically to both
+                Cal.com and your CRM calendar.
+              </p>
+              <button
+                onClick={handleCalComConnect}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+              >
+                <Calendar size={16} />
+                Connect Cal.com
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Booking Integration */}

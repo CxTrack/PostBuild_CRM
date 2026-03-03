@@ -48,6 +48,7 @@ const Calls = lazy(() => import('./pages/calls/Calls'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
 const StripeCallback = lazy(() => import('./pages/settings/StripeCallback'));
+const CalComCallback = lazy(() => import('./pages/settings/CalComCallback'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const Access = lazy(() => import('./website/Access'));
 const QuoteBuilder = lazy(() => import('./pages/quotes/QuoteBuilder'));
@@ -205,6 +206,7 @@ export default function App() {
               <Route path="upgrade" element={<UpgradePage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="settings/stripe-callback" element={<StripeCallback />} />
+              <Route path="settings/calcom-callback" element={<CalComCallback />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route element={<ProtectedRoute moduleId="suppliers" />}>

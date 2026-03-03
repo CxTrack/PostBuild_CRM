@@ -206,25 +206,29 @@ async function handleCheckAvailability(
 
   const orgId = callRecord.organization_id
 
-  // Check if Cal.com is configured
+  // Check if Cal.com is configured (OAuth or legacy API key)
   const { data: calcomSettings } = await supabase
     .from('calcom_settings')
-    .select('api_key, default_event_type_id')
+    .select('api_key, access_token, refresh_token, token_expires_at, default_event_type_id, connection_status')
     .eq('organization_id', orgId)
     .maybeSingle()
 
   let availableSlots: string[] = []
 
-  // Try Cal.com availability first
-  if (calcomSettings?.api_key && calcomSettings?.default_event_type_id) {
+  // Try Cal.com availability first (OAuth preferred, legacy API key fallback)
+  const calcomToken = await getCalComToken(supabase, calcomSettings, orgId)
+  if (calcomToken && calcomSettings?.default_event_type_id) {
     try {
-      const calcomUrl = `https://api.cal.com/v1/availability?apiKey=${calcomSettings.api_key}&eventTypeId=${calcomSettings.default_event_type_id}&dateFrom=${date}&dateTo=${date}`
-      const resp = await fetch(calcomUrl)
+      const calcomUrl = `https://api.cal.com/v2/slots/available?startTime=${date}T00:00:00Z&endTime=${date}T23:59:59Z&eventTypeId=${calcomSettings.default_event_type_id}`
+      const resp = await fetch(calcomUrl, {
+        headers: { 'Authorization': `Bearer ${calcomToken}` },
+      })
 
       if (resp.ok) {
         const data = await resp.json()
-        if (data.dateRanges || data.slots || data.busy) {
-          availableSlots = extractCalcomSlots(data, date, duration)
+        const slotsData = data.data || data
+        if (slotsData.slots || slotsData.dateRanges || slotsData.busy) {
+          availableSlots = extractCalcomSlots(slotsData, date, duration)
         }
       }
     } catch (err) {
@@ -289,28 +293,43 @@ async function handleBookAppointment(
   if (attendee_email) {
     const { data: calcomSettings } = await supabase
       .from('calcom_settings')
-      .select('api_key, default_event_type_id')
+      .select('api_key, access_token, refresh_token, token_expires_at, default_event_type_id, connection_status')
       .eq('organization_id', orgId)
       .maybeSingle()
 
-    if (calcomSettings?.api_key && calcomSettings?.default_event_type_id) {
+    const calcomToken = await getCalComToken(supabase, calcomSettings, orgId)
+    if (calcomToken && calcomSettings?.default_event_type_id) {
       try {
-        const resp = await fetch(`https://api.cal.com/v1/bookings?apiKey=${calcomSettings.api_key}`, {
+        // Resolve org timezone from organization settings, fallback to UTC
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('timezone')
+          .eq('id', orgId)
+          .single()
+        const tz = orgData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+
+        const resp = await fetch('https://api.cal.com/v2/bookings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${calcomToken}`,
+          },
           body: JSON.stringify({
-            eventTypeId: calcomSettings.default_event_type_id,
+            eventTypeId: Number(calcomSettings.default_event_type_id),
             start: start_time,
             end: endTime,
-            name: attendee_name || 'Phone Caller',
-            email: attendee_email,
-            timeZone: 'America/Toronto',
+            attendee: {
+              name: attendee_name || 'Phone Caller',
+              email: attendee_email,
+              timeZone: tz,
+            },
           }),
         })
 
         if (resp.ok) {
           const data = await resp.json()
-          calcomBookingUid = data.uid || data.id || null
+          const booking = data.data || data
+          calcomBookingUid = booking.uid || booking.id || null
         }
       } catch (err) {
         console.warn(`[book_appointment] Cal.com booking error: ${err}`)
@@ -367,16 +386,110 @@ async function handleBookAppointment(
   return respond(`Your appointment "${title}" is booked for ${dateStr} at ${timeStr}. ${attendee_email ? "You'll receive a confirmation email." : "Is there anything else I can help with?"}`)
 }
 
+// ── Cal.com Token Helper ──────────────────────────────────────────
+
+async function getCalComToken(
+  supabase: ReturnType<typeof createClient>,
+  settings: any,
+  orgId: string
+): Promise<string | null> {
+  if (!settings) return null
+
+  // Prefer OAuth access token
+  if (settings.access_token && settings.connection_status === 'connected') {
+    // Check if token is expired (with 2-min buffer)
+    if (settings.token_expires_at) {
+      const expiresAt = new Date(settings.token_expires_at).getTime()
+      const now = Date.now() + 2 * 60 * 1000
+      if (now >= expiresAt && settings.refresh_token) {
+        // Refresh the token inline
+        return refreshCalComToken(supabase, settings.refresh_token, orgId)
+      }
+    }
+    return settings.access_token
+  }
+
+  // Legacy fallback: API key
+  if (settings.api_key) return settings.api_key
+
+  return null
+}
+
+async function refreshCalComToken(
+  supabase: ReturnType<typeof createClient>,
+  refreshToken: string,
+  orgId: string
+): Promise<string | null> {
+  try {
+    const { data: creds } = await supabase.rpc('get_calcom_oauth_creds')
+    if (!creds?.[0]) return null
+
+    const resp = await fetch('https://api.cal.com/v2/auth/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        client_id: creds[0].client_id,
+        client_secret: creds[0].client_secret,
+        refresh_token: refreshToken,
+      }),
+    })
+
+    if (!resp.ok) {
+      console.warn(`[calcom-refresh] Token refresh failed: ${resp.status}`)
+      await supabase
+        .from('calcom_settings')
+        .update({ connection_status: 'expired', updated_at: new Date().toISOString() })
+        .eq('organization_id', orgId)
+      return null
+    }
+
+    const tokens = await resp.json()
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+
+    await supabase
+      .from('calcom_settings')
+      .update({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_expires_at: expiresAt,
+        connection_status: 'connected',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', orgId)
+
+    return tokens.access_token
+  } catch (err) {
+    console.warn(`[calcom-refresh] Unexpected error: ${err}`)
+    return null
+  }
+}
+
 // ── Calendar Utilities ─────────────────────────────────────────────
 
 function extractCalcomSlots(data: any, date: string, durationMinutes: number): string[] {
-  // Cal.com returns various formats depending on API version
+  // Cal.com v2 returns { slots: { "YYYY-MM-DD": [{ time: "..." }] } }
+  // Cal.com v1 returns { slots: [...] } or { dateRanges: [...] }
   const slots: string[] = []
 
-  if (data.slots && Array.isArray(data.slots)) {
-    for (const slot of data.slots) {
-      const time = typeof slot === 'string' ? slot : slot.time || slot.start
-      if (time) slots.push(time)
+  if (data.slots) {
+    // v2 format: slots keyed by date
+    if (typeof data.slots === 'object' && !Array.isArray(data.slots)) {
+      for (const dateKey of Object.keys(data.slots)) {
+        const daySlots = data.slots[dateKey]
+        if (Array.isArray(daySlots)) {
+          for (const slot of daySlots) {
+            const time = typeof slot === 'string' ? slot : slot.time || slot.start
+            if (time) slots.push(time)
+          }
+        }
+      }
+    } else if (Array.isArray(data.slots)) {
+      // v1 format: flat array
+      for (const slot of data.slots) {
+        const time = typeof slot === 'string' ? slot : slot.time || slot.start
+        if (time) slots.push(time)
+      }
     }
   } else if (data.dateRanges && Array.isArray(data.dateRanges)) {
     // Generate slots from available ranges
