@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { Mic, MessageSquare, Brain } from 'lucide-react';
+import { Mic, MessageSquare, Brain, Database } from 'lucide-react';
 import VoiceAgentSetup from './VoiceAgentSetup';
 import SmsAgentSetup from './SmsAgentSetup';
 import CoPilotContextTab from '@/components/settings/CoPilotContextTab';
+import CoPilotMemoryTab from '@/components/settings/CoPilotMemoryTab';
 
 interface AIAgentsTabProps {
   initialSubTab?: string;
 }
 
-type AIAgentSubTab = 'voice' | 'sms' | 'copilot';
+type AIAgentSubTab = 'voice' | 'sms' | 'copilot' | 'memory';
 
 const SUB_TABS: { id: AIAgentSubTab; label: string; icon: any }[] = [
   { id: 'voice', label: 'Voice Agent', icon: Mic },
   { id: 'sms', label: 'SMS Agent', icon: MessageSquare },
   { id: 'copilot', label: 'CoPilot Context', icon: Brain },
+  { id: 'memory', label: 'CoPilot Memory', icon: Database },
 ];
 
 export default function AIAgentsTab({ initialSubTab }: AIAgentsTabProps) {
@@ -45,6 +47,7 @@ export default function AIAgentsTab({ initialSubTab }: AIAgentsTabProps) {
       {activeSubTab === 'voice' && <VoiceAgentSetup />}
       {activeSubTab === 'sms' && <SmsAgentSetup />}
       {activeSubTab === 'copilot' && <CoPilotContextTab />}
+      {activeSubTab === 'memory' && <CoPilotMemoryTab />}
     </div>
   );
 }

@@ -1,11 +1,19 @@
 import { supabase } from '../lib/supabase';
 
+export interface ApiKeyPermissions {
+    mcp?: boolean;
+    [key: string]: boolean | undefined;
+}
+
 export interface ApiKey {
     id: string;
     organization_id: string;
     name: string;
     key_prefix: string;
     key_hash?: string;
+    permissions?: ApiKeyPermissions | null;
+    is_active?: boolean;
+    expires_at?: string | null;
     created_at: string;
     last_used_at: string | null;
 }
@@ -29,7 +37,7 @@ export const apiKeyService = {
         return data || [];
     },
 
-    async createApiKey(organizationId: string, name: string): Promise<{ key: string; apiKey: ApiKey }> {
+    async createApiKey(organizationId: string, name: string, permissions?: ApiKeyPermissions): Promise<{ key: string; apiKey: ApiKey }> {
         const prefix = 'cxtrack_live_';
         const secretPart = Array.from(crypto.getRandomValues(new Uint8Array(24)))
             .map(b => b.toString(16).padStart(2, '0'))
@@ -46,6 +54,7 @@ export const apiKeyService = {
                 name,
                 key_prefix: prefix + secretPart.substring(0, 4) + '...',
                 key_hash: keyHash,
+                permissions: permissions || null,
             })
             .select()
             .single();

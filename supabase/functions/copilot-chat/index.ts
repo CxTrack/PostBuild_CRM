@@ -162,6 +162,16 @@ function classifyIntent(message: string, context?: { page?: string; customer_id?
       /\bcall log/,
       /\bcall summar/,
     ],
+    transcript_search: [
+      /\b(find|search|look for|any) (call|conversation|transcript)s?\s+(about|mention|discuss|where|regarding|related)/,
+      /\b(search|find)\s+(transcript|call)s?\s+(for|about)/,
+      /\bcall(s|ed)?\s+(about|mention|discuss|regarding)\b/,
+      /\btranscript(s)?\s+(about|mention|contain|with|where|for)\b/,
+      /\bwho (called|talked|spoke|discussed)\s+(about|regarding)\b/,
+      /\b(any|which)\s+(call|conversation)s?\s+(mention|about|discuss|regarding)\b/,
+      /\bsemantic search\b/,
+      /\bsearch.*(call|transcript|conversation).*for\b/,
+    ],
     quotes_summary: [
       /\b(quote|proposal|estimate|bid|engagement letter)s?\b/,
       /\bpending (quote|proposal|estimate)/,
@@ -396,7 +406,8 @@ function buildSystemPrompt(
 
   if (ragData && Object.keys(ragData).length > 0) {
     const adminEntries = Object.entries(ragData).filter(([k]) => k.startsWith('admin_'));
-    const crmEntries = Object.entries(ragData).filter(([k]) => !k.startsWith('admin_'));
+    const transcriptEntries = Object.entries(ragData).filter(([k]) => k === 'transcript_search');
+    const crmEntries = Object.entries(ragData).filter(([k]) => !k.startsWith('admin_') && k !== 'transcript_search');
 
     if (adminEntries.length > 0) {
       prompt += `\n\n--- PLATFORM DATA (admin-level metrics retrieved from the database) ---`;
@@ -407,6 +418,13 @@ function buildSystemPrompt(
         }
       }
       prompt += `\n--- END PLATFORM DATA ---`;
+    }
+
+    if (transcriptEntries.length > 0) {
+      const [, searchResults] = transcriptEntries[0];
+      prompt += `\n\n--- SEMANTIC CALL TRANSCRIPT SEARCH RESULTS ---\nThe following call transcripts were found via semantic search (similarity scores range from 0 to 1, higher = more relevant).\nPresent these results to the user in a clear, organized format. Include the similarity score, date, sentiment, and key topics for each match.\nIf transcript_preview is available, use it to provide specific details about what was discussed.\nDo NOT make up information beyond what is in the search results.`;
+      prompt += `\n${JSON.stringify(searchResults)}`;
+      prompt += `\n--- END TRANSCRIPT SEARCH RESULTS ---`;
     }
 
     if (crmEntries.length > 0) {
@@ -909,7 +927,137 @@ Base your options on the business context provided. Be specific -- avoid generic
       }
     }
 
-    // 6c. Fetch personalization fields if in personalization mode
+    // 6b. Semantic transcript search (pgvector)
+    if (intent.domains.includes('transcript_search')) {
+      try {
+        const sbUrl = Deno.env.get('SUPABASE_URL')
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        if (sbUrl && sbKey) {
+          // Generate query embedding via generate-embedding function
+          const embResponse = await fetch(`${sbUrl}/functions/v1/generate-embedding`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sbKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: body.message,
+              table_name: '_query_only',
+              record_id: 'none',
+              organization_id: orgId,
+            }),
+          })
+
+          if (embResponse.ok) {
+            const embResult = await embResponse.json()
+            if (embResult.embedding) {
+              // Call match_call_summaries RPC
+              const { data: matches, error: matchErr } = await supabaseAdmin
+                .rpc('match_call_summaries', {
+                  query_embedding: embResult.embedding,
+                  p_organization_id: orgId,
+                  match_threshold: 0.5,
+                  match_count: 5,
+                })
+
+              if (!matchErr && matches && matches.length > 0) {
+                ragData['transcript_search'] = matches.map((m: any) => ({
+                  similarity: Math.round(m.similarity * 100) / 100,
+                  summary: m.summary_text,
+                  sentiment: m.sentiment,
+                  topics: m.key_topics,
+                  caller: m.caller_phone,
+                  duration_sec: m.duration_ms ? Math.round(m.duration_ms / 1000) : null,
+                  date: m.created_at,
+                  transcript_preview: m.transcript?.substring(0, 500) || null,
+                }))
+              } else {
+                ragData['transcript_search'] = { message: 'No matching call transcripts found.' }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[copilot-chat] Transcript search error:', e)
+      }
+    }
+
+    // 6c. Retrieve copilot memories (recent + semantic)
+    let memoriesForPrompt: Array<{type: string; content: string; date: string; importance: number}> = [];
+    if (!isContextSummaryMode && !isPersonalizationMode) {
+      try {
+        // Recent memories (last 10 by recency)
+        const { data: recentMemories } = await supabaseAdmin
+          .from('copilot_memory')
+          .select('id, memory_type, content, importance_score, created_at')
+          .eq('user_id', effectiveUserId)
+          .eq('organization_id', orgId)
+          .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (recentMemories) {
+          memoriesForPrompt = recentMemories.map((m: any) => ({
+            type: m.memory_type,
+            content: m.content,
+            date: m.created_at,
+            importance: m.importance_score,
+          }));
+        }
+
+        // Semantic memories (top 5 by relevance to current query)
+        const sbUrl = Deno.env.get('SUPABASE_URL');
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (sbUrl && sbKey && body.message.length > 15) {
+          const embResp = await fetch(`${sbUrl}/functions/v1/generate-embedding`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sbKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: body.message,
+              table_name: '_query_only',
+              record_id: 'none',
+              organization_id: orgId,
+            }),
+          });
+
+          if (embResp.ok) {
+            const embResult = await embResp.json();
+            if (embResult.embedding) {
+              const { data: semanticMemories } = await supabaseAdmin
+                .rpc('match_copilot_memories', {
+                  query_embedding: embResult.embedding,
+                  p_user_id: effectiveUserId,
+                  p_organization_id: orgId,
+                  match_threshold: 0.5,
+                  match_count: 5,
+                });
+
+              if (semanticMemories) {
+                // Merge with recent, deduplicate by id
+                const existingIds = new Set(recentMemories?.map((m: any) => m.id) || []);
+                for (const sm of semanticMemories) {
+                  if (!existingIds.has(sm.id)) {
+                    memoriesForPrompt.push({
+                      type: sm.memory_type,
+                      content: sm.content,
+                      date: sm.created_at,
+                      importance: sm.importance_score,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[copilot-chat] Memory retrieval error:', e);
+      }
+    }
+
+    // 6d. Fetch personalization fields if in personalization mode
     let personalizationFields: any[] = [];
     if (isPersonalizationMode) {
       try {
@@ -951,6 +1099,15 @@ Base your options on the business context provided. Be specific -- avoid generic
       conversationLength,
       isPersonalizationMode
     );
+
+    // 7b. Inject persistent memories into system prompt
+    if (memoriesForPrompt.length > 0) {
+      const memoryLines = memoriesForPrompt
+        .sort((a, b) => b.importance - a.importance)
+        .map(m => `- [${m.type.toUpperCase()}] ${m.content} (${new Date(m.date).toLocaleDateString()})`)
+        .join('\n');
+      systemPrompt += `\n\n--- USER MEMORY (past interactions and learned preferences) ---\n${memoryLines}\n\nUse these memories naturally. Reference past decisions when relevant. Don't list memories back to the user.\n--- END USER MEMORY ---`;
+    }
 
     if (body.context?.quarterbackMode && body.context?.insightType && body.context?.insightData) {
       systemPrompt += buildQuarterbackSystemPrompt(
@@ -1105,6 +1262,19 @@ Base your options on the business context provided. Be specific -- avoid generic
       })
       .eq("id", tokenRecord.id);
 
+    // 10. Memory extraction (fire-and-forget, never blocks response)
+    if (!isContextSummaryMode && !isPersonalizationMode && body.message.length > 20) {
+      extractMemories(
+        body.message,
+        responseContent,
+        effectiveUserId,
+        orgId,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        OPENROUTER_API_KEY!
+      ).catch(e => console.error('[copilot-chat] Memory extraction failed:', e));
+    }
+
     return new Response(
       JSON.stringify({
         response: responseContent,
@@ -1130,3 +1300,120 @@ Base your options on the business context provided. Be specific -- avoid generic
     );
   }
 });
+
+// =====================================================
+// MEMORY EXTRACTION (fire-and-forget after each response)
+// =====================================================
+async function extractMemories(
+  userMessage: string,
+  aiResponse: string,
+  userId: string,
+  orgId: string,
+  supabaseUrl: string,
+  serviceKey: string,
+  openRouterKey: string
+): Promise<void> {
+  // Skip short exchanges, greetings, and admin queries
+  if (userMessage.length < 30 && aiResponse.length < 100) return;
+  const skipPatterns = [/^(hi|hello|hey|thanks|ok|bye)/i, /^how('s| is) the (platform|system)/i];
+  if (skipPatterns.some(p => p.test(userMessage.trim()))) return;
+
+  const extractionPrompt = `Analyze this CRM conversation exchange and extract up to 3 memorable facts worth remembering for future conversations.
+
+USER MESSAGE: "${userMessage}"
+
+AI RESPONSE: "${aiResponse.substring(0, 1000)}"
+
+Extract ONLY significant items that fall into these categories:
+- decision: Strategic or business decisions made (importance: 0.8-1.0)
+- preference: User preferences, workflows, or style choices (importance: 0.5-0.7)
+- context: Business context, goals, or situational info (importance: 0.3-0.5)
+- insight: Data patterns or business insights discussed (importance: 0.4-0.6)
+- action_taken: Actions the user confirmed taking (importance: 0.6-0.8)
+
+Return a JSON array (empty if nothing worth remembering):
+[{"type":"decision","content":"User decided to focus on enterprise clients this quarter","importance":0.85,"expires_days":90}]
+
+Rules:
+- Only extract genuinely memorable facts, not transient queries
+- "content" should be a clear, self-contained statement
+- expires_days: null for permanent, 30-90 for time-sensitive context
+- Return [] for routine data lookups, greetings, or generic questions
+- Max 3 items per exchange`;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openRouterKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.0-flash-001",
+        messages: [{ role: "user", content: extractionPrompt }],
+        max_tokens: 500,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!response.ok) return;
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) return;
+
+    let memories: Array<{type: string; content: string; importance: number; expires_days?: number | null}>;
+    try {
+      const parsed = JSON.parse(content);
+      memories = Array.isArray(parsed) ? parsed : parsed.memories || parsed.items || [];
+    } catch {
+      return;
+    }
+
+    if (!memories.length) return;
+
+    const admin = createClient(supabaseUrl, serviceKey);
+    const sourceSummary = userMessage.substring(0, 200);
+
+    for (const mem of memories.slice(0, 3)) {
+      if (!mem.content || mem.content.length < 10) continue;
+
+      // Insert memory
+      const { data: inserted, error: insertErr } = await admin
+        .from('copilot_memory')
+        .insert({
+          user_id: userId,
+          organization_id: orgId,
+          memory_type: mem.type || 'context',
+          content: mem.content,
+          source_summary: sourceSummary,
+          importance_score: Math.min(1, Math.max(0, mem.importance || 0.5)),
+          expires_at: mem.expires_days
+            ? new Date(Date.now() + mem.expires_days * 86400000).toISOString()
+            : null,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr || !inserted) continue;
+
+      // Generate embedding for the memory (fire-and-forget)
+      fetch(`${supabaseUrl}/functions/v1/generate-embedding`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: mem.content,
+          table_name: 'copilot_memory',
+          record_id: inserted.id,
+          organization_id: orgId,
+        }),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[copilot-chat] extractMemories error:', e);
+  }
+}

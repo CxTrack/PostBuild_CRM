@@ -745,7 +745,12 @@ export default function TeamIntegrationsTab({
                 {apiKeys.map(apiKey => (
                   <div key={apiKey.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{apiKey.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{apiKey.name}</p>
+                        {apiKey.permissions?.mcp && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded">MCP</span>
+                        )}
+                      </div>
                       <p className="text-[10px] font-mono text-gray-500">Prefix: {apiKey.key_prefix}</p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -762,6 +767,84 @@ export default function TeamIntegrationsTab({
             ) : (
               <p className="text-xs text-gray-500 text-center py-2 italic">No active API keys</p>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* MCP Server */}
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
+            <Code className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white">MCP Server</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Connect external AI tools to your CRM data</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Endpoint URL */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">MCP Endpoint URL</label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200 select-all">
+                https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText('https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server');
+                  toast.success('Copied endpoint URL');
+                }}
+                className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Copy URL"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* MCP API key creation */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">MCP API Key</label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Create an API key with MCP permissions to authenticate external tools. Use the "New Key" button in the API Keys section above and note the key.
+            </p>
+            {apiKeys.filter(k => k.permissions?.mcp).length > 0 ? (
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle size={16} />
+                <span>{apiKeys.filter(k => k.permissions?.mcp).length} MCP key(s) active</span>
+              </div>
+            ) : (
+              <button
+                onClick={onShowApiKeyModal}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm transition-colors flex items-center gap-2"
+              >
+                <Plus size={14} />
+                Create MCP API Key
+              </button>
+            )}
+          </div>
+
+          {/* Connection instructions */}
+          <div className="p-4 bg-white/60 dark:bg-gray-800/40 rounded-xl border border-purple-100 dark:border-purple-900/50">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Connect to Claude Desktop or Cursor</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Add this to your MCP client configuration:
+            </p>
+            <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-[11px] font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">{`{
+  "mcpServers": {
+    "cxtrack": {
+      "url": "https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}`}</pre>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
+              Available tools: search_customers, get_customer_detail, list_recent_calls, search_call_transcripts, list_pipeline, list_tasks, get_business_summary
+            </p>
           </div>
         </div>
       </div>

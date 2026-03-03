@@ -705,6 +705,47 @@ async function handleCallAnalyzed(
     console.error(`[call_analyzed] Failed to insert call_summary: ${summaryError.message}`)
   }
 
+  // Generate embedding for semantic search (fire-and-forget)
+  if (!summaryError) {
+    const embeddingText = [
+      call.call_analysis?.call_summary || '',
+      call.transcript || '',
+      keyTopics.length > 0 ? `Topics: ${keyTopics.join(', ')}` : '',
+    ].filter(Boolean).join('\n\n')
+
+    if (embeddingText.length > 50) {
+      // Get the inserted record ID for embedding storage
+      const { data: insertedSummary } = await supabase
+        .from('call_summaries')
+        .select('id')
+        .eq('call_id', callRecord.id)
+        .eq('organization_id', callRecord.organization_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (insertedSummary?.id) {
+        const sbUrl = Deno.env.get('SUPABASE_URL')
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        if (sbUrl && sbKey) {
+          fetch(`${sbUrl}/functions/v1/generate-embedding`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sbKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: embeddingText,
+              table_name: 'call_summaries',
+              record_id: insertedSummary.id,
+              organization_id: callRecord.organization_id,
+            }),
+          }).catch(e => console.error('[retell-webhook] Embedding generation failed:', e))
+        }
+      }
+    }
+  }
+
   // Send broker notification SMS (non-blocking)
   if (!summaryError) {
     await sendBrokerNotificationSMS(

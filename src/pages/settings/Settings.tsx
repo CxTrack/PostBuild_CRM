@@ -53,6 +53,7 @@ const TAB_PARAM_MAP: Record<string, { tab: SettingsTabId; subTab?: string }> = {
   voiceagent: { tab: 'aiagents', subTab: 'voice' },
   aiagents: { tab: 'aiagents' },
   smsagent: { tab: 'aiagents', subTab: 'sms' },
+  copilotmemory: { tab: 'aiagents', subTab: 'memory' },
   notifications: { tab: 'preferences', subTab: 'notifications' },
   security: { tab: 'support', subTab: 'security' },
   help: { tab: 'support', subTab: 'help' },

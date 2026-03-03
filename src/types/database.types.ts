@@ -222,7 +222,23 @@ export interface CallSummary {
   broker_notified?: boolean;
   sms_sent_at?: string | null;
   raw_webhook_payload?: Record<string, any>;
+  embedding?: number[] | null;
   created_at: string;
+}
+
+export interface CopilotMemory {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  memory_type: 'decision' | 'preference' | 'context' | 'insight' | 'action_taken';
+  content: string;
+  source_summary?: string | null;
+  embedding?: number[] | null;
+  metadata?: Record<string, unknown> | null;
+  importance_score: number;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CustomerContact {
