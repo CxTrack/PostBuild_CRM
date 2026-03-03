@@ -64,17 +64,22 @@ async function resolveTaskId(
   taskTitle: string | null,
   customerName: string | null
 ): Promise<string | null> {
-  // Direct UUID from quarterback context -- most reliable path
-  if (taskId && taskId.length > 10) return taskId;
-
-  // Fuzzy match by title + optional customer name
-  if (!taskTitle) return null;
-
   const store = useTaskStore.getState();
   if (store.tasks.length === 0) {
     await store.fetchTasks();
   }
   const tasks = useTaskStore.getState().tasks;
+
+  // Validate AI-provided UUID against store (AI often hallucinates UUIDs)
+  if (taskId && taskId.length > 10) {
+    const verified = tasks.find(t => t.id === taskId);
+    if (verified) return verified.id;
+    // UUID not found -- fall through to title matching
+  }
+
+  // Fuzzy match by title + optional customer name
+  if (!taskTitle) return null;
+
   const lowerTitle = taskTitle.toLowerCase().trim();
 
   // Narrow candidates by customer name if provided

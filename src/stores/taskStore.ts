@@ -207,9 +207,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         .update(updateData)
         .eq('id', id)
         .select(`*, customer:customers(id, name)`)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!taskData) throw new Error('Task not found or update blocked by permissions');
 
       const updatedTask: Task = {
         ...taskData,
