@@ -472,6 +472,87 @@ export interface PhoneCostSummary {
   }>;
 }
 
+// Reseller Partner types
+export interface ResellerPartner {
+  id: string;
+  name: string;
+  email: string;
+  company_name: string | null;
+  phone: string | null;
+  stripe_connected_account_id: string | null;
+  stripe_onboarding_complete: boolean;
+  default_commission_rate: number;
+  status: 'pending' | 'active' | 'paused' | 'terminated';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  terminated_at: string | null;
+  // Aggregated stats from RPC
+  sourced_orgs_count?: number;
+  total_earned_cents?: number;
+  total_pending_cents?: number;
+  total_paid_count?: number;
+}
+
+export interface ResellerSourcedOrg {
+  id: string;
+  reseller_id: string;
+  organization_id: string;
+  commission_rate: number;
+  commission_type: 'one_time' | 'recurring' | 'hybrid';
+  recurring_months_cap: number;
+  recurring_months_paid: number;
+  one_time_amount_cents: number | null;
+  one_time_paid: boolean;
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  notes: string | null;
+  sourced_at: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  org_name?: string;
+  org_status?: string;
+  subscription_tier?: string;
+  total_commission_paid_cents?: number;
+  total_commission_pending_cents?: number;
+}
+
+export interface ResellerCommission {
+  id: string;
+  reseller_id: string;
+  sourced_org_id: string;
+  organization_id: string;
+  commission_type: 'one_time_setup' | 'recurring_monthly';
+  gross_amount_cents: number;
+  commission_rate: number;
+  commission_amount_cents: number;
+  currency: string;
+  stripe_transfer_id: string | null;
+  stripe_invoice_id: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  recurring_month_number: number | null;
+  status: 'pending' | 'approved' | 'paid' | 'failed' | 'cancelled';
+  paid_at: string | null;
+  failed_reason: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  reseller_name?: string;
+  reseller_company?: string;
+  org_name?: string;
+}
+
+export interface ResellerSummary {
+  total_partners: number;
+  active_partners: number;
+  total_commissions_paid_cents: number;
+  total_commissions_pending_cents: number;
+  total_sourced_orgs: number;
+  commissions_this_month_cents: number;
+}
+
 interface AdminState {
   // Data
   kpis: PlatformKPIs | null;
@@ -502,6 +583,12 @@ interface AdminState {
   usageOverview: any | null;
   allOrgsSummary: any[];
   codeQuality: CodeQualityData;
+
+  // Reseller Program
+  resellerSummary: ResellerSummary | null;
+  resellerPartners: ResellerPartner[];
+  resellerSourcedOrgs: ResellerSourcedOrg[];
+  resellerCommissions: ResellerCommission[];
 
   // Technology Evaluation Center
   performanceTrends: PerformanceTrend[];
@@ -597,6 +684,30 @@ interface AdminState {
   fetchSlaStatus: (days?: number) => Promise<void>;
   runHealthCheck: () => Promise<void>;
   fetchHealthCheckStatus: () => Promise<void>;
+  // Reseller Program actions
+  fetchResellerSummary: () => Promise<void>;
+  fetchResellerPartners: () => Promise<void>;
+  fetchResellerSourcedOrgs: (resellerId: string) => Promise<void>;
+  fetchResellerCommissions: (resellerId?: string) => Promise<void>;
+  createResellerPartner: (partner: {
+    name: string; email: string; company_name?: string; phone?: string;
+    default_commission_rate?: number; notes?: string;
+    stripe_connected_account_id?: string;
+  }) => Promise<{ success: boolean; error?: string; data?: ResellerPartner }>;
+  updateResellerPartner: (id: string, updates: Partial<ResellerPartner>) => Promise<{ success: boolean; error?: string }>;
+  addSourcedOrg: (params: {
+    reseller_id: string; organization_id: string; commission_rate?: number;
+    commission_type?: string; recurring_months_cap?: number;
+    one_time_amount_cents?: number; notes?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  createCommissionRecord: (params: {
+    reseller_id: string; sourced_org_id: string; organization_id: string;
+    commission_type: string; gross_amount_cents: number; commission_rate: number;
+    commission_amount_cents: number; currency?: string; stripe_invoice_id?: string;
+    period_start?: string; period_end?: string; recurring_month_number?: number;
+    notes?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  updateCommissionStatus: (commissionId: string, status: string, stripeTransferId?: string) => Promise<{ success: boolean; error?: string }>;
   fetchAll: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
@@ -631,6 +742,10 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
   usageOverview: null,
   allOrgsSummary: [],
   codeQuality: { report: null, deploys: [], deploySummary: null },
+  resellerSummary: null,
+  resellerPartners: [],
+  resellerSourcedOrgs: [],
+  resellerCommissions: [],
   performanceTrends: [],
   costForecast: null,
   costPerTransaction: [],
@@ -1555,6 +1670,182 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set((s) => ({ healthChecks: data || [], loading: { ...s.loading, healthChecks: false } }));
     } catch (e: any) {
       set((s) => ({ loading: { ...s.loading, healthChecks: false }, errors: { ...s.errors, healthChecks: e.message } }));
+    }
+  },
+
+  // ── Reseller Program ──────────────────────────────────────────
+
+  fetchResellerSummary: async () => {
+    set((s) => ({ loading: { ...s.loading, resellerSummary: true }, errors: { ...s.errors, resellerSummary: null } }));
+    try {
+      const data = await supabaseRpc<ResellerSummary>('admin_get_reseller_summary');
+      set((s) => ({ resellerSummary: data, loading: { ...s.loading, resellerSummary: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, resellerSummary: false }, errors: { ...s.errors, resellerSummary: e.message } }));
+    }
+  },
+
+  fetchResellerPartners: async () => {
+    set((s) => ({ loading: { ...s.loading, resellerPartners: true }, errors: { ...s.errors, resellerPartners: null } }));
+    try {
+      const data = await supabaseRpc<ResellerPartner[]>('admin_get_reseller_partners');
+      set((s) => ({ resellerPartners: data || [], loading: { ...s.loading, resellerPartners: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, resellerPartners: false }, errors: { ...s.errors, resellerPartners: e.message } }));
+    }
+  },
+
+  fetchResellerSourcedOrgs: async (resellerId: string) => {
+    set((s) => ({ loading: { ...s.loading, resellerSourcedOrgs: true }, errors: { ...s.errors, resellerSourcedOrgs: null } }));
+    try {
+      const data = await supabaseRpc<ResellerSourcedOrg[]>('admin_get_reseller_sourced_orgs', { p_reseller_id: resellerId });
+      set((s) => ({ resellerSourcedOrgs: data || [], loading: { ...s.loading, resellerSourcedOrgs: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, resellerSourcedOrgs: false }, errors: { ...s.errors, resellerSourcedOrgs: e.message } }));
+    }
+  },
+
+  fetchResellerCommissions: async (resellerId?: string) => {
+    set((s) => ({ loading: { ...s.loading, resellerCommissions: true }, errors: { ...s.errors, resellerCommissions: null } }));
+    try {
+      const params: Record<string, any> = { p_limit: 100 };
+      if (resellerId) params.p_reseller_id = resellerId;
+      const data = await supabaseRpc<ResellerCommission[]>('admin_get_reseller_commissions', params);
+      set((s) => ({ resellerCommissions: data || [], loading: { ...s.loading, resellerCommissions: false } }));
+    } catch (e: any) {
+      set((s) => ({ loading: { ...s.loading, resellerCommissions: false }, errors: { ...s.errors, resellerCommissions: e.message } }));
+    }
+  },
+
+  createResellerPartner: async (partner) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/reseller_partners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(partner),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return { success: false, error: err };
+      }
+      const [data] = await res.json();
+      await get().fetchResellerPartners();
+      await get().fetchResellerSummary();
+      return { success: true, data };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateResellerPartner: async (id, updates) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/reseller_partners?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return { success: false, error: err };
+      }
+      await get().fetchResellerPartners();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  addSourcedOrg: async (params) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/reseller_sourced_orgs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return { success: false, error: err };
+      }
+      await get().fetchResellerPartners();
+      await get().fetchResellerSummary();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  createCommissionRecord: async (params) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/reseller_commissions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return { success: false, error: err };
+      }
+      await get().fetchResellerCommissions();
+      await get().fetchResellerSummary();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateCommissionStatus: async (commissionId, status, stripeTransferId?) => {
+    const token = getAuthToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+    try {
+      const body: Record<string, any> = { status };
+      if (stripeTransferId) body.stripe_transfer_id = stripeTransferId;
+      if (status === 'paid') body.paid_at = new Date().toISOString();
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/reseller_commissions?id=eq.${commissionId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return { success: false, error: err };
+      }
+      await get().fetchResellerCommissions();
+      await get().fetchResellerSummary();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   },
 

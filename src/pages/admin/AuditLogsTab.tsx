@@ -1,9 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Filter, Download, ChevronDown, ChevronRight,
-  User, Clock, AlertCircle
+  User, Clock, AlertCircle, Shield, Activity
 } from 'lucide-react';
 import { useAdminStore, ActivityLogEntry } from '../../stores/adminStore';
+import { getAuthToken, getSupabaseUrl } from '../../utils/auth.utils';
+
+// ── Constants ───────────────────────────────────────────────────────────────
 
 const ENTITY_TYPES = [
   'all', 'customer', 'invoice', 'quote', 'pipeline_item', 'task',
@@ -19,6 +22,20 @@ const ACTION_COLORS: Record<string, string> = {
   status_changed: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
 };
 
+const ADMIN_ACTION_COLORS: Record<string, string> = {
+  security_scan: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  cron_manual_trigger: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  settings_change: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  admin_grant: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  admin_revoke: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+};
+
+const ADMIN_CATEGORIES = ['all', 'security', 'cron', 'settings', 'user_management', 'system'];
+
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
 const formatTimeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -31,7 +48,61 @@ const formatTimeAgo = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString();
 };
 
+// ── Types ───────────────────────────────────────────────────────────────────
+
+interface AdminAuditEntry {
+  id: string;
+  admin_user_id: string;
+  action: string;
+  category: string;
+  target_type: string | null;
+  target_id: string | null;
+  details: Record<string, any>;
+  ip_address: string | null;
+  created_at: string;
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
+
 export const AuditLogsTab = () => {
+  const [activeView, setActiveView] = useState<'entity' | 'admin'>('entity');
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* View Switcher */}
+      <div className="flex gap-1.5 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setActiveView('entity')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+            activeView === 'entity'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          Entity Changes
+        </button>
+        <button
+          onClick={() => setActiveView('admin')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+            activeView === 'admin'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          Admin Actions
+        </button>
+      </div>
+
+      {activeView === 'entity' ? <EntityChangesList /> : <AdminActionsList />}
+    </div>
+  );
+};
+
+// ── Entity Changes (Original Audit Log) ─────────────────────────────────────
+
+const EntityChangesList = () => {
   const { activityLog, loading, fetchActivityLog } = useAdminStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState('all');
@@ -52,7 +123,6 @@ export const AuditLogsTab = () => {
     setPage(0);
   }, []);
 
-  // Client-side search on loaded results
   const filtered = activityLog.filter((log) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -85,7 +155,7 @@ export const AuditLogsTab = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -143,7 +213,7 @@ export const AuditLogsTab = () => {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filtered.map((log) => (
-                <LogRow
+                <EntityLogRow
                   key={log.id}
                   log={log}
                   expanded={expandedRow === log.id}
@@ -187,11 +257,11 @@ export const AuditLogsTab = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-const LogRow = ({ log, expanded, onToggle }: {
+const EntityLogRow = ({ log, expanded, onToggle }: {
   log: ActivityLogEntry; expanded: boolean; onToggle: () => void;
 }) => {
   const hasChanges = log.changes && Object.keys(log.changes).length > 0;
@@ -242,6 +312,241 @@ const LogRow = ({ log, expanded, onToggle }: {
             <div className="max-h-48 overflow-auto">
               <pre className="text-xs font-mono text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-all">
                 {JSON.stringify(log.changes, null, 2)}
+              </pre>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
+// ── Admin Actions List ──────────────────────────────────────────────────────
+
+const AdminActionsList = () => {
+  const [entries, setEntries] = useState<AdminAuditEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const pageSize = 50;
+
+  const fetchAdminLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      let url = `${getSupabaseUrl()}/rest/v1/admin_audit_log?select=*&order=created_at.desc&limit=${pageSize}&offset=${page * pageSize}`;
+      if (categoryFilter !== 'all') {
+        url += `&category=eq.${categoryFilter}`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const data = await res.json();
+      setEntries(data || []);
+    } catch (err: any) {
+      console.error('[AdminAuditLog] Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, categoryFilter]);
+
+  useEffect(() => {
+    fetchAdminLogs();
+  }, [fetchAdminLogs]);
+
+  const filtered = entries.filter((e) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      e.action?.toLowerCase().includes(q) ||
+      e.category?.toLowerCase().includes(q) ||
+      e.target_type?.toLowerCase().includes(q) ||
+      e.target_id?.toLowerCase().includes(q) ||
+      e.admin_user_id?.toLowerCase().includes(q)
+    );
+  });
+
+  const exportCSV = () => {
+    const headers = ['Timestamp', 'Admin User ID', 'Action', 'Category', 'Target Type', 'Target ID', 'Details'];
+    const rows = filtered.map((e) => [
+      new Date(e.created_at).toISOString(),
+      e.admin_user_id,
+      e.action,
+      e.category,
+      e.target_type || '',
+      e.target_id || '',
+      JSON.stringify(e.details),
+    ]);
+    const csvContent = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `admin-audit-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search admin actions..."
+            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-purple-500/30"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
+            className="px-3 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300"
+          >
+            {ADMIN_CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c === 'all' ? 'All Categories' : c.replace('_', ' ')}</option>
+            ))}
+          </select>
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Admin Actions Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="w-8 px-2 py-2.5" />
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Time</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Action</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Category</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Target</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Target ID</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filtered.map((entry) => (
+                <AdminLogRow
+                  key={entry.id}
+                  entry={entry}
+                  expanded={expandedRow === entry.id}
+                  onToggle={() => setExpandedRow(expandedRow === entry.id ? null : entry.id)}
+                />
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <Shield className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm text-gray-400">
+                      {loading ? 'Loading admin actions...' : 'No admin actions recorded yet'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Run a security scan or trigger a cron job to generate entries
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Showing {filtered.length} entries (page {page + 1})
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(0, page - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={entries.length < pageSize}
+              className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+const AdminLogRow = ({ entry, expanded, onToggle }: {
+  entry: AdminAuditEntry; expanded: boolean; onToggle: () => void;
+}) => {
+  const hasDetails = entry.details && Object.keys(entry.details).length > 0;
+
+  return (
+    <>
+      <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer" onClick={onToggle}>
+        <td className="px-2 py-2.5 text-center">
+          {hasDetails && (
+            expanded
+              ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 mx-auto" />
+              : <ChevronRight className="w-3.5 h-3.5 text-gray-400 mx-auto" />
+          )}
+        </td>
+        <td className="px-4 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3 h-3 text-gray-400" />
+            <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatTimeAgo(entry.created_at)}</span>
+          </div>
+        </td>
+        <td className="px-4 py-2.5">
+          <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${
+            ADMIN_ACTION_COLORS[entry.action] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+          }`}>
+            {entry.action.replace(/_/g, ' ')}
+          </span>
+        </td>
+        <td className="px-4 py-2.5">
+          <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+            {entry.category?.replace('_', ' ')}
+          </span>
+        </td>
+        <td className="px-4 py-2.5">
+          <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+            {entry.target_type?.replace('_', ' ') || '-'}
+          </span>
+        </td>
+        <td className="px-4 py-2.5 hidden md:table-cell">
+          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+            {entry.target_id || '-'}
+          </span>
+        </td>
+      </tr>
+      {expanded && hasDetails && (
+        <tr>
+          <td colSpan={6} className="px-4 py-3 bg-gray-50 dark:bg-gray-700/20">
+            <div className="max-h-48 overflow-auto">
+              <pre className="text-xs font-mono text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-all">
+                {JSON.stringify(entry.details, null, 2)}
               </pre>
             </div>
           </td>

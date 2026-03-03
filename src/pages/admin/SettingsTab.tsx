@@ -1,48 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Shield, Users, Server, Key, Copy, Check,
-  ExternalLink, RefreshCw, Zap, UserPlus, X, ShieldOff, Search, AlertTriangle
+  ExternalLink, RefreshCw, Zap, UserPlus, X, ShieldOff, Search, AlertTriangle, ArrowRight
 } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { FeatureFlagsPanel } from '../../components/admin/FeatureFlagsPanel';
+import { logAdminAction } from '../../utils/adminAudit';
 import toast from 'react-hot-toast';
 
 const PROJECT_REF = 'zkpfzrbbupgiqkzqydji';
 const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
-
-const EDGE_FUNCTIONS = [
-  { name: 'copilot-chat', jwt: false, purpose: 'AI CoPilot proxy', api: 'OpenRouter' },
-  { name: 'receipt-scan', jwt: false, purpose: 'Receipt OCR (vision)', api: 'OpenRouter' },
-  { name: 'ocr-extract', jwt: true, purpose: 'Business card OCR', api: 'Google Vision' },
-  { name: 'provision-voice-agent', jwt: false, purpose: 'Phone + agent provisioning', api: 'Retell + Twilio' },
-  { name: 'list-voices', jwt: false, purpose: 'List available voices', api: 'Retell' },
-  { name: 'update-retell-agent', jwt: false, purpose: 'Sync agent settings', api: 'Retell' },
-  { name: 'manage-knowledge-base', jwt: false, purpose: 'KB CRUD', api: 'Retell' },
-  { name: 'manage-phone-numbers', jwt: false, purpose: 'Phone release/management', api: 'Retell + Twilio' },
-  { name: 'retell-webhook', jwt: false, purpose: 'Call events + summaries (Retell signature verified)', api: 'Retell + Twilio' },
-  { name: 'send-invitation', jwt: false, purpose: 'Team invitation emails', api: 'Resend' },
-  { name: 'send-sms', jwt: true, purpose: 'Outbound SMS (org membership enforced)', api: 'Twilio' },
-  { name: 'receive-sms', jwt: false, purpose: 'Inbound SMS webhook (Twilio signature verified)', api: 'Twilio' },
-  { name: 'configure-sms-webhooks', jwt: false, purpose: 'Auto-configure Twilio SMS webhooks', api: 'Twilio' },
-  { name: 'send-reopt-email', jwt: false, purpose: 'SMS re-opt-in emails', api: 'Resend' },
-  { name: 'chat-cleanup', jwt: true, purpose: 'Stale conversation cleanup (admin/cron)', api: 'Internal' },
-  { name: 'sms-opt-out', jwt: false, purpose: 'Public SMS opt-out (customer-org verified)', api: 'Internal' },
-  { name: 'make-call', jwt: true, purpose: 'Outbound calls (org membership enforced)', api: 'Twilio' },
-  { name: 'stripe-billing', jwt: false, purpose: 'Subscription management', api: 'Stripe' },
-  { name: 'stripe-checkout', jwt: false, purpose: 'Checkout sessions', api: 'Stripe' },
-  { name: 'admin-deactivate-org', jwt: false, purpose: 'Org deactivation flow', api: 'Stripe + Twilio + Resend' },
-];
-
-const API_SECRETS = [
-  { name: 'OPENROUTER_API_KEY', service: 'OpenRouter (AI)', usedBy: 'copilot-chat, receipt-scan' },
-  { name: 'RETELL_API_KEY', service: 'Retell AI (Voice)', usedBy: 'provision-voice-agent, list-voices, update-retell-agent, manage-knowledge-base, retell-webhook' },
-  { name: 'TWILIO_MASTER_ACCOUNT_SID', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook, send-sms, receive-sms, configure-sms-webhooks' },
-  { name: 'TWILIO_MASTER_AUTH_TOKEN', service: 'Twilio (Phone/SMS)', usedBy: 'provision-voice-agent, retell-webhook, send-sms, receive-sms, configure-sms-webhooks' },
-  { name: 'GOOGLE_CLOUD_VISION_API_KEY', service: 'Google Vision (OCR)', usedBy: 'ocr-extract' },
-  { name: 'RESEND_API_KEY', service: 'Resend (Email)', usedBy: 'send-invitation' },
-  { name: 'TWILIO_SIP_TRUNK_SID', service: 'Twilio SIP Trunk', usedBy: 'provision-voice-agent' },
-];
 
 const TOKEN_TIERS = [
   { tier: 'Free', monthly: '50,000', color: 'gray' },
@@ -100,6 +68,13 @@ export const SettingsTab = () => {
     const result = await setAdminStatus(userId, true, 'full');
     if (result.success) {
       toast.success(`Admin access granted to ${email}`);
+      logAdminAction({
+        action: 'admin_grant',
+        category: 'user_management',
+        target_type: 'user',
+        target_id: userId,
+        details: { email, access_level: 'full' },
+      });
       setSearchQuery('');
       setSearchResults([]);
       setShowAddAdmin(false);
@@ -118,6 +93,13 @@ export const SettingsTab = () => {
     const result = await setAdminStatus(userId, false);
     if (result.success) {
       toast.success(`Admin access revoked from ${email}`);
+      logAdminAction({
+        action: 'admin_revoke',
+        category: 'user_management',
+        target_type: 'user',
+        target_id: userId,
+        details: { email },
+      });
       setRevokeConfirm(null);
     } else {
       toast.error(result.error || 'Failed to revoke admin access');
@@ -308,58 +290,22 @@ export const SettingsTab = () => {
         </div>
       </div>
 
-      {/* Edge Functions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-yellow-600" />
-          Edge Functions ({EDGE_FUNCTIONS.length})
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {EDGE_FUNCTIONS.map((fn) => (
-            <div key={fn.name} className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm font-mono font-medium text-gray-900 dark:text-white truncate">{fn.name}</span>
-                <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded ${
-                  fn.jwt
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                }`}>
-                  {fn.jwt ? 'JWT' : 'Internal'}
-                </span>
-              </div>
-              <span className="text-xs text-purple-600 dark:text-purple-400 font-medium shrink-0 ml-2">{fn.api}</span>
+      {/* Security Info Link */}
+      <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800/30 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-purple-600" />
+            <div>
+              <p className="text-sm font-medium text-purple-900 dark:text-purple-200">Edge Functions, API Secrets, and RLS coverage</p>
+              <p className="text-xs text-purple-600 dark:text-purple-400">These are now in the Security & Health tab for centralized monitoring</p>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* API Secrets Reference */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <Key className="w-4 h-4 text-orange-600" />
-          API Secrets (Stored in Supabase Vault)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Secret Name</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Service</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Used By</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {API_SECRETS.map((secret) => (
-                <tr key={secret.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                  <td className="px-3 py-2">
-                    <span className="text-sm font-mono text-gray-900 dark:text-white">{secret.name}</span>
-                  </td>
-                  <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400">{secret.service}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hidden md:table-cell">{secret.usedBy}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          </div>
+          <button
+            onClick={() => useAdminStore.getState().setActiveTab('security')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+          >
+            Go to Security <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

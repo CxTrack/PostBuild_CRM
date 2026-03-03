@@ -5,7 +5,7 @@ import {
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug, Mail, Building2, GitMerge, Code2
+  FileBarChart, Plug, Mail, Building2, GitMerge, Code2, Handshake
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -25,6 +25,7 @@ import { FinancialAnalyticsTab } from './FinancialAnalyticsTab';
 import { ModuleUsageTab } from './ModuleUsageTab';
 import { APIMonitoringTab } from './APIMonitoringTab';
 import { AuditLogsTab } from './AuditLogsTab';
+import { SecurityHealthTab } from './SecurityHealthTab';
 import { SettingsTab } from './SettingsTab';
 import { BroadcastPanel } from '../../components/admin/BroadcastPanel';
 import { ReportingEngine } from '../../components/admin/ReportingEngine';
@@ -35,6 +36,7 @@ import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
 import { OrgDetailView } from './OrgDetailView';
 import { OrgMergeTool } from '../../components/admin/OrgMergeTool';
 import { CodeQualityTab } from './CodeQualityTab';
+import { ResellersTab } from './ResellersTab';
 
 interface TabItem {
   id: string;
@@ -69,6 +71,7 @@ const TAB_GROUPS: TabGroup[] = [
     label: 'Operations',
     tabs: [
       { id: 'billing', label: 'Billing & Revenue', icon: CreditCard, component: BillingTab },
+      { id: 'resellers', label: 'Reseller Partners', icon: Handshake, component: ResellersTab },
       { id: 'plans', label: 'Subscription Plans', icon: DollarSign, component: PlansTab },
       { id: 'phone-lifecycle', label: 'Phone Numbers', icon: Phone, component: PhoneLifecycleTab },
       { id: 'support', label: 'Support Tickets', icon: MessageSquare, component: SupportTab },
@@ -81,6 +84,7 @@ const TAB_GROUPS: TabGroup[] = [
   {
     label: 'System',
     tabs: [
+      { id: 'security', label: 'Security & Health', icon: Shield, component: SecurityHealthTab },
       { id: 'api-monitoring', label: 'API Monitoring', icon: Activity, component: APIMonitoringTab },
       { id: 'code-quality', label: 'Code Quality', icon: Code2, component: CodeQualityTab },
       { id: 'audit', label: 'Audit Logs', icon: Shield, component: AuditLogsTab },
