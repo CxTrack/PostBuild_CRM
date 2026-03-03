@@ -4,6 +4,8 @@ import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
 import { fetchTodayOutlookEvents, fetchOutlookEvents as fetchOutlookEventsApi } from '@/services/microsoftCalendar.service';
 import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import { fetchTodayGoogleEvents, fetchGoogleEvents as fetchGoogleEventsApi } from '@/services/googleCalendar.service';
+import type { GoogleCalendarEvent } from '@/services/googleCalendar.service';
 
 // Read auth token directly from localStorage to bypass AbortController issues
 const getAuthToken = (): string | null => {
@@ -46,6 +48,9 @@ interface CalendarState {
   outlookEvents: OutlookCalendarEvent[];
   outlookLoading: boolean;
   outlookNeedsReauth: boolean;
+  googleEvents: GoogleCalendarEvent[];
+  googleLoading: boolean;
+  googleNeedsReauth: boolean;
   preferences: CalendarPreferences | null;
   loading: boolean;
   error: string | null;
@@ -53,6 +58,8 @@ interface CalendarState {
   fetchEvents: (organizationId?: string, from?: Date, to?: Date) => Promise<void>;
   fetchOutlookTodayEvents: () => Promise<void>;
   fetchOutlookEventsRange: (startDate: string, endDate: string) => Promise<void>;
+  fetchGoogleTodayEvents: () => Promise<void>;
+  fetchGoogleEventsRange: (startDate: string, endDate: string) => Promise<void>;
   getEventById: (id: string) => CalendarEvent | undefined;
   getEventsByCustomer: (customerId: string) => CalendarEvent[];
   getEventsByDate: (date: string) => CalendarEvent[];
@@ -68,6 +75,9 @@ const initialCalendarState = {
   outlookEvents: [] as OutlookCalendarEvent[],
   outlookLoading: false,
   outlookNeedsReauth: false,
+  googleEvents: [] as GoogleCalendarEvent[],
+  googleLoading: false,
+  googleNeedsReauth: false,
   preferences: null as CalendarPreferences | null,
   loading: false,
   error: null as string | null,
@@ -148,6 +158,36 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       console.warn('[calendarStore] Outlook calendar range fetch error:', err);
     } finally {
       set({ outlookLoading: false });
+    }
+  },
+
+  fetchGoogleTodayEvents: async () => {
+    set({ googleLoading: true });
+    try {
+      const result = await fetchTodayGoogleEvents();
+      set({
+        googleEvents: result.events,
+        googleNeedsReauth: result.needsReauth,
+      });
+      if (result.needsReauth) {
+        console.warn('[calendarStore] Google calendar needs re-authorization');
+      }
+    } catch (err) {
+      console.warn('[calendarStore] Google calendar fetch error:', err);
+    } finally {
+      set({ googleLoading: false });
+    }
+  },
+
+  fetchGoogleEventsRange: async (startDate: string, endDate: string) => {
+    set({ googleLoading: true });
+    try {
+      const events = await fetchGoogleEventsApi(startDate, endDate);
+      set({ googleEvents: events });
+    } catch (err) {
+      console.warn('[calendarStore] Google calendar range fetch error:', err);
+    } finally {
+      set({ googleLoading: false });
     }
   },
 

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { fetchTodayOutlookEvents, fetchOutlookEvents, type OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import { fetchTodayGoogleEvents, fetchGoogleEvents, type GoogleCalendarEvent } from '@/services/googleCalendar.service';
 import {
     DndContext,
     closestCenter,
@@ -195,6 +196,9 @@ export const DashboardPage = () => {
     const [outlookEvents, setOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
     const [upcomingOutlookEvents, setUpcomingOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
     const [outlookNeedsReauth, setOutlookNeedsReauth] = useState(false);
+    const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+    const [upcomingGoogleEvents, setUpcomingGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+    const [googleNeedsReauth, setGoogleNeedsReauth] = useState(false);
     const [scheduleMode, setScheduleMode] = useState<'upcoming' | 'today'>('upcoming');
 
     // Define all quick actions with their module mapping
@@ -368,9 +372,35 @@ export const DashboardPage = () => {
         return () => { cancelled = true; };
     }, [currentOrganization?.id]);
 
+    // Fetch Google Calendar events (today + upcoming 30 days)
+    useEffect(() => {
+        let cancelled = false;
+        const loadGoogleEvents = async () => {
+            try {
+                const result = await fetchTodayGoogleEvents();
+                if (cancelled) return;
+                setGoogleEvents(result.events);
+                setGoogleNeedsReauth(result.needsReauth);
+
+                // Also fetch upcoming 30 days for the "Upcoming" toggle
+                const now = new Date();
+                const thirtyDaysOut = new Date(now);
+                thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                const upcoming = await fetchGoogleEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                if (!cancelled) setUpcomingGoogleEvents(upcoming);
+            } catch {
+                // Silently fail - Google Calendar integration is optional
+            }
+        };
+        if (currentOrganization?.id) {
+            loadGoogleEvents();
+        }
+        return () => { cancelled = true; };
+    }, [currentOrganization?.id]);
+
     const activeCustomers = customers.filter(c => c.status === 'Active').length;
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());
-    const totalTodaysEvents = todaysEvents.length + outlookEvents.length;
+    const totalTodaysEvents = todaysEvents.length + outlookEvents.length + googleEvents.length;
     const pendingTasks = tasks.filter(t => t.status !== 'completed');
     const pipelineValue = quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
     const revenueValue = invoices
@@ -388,41 +418,34 @@ export const DashboardPage = () => {
             return date >= startOfDay && date <= endOfDay;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-    // Merge local + Outlook events for today's schedule
+    // Helper to normalize external calendar events for display
+    const normalizeExternalEvent = (e: OutlookCalendarEvent | GoogleCalendarEvent) => ({
+        id: e.id,
+        title: e.title,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        location: e.location,
+        is_all_day: e.is_all_day,
+        organizer: e.organizer,
+        meeting_url: e.meeting_url,
+        web_link: e.web_link,
+        attendees: e.attendees,
+        source: e.source as 'outlook' | 'google',
+    });
+
+    // Merge local + Outlook + Google events for today's schedule
     const mergedTodaysSchedule = [
         ...todaysAppointments.map(e => ({ ...e, source: 'local' as const })),
-        ...outlookEvents.map(e => ({
-            id: e.id,
-            title: e.title,
-            start_time: e.start_time,
-            end_time: e.end_time,
-            location: e.location,
-            is_all_day: e.is_all_day,
-            organizer: e.organizer,
-            meeting_url: e.meeting_url,
-            web_link: e.web_link,
-            attendees: e.attendees,
-            source: 'outlook' as const,
-        })),
+        ...outlookEvents.map(normalizeExternalEvent),
+        ...googleEvents.map(normalizeExternalEvent),
     ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-    // Merge local + Outlook for upcoming view (next 5 from now onward)
+    // Merge local + Outlook + Google for upcoming view (next 5 from now onward)
     const mergedUpcoming = [
         ...events.filter(e => new Date(e.start_time) >= startOfDay)
             .map(e => ({ ...e, source: 'local' as const })),
-        ...upcomingOutlookEvents.map(e => ({
-            id: e.id,
-            title: e.title,
-            start_time: e.start_time,
-            end_time: e.end_time,
-            location: e.location,
-            is_all_day: e.is_all_day,
-            organizer: e.organizer,
-            meeting_url: e.meeting_url,
-            web_link: e.web_link,
-            attendees: e.attendees,
-            source: 'outlook' as const,
-        })),
+        ...upcomingOutlookEvents.map(normalizeExternalEvent),
+        ...upcomingGoogleEvents.map(normalizeExternalEvent),
     ]
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 5);
@@ -647,11 +670,22 @@ export const DashboardPage = () => {
                             {outlookNeedsReauth && (
                                 <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
                                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                                        Sign out and back in with Microsoft to sync your Outlook calendar.
+                                        Reconnect your Microsoft account in{' '}
+                                        <span className="underline cursor-pointer" onClick={() => navigate('/dashboard/settings?tab=communications&subTab=email')}>Settings</span>
+                                        {' '}to sync your Outlook calendar.
                                     </p>
                                 </div>
                             )}
-                            {displayedSchedule.length === 0 && !outlookNeedsReauth ? (
+                            {googleNeedsReauth && (
+                                <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        Reconnect your Google account in{' '}
+                                        <span className="underline cursor-pointer" onClick={() => navigate('/dashboard/settings?tab=communications&subTab=email')}>Settings</span>
+                                        {' '}to sync your Google Calendar.
+                                    </p>
+                                </div>
+                            )}
+                            {displayedSchedule.length === 0 && !outlookNeedsReauth && !googleNeedsReauth ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
                                     {scheduleMode === 'today' ? 'No appointments today' : 'No upcoming appointments'}
@@ -661,7 +695,7 @@ export const DashboardPage = () => {
                                     {displayedSchedule.map(event => (
                                         <div
                                             key={`${event.source}-${event.id}`}
-                                            onClick={() => event.source === 'outlook' && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
+                                            onClick={() => (event.source === 'outlook' || event.source === 'google') && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
                                             className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                                         >
                                             <div className="flex flex-col items-center justify-center w-10 shrink-0">
