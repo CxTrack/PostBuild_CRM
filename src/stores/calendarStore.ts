@@ -51,6 +51,7 @@ interface CalendarState {
   googleEvents: GoogleCalendarEvent[];
   googleLoading: boolean;
   googleNeedsReauth: boolean;
+  googleNoConnection: boolean;
   preferences: CalendarPreferences | null;
   loading: boolean;
   error: string | null;
@@ -78,6 +79,7 @@ const initialCalendarState = {
   googleEvents: [] as GoogleCalendarEvent[],
   googleLoading: false,
   googleNeedsReauth: false,
+  googleNoConnection: false,
   preferences: null as CalendarPreferences | null,
   loading: false,
   error: null as string | null,
@@ -168,6 +170,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       set({
         googleEvents: result.events,
         googleNeedsReauth: result.needsReauth,
+        googleNoConnection: result.noConnection,
       });
       if (result.needsReauth) {
         console.warn('[calendarStore] Google calendar needs re-authorization');

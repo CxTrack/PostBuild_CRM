@@ -20,8 +20,12 @@ interface CalComState {
 
 export default function CalendarSettings() {
   const { currentOrganization } = useOrganizationStore();
-  const { outlookNeedsReauth, fetchOutlookTodayEvents, outlookEvents, outlookLoading } = useCalendarStore();
+  const {
+    outlookNeedsReauth, fetchOutlookTodayEvents, outlookEvents, outlookLoading,
+    googleNeedsReauth, fetchGoogleTodayEvents, googleEvents, googleLoading, googleNoConnection
+  } = useCalendarStore();
   const [checking, setChecking] = useState(false);
+  const [checkingGoogle, setCheckingGoogle] = useState(false);
 
   const [settings, setSettings] = useState({
     auto_sync: true,
@@ -56,6 +60,7 @@ export default function CalendarSettings() {
   useEffect(() => {
     loadSettings();
     fetchOutlookTodayEvents();
+    fetchGoogleTodayEvents();
     loadCalComSettings();
   }, [currentOrganization]);
 
@@ -177,7 +182,27 @@ export default function CalendarSettings() {
     }
   };
 
+  const handleCheckGoogleConnection = async () => {
+    setCheckingGoogle(true);
+    try {
+      await fetchGoogleTodayEvents();
+      const store = useCalendarStore.getState();
+      if (!store.googleNeedsReauth && !store.googleNoConnection) {
+        toast.success('Google Calendar connected successfully!');
+      } else if (store.googleNeedsReauth) {
+        toast.error('Google Calendar access needs re-authorization. Please reconnect Gmail in Email Settings.');
+      } else {
+        toast.error('No Google account connected. Please connect Gmail in Email Settings first.');
+      }
+    } catch {
+      toast.error('Failed to check Google Calendar connection.');
+    } finally {
+      setCheckingGoogle(false);
+    }
+  };
+
   const isOutlookConnected = !outlookNeedsReauth && !outlookLoading;
+  const isGoogleConnected = !googleNeedsReauth && !googleNoConnection && !googleLoading;
 
   return (
     <div className="space-y-6">
@@ -269,6 +294,104 @@ export default function CalendarSettings() {
               Save Settings
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Google Calendar Connection */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              <Cloud size={20} className="mr-2 text-sky-600 dark:text-sky-400" />
+              Google Calendar
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Your Google Calendar events are synced automatically
+            </p>
+          </div>
+
+          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${
+            googleLoading
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              : isGoogleConnected
+                ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+          }`}>
+            {googleLoading ? (
+              'Checking...'
+            ) : isGoogleConnected ? (
+              <>
+                <CheckCircle2 size={12} />
+                Connected
+              </>
+            ) : (
+              <>
+                <AlertCircle size={12} />
+                Needs Setup
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {isGoogleConnected && (
+            <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <CheckCircle2 size={20} className="text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-300">Connected to Google Calendar</p>
+                  <p className="text-sm text-green-700 dark:text-green-400">
+                    {googleEvents.length > 0
+                      ? `${googleEvents.length} event${googleEvents.length !== 1 ? 's' : ''} synced for today`
+                      : 'No events scheduled for today'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {googleNeedsReauth && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                  <AlertCircle size={20} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-300">Calendar access needed</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Please go to Email Settings and reconnect your Google account to grant calendar access.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {googleNoConnection && !googleLoading && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                  <Cloud size={20} className="text-gray-500 dark:text-gray-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700 dark:text-gray-300">No Google account connected</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Connect your Gmail account in Email Settings to enable Google Calendar sync.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleCheckGoogleConnection}
+            disabled={checkingGoogle || googleLoading}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            {checkingGoogle ? 'Checking...' : 'Check Connection'}
+          </button>
         </div>
       </div>
 
@@ -543,6 +666,17 @@ export default function CalendarSettings() {
             <div
               className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600"
               style={{ backgroundColor: '#7c3aed' }}
+            />
+          </div>
+          {/* Google Calendar events use a fixed sky-blue color */}
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize flex items-center gap-2">
+              Google
+              <span className="text-xs text-gray-400">(fixed)</span>
+            </span>
+            <div
+              className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600"
+              style={{ backgroundColor: '#0ea5e9' }}
             />
           </div>
         </div>

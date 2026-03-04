@@ -827,7 +827,7 @@ const EmailConnectionSettings: React.FC = () => {
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <p><strong className="text-gray-700 dark:text-gray-300">Privacy:</strong> We only request the minimum permissions needed to send emails on your behalf. We never read your inbox or access your contacts.</p>
+            <p><strong className="text-gray-700 dark:text-gray-300">Privacy:</strong> We only request the minimum permissions needed to send and sync emails on your behalf. Gmail connections include read-only inbox access for email sync and calendar integration. We never access your contacts.</p>
             <p>OAuth tokens and SMTP passwords are stored encrypted using Supabase Vault. You can revoke access at any time by disconnecting above.</p>
           </div>
         </div>
