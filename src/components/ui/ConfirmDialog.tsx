@@ -142,6 +142,8 @@ export function useConfirmDialog() {
         onConfirm: () => { },
     });
 
+    const resolveRef = React.useRef<((value: boolean) => void) | null>(null);
+
     const confirm = React.useCallback(
         (options: {
             title: string;
@@ -150,6 +152,7 @@ export function useConfirmDialog() {
             confirmText?: string;
         }): Promise<boolean> => {
             return new Promise((resolve) => {
+                resolveRef.current = resolve;
                 setState({
                     isOpen: true,
                     title: options.title,
@@ -158,6 +161,7 @@ export function useConfirmDialog() {
                     confirmText: options.confirmText || 'Confirm',
                     onConfirm: () => {
                         resolve(true);
+                        resolveRef.current = null;
                         setState((prev) => ({ ...prev, isOpen: false }));
                     },
                 });
@@ -167,6 +171,10 @@ export function useConfirmDialog() {
     );
 
     const close = React.useCallback(() => {
+        if (resolveRef.current) {
+            resolveRef.current(false);
+            resolveRef.current = null;
+        }
         setState((prev) => ({ ...prev, isOpen: false }));
     }, []);
 

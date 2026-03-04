@@ -917,7 +917,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
         />
       )}
 
-      {DialogComponent}
+      <DialogComponent />
     </>
   );
 }
