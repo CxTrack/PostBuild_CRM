@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encodeBase64 } from "jsr:@std/encoding/base64";
 import { logApiCall } from "../_shared/api-logger.ts";
 
 const corsHeaders = {
@@ -78,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
         // Convert to base64 for Google Vision API
         const arrayBuffer = await fileData.arrayBuffer();
-        const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const base64Image = encodeBase64(new Uint8Array(arrayBuffer));
 
         // Call Google Cloud Vision API for text detection
         const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');

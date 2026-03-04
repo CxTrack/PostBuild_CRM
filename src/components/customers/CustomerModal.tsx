@@ -5,11 +5,11 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
-import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
 import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
+import { compressImageForOCR } from '@/utils/image.utils';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -75,34 +75,64 @@ export default function CustomerModal({ isOpen, onClose, customer, navigateToPro
   }, [customer]);
 
   const handleScanCard = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentOrganization?.id) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile || !currentOrganization?.id) return;
 
     setIsScanning(true);
     setScanProgress('Uploading image...');
     setError('');
 
     try {
+      const file = await compressImageForOCR(rawFile);
       const timestamp = Date.now();
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const path = `${currentOrganization.id}/${timestamp}_${safeName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('business-cards')
-        .upload(path, file, { cacheControl: '3600', upsert: false });
-
-      if (uploadError) throw new Error('Upload failed: ' + uploadError.message);
-
-      const { data: signedUrlData } = await supabase.storage
-        .from('business-cards')
-        .createSignedUrl(path, 3600);
-
-      const imageUrl = signedUrlData?.signedUrl || path;
-
-      setScanProgress('Scanning card with AI...');
       const supabaseUrl = getSupabaseUrl();
       const accessToken = await getAuthToken();
       if (!accessToken) throw new Error('Please sign in to scan business cards');
+
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      // Upload via direct fetch (avoids Supabase JS AbortController issue)
+      const uploadRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/business-cards/${path}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': anonKey,
+            'Cache-Control': '3600',
+          },
+          body: file,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        throw new Error('Upload failed: ' + (err.message || uploadRes.statusText));
+      }
+
+      // Create signed URL via direct fetch
+      const signedUrlRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/sign/business-cards/${path}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': anonKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ expiresIn: 3600 }),
+        }
+      );
+
+      const signedUrlData = signedUrlRes.ok ? await signedUrlRes.json() : null;
+      const imageUrl = signedUrlData?.signedURL
+        ? `${supabaseUrl}/storage/v1${signedUrlData.signedURL}`
+        : path;
+
+      setScanProgress('Scanning card with AI...');
 
       const ocrResponse = await fetch(`${supabaseUrl}/functions/v1/ocr-extract`, {
         method: 'POST',
