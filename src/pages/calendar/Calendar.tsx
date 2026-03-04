@@ -24,6 +24,7 @@ import AgendaView from '@/components/calendar/AgendaView';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import type { GoogleCalendarEvent } from '@/services/googleCalendar.service';
 
 /** Map an Outlook calendar event to a shape compatible with CalendarEvent views */
 function mapOutlookToCalendarEvent(evt: OutlookCalendarEvent) {
@@ -48,6 +49,29 @@ function mapOutlookToCalendarEvent(evt: OutlookCalendarEvent) {
   };
 }
 
+/** Map a Google calendar event to a shape compatible with CalendarEvent views */
+function mapGoogleToCalendarEvent(evt: GoogleCalendarEvent) {
+  return {
+    id: evt.id,
+    title: evt.title,
+    start_time: evt.start_time,
+    end_time: evt.end_time,
+    location: evt.location || '',
+    description: evt.description || '',
+    meeting_url: evt.meeting_url || '',
+    color_code: '#0ea5e9', // sky-blue for Google events
+    color: '#0ea5e9',
+    event_type: 'google',
+    status: evt.show_as === 'free' ? 'tentative' : 'confirmed',
+    attendee_name: evt.organizer || '',
+    attendee_email: '',
+    attendees: evt.attendees || [],
+    source: 'google' as const,
+    web_link: evt.web_link,
+    is_all_day: evt.is_all_day,
+  };
+}
+
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 export default function Calendar() {
@@ -63,7 +87,7 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
 
-  const { events, fetchEvents, updateEvent, deleteEvent, outlookEvents, fetchOutlookTodayEvents, fetchOutlookEventsRange, loading, outlookLoading } = useCalendarStore();
+  const { events, fetchEvents, updateEvent, deleteEvent, outlookEvents, fetchOutlookTodayEvents, fetchOutlookEventsRange, googleEvents, fetchGoogleEventsRange, loading, outlookLoading, googleLoading } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
   const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
   const { fetchTasks, getTasksByDate, updateTask, deleteTask } = useTaskStore();
@@ -104,13 +128,15 @@ export default function Calendar() {
     }
 
     fetchOutlookEventsRange(rangeStart.toISOString(), rangeEnd.toISOString());
-  }, [currentDate, view, fetchOutlookEventsRange]);
+    fetchGoogleEventsRange(rangeStart.toISOString(), rangeEnd.toISOString());
+  }, [currentDate, view, fetchOutlookEventsRange, fetchGoogleEventsRange]);
 
-  // Merge native events + Outlook events into a single array for views
+  // Merge native events + Outlook events + Google events into a single array for views
   const allEvents = useMemo(() => {
     const mappedOutlook = outlookEvents.map(mapOutlookToCalendarEvent);
-    return [...events, ...mappedOutlook];
-  }, [events, outlookEvents]);
+    const mappedGoogle = googleEvents.map(mapGoogleToCalendarEvent);
+    return [...events, ...mappedOutlook, ...mappedGoogle];
+  }, [events, outlookEvents, googleEvents]);
 
   const getEventsForDate = (date: Date) => {
     return allEvents.filter(event =>

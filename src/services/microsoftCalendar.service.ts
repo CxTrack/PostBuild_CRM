@@ -28,6 +28,7 @@ interface FetchCalendarResponse {
   events: OutlookCalendarEvent[];
   message?: string;
   needs_reauth?: boolean;
+  no_connection?: boolean;
 }
 
 /**
@@ -37,14 +38,15 @@ interface FetchCalendarResponse {
 export async function fetchTodayOutlookEvents(): Promise<{
   events: OutlookCalendarEvent[];
   needsReauth: boolean;
+  noConnection: boolean;
   message?: string;
 }> {
   try {
     const token = await getAuthToken();
-    if (!token) return { events: [], needsReauth: false };
+    if (!token) return { events: [], needsReauth: false, noConnection: true };
 
     const supabaseUrl = getSupabaseUrl();
-    if (!supabaseUrl) return { events: [], needsReauth: false };
+    if (!supabaseUrl) return { events: [], needsReauth: false, noConnection: true };
 
     const res = await fetch(`${supabaseUrl}/functions/v1/fetch-outlook-calendar`, {
       method: 'POST',
@@ -57,7 +59,7 @@ export async function fetchTodayOutlookEvents(): Promise<{
 
     if (!res.ok) {
       console.warn('[microsoftCalendar] Edge function error:', res.status);
-      return { events: [], needsReauth: false };
+      return { events: [], needsReauth: false, noConnection: false };
     }
 
     const data: FetchCalendarResponse = await res.json();
@@ -65,11 +67,12 @@ export async function fetchTodayOutlookEvents(): Promise<{
     return {
       events: data.events || [],
       needsReauth: data.needs_reauth || false,
+      noConnection: data.no_connection || false,
       message: data.message,
     };
   } catch (err) {
     console.warn('[microsoftCalendar] Fetch error:', err);
-    return { events: [], needsReauth: false };
+    return { events: [], needsReauth: false, noConnection: false };
   }
 }
 

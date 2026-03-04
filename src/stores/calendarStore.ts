@@ -48,6 +48,7 @@ interface CalendarState {
   outlookEvents: OutlookCalendarEvent[];
   outlookLoading: boolean;
   outlookNeedsReauth: boolean;
+  outlookNoConnection: boolean;
   googleEvents: GoogleCalendarEvent[];
   googleLoading: boolean;
   googleNeedsReauth: boolean;
@@ -76,6 +77,7 @@ const initialCalendarState = {
   outlookEvents: [] as OutlookCalendarEvent[],
   outlookLoading: false,
   outlookNeedsReauth: false,
+  outlookNoConnection: false,
   googleEvents: [] as GoogleCalendarEvent[],
   googleLoading: false,
   googleNeedsReauth: false,
@@ -140,6 +142,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       set({
         outlookEvents: result.events,
         outlookNeedsReauth: result.needsReauth,
+        outlookNoConnection: result.noConnection,
       });
       if (result.needsReauth) {
         console.warn('[calendarStore] Outlook calendar needs re-authorization');

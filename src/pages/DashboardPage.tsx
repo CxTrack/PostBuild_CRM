@@ -196,6 +196,7 @@ export const DashboardPage = () => {
     const [outlookEvents, setOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
     const [upcomingOutlookEvents, setUpcomingOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
     const [outlookNeedsReauth, setOutlookNeedsReauth] = useState(false);
+    const [outlookNoConnection, setOutlookNoConnection] = useState(false);
     const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
     const [upcomingGoogleEvents, setUpcomingGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
     const [googleNeedsReauth, setGoogleNeedsReauth] = useState(false);
@@ -355,6 +356,7 @@ export const DashboardPage = () => {
                 if (cancelled) return;
                 setOutlookEvents(result.events);
                 setOutlookNeedsReauth(result.needsReauth);
+                setOutlookNoConnection(result.noConnection);
 
                 // Also fetch upcoming 30 days for the "Upcoming" toggle
                 const now = new Date();
@@ -667,7 +669,7 @@ export const DashboardPage = () => {
                         }
                     >
                         <div className="h-full overflow-y-auto scrollbar-thin">
-                            {outlookNeedsReauth && (
+                            {outlookNeedsReauth && !outlookNoConnection && (
                                 <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
                                     <p className="text-xs text-amber-700 dark:text-amber-400">
                                         Reconnect your Microsoft account in{' '}
@@ -685,7 +687,7 @@ export const DashboardPage = () => {
                                     </p>
                                 </div>
                             )}
-                            {displayedSchedule.length === 0 && !outlookNeedsReauth && !googleNeedsReauth ? (
+                            {displayedSchedule.length === 0 && !(outlookNeedsReauth && !outlookNoConnection) && !googleNeedsReauth ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
                                     {scheduleMode === 'today' ? 'No appointments today' : 'No upcoming appointments'}
