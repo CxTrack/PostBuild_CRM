@@ -103,7 +103,7 @@ export function useQuarterbackInsights() {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       // Fetch inbound emails from last 24 hours that are linked to customers
       const emailRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&direction=eq.inbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=not.is.null&select=id,customer_id,sender_email,subject,sent_at,conversation_id&order=sent_at.desc&limit=10`,
+        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&user_id=eq.${userId}&direction=eq.inbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=not.is.null&select=id,customer_id,sender_email,subject,sent_at,conversation_id&order=sent_at.desc&limit=10`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -119,7 +119,7 @@ export function useQuarterbackInsights() {
       // Check which ones already have an outbound reply
       const customerIds = [...new Set(inboundEmails.map((e: any) => e.customer_id))];
       const repliedRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&direction=eq.outbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=in.(${customerIds.join(',')})&select=customer_id`,
+        `${SUPABASE_URL}/rest/v1/email_log?organization_id=eq.${orgId}&user_id=eq.${userId}&direction=eq.outbound&sent_at=gte.${twentyFourHoursAgo}&customer_id=in.(${customerIds.join(',')})&select=customer_id`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -191,7 +191,7 @@ export function useQuarterbackInsights() {
       console.error('[QB] Error fetching email insights:', err);
       return [];
     }
-  }, [orgId]);
+  }, [orgId, userId]);
 
   // Fetch upcoming meeting insights (client-side supplement, same pattern as email insights)
   const fetchMeetingInsights = useCallback(async (token: string): Promise<QuarterbackInsight[]> => {
