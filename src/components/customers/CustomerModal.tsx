@@ -664,33 +664,32 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               You can add more details (address, notes, etc.) from the customer profile page
             </p>
           </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 sm:px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={
+                saving ||
+                !formData.first_name ||
+                !formData.last_name ||
+                !formData.email ||
+                (formData.customer_type === 'business' && !formData.company)
+              }
+              className="flex items-center px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            >
+              <Save size={18} className="mr-1.5 sm:mr-2" />
+              {saving ? 'Saving...' : customer ? 'Update' : 'Create Customer'}
+            </button>
+          </div>
           </form>
-        </div>
-
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 sm:px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="submit"
-            form="customer-form"
-            disabled={
-              saving ||
-              !formData.first_name ||
-              !formData.last_name ||
-              !formData.email ||
-              (formData.customer_type === 'business' && !formData.company)
-            }
-            className="flex items-center px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-          >
-            <Save size={18} className="mr-1.5 sm:mr-2" />
-            {saving ? 'Saving...' : customer ? 'Update' : 'Create Customer'}
-          </button>
         </div>
       </div>
     </div>
