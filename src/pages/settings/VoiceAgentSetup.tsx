@@ -83,6 +83,12 @@ export const VoiceAgentSetup = () => {
     const [kbTextContent, setKbTextContent] = useState('');
     const [kbUrl, setKbUrl] = useState('');
     const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
+    // KB creation form — collect at least one source with the name
+    const [kbSourceType, setKbSourceType] = useState<'text' | 'url'>('text');
+    const [kbCreateTextTitle, setKbCreateTextTitle] = useState('');
+    const [kbCreateTextContent, setKbCreateTextContent] = useState('');
+    const [kbCreateUrl, setKbCreateUrl] = useState('');
+    const [kbCreating, setKbCreating] = useState(false);
     const [formData, setFormData] = useState({
         agent_name: '',
         business_name: '',
@@ -403,17 +409,58 @@ export const VoiceAgentSetup = () => {
             toast.error('Please enter a knowledge base name');
             return;
         }
-        const result = await createKnowledgeBase(kbName.trim());
-        if (result.success) {
-            toast.success('Knowledge base created!');
-            setKbName('');
-            if (result.knowledgeBaseId) {
-                setSelectedKbId(result.knowledgeBaseId);
-                // Auto-attach to agent
-                await attachKBsToAgent([result.knowledgeBaseId]);
+
+        // Collect the initial source based on selected type
+        let texts: Array<{ title: string; text: string }> | undefined;
+        let urls: string[] | undefined;
+
+        if (kbSourceType === 'text') {
+            if (!kbCreateTextTitle.trim() || !kbCreateTextContent.trim()) {
+                toast.error('Please provide both a title and content for the initial text source');
+                return;
             }
+            texts = [{ title: kbCreateTextTitle.trim(), text: kbCreateTextContent.trim() }];
         } else {
-            toast.error(result.error || 'Failed to create knowledge base');
+            if (!kbCreateUrl.trim()) {
+                toast.error('Please provide a URL to scrape');
+                return;
+            }
+            try {
+                new URL(kbCreateUrl.trim());
+            } catch {
+                toast.error('Please enter a valid URL (e.g., https://yourbusiness.com)');
+                return;
+            }
+            urls = [kbCreateUrl.trim()];
+        }
+
+        setKbCreating(true);
+        try {
+            const result = await createKnowledgeBase(kbName.trim(), texts, urls);
+            if (result.success) {
+                toast.success('Knowledge base created!');
+                setKbName('');
+                setKbCreateTextTitle('');
+                setKbCreateTextContent('');
+                setKbCreateUrl('');
+                if (result.knowledgeBaseId) {
+                    setSelectedKbId(result.knowledgeBaseId);
+                    // Auto-attach to agent
+                    await attachKBsToAgent([result.knowledgeBaseId]);
+                }
+            } else {
+                // Parse nested error messages for cleaner display
+                let errorMsg = result.error || 'Failed to create knowledge base';
+                try {
+                    if (errorMsg.includes('"message"')) {
+                        const parsed = JSON.parse(errorMsg);
+                        errorMsg = parsed.message || errorMsg;
+                    }
+                } catch { /* use original */ }
+                toast.error(errorMsg);
+            }
+        } finally {
+            setKbCreating(false);
         }
     };
 
@@ -1414,26 +1461,102 @@ export const VoiceAgentSetup = () => {
                                 )}
 
                                 {/* Create New KB */}
-                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Create New Knowledge Base</h4>
-                                    <div className="flex gap-3">
+                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Create New Knowledge Base</h4>
+
+                                    {/* KB Name */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Name</label>
                                         <input
                                             type="text"
                                             value={kbName}
                                             onChange={(e) => setKbName(e.target.value)}
-                                            className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Company FAQ, Service Catalog"
                                             maxLength={40}
                                         />
-                                        <button
-                                            onClick={handleCreateKB}
-                                            disabled={kbLoading || !kbName.trim()}
-                                            className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                                        >
-                                            {kbLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                            Create
-                                        </button>
                                     </div>
+
+                                    {/* Source Type Tabs */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Initial Source (required)</label>
+                                        <div className="flex gap-2 mb-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setKbSourceType('text')}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                    kbSourceType === 'text'
+                                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-transparent hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                                Text Content
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setKbSourceType('url')}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                    kbSourceType === 'url'
+                                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-transparent hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                <Globe className="w-4 h-4" />
+                                                Website URL
+                                            </button>
+                                        </div>
+
+                                        {/* Text Source Fields */}
+                                        {kbSourceType === 'text' && (
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    value={kbCreateTextTitle}
+                                                    onChange={(e) => setKbCreateTextTitle(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                    placeholder="Title (e.g., Business Hours, Pricing, Services)"
+                                                />
+                                                <textarea
+                                                    value={kbCreateTextContent}
+                                                    onChange={(e) => setKbCreateTextContent(e.target.value)}
+                                                    rows={5}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                                    placeholder="Enter the content your agent should know about this topic..."
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* URL Source Field */}
+                                        {kbSourceType === 'url' && (
+                                            <div className="space-y-2">
+                                                <input
+                                                    type="url"
+                                                    value={kbCreateUrl}
+                                                    onChange={(e) => setKbCreateUrl(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                    placeholder="https://yourbusiness.com/about"
+                                                />
+                                                <p className="text-xs text-gray-500">
+                                                    The AI will scrape and index the page content. You can add more URLs after creation.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Create Button */}
+                                    <button
+                                        onClick={handleCreateKB}
+                                        disabled={kbCreating || !kbName.trim() || (
+                                            kbSourceType === 'text'
+                                                ? (!kbCreateTextTitle.trim() || !kbCreateTextContent.trim())
+                                                : !kbCreateUrl.trim()
+                                        )}
+                                        className="w-full px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {kbCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        {kbCreating ? 'Creating...' : 'Create Knowledge Base'}
+                                    </button>
                                 </div>
                             </div>
 
