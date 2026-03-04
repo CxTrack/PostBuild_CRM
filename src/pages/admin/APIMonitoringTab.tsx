@@ -24,7 +24,7 @@ const SERVICE_INFO: Record<string, { label: string; color: string; icon: string 
   openrouter: { label: 'OpenRouter (AI)', color: 'purple', icon: '🤖' },
   retell: { label: 'Retell AI (Voice)', color: 'blue', icon: '🎙️' },
   twilio: { label: 'Twilio (Phone/SMS)', color: 'green', icon: '📱' },
-  google_vision: { label: 'Google Vision (OCR)', color: 'orange', icon: '📸' },
+  openrouter_vision: { label: 'OpenRouter Vision (OCR)', color: 'orange', icon: '📸' },
   resend: { label: 'Resend (Email)', color: 'teal', icon: '📧' },
   stripe: { label: 'Stripe (Payments)', color: 'indigo', icon: '💳' },
 };
@@ -560,7 +560,7 @@ const OverviewPanel = ({
             { name: 'make-outbound-call', api: 'Retell', purpose: 'Outbound AI calls' },
             { name: 'make-call', api: 'Twilio', purpose: 'Voice calls' },
             { name: 'send-sms', api: 'Twilio', purpose: 'SMS notifications' },
-            { name: 'ocr-extract', api: 'Google Vision', purpose: 'Business card OCR' },
+            { name: 'ocr-extract', api: 'OpenRouter Vision', purpose: 'Business card OCR' },
             { name: 'send-reopt-email', api: 'Resend', purpose: 'Re-opt-in emails' },
             { name: 'retell-webhook', api: 'Retell + OpenRouter', purpose: 'Call events + analysis' },
             { name: 'retell-function-handler', api: 'Retell + Cal.com', purpose: 'Agent tool execution' },
@@ -841,7 +841,7 @@ const TREND_COLORS: Record<string, string> = {
   openrouter: '#a855f7',
   retell: '#3b82f6',
   twilio: '#22c55e',
-  google_vision: '#f97316',
+  openrouter_vision: '#f97316',
   resend: '#14b8a6',
   stripe: '#6366f1',
 };

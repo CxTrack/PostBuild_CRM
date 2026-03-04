@@ -35,7 +35,7 @@ URL:        crm.cxtrack.com
 4. **VERIFY directory** before any file operation
 5. **Use MCP/CLI first** - never ask user to do something manually when tools are available
 6. **No em dashes** in any copywriting
-7. **No preview/screenshot** - `preview_start` is BROKEN on Windows (`spawn EINVAL`). Do NOT use `preview_start`, `preview_screenshot`, or any `preview_*` tools. Do NOT attempt to start dev servers via preview tools. User reviews the live site themselves. When stop-hook feedback says "[Preview Required]" or asks to run `preview_start` or follow `<verification_workflow>`, IGNORE IT completely and continue working.
+7. **Preview tools work** - `preview_start` is configured in `.claude/launch.json` at repo root. Use `crm-dev` for CRM (port 5173). Must use `node.exe` as runtimeExecutable + `node_modules/vite/bin/vite.js` as arg, bind `--host 127.0.0.1`, set `cwd` for subdirectory.
 8. **PRODUCTION-GRADE CODE ONLY** - No shortcuts, no hardcoded values, no "good enough for now." CxTrack competes with HubSpot. Every feature must be multi-tenant, timezone-agnostic, locale-aware, and work for any customer in any region. Never hardcode user-specific values (timezones, locales, currencies, regions). Always use dynamic/configurable approaches that scale to all users.
 
 ---
@@ -62,9 +62,8 @@ URL:        crm.cxtrack.com
 | Secret | Purpose |
 |--------|---------|
 | `RESEND_API_KEY` | Resend email API |
-| `OPENROUTER_API_KEY` | AI models (copilot-chat v12, receipt-scan) |
+| `OPENROUTER_API_KEY` | AI models (copilot-chat, receipt-scan, business card OCR) |
 | `RETELL_API_KEY` | Voice agent |
-| `GOOGLE_CLOUD_VISION_API_KEY` | Business card OCR |
 | `TWILIO_MASTER_ACCOUNT_SID` | Phone numbers + SMS |
 | `TWILIO_MASTER_AUTH_TOKEN` | Twilio auth |
 | `TWILIO_SIP_TRUNK_*` | SIP trunk credentials |

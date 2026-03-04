@@ -22,14 +22,40 @@ interface ExtractedContact {
     raw_text: string;
 }
 
+const SYSTEM_PROMPT = `You are a business card OCR extraction system. Given an image of a business card, extract all contact information into a structured JSON object.
+
+Return ONLY valid JSON with these exact fields (use empty string "" for any field not found):
+{
+  "first_name": "",
+  "last_name": "",
+  "email": "",
+  "phone": "",
+  "company": "",
+  "address": "",
+  "city": "",
+  "state": "",
+  "postal_code": "",
+  "country": "",
+  "raw_text": ""
+}
+
+Rules:
+- "raw_text" should contain ALL text visible on the card, separated by newlines
+- "email" must be lowercase
+- "phone" should include country code if visible (e.g. +1 for North American), digits and + only, no dashes or spaces
+- If you see a Canadian postal code (e.g. K1A 0B1), set country to "Canada"
+- If you see a US zip code, set country to "United States"
+- Separate first_name and last_name (do not put full name in first_name)
+- "address" should be the street address only (not city/state/postal)
+- Do NOT include job titles in the name fields
+- Return ONLY the JSON object, no markdown, no explanation`;
+
 Deno.serve(async (req: Request) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        // Authenticate the caller via JWT
         const authHeader = req.headers.get('Authorization');
         if (!authHeader?.startsWith('Bearer ')) {
             return new Response(
@@ -41,7 +67,6 @@ Deno.serve(async (req: Request) => {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-        // Verify the user's JWT
         const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
             global: { headers: { Authorization: authHeader } },
         });
@@ -62,10 +87,20 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        // Create Supabase client with service role for storage access
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
+        if (!openRouterKey) {
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'AI service not configured. OPENROUTER_API_KEY secret is missing.',
+                    contact: createEmptyContact(),
+                }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
 
         // Download the image from storage
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const { data: fileData, error: downloadError } = await supabase.storage
             .from(bucket)
             .download(file_path);
@@ -77,65 +112,81 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        // Convert to base64 for Google Vision API
+        // Convert to base64 data URL for vision model
         const arrayBuffer = await fileData.arrayBuffer();
         const base64Image = encodeBase64(new Uint8Array(arrayBuffer));
 
-        // Call Google Cloud Vision API for text detection
-        const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
+        // Detect MIME type from file extension
+        const ext = file_path.split('.').pop()?.toLowerCase() || 'jpg';
+        const mimeMap: Record<string, string> = {
+            jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+            gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp',
+        };
+        const mimeType = mimeMap[ext] || 'image/jpeg';
+        const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
-        if (!googleApiKey) {
-            // Fallback: return empty fields with raw text extraction note
-            return new Response(
-                JSON.stringify({
-                    success: false,
-                    error: 'Google Cloud Vision API key not configured',
-                    contact: createEmptyContact(),
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
+        // Call OpenRouter with a vision-capable model
+        const ocrStart = Date.now();
+        const ocrResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openRouterKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://crm.cxtrack.com',
+                'X-Title': 'CxTrack CRM',
+            },
+            body: JSON.stringify({
+                model: 'google/gemini-2.5-flash',
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: { url: dataUrl },
+                            },
+                            {
+                                type: 'text',
+                                text: 'Extract all contact information from this business card image. Return ONLY the JSON object.',
+                            },
+                        ],
+                    },
+                ],
+                temperature: 0,
+                max_tokens: 1000,
+            }),
+        });
 
-        const visionStart = Date.now();
-        const visionResponse = await fetch(
-            `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    requests: [{
-                        image: { content: base64Image },
-                        features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
-                    }],
-                }),
-            }
-        );
+        const responseTimeMs = Date.now() - ocrStart;
 
-        if (!visionResponse.ok) {
-            const errorText = await visionResponse.text();
+        if (!ocrResponse.ok) {
+            const errorText = await ocrResponse.text();
             logApiCall({
-                serviceName: 'google_vision', endpoint: '/v1/images:annotate',
-                method: 'POST', statusCode: visionResponse.status, responseTimeMs: Date.now() - visionStart,
+                serviceName: 'openrouter_vision', endpoint: '/v1/chat/completions',
+                method: 'POST', statusCode: ocrResponse.status, responseTimeMs,
                 errorMessage: errorText,
             });
             return new Response(
-                JSON.stringify({ error: 'Vision API error: ' + errorText }),
+                JSON.stringify({ error: 'OCR service error: ' + errorText }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        const visionData = await visionResponse.json();
+        const ocrData = await ocrResponse.json();
         logApiCall({
-            serviceName: 'google_vision', endpoint: '/v1/images:annotate',
-            method: 'POST', statusCode: 200, responseTimeMs: Date.now() - visionStart,
+            serviceName: 'openrouter_vision', endpoint: '/v1/chat/completions',
+            method: 'POST', statusCode: 200, responseTimeMs,
         });
-        const rawText = visionData.responses?.[0]?.fullTextAnnotation?.text || '';
 
-        // Parse the extracted text into contact fields
-        const contact = parseBusinessCard(rawText);
+        const content = ocrData.choices?.[0]?.message?.content || '';
+        const tokensUsed = ocrData.usage?.total_tokens || 0;
+
+        // Parse the LLM JSON response
+        const contact = parseLLMResponse(content);
 
         return new Response(
-            JSON.stringify({ success: true, contact, raw_text: rawText }),
+            JSON.stringify({ success: true, contact, raw_text: contact.raw_text, tokensUsed }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     } catch (error: any) {
@@ -154,64 +205,34 @@ function createEmptyContact(): ExtractedContact {
     };
 }
 
-function parseBusinessCard(text: string): ExtractedContact {
-    const contact = createEmptyContact();
-    contact.raw_text = text;
+function parseLLMResponse(content: string): ExtractedContact {
+    const empty = createEmptyContact();
 
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-    // Extract email
-    const emailRegex = /[\w.-]+@[\w.-]+\.\w{2,}/;
-    const emailMatch = text.match(emailRegex);
-    if (emailMatch) contact.email = emailMatch[0].toLowerCase();
-
-    // Extract phone number (North American format)
-    const phoneRegex = /(?:\+?1[-.\s]?)?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})/;
-    const phoneMatch = text.match(phoneRegex);
-    if (phoneMatch) contact.phone = phoneMatch[0].replace(/[^\d+]/g, '');
-
-    // Extract postal/zip code
-    const postalRegex = /[A-Z]\d[A-Z]\s?\d[A-Z]\d/i; // Canadian
-    const zipRegex = /\b\d{5}(?:-\d{4})?\b/; // US
-    const postalMatch = text.match(postalRegex);
-    const zipMatch = text.match(zipRegex);
-    if (postalMatch) {
-        contact.postal_code = postalMatch[0].toUpperCase();
-        contact.country = 'Canada';
-    } else if (zipMatch) {
-        contact.postal_code = zipMatch[0];
-        contact.country = 'United States';
-    }
-
-    // Extract name (usually the first or most prominent line)
-    // Heuristic: first line that's NOT a company name (no Inc, Ltd, LLC, etc.) and NOT an email/phone
-    for (const line of lines) {
-        if (emailRegex.test(line) || phoneRegex.test(line)) continue;
-        if (/(?:inc|ltd|llc|corp|co\.|company|group|associates|services|consulting|solutions|mortgage|realty|law\s+firm)/i.test(line)) {
-            if (!contact.company) contact.company = line;
-            continue;
-        }
-        if (/(?:www\.|\.com|\.ca|\.net|\.org)/i.test(line)) continue;
-        if (postalRegex.test(line) || zipRegex.test(line)) continue;
-
-        // Likely a name if it's short (2-4 words) and has capitalized words
-        const words = line.split(/\s+/);
-        if (words.length >= 2 && words.length <= 4 && !contact.first_name) {
-            contact.first_name = words[0];
-            contact.last_name = words.slice(1).join(' ');
-            continue;
+    try {
+        // Strip markdown code fences if present
+        let json = content.trim();
+        if (json.startsWith('```')) {
+            json = json.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
         }
 
-        // Could be a job title or address — skip for now
-    }
+        const parsed = JSON.parse(json);
 
-    // Try to find address (line with street number)
-    for (const line of lines) {
-        if (/^\d+\s+\w+/.test(line) && !emailRegex.test(line) && !phoneRegex.test(line)) {
-            contact.address = line;
-            break;
-        }
+        return {
+            first_name: String(parsed.first_name || '').trim(),
+            last_name: String(parsed.last_name || '').trim(),
+            email: String(parsed.email || '').trim().toLowerCase(),
+            phone: String(parsed.phone || '').trim().replace(/[^\d+]/g, ''),
+            company: String(parsed.company || '').trim(),
+            address: String(parsed.address || '').trim(),
+            city: String(parsed.city || '').trim(),
+            state: String(parsed.state || '').trim(),
+            postal_code: String(parsed.postal_code || '').trim(),
+            country: String(parsed.country || '').trim(),
+            raw_text: String(parsed.raw_text || '').trim(),
+        };
+    } catch {
+        console.error('[ocr-extract] Failed to parse LLM response as JSON:', content);
+        empty.raw_text = content;
+        return empty;
     }
-
-    return contact;
 }

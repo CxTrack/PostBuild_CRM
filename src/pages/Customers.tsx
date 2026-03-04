@@ -886,7 +886,7 @@ export const Customers: React.FC = () => {
           setShowCustomerModal(false);
           setPrefillData(null);
         }}
-        customer={prefillData || undefined}
+        prefill={prefillData || undefined}
       />
 
       <CSVImporter
