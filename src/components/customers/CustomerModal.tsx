@@ -310,7 +310,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm" style={{ touchAction: 'none' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
@@ -324,7 +324,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain" style={{ touchAction: 'pan-y' }}>
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Scan Business Card — shown for new customers */}
           {!customer?.id && (
             <div>
