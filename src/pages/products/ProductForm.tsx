@@ -120,14 +120,11 @@ export default function ProductForm() {
     fetchCustomFields('product');
   }, [fetchCustomFields]);
 
-  // BUG FIX #2: Load products for edit mode, with proper dependency on products array
+  // Always fetch fresh products in edit mode to avoid stale cache
   useEffect(() => {
-    if (isEdit && id) {
-      const product = getProductById(id);
-      if (!product) {
-        setProductLoading(true);
-        fetchProducts(currentOrganization?.id).finally(() => setProductLoading(false));
-      }
+    if (isEdit && id && currentOrganization?.id) {
+      setProductLoading(true);
+      fetchProducts(currentOrganization.id).finally(() => setProductLoading(false));
     }
   }, [id, isEdit, currentOrganization?.id]);
 
@@ -238,7 +235,7 @@ export default function ProductForm() {
       if (isEdit && id) {
         await updateProduct(id, productData);
         toast.success(isMortgage ? 'Loan product updated' : 'Product updated successfully');
-        navigate(-1);
+        navigate('/dashboard/products');
       } else {
         const newProduct = await createProduct(productData);
         if (newProduct) {
@@ -246,7 +243,7 @@ export default function ProductForm() {
           toast.success(isMortgage ? 'Loan product created' : 'Product created successfully');
           setShowSuccessModal(true);
         } else {
-          navigate(-1);
+          navigate('/dashboard/products');
         }
       }
     } catch (error) {
@@ -281,7 +278,7 @@ export default function ProductForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard/products')}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
@@ -302,7 +299,7 @@ export default function ProductForm() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard/products')}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
