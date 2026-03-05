@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Save, Package, DollarSign, Tag,
@@ -96,6 +96,24 @@ export default function ProductForm() {
 
   // Get custom field definitions for products
   const productCustomFields = customFieldDefs.filter(f => f.entity_type === 'product');
+
+  // Derive previously-used custom field values from existing products for suggestions
+  const customFieldSuggestions = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const field of productCustomFields) {
+      const unique = new Set<string>();
+      for (const p of products) {
+        const val = p.custom_fields?.[field.field_key];
+        if (val !== undefined && val !== null && val !== '') {
+          unique.add(String(val));
+        }
+      }
+      if (unique.size > 0) {
+        map[field.field_key] = Array.from(unique).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      }
+    }
+    return map;
+  }, [products, productCustomFields]);
 
   // Fetch custom fields on mount
   useEffect(() => {
@@ -1129,6 +1147,7 @@ export default function ProductForm() {
                   fields={productCustomFields}
                   values={customFieldValues}
                   onChange={(key, value) => setCustomFieldValues(prev => ({ ...prev, [key]: value }))}
+                  suggestions={customFieldSuggestions}
                 />
               )}
             </>
