@@ -200,14 +200,14 @@ export const CustomerProfile: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
-              <ArrowLeft size={20} className="mr-2" />
-              Back to Customers
+              <ArrowLeft size={20} className="mr-2 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Customers</span>
             </button>
 
             <div className="flex items-center space-x-2">
@@ -218,16 +218,16 @@ export const CustomerProfile: React.FC = () => {
           </div>
         </div>
 
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-xl font-bold shadow-sm">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-sm flex-shrink-0">
                 {currentCustomer.name.charAt(0).toUpperCase()}
               </div>
 
               <div>
-                <div className="flex items-center space-x-3">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                     {currentCustomer.name}
                   </h1>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${currentCustomer.status === 'Active'
@@ -261,7 +261,7 @@ export const CustomerProfile: React.FC = () => {
                     </button>
 
                     {showAssignDropdown && canReassign && (
-                      <div className="absolute top-full left-0 mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
+                      <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
                         <button
                           onClick={() => handleReassign(null)}
                           className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -299,23 +299,23 @@ export const CustomerProfile: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center space-x-4 text-xs mt-0.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs mt-0.5">
                   {currentCustomer.email && (
-                    <a href={`mailto:${currentCustomer.email}`} className="text-gray-500 hover:text-primary-600 flex items-center">
-                      <Mail size={12} className="mr-1" /> {currentCustomer.email}
+                    <a href={`mailto:${currentCustomer.email}`} className="text-gray-500 hover:text-primary-600 flex items-center truncate max-w-[220px] sm:max-w-none">
+                      <Mail size={12} className="mr-1 flex-shrink-0" /> {currentCustomer.email}
                     </a>
                   )}
                   {currentCustomer.phone && (
                     <span className="text-gray-500 flex items-center">
-                      <Phone size={12} className="mr-1" /> {formatPhoneDisplay(currentCustomer.phone)}
+                      <Phone size={12} className="mr-1 flex-shrink-0" /> {formatPhoneDisplay(currentCustomer.phone)}
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-6 mr-6 border-r border-gray-100 dark:border-gray-700 pr-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 sm:mr-6 sm:border-r border-gray-100 dark:border-gray-700 sm:pr-6 w-full sm:w-auto border-b sm:border-b-0 pb-3 sm:pb-0">
                 <div className="text-center">
                   <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">Value</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">${totalValue.toLocaleString()}</p>
@@ -330,7 +330,7 @@ export const CustomerProfile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 {currentCustomer.phone && (
                   <button
                     onClick={() => !smsOptedOut && setShowSMSModal(true)}
@@ -343,18 +343,18 @@ export const CustomerProfile: React.FC = () => {
                 )}
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                  className="flex items-center px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                 >
-                  <Edit size={16} className="mr-2" />
-                  Edit Profile
+                  <Edit size={16} className="sm:mr-2" />
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6">
-          <div className="flex items-center space-x-8 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 sm:px-6">
+          <div className="flex items-center gap-1 sm:gap-8 overflow-x-auto scrollbar-hide border-b border-gray-200 dark:border-gray-700">
             {[
               { id: 'overview', label: 'Overview', icon: FileText },
               { id: 'communications', label: 'Communications', icon: MessageSquare },
@@ -367,12 +367,12 @@ export const CustomerProfile: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center py-4 border-b-2 transition-colors ${activeTab === tab.id
+                  className={`flex items-center py-3 sm:py-4 px-2 sm:px-0 border-b-2 transition-colors whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:text-primary-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
-                  <Icon size={18} className="mr-2" />
+                  <Icon size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
                   {tab.label}
                 </button>
               );
@@ -381,7 +381,7 @@ export const CustomerProfile: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {activeTab === 'overview' && (
           <OverviewTab
             customer={currentCustomer}
@@ -694,7 +694,7 @@ function OverviewTab({
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Contact Information
@@ -704,10 +704,10 @@ function OverviewTab({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-              <p className="text-gray-900 dark:text-white">{customer.email || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
+              <p className="text-gray-900 dark:text-white truncate">{customer.email || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
@@ -723,7 +723,7 @@ function OverviewTab({
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Type</p>
               <p className="text-gray-900 dark:text-white">{customer.customer_type || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not set</span>}</p>
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
               {customer.address || customer.city || customer.state ? (
                 <p className="text-gray-900 dark:text-white">
@@ -770,7 +770,7 @@ function OverviewTab({
 
         {/* Contacts Section - Only for Business Customers */}
         {isBusinessCustomer && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users size={20} className="text-primary-600 dark:text-primary-400" />
@@ -792,31 +792,31 @@ function OverviewTab({
                     key={contact.id}
                     className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-primary-500/50 transition-all group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold flex-shrink-0">
                         {contact.name?.charAt(0)?.toUpperCase() || 'C'}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900 dark:text-white">{contact.name}</p>
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{contact.name}</p>
                           {contact.is_primary && (
-                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full">
+                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full flex-shrink-0">
                               Primary
                             </span>
                           )}
                         </div>
                         {contact.title && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{contact.title}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{contact.title}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                           {contact.email && (
-                            <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-primary-600">
-                              <Mail size={12} /> {contact.email}
+                            <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-primary-600 truncate">
+                              <Mail size={12} className="flex-shrink-0" /> <span className="truncate">{contact.email}</span>
                             </a>
                           )}
                           {contact.phone && (
                             <span className="flex items-center gap-1">
-                              <Phone size={12} /> {formatPhoneDisplay(contact.phone)}
+                              <Phone size={12} className="flex-shrink-0" /> {formatPhoneDisplay(contact.phone)}
                             </span>
                           )}
                         </div>
@@ -847,7 +847,7 @@ function OverviewTab({
         )}
 
         {enabledModuleIds.includes('quotes') && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Recent {quotesLabels.entityPlural}
@@ -896,7 +896,7 @@ function OverviewTab({
         )}
 
         {enabledModuleIds.includes('invoices') && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Recent {invoicesLabels.entityPlural}
@@ -946,7 +946,7 @@ function OverviewTab({
       </div>
 
       <div className="space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
             Quick Actions
           </h3>
@@ -1045,7 +1045,7 @@ function OverviewTab({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Notes
@@ -1094,7 +1094,7 @@ function OverviewTab({
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Tags
@@ -1120,7 +1120,7 @@ function OverviewTab({
       {/* Actions & Danger Zone — full width below grid */}
       <div className="lg:col-span-3 mt-2 space-y-4">
         {/* Support & Data Requests */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
             <TicketPlus size={18} className="text-primary-500" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1130,8 +1130,8 @@ function OverviewTab({
 
           <div className="space-y-3">
             {/* Submit Support Ticket */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   Submit Support Ticket
                 </p>
@@ -1141,7 +1141,7 @@ function OverviewTab({
               </div>
               <button
                 onClick={() => setShowTicketModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
               >
                 <TicketPlus size={16} />
                 Submit Ticket
@@ -1149,8 +1149,8 @@ function OverviewTab({
             </div>
 
             {/* Request Data Deletion / DSAR */}
-            <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/30">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/30">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   Request Data Deletion
                 </p>
@@ -1160,7 +1160,7 @@ function OverviewTab({
               </div>
               <button
                 onClick={() => setShowDsarModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 hover:bg-amber-200 dark:hover:bg-amber-900/30 border border-amber-300 dark:border-amber-800/30 rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 hover:bg-amber-200 dark:hover:bg-amber-900/30 border border-amber-300 dark:border-amber-800/30 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
               >
                 <ShieldAlert size={16} />
                 Data Request
@@ -1171,7 +1171,7 @@ function OverviewTab({
 
         {/* Danger Zone */}
         {isOwnerOrAdmin && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle size={18} className="text-red-500" />
               <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
@@ -1179,8 +1179,8 @@ function OverviewTab({
               </h3>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   Remove Client
                 </p>
@@ -1190,7 +1190,7 @@ function OverviewTab({
               </div>
               <button
                 onClick={handleRemoveClient}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
               >
                 <Trash2 size={16} />
                 Remove Client
@@ -1358,14 +1358,14 @@ function CommunicationsTab({ customer, onReplyEmail }: { customer: Customer; onR
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             {(['all', 'calls', 'meetings', 'emails'] as const).map(filter => (
               <button
                 key={filter}
                 onClick={() => setActiveFilter(filter)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
                   activeFilter === filter
                     ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -1378,7 +1378,7 @@ function CommunicationsTab({ customer, onReplyEmail }: { customer: Customer; onR
         </div>
         <button
           onClick={() => setShowLogCallModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium w-full sm:w-auto"
         >
           <Phone size={16} />
           Log Communication
@@ -1591,14 +1591,14 @@ function DocumentsTab({ customer }: { customer: Customer }) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Documents</h2>
           <div className="flex items-center gap-3">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+              className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 flex-1 sm:flex-none"
             >
               {categories.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -1710,7 +1710,7 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Tasks ({customerTasks.length})
@@ -1761,7 +1761,7 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
                           </div>
 
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
                               <h4 className="font-medium text-gray-900 dark:text-white">
                                 {task.title}
                               </h4>
@@ -2021,7 +2021,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
           Activity Timeline
         </h2>
