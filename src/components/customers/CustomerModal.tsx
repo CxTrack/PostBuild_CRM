@@ -302,11 +302,11 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -321,7 +321,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <form id="customer-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Scan Business Card — shown for new customers */}
           {!customer?.id && (
             <div>
@@ -381,27 +381,25 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               </div>
             </div>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">
               Type
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, customer_type: 'personal' })}
-                className={`p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'personal'
+                className={`p-2.5 sm:p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'personal'
                   ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
               >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'personal'
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'personal'
                     ? 'bg-blue-600 dark:bg-blue-500'
                     : 'bg-gray-100 dark:bg-gray-700'
                     }`}>
-                    <User size={20} className={
+                    <User size={18} className={
                       formData.customer_type === 'personal'
                         ? 'text-white'
                         : 'text-gray-600 dark:text-gray-400'
@@ -411,7 +409,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
                     <p className="font-semibold text-gray-900 dark:text-white text-sm">
                       Personal
                     </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 hidden sm:block">
                       Individual client
                     </p>
                   </div>
@@ -421,17 +419,17 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, customer_type: 'business' })}
-                className={`p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'business'
+                className={`p-2.5 sm:p-4 border-2 rounded-lg text-left transition-all ${formData.customer_type === 'business'
                   ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
               >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'business'
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${formData.customer_type === 'business'
                     ? 'bg-blue-600 dark:bg-blue-500'
                     : 'bg-gray-100 dark:bg-gray-700'
                     }`}>
-                    <Building size={20} className={
+                    <Building size={18} className={
                       formData.customer_type === 'business'
                         ? 'text-white'
                         : 'text-gray-600 dark:text-gray-400'
@@ -441,7 +439,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
                     <p className="font-semibold text-gray-900 dark:text-white text-sm">
                       Business
                     </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 hidden sm:block">
                       Company/org
                     </p>
                   </div>
@@ -480,7 +478,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
             </div>
           </div>
 
-          <div>
+          <div className="hidden sm:block">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Middle Name
             </label>
@@ -664,38 +662,39 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
             </div>
           )}
 
-          <div className="pt-2 pb-1">
+          <div className="hidden sm:block pt-2 pb-1">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
               <span className="mr-1">{'\u{1F4A1}'}</span>
               You can add more details (address, notes, etc.) from the customer profile page
             </p>
           </div>
+        </form>
 
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 sm:px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
-            >
-              Cancel
-            </button>
+        {/* Fixed footer — outside form, uses form= attribute to submit */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 sm:px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
+          >
+            Cancel
+          </button>
 
-            <button
-              type="submit"
-              disabled={
-                saving ||
-                !formData.first_name ||
-                !formData.last_name ||
-                !formData.email ||
-                (formData.customer_type === 'business' && !formData.company)
-              }
-              className="flex items-center px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-            >
-              <Save size={18} className="mr-1.5 sm:mr-2" />
-              {saving ? 'Saving...' : customer ? 'Update' : 'Create Customer'}
-            </button>
-          </div>
-          </form>
+          <button
+            type="submit"
+            form="customer-form"
+            disabled={
+              saving ||
+              !formData.first_name ||
+              !formData.last_name ||
+              !formData.email ||
+              (formData.customer_type === 'business' && !formData.company)
+            }
+            className="flex items-center px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+          >
+            <Save size={18} className="mr-1.5 sm:mr-2" />
+            {saving ? 'Saving...' : customer ? 'Update' : 'Create Customer'}
+          </button>
         </div>
       </div>
     </div>

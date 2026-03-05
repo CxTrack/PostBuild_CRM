@@ -232,12 +232,13 @@ export default function TaskModal({
   if (!isOpen) return null;
 
   return (
+    <>
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl sm:max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl sm:max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
@@ -252,8 +253,7 @@ export default function TaskModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0">
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
+        <form id="task-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-4 sm:p-6 space-y-6">
           {error && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl">
               <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
@@ -455,39 +455,41 @@ export default function TaskModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-            >
-              {saving ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
-            </button>
-          </div>
-
         </form>
+
+        {/* Fixed footer — outside form, uses form= attribute to submit */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="task-form"
+            disabled={saving}
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+          >
+            {saving ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
+          </button>
         </div>
       </div>
-
-      <QuickAddCustomerModal
-        isOpen={showQuickAddCustomer}
-        onClose={() => setShowQuickAddCustomer(false)}
-        onCustomerCreated={(customer) => {
-          setFormData({
-            ...formData,
-            customer_id: customer.id,
-            customer_name: customer.name,
-          });
-          setShowQuickAddCustomer(false);
-        }}
-      />
     </div>
+
+    <QuickAddCustomerModal
+      isOpen={showQuickAddCustomer}
+      onClose={() => setShowQuickAddCustomer(false)}
+      onCustomerCreated={(customer) => {
+        setFormData({
+          ...formData,
+          customer_id: customer.id,
+          customer_name: customer.name,
+        });
+        setShowQuickAddCustomer(false);
+      }}
+    />
+    </>
   );
 }
