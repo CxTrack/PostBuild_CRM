@@ -224,6 +224,12 @@ export default function ProductForm() {
         ...cleanFormData,
         sku,
         organization_id: currentOrganization?.id || '',
+        // Coerce empty-string numeric fields back to 0 for the DB
+        price: Number(cleanFormData.price) || 0,
+        cost: Number(cleanFormData.cost) || 0,
+        tax_rate: Number(cleanFormData.tax_rate) || 0,
+        quantity_on_hand: Number(cleanFormData.quantity_on_hand) || 0,
+        low_stock_threshold: Number(cleanFormData.low_stock_threshold) || 0,
         // For mortgage, auto-set product_type to 'service' (loan products are services)
         product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
         // For mortgage, category is the loan type label
@@ -793,8 +799,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.quantity_on_hand || ''}
-                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                              value={formData.quantity_on_hand === 0 || formData.quantity_on_hand === '' ? '' : formData.quantity_on_hand}
+                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -806,8 +812,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.low_stock_threshold || ''}
-                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                              value={formData.low_stock_threshold === 0 || formData.low_stock_threshold === '' ? '' : formData.low_stock_threshold}
+                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -819,8 +825,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.reorder_quantity}
-                              onChange={(e) => setFormData({ ...formData, reorder_quantity: parseInt(e.target.value) || 0 })}
+                              value={formData.reorder_quantity === 0 || formData.reorder_quantity === '' ? '' : formData.reorder_quantity}
+                              onChange={(e) => setFormData({ ...formData, reorder_quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -1051,8 +1057,8 @@ export default function ProductForm() {
                           required
                           step="0.01"
                           min="0"
-                          value={formData.price || ''}
-                          onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          value={formData.price === 0 || formData.price === '' ? '' : formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                           onFocus={(e) => { if (formData.price === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
@@ -1069,8 +1075,8 @@ export default function ProductForm() {
                           type="number"
                           step="0.01"
                           min="0"
-                          value={formData.cost || ''}
-                          onChange={(e) => setFormData({ ...formData, cost: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          value={formData.cost === 0 || formData.cost === '' ? '' : formData.cost}
+                          onChange={(e) => setFormData({ ...formData, cost: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                           onFocus={(e) => { if (formData.cost === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
@@ -1105,8 +1111,8 @@ export default function ProductForm() {
                           step="0.01"
                           min="0"
                           max="100"
-                          value={formData.tax_rate || ''}
-                          onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          value={formData.tax_rate === 0 || formData.tax_rate === '' ? '' : formData.tax_rate}
+                          onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                           onFocus={(e) => { if (formData.tax_rate === 0) e.target.select(); }}
                           className={inputClasses}
                         />
