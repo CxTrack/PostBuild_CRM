@@ -22,6 +22,9 @@ import {
   CheckSquare,
   MailCheck,
   X,
+  SquarePen,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +36,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import toast from 'react-hot-toast';
 import { format, isToday, isYesterday, isThisYear } from 'date-fns';
 import DOMPurify from 'dompurify';
+import SendEmailModal from '@/components/email/SendEmailModal';
 
 // ── Helpers ──────────────────────────────────────────────────
 function formatEmailDate(dateStr: string): string {
@@ -123,13 +127,16 @@ export default function EmailPage() {
     toggleThreadSelection, selectAllThreads, clearSelection, sendReply,
   } = useEmailStore();
 
-  // Preferences (layout)
-  const { preferences, saveEmailLayout } = usePreferencesStore();
+  // Preferences (layout + display)
+  const { preferences, saveEmailLayout, saveDisplayPreferences } = usePreferencesStore();
   const emailLayout = preferences.emailLayout;
   const layout = emailLayout.layout;
 
   // UI state
   const [showDetail, setShowDetail] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const emailPageSize = preferences.displayPreferences?.emailPageSize || 25;
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
   );
@@ -172,6 +179,16 @@ export default function EmailPage() {
     }
     return result;
   }, [threads, filter, searchQuery]);
+
+  // Reset page when filters or data change
+  useEffect(() => { setCurrentPage(1); }, [filter, searchQuery, threads]);
+
+  // Paginate threads
+  const totalPages = Math.max(1, Math.ceil(filteredThreads.length / emailPageSize));
+  const paginatedThreads = useMemo(() => {
+    const start = (currentPage - 1) * emailPageSize;
+    return filteredThreads.slice(start, start + emailPageSize);
+  }, [filteredThreads, currentPage, emailPageSize]);
 
   const selectedThread = threads.find(t => t.id === selectedThreadId) || null;
 
@@ -348,6 +365,14 @@ export default function EmailPage() {
             >
               <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
             </button>
+            {/* Compose button */}
+            <button
+              onClick={() => setShowCompose(true)}
+              className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              title="Compose new email"
+            >
+              <SquarePen size={15} />
+            </button>
           </div>
         </div>
 
@@ -447,7 +472,7 @@ export default function EmailPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
           </div>
-        ) : filteredThreads.length === 0 ? (
+        ) : paginatedThreads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <MailOpen className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -460,7 +485,7 @@ export default function EmailPage() {
             )}
           </div>
         ) : (
-          filteredThreads.map(thread => (
+          paginatedThreads.map(thread => (
             <div
               key={thread.id}
               className={`w-full text-left px-3 py-2 border-b border-gray-100 dark:border-gray-700/50 transition-colors flex items-start gap-2 ${
@@ -572,6 +597,51 @@ export default function EmailPage() {
           ))
         )}
       </div>
+
+      {/* Pagination controls */}
+      {filteredThreads.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 text-xs flex-shrink-0">
+          <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+            <select
+              value={emailPageSize}
+              onChange={(e) => {
+                const newSize = Number(e.target.value);
+                saveDisplayPreferences({ ...preferences.displayPreferences, emailPageSize: newSize });
+                setCurrentPage(1);
+              }}
+              className={`px-1.5 py-0.5 rounded border text-xs ${
+                isMidnight
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white'
+              }`}
+            >
+              {[10, 25, 50, 100].map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+            <span>of {filteredThreads.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeftIcon size={14} />
+            </button>
+            <span className="text-gray-600 dark:text-gray-300 min-w-[60px] text-center">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRightIcon size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -607,42 +677,62 @@ export default function EmailPage() {
   // ── RENDER: Toggle mode (mobile or "off" layout) ──
   if (useToggle) {
     return (
-      <div className={`h-full flex flex-col ${containerBg}`}>
-        <div className="flex-1 overflow-hidden">
-          {showDetail && selectedThread ? (
-            <ThreadDetail {...detailProps} />
-          ) : (
-            threadListPanel
-          )}
+      <>
+        <div className={`h-full flex flex-col ${containerBg}`}>
+          <div className="flex-1 overflow-hidden">
+            {showDetail && selectedThread ? (
+              <ThreadDetail {...detailProps} />
+            ) : (
+              threadListPanel
+            )}
+          </div>
         </div>
-      </div>
+        <SendEmailModal
+          isOpen={showCompose}
+          onClose={() => {
+            setShowCompose(false);
+            if (orgId && userId) fetchThreads(orgId, userId);
+          }}
+          organizationId={orgId || undefined}
+        />
+      </>
     );
   }
 
   // ── RENDER: Desktop with resizable panels (right / bottom) ──
   return (
-    <div className={`h-full flex flex-col ${containerBg}`}>
-      <div className="flex-1 overflow-hidden">
-        <PanelGroup
-          key={layout}
-          orientation={layout === 'right' ? 'horizontal' : 'vertical'}
-          onLayoutChanged={handlePanelResize}
-          className="h-full"
-        >
-          <Panel id="email-list" defaultSize={`${panelSizes[0]}%`} minSize="15%">
-            {threadListPanel}
-          </Panel>
-          <GripHandle direction={layout === 'right' ? 'horizontal' : 'vertical'} />
-          <Panel id="email-detail" defaultSize={`${panelSizes[1]}%`} minSize="25%">
-            {selectedThread ? (
-              <ThreadDetail {...detailProps} />
-            ) : (
-              emptyDetail
-            )}
-          </Panel>
-        </PanelGroup>
+    <>
+      <div className={`h-full flex flex-col ${containerBg}`}>
+        <div className="flex-1 overflow-hidden">
+          <PanelGroup
+            key={layout}
+            orientation={layout === 'right' ? 'horizontal' : 'vertical'}
+            onLayoutChanged={handlePanelResize}
+            className="h-full"
+          >
+            <Panel id="email-list" defaultSize={`${panelSizes[0]}%`} minSize="15%">
+              {threadListPanel}
+            </Panel>
+            <GripHandle direction={layout === 'right' ? 'horizontal' : 'vertical'} />
+            <Panel id="email-detail" defaultSize={`${panelSizes[1]}%`} minSize="25%">
+              {selectedThread ? (
+                <ThreadDetail {...detailProps} />
+              ) : (
+                emptyDetail
+              )}
+            </Panel>
+          </PanelGroup>
+        </div>
       </div>
-    </div>
+      <SendEmailModal
+        isOpen={showCompose}
+        onClose={() => {
+          setShowCompose(false);
+          if (orgId && userId) fetchThreads(orgId, userId);
+        }}
+        organizationId={orgId || undefined}
+      />
+    </>
   );
 }
 

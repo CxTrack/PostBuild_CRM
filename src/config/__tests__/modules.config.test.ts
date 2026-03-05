@@ -212,10 +212,13 @@ describe('modules.config', () => {
       );
     });
 
-    it('business tier does NOT include inventory, suppliers, or financials', () => {
+    it('business tier does NOT include inventory or suppliers', () => {
       expect(PLAN_MODULE_ACCESS.business).not.toContain('inventory');
       expect(PLAN_MODULE_ACCESS.business).not.toContain('suppliers');
-      expect(PLAN_MODULE_ACCESS.business).not.toContain('financials');
+    });
+
+    it('business tier includes financials (earnings)', () => {
+      expect(PLAN_MODULE_ACCESS.business).toContain('financials');
     });
 
     it('all plan modules reference valid AVAILABLE_MODULES', () => {

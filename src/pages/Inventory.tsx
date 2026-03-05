@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Search, Package, AlertTriangle, RefreshCw, BarChart2, History
+    Search, Package, AlertTriangle, RefreshCw, BarChart2, History, TrendingUp, DollarSign
 } from 'lucide-react';
 import { useProductStore } from '@/stores/productStore';
 import { useInventoryStore } from '@/stores/inventoryStore';
@@ -50,9 +50,10 @@ export const Inventory: React.FC = () => {
         const totalItems = inventoryProducts.reduce((sum, p) => sum + (p.quantity_on_hand || 0), 0);
         const lowStock = inventoryProducts.filter(p => p.quantity_on_hand <= (p.low_stock_threshold || 5) && p.quantity_on_hand > 0).length;
         const outOfStock = inventoryProducts.filter(p => p.quantity_on_hand <= 0).length;
-        const totalValue = inventoryProducts.reduce((sum, p) => sum + (p.quantity_on_hand * (p.cost || 0)), 0);
+        const totalCost = inventoryProducts.reduce((sum, p) => sum + ((p.quantity_on_hand || 0) * (p.cost || 0)), 0);
+        const totalRevenue = inventoryProducts.reduce((sum, p) => sum + ((p.quantity_on_hand || 0) * (p.price || 0)), 0);
 
-        return { totalItems, lowStock, outOfStock, totalValue };
+        return { totalItems, lowStock, outOfStock, totalCost, totalRevenue };
     }, [inventoryProducts]);
 
     return (
@@ -66,7 +67,7 @@ export const Inventory: React.FC = () => {
                 </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="flex items-center p-4">
                     <IconBadge icon={<Package size={20} className="text-blue-600" />} gradient="bg-blue-50" />
                     <div className="ml-4">
@@ -89,10 +90,17 @@ export const Inventory: React.FC = () => {
                     </div>
                 </Card>
                 <Card className="flex items-center p-4">
-                    <IconBadge icon={<BarChart2 size={20} className="text-emerald-600" />} gradient="bg-emerald-50" />
+                    <IconBadge icon={<DollarSign size={20} className="text-amber-600" />} gradient="bg-amber-50" />
                     <div className="ml-4">
-                        <p className="text-xs font-bold text-gray-500 uppercase">Inventory Value</p>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">${stats.totalValue.toLocaleString()}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase">Inventory Cost</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">${stats.totalCost.toLocaleString()}</h3>
+                    </div>
+                </Card>
+                <Card className="flex items-center p-4">
+                    <IconBadge icon={<TrendingUp size={20} className="text-emerald-600" />} gradient="bg-emerald-50" />
+                    <div className="ml-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase">Potential Revenue</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">${stats.totalRevenue.toLocaleString()}</h3>
                     </div>
                 </Card>
             </div>

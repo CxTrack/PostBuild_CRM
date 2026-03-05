@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Palette, Smartphone, Bell } from 'lucide-react';
+import { Palette, Smartphone, Bell, Monitor } from 'lucide-react';
 import { SubTabs } from '@/components/ui/SubTabs';
 import AppearanceSection from './AppearanceSection';
 import MobileNavSection from './MobileNavSection';
 import NotificationsTab from './NotificationsTab';
+import DisplaySection from './DisplaySection';
 
 interface PreferencesTabProps {
   initialSubTab?: string;
@@ -17,6 +18,7 @@ export default function PreferencesTab({ initialSubTab }: PreferencesTabProps) {
       <SubTabs
         tabs={[
           { id: 'theme', label: 'Theme', icon: Palette },
+          { id: 'display', label: 'Display', icon: Monitor },
           { id: 'mobile', label: 'Mobile Navigation', icon: Smartphone },
           { id: 'notifications', label: 'Notifications', icon: Bell },
         ]}
@@ -24,6 +26,7 @@ export default function PreferencesTab({ initialSubTab }: PreferencesTabProps) {
         onChange={setSubTab}
       />
       {subTab === 'theme' && <AppearanceSection />}
+      {subTab === 'display' && <DisplaySection />}
       {subTab === 'mobile' && <MobileNavSection />}
       {subTab === 'notifications' && <NotificationsTab />}
     </div>

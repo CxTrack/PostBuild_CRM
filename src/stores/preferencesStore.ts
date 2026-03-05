@@ -21,12 +21,17 @@ interface EmailLayoutPreference {
     };
 }
 
+interface DisplayPreferences {
+    emailPageSize: number;
+}
+
 interface UserPreferences {
     sidebarOrder: string[];
     dashboardLayout: DashboardWidget[];
     quickActionsOrder: string[];
     mobileNavItems: string[];
     emailLayout: EmailLayoutPreference;
+    displayPreferences: DisplayPreferences;
 }
 
 interface PreferencesStore {
@@ -39,6 +44,7 @@ interface PreferencesStore {
     saveQuickActionsOrder: (order: string[]) => Promise<void>;
     saveMobileNavItems: (items: string[]) => Promise<void>;
     saveEmailLayout: (layout: EmailLayoutPreference) => Promise<void>;
+    saveDisplayPreferences: (prefs: DisplayPreferences) => Promise<void>;
 }
 
 const initialPreferencesState = {
@@ -50,6 +56,9 @@ const initialPreferencesState = {
         emailLayout: {
             layout: 'right',
             panelSizes: { right: [35, 65], bottom: [50, 50] },
+        },
+        displayPreferences: {
+            emailPageSize: 25,
         },
     },
     isLoading: false,
@@ -92,6 +101,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                     if (p.preference_type === 'quick_actions_order') newPreferences.quickActionsOrder = p.preference_value;
                     if (p.preference_type === 'mobile_nav_items') newPreferences.mobileNavItems = p.preference_value;
                     if (p.preference_type === 'email_layout') newPreferences.emailLayout = p.preference_value;
+                    if (p.preference_type === 'display_preferences') newPreferences.displayPreferences = { ...newPreferences.displayPreferences, ...p.preference_value };
                 });
                 set({ preferences: newPreferences });
             }
@@ -254,6 +264,35 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
                 });
         } catch (error) {
             console.error('Failed to save email layout:', error);
+        }
+    },
+
+    saveDisplayPreferences: async (prefs: DisplayPreferences) => {
+        // Optimistic update
+        set(state => ({
+            preferences: { ...state.preferences, displayPreferences: prefs }
+        }));
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const orgId = useOrganizationStore.getState().currentOrganization?.id;
+            if (!orgId) return;
+
+            await supabase
+                .from('user_preferences')
+                .upsert({
+                    user_id: user.id,
+                    organization_id: orgId,
+                    preference_type: 'display_preferences',
+                    preference_value: prefs,
+                    updated_at: new Date().toISOString(),
+                }, {
+                    onConflict: 'user_id,organization_id,preference_type'
+                });
+        } catch (error) {
+            console.error('Failed to save display preferences:', error);
         }
     },
 }));

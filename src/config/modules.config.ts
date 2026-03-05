@@ -206,7 +206,7 @@ export const INDUSTRY_LABELS: Record<string, any> = {
 export const PLAN_MODULE_ACCESS: Record<string, string[]> = {
   // Free tier gets all modules during 30-day trial, then restricted
   free: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'pipeline', 'calls', 'products', 'inventory', 'suppliers', 'financials', 'email'],
-  business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'email'],
+  business: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'financials', 'email'],
   elite_premium: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials', 'email'],
   enterprise: ['dashboard', 'crm', 'calendar', 'tasks', 'quotes', 'invoices', 'calls', 'pipeline', 'products', 'inventory', 'suppliers', 'financials', 'email'],
 };
