@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, Users, Building2, Mail, Phone,
-  Eye, Edit, Trash2, MessageSquare, X,
+  Eye, Trash2, MessageSquare, X,
   ChevronLeft, ChevronRight, UserCheck, ChevronDown
 } from 'lucide-react';
+import { ResizableTable, ColumnDef } from '@/components/compact/ResizableTable';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -78,6 +79,8 @@ export const Customers: React.FC = () => {
   }, [currentMembership?.role, currentUserId]);
 
   const isManagerOrAbove = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+  const navigate = useNavigate();
 
   const hasAccess = canAccessSharedModule('crm');
 
@@ -272,6 +275,216 @@ export const Customers: React.FC = () => {
       setBulkReassigning(false);
     }
   };
+
+  // Format assigned user as "FirstName L."
+  const formatAssignedTo = (assignedUser: { full_name?: string | null; email?: string | null }): string => {
+    const name = assignedUser.full_name;
+    if (!name) return assignedUser.email?.split('@')[0] || '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+  };
+
+  // Build resizable column definitions
+  const customerColumns = useMemo((): ColumnDef<any>[] => {
+    const cols: ColumnDef<any>[] = [];
+
+    if (isOwnerOrAdmin) {
+      cols.push({
+        id: 'select',
+        header: '',
+        defaultWidth: 44,
+        minWidth: 44,
+        resizable: false,
+        headerRender: () => (
+          <input
+            type="checkbox"
+            checked={paginatedCustomers.length > 0 && paginatedCustomers.every((c) => selectedIds.has(c.id))}
+            onChange={(e) => { e.stopPropagation(); toggleSelectAll(); }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+          />
+        ),
+        render: (customer) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(customer.id)}
+            onChange={(e) => { e.stopPropagation(); toggleSelect(customer.id); }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+          />
+        ),
+      });
+    }
+
+    cols.push({
+      id: 'name',
+      header: labels.columns?.name || 'Name',
+      defaultWidth: 220,
+      minWidth: 150,
+      render: (customer) => (
+        <Link
+          to={`/dashboard/customers/${customer.id}`}
+          className="flex items-center gap-2.5 group"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold text-xs flex-shrink-0">
+            {customer.customer_type === 'business' ? (
+              <Building2 size={16} />
+            ) : (
+              getCustomerFullName(customer).charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 truncate text-sm">
+              {getCustomerFullName(customer)}
+            </p>
+            {customer.company && (
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                {customer.company}
+              </p>
+            )}
+          </div>
+        </Link>
+      ),
+    });
+
+    cols.push({
+      id: 'type',
+      header: 'Type',
+      defaultWidth: 110,
+      minWidth: 80,
+      render: (customer) => (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+          customer.customer_type === 'business'
+            ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+            : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+        }`}>
+          {customer.customer_type === 'business' ? (
+            <>
+              <Building2 size={11} className="mr-1" />
+              Business
+            </>
+          ) : (
+            <>
+              <Users size={11} className="mr-1" />
+              Personal
+            </>
+          )}
+        </span>
+      ),
+    });
+
+    cols.push({
+      id: 'contact',
+      header: 'Contact',
+      defaultWidth: 220,
+      minWidth: 130,
+      render: (customer) => (
+        <div className="space-y-0.5">
+          {customer.email && (
+            <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+              <Mail size={12} className="mr-1.5 flex-shrink-0" />
+              <span className="truncate">{customer.email}</span>
+            </div>
+          )}
+          {customer.phone && (
+            <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+              <Phone size={12} className="mr-1.5 flex-shrink-0" />
+              {formatPhoneDisplay(customer.phone)}
+            </div>
+          )}
+        </div>
+      ),
+    });
+
+    cols.push({
+      id: 'status',
+      header: 'Status',
+      defaultWidth: 90,
+      minWidth: 70,
+      render: (customer) => (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+          customer.status === 'Active'
+            ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
+        }`}>
+          {customer.status}
+        </span>
+      ),
+    });
+
+    cols.push({
+      id: 'assigned_to',
+      header: 'Assigned To',
+      defaultWidth: 140,
+      minWidth: 100,
+      render: (customer) => (
+        customer.assigned_user ? (
+          <span className="text-sm text-gray-700 dark:text-gray-300 truncate block">
+            {formatAssignedTo(customer.assigned_user)}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400 italic">Unassigned</span>
+        )
+      ),
+    });
+
+    cols.push({
+      id: 'total_spent',
+      header: 'Total Spent',
+      defaultWidth: 110,
+      minWidth: 80,
+      align: 'right' as const,
+      render: (customer) => (
+        <span className="font-medium text-gray-900 dark:text-white text-sm">
+          ${customer.total_spent?.toLocaleString() || '0.00'}
+        </span>
+      ),
+    });
+
+    cols.push({
+      id: 'actions',
+      header: 'Actions',
+      defaultWidth: 130,
+      minWidth: 90,
+      align: 'right' as const,
+      render: (customer) => (
+        <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+          <Link
+            to={`/dashboard/customers/${customer.id}`}
+            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+            title="View"
+          >
+            <Eye size={16} />
+          </Link>
+          {customer.phone && (
+            <button
+              onClick={() => setSmsTarget({
+                phone: customer.phone!,
+                name: getCustomerFullName(customer),
+                id: customer.id,
+              })}
+              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+              title="Send SMS"
+            >
+              <MessageSquare size={16} />
+            </button>
+          )}
+          {isOwnerOrAdmin && (
+            <button
+              onClick={() => handleDelete(customer.id)}
+              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+              title="Delete"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      ),
+    });
+
+    return cols;
+  }, [isOwnerOrAdmin, labels.columns, paginatedCustomers, selectedIds]);
 
   if (!hasAccess) {
     return (
@@ -534,192 +747,19 @@ export const Customers: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="hidden md:block p-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                    <tr>
-                      {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
-                        <th className="px-4 py-3 w-10">
-                          <input
-                            type="checkbox"
-                            checked={paginatedCustomers.length > 0 && paginatedCustomers.every((c) => selectedIds.has(c.id))}
-                            onChange={toggleSelectAll}
-                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                          />
-                        </th>
-                      )}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        {labels.columns?.name}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Contact
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Assigned To
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Total Spent
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                    {paginatedCustomers.map((customer) => (
-                      <tr
-                        key={customer.id}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedIds.has(customer.id) ? 'bg-primary-50 dark:bg-primary-500/10' : ''}`}
-                      >
-                        {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
-                          <td className="px-4 py-4 w-10">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.has(customer.id)}
-                              onChange={() => toggleSelect(customer.id)}
-                              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                            />
-                          </td>
-                        )}
-                        <td className="px-6 py-4">
-                          <Link
-                            to={`/dashboard/customers/${customer.id}`}
-                            className="flex items-center space-x-3 group"
-                          >
-                            <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold">
-                              {customer.customer_type === 'business' ? (
-                                <Building2 size={20} />
-                              ) : (
-                                getCustomerFullName(customer).charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400">
-                                {getCustomerFullName(customer)}
-                              </p>
-                              {customer.company && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  {customer.company}
-                                </p>
-                              )}
-                            </div>
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${customer.customer_type === 'business'
-                            ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
-                            : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
-                            }`}>
-                            {customer.customer_type === 'business' ? (
-                              <>
-                                <Building2 size={12} className="mr-1" />
-                                Business
-                              </>
-                            ) : (
-                              <>
-                                <Users size={12} className="mr-1" />
-                                Personal
-                              </>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            {customer.email && (
-                              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                <Mail size={14} className="mr-2" />
-                                {customer.email}
-                              </div>
-                            )}
-                            {customer.phone && (
-                              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                <Phone size={14} className="mr-2" />
-                                {formatPhoneDisplay(customer.phone)}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${customer.status === 'Active'
-                            ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
-                            }`}>
-                            {customer.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {customer.assigned_user ? (
-                            <div className="flex items-center gap-2">
-                              {customer.assigned_user.avatar_url ? (
-                                <img src={customer.assigned_user.avatar_url} className="w-6 h-6 rounded-full" alt="" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                  {(customer.assigned_user.full_name || customer.assigned_user.email)?.[0]?.toUpperCase()}
-                                </div>
-                              )}
-                              <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
-                                {customer.assigned_user.full_name || customer.assigned_user.email}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">Unassigned</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                          ${customer.total_spent?.toLocaleString() || '0.00'}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Link
-                              to={`/dashboard/customers/${customer.id}`}
-                              className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                              title="View"
-                            >
-                              <Eye size={18} />
-                            </Link>
-                            {customer.phone && (
-                              <button
-                                onClick={() => setSmsTarget({
-                                  phone: customer.phone!,
-                                  name: getCustomerFullName(customer),
-                                  id: customer.id,
-                                })}
-                                className="p-2 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                title="Send SMS"
-                              >
-                                <MessageSquare size={18} />
-                              </button>
-                            )}
-                            <Link
-                              to={`/dashboard/customers/${customer.id}`}
-                              className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit size={18} />
-                            </Link>
-                            {(currentMembership?.role === 'owner' || currentMembership?.role === 'admin') && (
-                              <button
-                                onClick={() => handleDelete(customer.id)}
-                                className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="hidden md:block px-6">
+              <ResizableTable
+                columns={customerColumns}
+                data={paginatedCustomers}
+                onRowClick={(customer) => navigate(`/dashboard/customers/${customer.id}`)}
+                storageKey="customers"
+                maxHeight="calc(100vh - 420px)"
+                rowClassName={(customer) =>
+                  selectedIds.has(customer.id)
+                    ? 'bg-primary-50 dark:bg-primary-500/10'
+                    : ''
+                }
+              />
             </div>
 
             {/* Pagination Controls */}
