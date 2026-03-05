@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import { getCustomerFullName } from '@/utils/customer.utils';
+import { filterCustomers } from '@/utils/customerFilters';
 import { formatPhoneDisplay } from '@/utils/phone.utils';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
 import { FilterBar } from '@/components/shared/FilterBar';
@@ -111,58 +112,10 @@ export const Customers: React.FC = () => {
     }
   }, [currentOrganization?.id]);
 
-  // Get user IDs for team filtering
-  const getTeamUserIds = (teamId: string): Set<string> => {
-    const team = teams.find(t => t.id === teamId);
-    return new Set(team ? team.team_members.map(m => m.user_id) : []);
-  };
-
-  const filteredCustomers = useMemo(() => {
-    return customers.filter(customer => {
-      // Ownership filter
-      let matchesOwnership = true;
-      if (ownershipFilter === 'mine') {
-        matchesOwnership = customer.assigned_to === currentUserId;
-      } else if (ownershipFilter === 'all') {
-        matchesOwnership = true;
-      } else if (ownershipFilter.startsWith('team:')) {
-        const teamId = ownershipFilter.replace('team:', '');
-        const teamUserIds = getTeamUserIds(teamId);
-        matchesOwnership = customer.assigned_to ? teamUserIds.has(customer.assigned_to) : false;
-      } else {
-        // Specific user ID
-        matchesOwnership = customer.assigned_to === ownershipFilter;
-      }
-
-      const fullName = getCustomerFullName(customer);
-      const matchesSearch =
-        fullName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        customer.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        customer.first_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        customer.last_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        customer.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        customer.phone?.includes(debouncedSearchTerm) ||
-        customer.company?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-
-      const matchesType = filterType === 'all' || customer.customer_type === filterType;
-      const matchesStatus = filterStatus === 'all' || customer.status === filterStatus;
-
-      let matchesDate = true;
-      if (filterDateRange !== 'all') {
-        const custDate = new Date(customer.created_at);
-        const now = new Date();
-        switch (filterDateRange) {
-          case 'today': matchesDate = custDate.toDateString() === now.toDateString(); break;
-          case '7d': matchesDate = custDate >= new Date(now.getTime() - 7 * 86400000); break;
-          case '30d': matchesDate = custDate >= new Date(now.getTime() - 30 * 86400000); break;
-          case '90d': matchesDate = custDate >= new Date(now.getTime() - 90 * 86400000); break;
-          case 'ytd': matchesDate = custDate >= new Date(now.getFullYear(), 0, 1); break;
-        }
-      }
-
-      return matchesOwnership && matchesSearch && matchesType && matchesStatus && matchesDate;
-    });
-  }, [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange, ownershipFilter, currentUserId, teams]);
+  const filteredCustomers = useMemo(
+    () => filterCustomers(customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange, ownershipFilter, currentUserId, teams),
+    [customers, debouncedSearchTerm, filterType, filterStatus, filterDateRange, ownershipFilter, currentUserId, teams],
+  );
 
   // Reset to page 1 when filters/search change
   useEffect(() => {
