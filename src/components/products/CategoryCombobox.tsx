@@ -5,8 +5,9 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 import { useProductStore } from '@/stores/productStore';
+import toast from 'react-hot-toast';
 
 interface CategoryComboboxProps {
   value: string;
@@ -27,6 +28,7 @@ export default function CategoryCombobox({
   const { products } = useProductStore();
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [justSelected, setJustSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -54,6 +56,11 @@ export default function CategoryCombobox({
     (cat) => cat.toLowerCase() === value.toLowerCase().trim()
   );
 
+  // Whether the "Create new" row is visible
+  const showCreateRow = !!(value.trim() && !exactMatch);
+  // Total navigable items (filtered items + optional create row)
+  const totalItems = filtered.length + (showCreateRow ? 1 : 0);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -75,15 +82,25 @@ export default function CategoryCombobox({
   }, [highlightedIndex]);
 
   const selectCategory = (cat: string) => {
+    const isNew = !allCategories.some(c => c.toLowerCase() === cat.toLowerCase().trim());
     onChange(cat);
     setIsOpen(false);
     setHighlightedIndex(-1);
     inputRef.current?.blur();
+
+    // Visual feedback: green ring flash
+    setJustSelected(true);
+    setTimeout(() => setJustSelected(false), 800);
+
+    // Toast only for genuinely new categories
+    if (isNew) {
+      toast.success(`New category "${cat}" added`, { duration: 2000 });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen && (e.key === 'ArrowDown' || e.key === 'Enter')) {
-      if (filtered.length > 0) {
+      if (totalItems > 0) {
         setIsOpen(true);
         setHighlightedIndex(0);
       }
@@ -97,19 +114,21 @@ export default function CategoryCombobox({
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex((prev) =>
-          prev < filtered.length - 1 ? prev + 1 : 0
+          prev < totalItems - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
         setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : filtered.length - 1
+          prev > 0 ? prev - 1 : totalItems - 1
         );
         break;
       case 'Enter':
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {
           selectCategory(filtered[highlightedIndex]);
+        } else if (highlightedIndex === filtered.length && showCreateRow) {
+          selectCategory(value.trim());
         } else {
           setIsOpen(false);
         }
@@ -138,11 +157,26 @@ export default function CategoryCombobox({
   };
 
   const handleClear = () => {
+    const prev = value;
     onChange('');
     inputRef.current?.focus();
+
+    if (prev.trim()) {
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Cleared &ldquo;{prev}&rdquo;</span>
+          <button
+            onClick={() => { onChange(prev); toast.dismiss(t.id); }}
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            Undo
+          </button>
+        </div>
+      ), { duration: 4000 });
+    }
   };
 
-  const showDropdown = isOpen && filtered.length > 0;
+  const showDropdown = isOpen && totalItems > 0;
 
   return (
     <div ref={containerRef} className="relative">
@@ -155,7 +189,8 @@ export default function CategoryCombobox({
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={className}
+          className={`${className} ${justSelected ? 'ring-2 ring-green-500 border-green-500' : ''}`}
+          style={justSelected ? { transition: 'box-shadow 0.3s, border-color 0.3s' } : undefined}
           role="combobox"
           aria-expanded={showDropdown}
           aria-haspopup="listbox"
@@ -220,11 +255,25 @@ export default function CategoryCombobox({
               {cat}
             </li>
           ))}
-          {value.trim() && !exactMatch && (
+          {showCreateRow && (
             <li
-              className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-600"
+              role="option"
+              aria-selected={highlightedIndex === filtered.length}
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors border-t border-gray-100 dark:border-gray-600 flex items-center gap-2 ${
+                highlightedIndex === filtered.length
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                  : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+              }`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectCategory(value.trim());
+              }}
+              onMouseEnter={() => setHighlightedIndex(filtered.length)}
             >
-              Press Enter to use "<span className="font-medium text-gray-700 dark:text-gray-200">{value.trim()}</span>"
+              <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>
+                Create &ldquo;<span className="font-semibold">{value.trim()}</span>&rdquo;
+              </span>
             </li>
           )}
         </ul>

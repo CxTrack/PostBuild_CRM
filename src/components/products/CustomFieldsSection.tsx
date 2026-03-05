@@ -5,8 +5,9 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 import { CustomFieldDefinition, FIELD_TYPE_CONFIG } from '@/types/customFields.types';
+import toast from 'react-hot-toast';
 
 interface CustomFieldsSectionProps {
   fields: CustomFieldDefinition[];
@@ -17,7 +18,7 @@ interface CustomFieldsSectionProps {
   suggestions?: Record<string, string[]>;
 }
 
-/** Inline combobox for fields with suggestions */
+/** Inline combobox for fields with suggestions (creatable) */
 function FieldCombobox({
   value,
   onChange,
@@ -45,6 +46,7 @@ function FieldCombobox({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [justSelected, setJustSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -57,6 +59,13 @@ function FieldCombobox({
     const lower = strValue.toLowerCase().trim();
     return suggestions.filter((s) => s.toLowerCase().includes(lower));
   }, [strValue, suggestions]);
+
+  const exactMatch = suggestions.some(
+    (s) => s.toLowerCase() === strValue.toLowerCase().trim()
+  );
+
+  const showCreateRow = !!(strValue.trim() && !exactMatch);
+  const totalItems = filtered.length + (showCreateRow ? 1 : 0);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -77,6 +86,7 @@ function FieldCombobox({
   }, [highlightedIndex]);
 
   const selectItem = (item: string) => {
+    const isNew = !suggestions.some(s => s.toLowerCase() === item.toLowerCase().trim());
     if (type === 'number') {
       const num = parseFloat(item);
       onChange(isNaN(num) ? item : num);
@@ -85,10 +95,17 @@ function FieldCombobox({
     }
     setIsOpen(false);
     setHighlightedIndex(-1);
+
+    setJustSelected(true);
+    setTimeout(() => setJustSelected(false), 800);
+
+    if (isNew) {
+      toast.success(`New value "${item}" added`, { duration: 2000 });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen && e.key === 'ArrowDown' && filtered.length > 0) {
+    if (!isOpen && e.key === 'ArrowDown' && totalItems > 0) {
       e.preventDefault();
       setIsOpen(true);
       setHighlightedIndex(0);
@@ -99,16 +116,18 @@ function FieldCombobox({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
+        setHighlightedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
         break;
       case 'Enter':
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {
           selectItem(filtered[highlightedIndex]);
+        } else if (highlightedIndex === filtered.length && showCreateRow) {
+          selectItem(strValue.trim());
         } else {
           setIsOpen(false);
         }
@@ -133,11 +152,34 @@ function FieldCombobox({
   };
 
   const handleClear = () => {
+    const prev = strValue;
     onChange(type === 'number' ? '' : '');
     inputRef.current?.focus();
+
+    if (prev.trim()) {
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Cleared &ldquo;{prev}&rdquo;</span>
+          <button
+            onClick={() => {
+              if (type === 'number') {
+                const num = parseFloat(prev);
+                onChange(isNaN(num) ? prev : num);
+              } else {
+                onChange(prev);
+              }
+              toast.dismiss(t.id);
+            }}
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            Undo
+          </button>
+        </div>
+      ), { duration: 4000 });
+    }
   };
 
-  const showDropdown = isOpen && filtered.length > 0;
+  const showDropdown = isOpen && totalItems > 0;
 
   const inputEl = (
     <input
@@ -152,7 +194,8 @@ function FieldCombobox({
       min={min}
       max={max}
       step={step}
-      className={`${className} pr-14`}
+      className={`${className} pr-14 ${justSelected ? 'ring-2 ring-green-500 border-green-500' : ''}`}
+      style={justSelected ? { transition: 'box-shadow 0.3s, border-color 0.3s' } : undefined}
       role="combobox"
       aria-expanded={showDropdown}
       aria-haspopup="listbox"
@@ -162,7 +205,7 @@ function FieldCombobox({
   );
 
   const buttons = (
-    <div className={`absolute ${prefix ? 'right-2' : 'right-2'} top-1/2 -translate-y-1/2 flex items-center gap-0.5`}>
+    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
       {strValue && (
         <button
           type="button"
@@ -208,6 +251,24 @@ function FieldCombobox({
           {item}
         </li>
       ))}
+      {showCreateRow && (
+        <li
+          role="option"
+          aria-selected={highlightedIndex === filtered.length}
+          className={`px-3 py-2 text-sm cursor-pointer transition-colors border-t border-gray-100 dark:border-gray-600 flex items-center gap-2 ${
+            highlightedIndex === filtered.length
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+              : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+          }`}
+          onMouseDown={(e) => { e.preventDefault(); selectItem(strValue.trim()); }}
+          onMouseEnter={() => setHighlightedIndex(filtered.length)}
+        >
+          <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>
+            Create &ldquo;<span className="font-semibold">{strValue.trim()}</span>&rdquo;
+          </span>
+        </li>
+      )}
     </ul>
   ) : null;
 
@@ -231,6 +292,210 @@ function FieldCombobox({
         {buttons}
       </div>
       {dropdown}
+    </div>
+  );
+}
+
+/** Searchable, clearable combobox for select-type custom fields (non-creatable) */
+function SelectCombobox({
+  value,
+  onChange,
+  options,
+  className,
+  placeholder,
+  required,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string; color?: string }[];
+  className: string;
+  placeholder: string;
+  required?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [justSelected, setJustSelected] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Find selected option label for display
+  const selectedOption = options.find(o => o.value === value);
+  const displayText = isOpen ? search : (selectedOption?.label || '');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const lower = search.toLowerCase().trim();
+    return options.filter((o) => o.label.toLowerCase().includes(lower));
+  }, [search, options]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearch('');
+        setHighlightedIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (highlightedIndex >= 0 && listRef.current) {
+      const item = listRef.current.children[highlightedIndex] as HTMLElement;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
+
+  const selectOption = (opt: { value: string; label: string }) => {
+    onChange(opt.value);
+    setIsOpen(false);
+    setSearch('');
+    setHighlightedIndex(-1);
+    inputRef.current?.blur();
+
+    setJustSelected(true);
+    setTimeout(() => setJustSelected(false), 800);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+      e.preventDefault();
+      setIsOpen(true);
+      setHighlightedIndex(0);
+      return;
+    }
+    if (!isOpen) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+          selectOption(filtered[highlightedIndex]);
+        } else {
+          setIsOpen(false);
+          setSearch('');
+        }
+        break;
+      case 'Escape':
+      case 'Tab':
+        setIsOpen(false);
+        setSearch('');
+        setHighlightedIndex(-1);
+        break;
+    }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+  };
+
+  const handleClear = () => {
+    const prevOpt = selectedOption;
+    onChange('');
+    setSearch('');
+    inputRef.current?.focus();
+
+    if (prevOpt) {
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Cleared &ldquo;{prevOpt.label}&rdquo;</span>
+          <button
+            onClick={() => { onChange(prevOpt.value); toast.dismiss(t.id); }}
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            Undo
+          </button>
+        </div>
+      ), { duration: 4000 });
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayText}
+          onChange={(e) => { setSearch(e.target.value); setHighlightedIndex(-1); if (!isOpen) setIsOpen(true); }}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          required={required && !value}
+          className={`${className} pr-14 ${justSelected ? 'ring-2 ring-green-500 border-green-500' : ''}`}
+          style={justSelected ? { transition: 'box-shadow 0.3s, border-color 0.3s' } : undefined}
+          role="combobox"
+          aria-expanded={isOpen && filtered.length > 0}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          autoComplete="off"
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {value && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              tabIndex={-1}
+              aria-label="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { setIsOpen(!isOpen); inputRef.current?.focus(); }}
+            className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            tabIndex={-1}
+            aria-label="Toggle options"
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {isOpen && filtered.length > 0 && (
+        <ul
+          ref={listRef}
+          role="listbox"
+          className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg py-1"
+        >
+          {filtered.map((opt, idx) => (
+            <li
+              key={opt.value}
+              role="option"
+              aria-selected={highlightedIndex === idx}
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center gap-2 ${
+                highlightedIndex === idx
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600'
+              } ${opt.value === value ? 'font-medium' : ''}`}
+              onMouseDown={(e) => { e.preventDefault(); selectOption(opt); }}
+              onMouseEnter={() => setHighlightedIndex(idx)}
+            >
+              {opt.color && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: opt.color }}
+                />
+              )}
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -375,17 +640,14 @@ export default function CustomFieldsSection({ fields, values, onChange, inputCla
 
       case 'select':
         return (
-          <select
+          <SelectCombobox
             value={value}
-            onChange={(e) => onChange(field.field_key, e.target.value)}
-            required={field.is_required}
+            onChange={(val) => onChange(field.field_key, val)}
+            options={field.options || []}
             className={baseInput}
-          >
-            <option value="">{placeholder || 'Select...'}</option>
-            {field.options?.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+            placeholder={placeholder || 'Select...'}
+            required={field.is_required}
+          />
         );
 
       case 'multiselect': {
