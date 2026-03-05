@@ -1,7 +1,24 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { CalendarEvent } from '../types/database.types';
 import { useOrganizationStore } from './organizationStore';
+import { fetchTodayOutlookEvents, fetchOutlookEvents as fetchOutlookEventsApi } from '@/services/microsoftCalendar.service';
+import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import { fetchTodayGoogleEvents, fetchGoogleEvents as fetchGoogleEventsApi } from '@/services/googleCalendar.service';
+import type { GoogleCalendarEvent } from '@/services/googleCalendar.service';
+
+// Read auth token directly from localStorage to bypass AbortController issues
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* skip */ }
+    }
+  }
+  return null;
+};
 
 interface CalendarPreferences {
   default_view: 'month' | 'week' | 'day' | 'agenda';
@@ -28,11 +45,23 @@ interface CalendarPreferences {
 
 interface CalendarState {
   events: CalendarEvent[];
+  outlookEvents: OutlookCalendarEvent[];
+  outlookLoading: boolean;
+  outlookNeedsReauth: boolean;
+  outlookNoConnection: boolean;
+  googleEvents: GoogleCalendarEvent[];
+  googleLoading: boolean;
+  googleNeedsReauth: boolean;
+  googleNoConnection: boolean;
   preferences: CalendarPreferences | null;
   loading: boolean;
   error: string | null;
   reset: () => void;
   fetchEvents: (organizationId?: string, from?: Date, to?: Date) => Promise<void>;
+  fetchOutlookTodayEvents: () => Promise<void>;
+  fetchOutlookEventsRange: (startDate: string, endDate: string) => Promise<void>;
+  fetchGoogleTodayEvents: () => Promise<void>;
+  fetchGoogleEventsRange: (startDate: string, endDate: string) => Promise<void>;
   getEventById: (id: string) => CalendarEvent | undefined;
   getEventsByCustomer: (customerId: string) => CalendarEvent[];
   getEventsByDate: (date: string) => CalendarEvent[];
@@ -45,6 +74,14 @@ interface CalendarState {
 
 const initialCalendarState = {
   events: [] as CalendarEvent[],
+  outlookEvents: [] as OutlookCalendarEvent[],
+  outlookLoading: false,
+  outlookNeedsReauth: false,
+  outlookNoConnection: false,
+  googleEvents: [] as GoogleCalendarEvent[],
+  googleLoading: false,
+  googleNeedsReauth: false,
+  googleNoConnection: false,
   preferences: null as CalendarPreferences | null,
   loading: false,
   error: null as string | null,
@@ -65,28 +102,98 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      let query = supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('organization_id', orgId);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
+      let url = `${supabaseUrl}/rest/v1/calendar_events?organization_id=eq.${orgId}&select=*&order=start_time.asc`;
       if (from) {
-        query = query.gte('start_time', from.toISOString());
+        url += `&start_time=gte.${encodeURIComponent(from.toISOString())}`;
       }
-
       if (to) {
-        query = query.lte('start_time', to.toISOString());
+        url += `&start_time=lte.${encodeURIComponent(to.toISOString())}`;
       }
 
-      const { data, error } = await query.order('start_time', { ascending: true });
+      const res = await fetch(url, {
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Events fetch failed (${res.status}): ${errBody}`);
+      }
+
+      const data = await res.json();
       set({ events: data || [] });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       set({ error: message });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchOutlookTodayEvents: async () => {
+    set({ outlookLoading: true });
+    try {
+      const result = await fetchTodayOutlookEvents();
+      set({
+        outlookEvents: result.events,
+        outlookNeedsReauth: result.needsReauth,
+        outlookNoConnection: result.noConnection,
+      });
+      if (result.needsReauth) {
+        console.warn('[calendarStore] Outlook calendar needs re-authorization');
+      }
+    } catch (err) {
+      console.warn('[calendarStore] Outlook calendar fetch error:', err);
+    } finally {
+      set({ outlookLoading: false });
+    }
+  },
+
+  fetchOutlookEventsRange: async (startDate: string, endDate: string) => {
+    set({ outlookLoading: true });
+    try {
+      const events = await fetchOutlookEventsApi(startDate, endDate);
+      set({ outlookEvents: events });
+    } catch (err) {
+      console.warn('[calendarStore] Outlook calendar range fetch error:', err);
+    } finally {
+      set({ outlookLoading: false });
+    }
+  },
+
+  fetchGoogleTodayEvents: async () => {
+    set({ googleLoading: true });
+    try {
+      const result = await fetchTodayGoogleEvents();
+      set({
+        googleEvents: result.events,
+        googleNeedsReauth: result.needsReauth,
+        googleNoConnection: result.noConnection,
+      });
+      if (result.needsReauth) {
+        console.warn('[calendarStore] Google calendar needs re-authorization');
+      }
+    } catch (err) {
+      console.warn('[calendarStore] Google calendar fetch error:', err);
+    } finally {
+      set({ googleLoading: false });
+    }
+  },
+
+  fetchGoogleEventsRange: async (startDate: string, endDate: string) => {
+    set({ googleLoading: true });
+    try {
+      const events = await fetchGoogleEventsApi(startDate, endDate);
+      set({ googleEvents: events });
+    } catch (err) {
+      console.warn('[calendarStore] Google calendar range fetch error:', err);
+    } finally {
+      set({ googleLoading: false });
     }
   },
 
@@ -108,13 +215,26 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   createEvent: async (event) => {
     set({ loading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([event])
-        .select()
-        .single();
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(`${supabaseUrl}/rest/v1/calendar_events`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(event),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event creation failed (${res.status}): ${errBody}`);
+      }
+
+      const [data] = await res.json();
 
       set((state) => ({
         events: [...state.events, data],
@@ -133,12 +253,27 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   updateEvent: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .update(updates)
-        .eq('id', id);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/calendar_events?id=eq.${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event update failed (${res.status}): ${errBody}`);
+      }
 
       set((state) => ({
         events: state.events.map((e) =>
@@ -157,12 +292,24 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   deleteEvent: async (id) => {
     set({ loading: true, error: null });
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', id);
+      const token = getAuthToken();
+      if (!token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/calendar_events?id=eq.${id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Event deletion failed (${res.status}): ${errBody}`);
+      }
 
       set((state) => ({
         events: state.events.filter((e) => e.id !== id),

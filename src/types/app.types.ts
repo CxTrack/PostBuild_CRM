@@ -254,6 +254,102 @@ export interface Payment {
   created_by?: string;
 }
 
+// Customer Subscriptions (Recurring Revenue)
+export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'past_due' | 'completed' | 'trial';
+export type BillingInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+
+export interface CustomerSubscription {
+  id: string;
+  organization_id: string;
+  customer_id: string;
+  product_id?: string;
+  name: string;
+  description?: string;
+  amount: number;
+  currency: string;
+  billing_interval: BillingInterval;
+  billing_interval_count: number;
+  start_date: string;
+  next_billing_date?: string;
+  end_date?: string;
+  cancelled_at?: string;
+  paused_at?: string;
+  status: SubscriptionStatus;
+  setup_fee: number;
+  setup_fee_invoiced: boolean;
+  stripe_subscription_id?: string;
+  stripe_price_id?: string;
+  auto_invoice: boolean;
+  invoice_days_before: number;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionEvent {
+  id: string;
+  organization_id: string;
+  subscription_id: string;
+  event_type: 'created' | 'activated' | 'paused' | 'resumed' | 'cancelled' | 'renewed' | 'upgraded' | 'downgraded' | 'amount_changed' | 'past_due' | 'completed';
+  previous_amount?: number;
+  new_amount?: number;
+  previous_status?: string;
+  new_status?: string;
+  reason?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+  created_by?: string;
+}
+
+export interface MRRMetrics {
+  current_mrr: number;
+  previous_mrr: number;
+  mrr_change: number;
+  mrr_change_pct: number;
+  active_subscriptions: number;
+  total_arr: number;
+}
+
+export interface ChurnMetrics {
+  active_at_start: number;
+  cancelled_in_period: number;
+  new_in_period: number;
+  churn_rate_pct: number;
+  net_change: number;
+  revenue_lost: number;
+}
+
+export interface CustomerLTV {
+  customer_id: string;
+  customer_name: string;
+  total_paid: number;
+  subscription_count: number;
+  active_mrr: number;
+  months_active: number;
+  avg_monthly_revenue: number;
+  estimated_ltv: number;
+}
+
+// Payment Links (Stripe Connect)
+export type PaymentLinkStatus = 'pending' | 'completed' | 'expired' | 'cancelled' | 'failed';
+
+export interface PaymentLink {
+  id: string;
+  organization_id: string;
+  invoice_id: string;
+  stripe_checkout_session_id?: string;
+  stripe_payment_intent_id?: string;
+  stripe_payment_link_url?: string;
+  amount: number;
+  platform_fee: number;
+  currency: string;
+  status: PaymentLinkStatus;
+  expires_at?: string;
+  paid_at?: string;
+  created_at: string;
+}
+
 // Templates
 export type TemplateType = 'quote' | 'invoice';
 export type LayoutType = 'modern' | 'classic' | 'minimal' | 'creative';

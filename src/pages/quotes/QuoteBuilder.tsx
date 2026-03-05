@@ -6,13 +6,14 @@ import { useProductStore } from '@/stores/productStore';
 import { quoteService, QuoteLineItem, QuoteFormData, RealEstateProposalFields } from '@/services/quote.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, Home, MapPin, DollarSign, Percent } from 'lucide-react';
+import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, Home, MapPin, DollarSign, Percent, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ProductSelector from '@/components/products/ProductSelector';
 import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
+import { Dropdown } from '@/components/shared/Dropdown';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import { User, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -21,6 +22,7 @@ import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { getQuoteFieldLabels, getInvoiceFieldLabels } from '@/config/modules.config';
+import { PAYMENT_TERMS_OPTIONS, calculateDueDate } from '@/config/paymentTerms';
 
 export default function QuoteBuilder() {
   const { id } = useParams();
@@ -39,6 +41,7 @@ export default function QuoteBuilder() {
   const [savedQuote, setSavedQuote] = useState<any>(null);
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [catalogPromptItem, setCatalogPromptItem] = useState<{ index: number; name: string } | null>(null);
   const { user } = useAuthContext();
   const [organizationInfo, setOrganizationInfo] = useState<any>(null);
   const [orgTaxRate, setOrgTaxRate] = useState<number>(0);
@@ -49,6 +52,7 @@ export default function QuoteBuilder() {
     customer_id: '',
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     customer_address: null,
     quote_date: new Date().toISOString().split('T')[0],
     expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -118,7 +122,14 @@ export default function QuoteBuilder() {
           customer_id: customer.id,
           customer_name: getCustomerFullName(customer),
           customer_email: customer.email || '',
-          customer_address: customer.address || null,
+          customer_phone: customer.phone || '',
+          customer_address: {
+            street: customer.address,
+            city: customer.city,
+            state: customer.state,
+            postal_code: customer.postal_code,
+            country: customer.country,
+          },
         }));
       }
     }
@@ -129,7 +140,7 @@ export default function QuoteBuilder() {
     try {
       const [settings, orgInfo] = await Promise.all([
         settingsService.getBusinessSettings(currentOrganization.id),
-        settingsService.getOrganizationForPDF(currentOrganization.id)
+        settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'quote')
       ]);
       setOrganizationInfo(orgInfo);
       if (settings) {
@@ -160,6 +171,7 @@ export default function QuoteBuilder() {
           customer_id: quote.customer_id,
           customer_name: quote.customer_name,
           customer_email: quote.customer_email || '',
+          customer_phone: quote.customer_phone || '',
           customer_address: quote.customer_address,
           quote_date: quote.quote_date,
           expiry_date: quote.expiry_date || '',
@@ -175,6 +187,7 @@ export default function QuoteBuilder() {
           status: quote.status,
           custom_fields: (quote as any).custom_fields || {},
         });
+        setSavedQuote(quote);
       }
     } catch (error) {
       toast.error('Failed to load quote');
@@ -191,12 +204,28 @@ export default function QuoteBuilder() {
         customer_id: customer.id,
         customer_name: getCustomerFullName(customer),
         customer_email: customer.email || '',
+        customer_phone: customer.phone || '',
         customer_address: {
           street: customer.address,
           city: customer.city,
           state: customer.state,
           postal_code: customer.postal_code,
           country: customer.country,
+        },
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        customer_id: '',
+        customer_name: '',
+        customer_email: '',
+        customer_phone: '',
+        customer_address: {
+          street: '',
+          city: '',
+          state: '',
+          postal_code: '',
+          country: '',
         },
       }));
     }
@@ -208,6 +237,7 @@ export default function QuoteBuilder() {
       customer_id: newCustomer.id,
       customer_name: getCustomerFullName(newCustomer),
       customer_email: newCustomer.email || '',
+      customer_phone: newCustomer.phone || '',
       customer_address: {
         street: newCustomer.address,
         city: newCustomer.city,
@@ -262,30 +292,34 @@ export default function QuoteBuilder() {
     setShowProductCatalog(false);
   };
 
-  const handleItemBlur = async (index: number) => {
+  const handleItemBlur = (index: number) => {
     const item = formData.items[index];
 
-    if (!item.product_type) {
-      return;
-    }
+    if (!item.product_type) return;
+    if (!item.product_name || !item.product_name.trim()) return;
+    if (!item.unit_price || item.unit_price <= 0) return;
+    if (item.product_id) return;
 
-    if (!item.product_name || !item.product_name.trim()) {
-      return;
-    }
+    // Check if a product with this name already exists in the catalog
+    const existsInCatalog = products.some(
+      p => p.name.toLowerCase() === item.product_name.trim().toLowerCase()
+    );
+    if (existsInCatalog) return;
 
-    if (!item.unit_price || item.unit_price <= 0) {
-      return;
-    }
+    // Show prompt asking if user wants to save to catalog
+    setCatalogPromptItem({ index, name: item.product_name.trim() });
+  };
 
-    if (item.product_id) {
+  const handleSaveToCatalog = async () => {
+    if (!catalogPromptItem) return;
+    const item = formData.items[catalogPromptItem.index];
+    if (!item) {
+      setCatalogPromptItem(null);
       return;
     }
 
     try {
-      
-
       const organizationId = getOrganizationId();
-
       const newProduct = await createProduct({
         organization_id: organizationId,
         name: item.product_name.trim(),
@@ -298,16 +332,18 @@ export default function QuoteBuilder() {
         tax_rate: item.tax_rate || 0,
         is_taxable: (item.tax_rate || 0) > 0,
         track_inventory: item.product_type === 'product',
-        quantity_on_hand: item.product_type === 'product' ? 0 : 0,
+        quantity_on_hand: 0,
         requires_approval: false,
       });
 
       if (newProduct) {
-        updateLineItem(index, 'product_id', newProduct.id);
-        toast.success(`"${item.product_name}" saved to catalog`);
+        updateLineItem(catalogPromptItem.index, 'product_id', newProduct.id);
+        toast.success(`"${item.product_name}" added to your catalog`);
       }
     } catch (error: any) {
       toast.error(getSafeErrorMessage(error, 'create'));
+    } finally {
+      setCatalogPromptItem(null);
     }
   };
 
@@ -315,10 +351,9 @@ export default function QuoteBuilder() {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
 
-    if (field === 'quantity' || field === 'unit_price' || field === 'discount_amount' || field === 'tax_rate') {
+    if (field === 'quantity' || field === 'unit_price') {
       const item = updatedItems[index];
-      const lineTotal = (item.quantity * item.unit_price) - (item.discount_amount || 0);
-      updatedItems[index].line_total = lineTotal;
+      updatedItems[index].line_total = item.quantity * item.unit_price;
     }
 
     setFormData(prev => ({ ...prev, items: updatedItems }));
@@ -370,6 +405,7 @@ export default function QuoteBuilder() {
   };
 
   const handleSaveDraft = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -412,6 +448,7 @@ export default function QuoteBuilder() {
   };
 
   const handleCreate = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -471,9 +508,9 @@ export default function QuoteBuilder() {
       }
       try {
 
-        const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
+        const organizationInfo = await settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'quote');
 
-        pdfService.generateQuotePDF(savedQuote, organizationInfo);
+        await pdfService.generateQuotePDF(savedQuote, organizationInfo);
         toast.success('Quote PDF downloaded');
       } catch (error) {
         toast.error('Failed to generate PDF');
@@ -487,19 +524,19 @@ export default function QuoteBuilder() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-screen min-h-screen bg-gray-50 dark:bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 py-6">
       <div className="max-w-[1920px] mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id ? `Edit ${labels.entitySingular}` : labels.newButton}
+              {id ? `Edit ${labels.entitySingular}` : `New ${labels.entitySingular}`}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Build a professional {labels.entitySingular} for your {customerFieldLabels.customerLabel.toLowerCase()}
@@ -516,7 +553,7 @@ export default function QuoteBuilder() {
             </Button>
             <ShareDropdown
               onSelect={handleShareOption}
-              disabled={!savedQuote || savedQuote?.status === 'draft'}
+              disabled={!savedQuote}
               buttonText="Share"
               variant="secondary"
             />
@@ -540,7 +577,7 @@ export default function QuoteBuilder() {
                   {id ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                id ? `Update ${labels.entitySingular}` : labels.newButton
+                id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`
               )}
             </Button>
           </div>
@@ -554,18 +591,17 @@ export default function QuoteBuilder() {
                 {customerFieldLabels.customerLabel}
               </h2>
               <div className="flex gap-2">
-                <select
-                  value={formData.customer_id}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                >
-                  <option value="">{customerFieldLabels.customerPlaceholder}</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {getCustomerFullName(customer)}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <Dropdown
+                    options={customers.map((customer) => ({
+                      value: customer.id,
+                      label: getCustomerFullName(customer),
+                    }))}
+                    value={formData.customer_id}
+                    onChange={handleCustomerChange}
+                    placeholder={customerFieldLabels.customerPlaceholder}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowQuickAddCustomer(true)}
@@ -654,20 +690,20 @@ export default function QuoteBuilder() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Property Type
                       </label>
-                      <select
+                      <Dropdown
+                        options={[
+                          { value: 'single_family', label: 'Single Family' },
+                          { value: 'condo', label: 'Condo' },
+                          { value: 'townhouse', label: 'Townhouse' },
+                          { value: 'multi_family', label: 'Multi-Family' },
+                          { value: 'land', label: 'Land' },
+                          { value: 'commercial', label: 'Commercial' },
+                          { value: 'other', label: 'Other' },
+                        ]}
                         value={propertyFields.property_type || ''}
-                        onChange={(e) => updatePropertyField('property_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Select...</option>
-                        <option value="single_family">Single Family</option>
-                        <option value="condo">Condo</option>
-                        <option value="townhouse">Townhouse</option>
-                        <option value="multi_family">Multi-Family</option>
-                        <option value="land">Land</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="other">Other</option>
-                      </select>
+                        onChange={(val) => updatePropertyField('property_type', val as any)}
+                        placeholder="Select..."
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -773,16 +809,16 @@ export default function QuoteBuilder() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Listing Type
                       </label>
-                      <select
+                      <Dropdown
+                        options={[
+                          { value: 'exclusive', label: 'Exclusive Right to Sell' },
+                          { value: 'open', label: 'Open Listing' },
+                          { value: 'net', label: 'Net Listing' },
+                        ]}
                         value={propertyFields.listing_type || ''}
-                        onChange={(e) => updatePropertyField('listing_type', e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Select...</option>
-                        <option value="exclusive">Exclusive Right to Sell</option>
-                        <option value="open">Open Listing</option>
-                        <option value="net">Net Listing</option>
-                      </select>
+                        onChange={(val) => updatePropertyField('listing_type', val as any)}
+                        placeholder="Select..."
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -997,19 +1033,19 @@ export default function QuoteBuilder() {
                           </div>
                         </div>
 
-                        <div className="col-span-2">
+                        <div className="col-span-3">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Unit Price *
                           </label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                            <Input
+                            <input
                               type="number"
                               value={item.unit_price}
                               onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                               onBlur={() => handleItemBlur(index)}
                               placeholder="0.00"
-                              className="text-sm text-right pl-7"
+                              className="w-full px-2 py-2 rounded-lg border-2 text-sm text-right pl-7 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               min="0"
                               step="0.01"
                               disabled={!item.product_type}
@@ -1018,22 +1054,6 @@ export default function QuoteBuilder() {
                         </div>
 
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Discount ($)
-                          </label>
-                          <Input
-                            type="number"
-                            value={item.discount_amount || 0}
-                            onChange={(e) => updateLineItem(index, 'discount_amount', parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
-                            className="text-sm text-center"
-                            min="0"
-                            step="0.01"
-                            disabled={!item.product_type}
-                          />
-                        </div>
-
-                        <div className="col-span-1">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Total
                           </label>
@@ -1118,6 +1138,21 @@ export default function QuoteBuilder() {
           </div>
 
           <div className="space-y-6">
+            {/* Logo & Branding Preview */}
+            {organizationInfo?.logo_url && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex items-center gap-3">
+                <img
+                  src={organizationInfo.logo_url}
+                  alt="Company logo"
+                  className="w-10 h-10 object-contain rounded"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{organizationInfo.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Logo will appear on PDF</p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.sectionTitle}</h2>
               <div className="space-y-4">
@@ -1146,12 +1181,31 @@ export default function QuoteBuilder() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {fieldLabels.termsLabel}
                     </label>
-                    <Input
-                      type="text"
-                      value={formData.payment_terms || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                      placeholder={fieldLabels.termsPlaceholder}
+                    <Dropdown
+                      options={PAYMENT_TERMS_OPTIONS.map(option => ({
+                        value: option.key,
+                        label: option.label,
+                      }))}
+                      value={PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) ? formData.payment_terms : (formData.payment_terms ? 'custom' : '')}
+                      onChange={(selectedKey) => {
+                        setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
+                      }}
+                      placeholder="Select payment terms..."
                     />
+                    {formData.payment_terms === 'custom' && (
+                      <Input
+                        type="text"
+                        value={formData.payment_terms === 'custom' ? '' : formData.payment_terms}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value || 'custom' }))}
+                        placeholder={fieldLabels.termsPlaceholder}
+                        className="mt-2"
+                      />
+                    )}
+                    {formData.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms)?.description}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1169,7 +1223,7 @@ export default function QuoteBuilder() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Discount</span>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <input
                       type="number"
                       value={formData.discount_amount}
                       onChange={(e) => {
@@ -1177,7 +1231,7 @@ export default function QuoteBuilder() {
                         setFormData(prev => ({ ...prev, discount_amount: discount }));
                         calculateTotals(formData.items);
                       }}
-                      className="w-24 text-sm"
+                      className="w-24 px-2 py-2 rounded-lg border-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       min="0"
                       step="0.01"
                     />
@@ -1187,7 +1241,7 @@ export default function QuoteBuilder() {
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600 dark:text-gray-400">{orgTaxLabel || 'Tax'}</span>
                     <div className="flex items-center gap-1">
-                      <Input
+                      <input
                         type="number"
                         value={quoteTaxRate}
                         onChange={(e) => {
@@ -1197,7 +1251,7 @@ export default function QuoteBuilder() {
                           setFormData(prev => ({ ...prev, items: updatedItems }));
                           calculateTotals(updatedItems);
                         }}
-                        className="w-20 text-sm"
+                        className="w-20 px-2 py-2 rounded-lg border-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         min="0"
                         max="100"
                         step="0.01"
@@ -1210,6 +1264,18 @@ export default function QuoteBuilder() {
                     ${formData.tax_amount.toFixed(2)}
                   </span>
                 </div>
+                {!id && quoteTaxRate === 0 && orgTaxRate === 0 && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      No default tax rate configured.{' '}
+                      <button type="button" onClick={() => navigate('/settings')} className="underline hover:no-underline font-medium">
+                        Set it in Business Settings
+                      </button>{' '}
+                      to auto-apply on new documents.
+                    </p>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
@@ -1223,35 +1289,7 @@ export default function QuoteBuilder() {
           </div>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pb-8">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Draft
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={
-              saving ||
-              !formData.customer_id ||
-              formData.items.length === 0 ||
-              formData.total_amount <= 0
-            }
-            className="px-6"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {id ? 'Updating...' : 'Creating...'}
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                {id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`}
-              </>
-            )}
-          </Button>
-        </div>
+        <div className="pb-8" />
 
         {savedQuote && currentOrganization && user && organizationInfo && (
           <ShareModal
@@ -1294,6 +1332,42 @@ export default function QuoteBuilder() {
             }
           ]}
         />
+
+        {/* Save to Catalog Prompt */}
+        {catalogPromptItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <Package size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Save to Catalog?</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">For quick access next time</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                <span className="font-medium text-gray-900 dark:text-white">"{catalogPromptItem.name}"</span> isn't in your catalog yet. Would you like to save it for quick access on future proposals?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCatalogPromptItem(null)}
+                >
+                  No Thanks
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveToCatalog}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Save to Catalog
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

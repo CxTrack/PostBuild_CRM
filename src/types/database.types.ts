@@ -109,6 +109,14 @@ export interface Customer {
   card_image_url?: string;
   last_contact_date?: string | null;
   next_follow_up_date?: string | null;
+  assigned_to: string | null;
+  // Joined from assigned_to FK
+  assigned_user?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  } | null;
 }
 
 export type EventType = 'meeting' | 'call' | 'task' | 'deadline' | 'appointment';
@@ -214,7 +222,23 @@ export interface CallSummary {
   broker_notified?: boolean;
   sms_sent_at?: string | null;
   raw_webhook_payload?: Record<string, any>;
+  embedding?: number[] | null;
   created_at: string;
+}
+
+export interface CopilotMemory {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  memory_type: 'decision' | 'preference' | 'context' | 'insight' | 'action_taken';
+  content: string;
+  source_summary?: string | null;
+  embedding?: number[] | null;
+  metadata?: Record<string, unknown> | null;
+  importance_score: number;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CustomerContact {
@@ -516,5 +540,36 @@ export interface Opportunity {
   // Joins
   leads?: Lead | null;
   customers?: Customer | null;
+}
+
+// Teams
+export interface Team {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  added_by: string | null;
+  added_at: string;
+}
+
+export interface TeamWithMembers extends Team {
+  team_members: Array<TeamMember & {
+    user_profiles: {
+      id: string;
+      full_name: string | null;
+      email: string;
+      avatar_url: string | null;
+    };
+  }>;
 }
 

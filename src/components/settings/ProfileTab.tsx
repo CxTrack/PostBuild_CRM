@@ -12,13 +12,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     User, Camera, Upload, X, Check, Briefcase,
     MapPin, Phone, Mail, Linkedin, Globe,
-    Calendar, Award, Target, Heart, Coffee,
-    Brain, Lightbulb, Sparkles, Save
+    Calendar, Save
 } from 'lucide-react';
 import AvatarEditor from 'react-avatar-editor';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { PhoneInput } from '@/components/ui/PhoneInput';
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import toast from 'react-hot-toast';
 
@@ -41,6 +40,7 @@ const TIMEZONE_OPTIONS = (() => {
     }
 })();
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface ProfileData {
     full_name: string;
@@ -112,51 +112,75 @@ const createDefaultProfile = (user?: { email?: string; user_metadata?: { full_na
 }; };
 
 export const ProfileTab: React.FC = () => {
-    const { user } = useAuthContext();
+    const { user: authUser } = useAuthContext();
+    const effectiveUser = useEffectiveUser();
+    const isImpersonated = effectiveUser.isImpersonated;
     const { fetchTeamMembers } = useOrganizationStore();
-    const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(user));
+    const [profile, setProfile] = useState<ProfileData>(() => createDefaultProfile(authUser));
     const [avatar, setAvatar] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showCropper, setShowCropper] = useState(false);
     const [scale, setScale] = useState(1.2);
     const [saving, setSaving] = useState(false);
     const [loadedFromDb, setLoadedFromDb] = useState(false);
+    const [deptOtherMode, setDeptOtherMode] = useState(false);
     const editorRef = useRef<AvatarEditor | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pendingAvatarBlob = useRef<Blob | null>(null);
     const pendingAvatarRemoved = useRef(false);
+    const userHasEdited = useRef(false);
 
     // Load profile — show localStorage cache instantly, then fetch DB in background
+    // Uses effectiveUser so impersonation loads the target user's profile
     useEffect(() => {
-        // 1) Instant: load from localStorage cache
-        const saved = localStorage.getItem(PROFILE_KEY);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (user?.email && parsed.email === user.email) {
-                    // Migrate old profiles: split full_name into first/last if not present
-                    if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
-                        const spaceIdx = parsed.full_name.indexOf(' ');
-                        parsed.first_name = spaceIdx > -1 ? parsed.full_name.slice(0, spaceIdx) : parsed.full_name;
-                        parsed.last_name = spaceIdx > -1 ? parsed.full_name.slice(spaceIdx + 1) : '';
+        const userId = effectiveUser.id;
+        const userEmail = effectiveUser.email;
+
+        if (!userId) return;
+
+        // 1) Instant: load from localStorage cache (skip during impersonation — cache is admin's)
+        if (!isImpersonated) {
+            const saved = localStorage.getItem(PROFILE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (userEmail && parsed.email === userEmail) {
+                        // Migrate old profiles: split full_name into first/last if not present
+                        if (!parsed.first_name && !parsed.last_name && parsed.full_name) {
+                            const spaceIdx = parsed.full_name.indexOf(' ');
+                            parsed.first_name = spaceIdx > -1 ? parsed.full_name.slice(0, spaceIdx) : parsed.full_name;
+                            parsed.last_name = spaceIdx > -1 ? parsed.full_name.slice(spaceIdx + 1) : '';
+                        }
+                        setProfile(parsed);
+                        if (parsed.avatar_url) {
+                            setAvatarPreview(parsed.avatar_url);
+                        }
                     }
-                    setProfile(parsed);
-                    if (parsed.avatar_url) {
-                        setAvatarPreview(parsed.avatar_url);
-                    }
+                } catch (e) {
+                    // Error handled silently
                 }
-            } catch (e) {
-                // Error handled silently
+            } else {
+                setProfile(createDefaultProfile(authUser));
             }
-        } else if (user) {
-            setProfile(createDefaultProfile(user));
+        } else {
+            // During impersonation, seed with effective user's basic info
+            setProfile(prev => ({
+                ...prev,
+                full_name: effectiveUser.fullName,
+                first_name: effectiveUser.fullName.split(' ')[0] || '',
+                last_name: effectiveUser.fullName.split(' ').slice(1).join(' ') || '',
+                email: effectiveUser.email,
+                avatar_url: effectiveUser.avatarUrl || null,
+            }));
+            if (effectiveUser.avatarUrl) {
+                setAvatarPreview(effectiveUser.avatarUrl);
+            }
         }
 
-        // 2) Background: fetch from user_profiles DB
-        if (user?.id) {
-            fetchProfileFromDb(user.id);
-        }
-    }, [user]);
+        // 2) Background: fetch from user_profiles DB (for effective user)
+        userHasEdited.current = false;
+        fetchProfileFromDb(userId);
+    }, [effectiveUser.id, effectiveUser.email, isImpersonated]);
 
     /** Fetch profile from user_profiles table (direct fetch to bypass AbortController) */
     const fetchProfileFromDb = async (userId: string) => {
@@ -191,7 +215,7 @@ export const ProfileTab: React.FC = () => {
                 full_name: fullName,
                 first_name: firstName,
                 last_name: lastName,
-                email: user?.email || '',
+                email: effectiveUser.email || '',
                 phone: meta.phone || '',
                 title: meta.title || '',
                 department: meta.department || '',
@@ -210,9 +234,28 @@ export const ProfileTab: React.FC = () => {
                 learning_topics: meta.learning_topics || [],
             };
 
+            // Skip overwriting state if user already started editing (race condition guard)
+            if (userHasEdited.current) {
+                console.log('[ProfileTab] Skipping DB overwrite — user has pending edits');
+                setLoadedFromDb(true);
+                return;
+            }
+
             setProfile(merged);
             if (merged.avatar_url) {
                 setAvatarPreview(merged.avatar_url);
+            }
+            // Check if loaded department is a custom (non-preset) value
+            const DEPT_PRESETS = [
+                'Sales', 'Marketing', 'Operations', 'Finance', 'Accounting',
+                'Human Resources', 'Engineering', 'Product', 'Design',
+                'Customer Success', 'Customer Support', 'Legal',
+                'IT', 'Administration', 'Executive', 'Business Development',
+                'Research & Development', 'Quality Assurance', 'Logistics',
+                'Procurement', 'Project Management',
+            ];
+            if (merged.department && !DEPT_PRESETS.includes(merged.department)) {
+                setDeptOtherMode(true);
             }
             setLoadedFromDb(true);
 
@@ -223,78 +266,210 @@ export const ProfileTab: React.FC = () => {
         }
     };
 
-    /** Crop handler — store both preview data URL and pending blob for upload */
+    /** Crop handler — immediately upload to Supabase Storage for persistence */
     const handleAvatarUpload = async () => {
-        if (!editorRef.current) return;
+        if (!editorRef.current || !authUser?.id) return;
 
         const canvas = editorRef.current.getImageScaledToCanvas();
 
         // Data URL for instant preview
         const dataUrl = canvas.toDataURL('image/png');
         setAvatarPreview(dataUrl);
-        setProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+        setShowCropper(false);
 
-        // Store blob for actual upload on Save
-        canvas.toBlob((blob) => {
-            if (blob) {
-                pendingAvatarBlob.current = blob;
+        // Convert to blob and upload immediately
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+
+            try {
+                const token = getAuthToken();
+                if (!token) throw new Error('No auth token');
+
+                const filePath = `${authUser.id}/avatar.png`;
+
+                // Upload to Supabase Storage immediately
+                const uploadRes = await fetch(
+                    `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'x-upsert': 'true',
+                            'Content-Type': 'image/png',
+                        },
+                        body: blob,
+                    }
+                );
+
+                if (!uploadRes.ok) {
+                    const errText = await uploadRes.text();
+                    console.error('[ProfileTab] Avatar upload failed:', uploadRes.status, errText);
+                    toast.error(`Avatar upload failed: ${uploadRes.status}`);
+                    return;
+                }
+
+                // Build public URL with cache-bust
+                const avatarPublicUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${filePath}?t=${Date.now()}`;
+
+                // Persist URL to user_profiles immediately
+                const patchRes = await fetch(
+                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation',
+                        },
+                        body: JSON.stringify({ avatar_url: avatarPublicUrl }),
+                    }
+                );
+
+                if (!patchRes.ok) {
+                    const errText = await patchRes.text();
+                    console.error('[ProfileTab] Avatar URL save failed:', patchRes.status, errText);
+                    toast.error(`Failed to save avatar URL: ${patchRes.status}`);
+                    return;
+                }
+
+                // Validate the row was actually updated
+                const avatarRows = await patchRes.json();
+                if (!Array.isArray(avatarRows) || avatarRows.length === 0) {
+                    console.error('[ProfileTab] Avatar PATCH returned 0 rows');
+                    toast.error('Failed to save avatar. Please refresh and try again.');
+                    return;
+                }
+
+                // Update local state with persisted public URL (not data URL)
+                setAvatarPreview(avatarPublicUrl);
+                setProfile(prev => ({ ...prev, avatar_url: avatarPublicUrl }));
+
+                // Update localStorage cache
+                const cached = localStorage.getItem(PROFILE_KEY);
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        parsed.avatar_url = avatarPublicUrl;
+                        localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+                    } catch { /* skip */ }
+                }
+
+                // Clear pending refs
+                pendingAvatarBlob.current = null;
                 pendingAvatarRemoved.current = false;
+
+                // Refresh team members so sidebar picks up new avatar
+                try { await fetchTeamMembers(); } catch { /* non-critical */ }
+
+                toast.success('Photo saved!');
+            } catch (error) {
+                console.error('[ProfileTab] Avatar upload error:', error);
+                toast.error(error instanceof Error ? error.message : 'Avatar upload failed');
             }
         }, 'image/png');
-
-        setShowCropper(false);
-        toast.success('Photo updated! Click Save to persist.');
     };
 
-    /** Remove avatar handler */
-    const handleRemoveAvatar = () => {
+    /** Remove avatar handler — immediately removes from Storage + DB (matches upload behavior) */
+    const handleRemoveAvatar = async () => {
+        if (!authUser?.id) return;
+
+        // Immediately clear UI
         setAvatarPreview(null);
         setProfile(prev => ({ ...prev, avatar_url: null }));
         pendingAvatarBlob.current = null;
-        pendingAvatarRemoved.current = true;
+        pendingAvatarRemoved.current = false; // handled immediately, no need to defer to save
+
+        try {
+            const token = getAuthToken();
+            if (!token) throw new Error('No auth token');
+
+            // Delete from Supabase Storage
+            const filePath = `${authUser.id}/avatar.png`;
+            await fetch(
+                `${supabaseUrl}/storage/v1/object/avatars/${filePath}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+
+            // Clear avatar_url in user_profiles
+            const patchRes = await fetch(
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation',
+                    },
+                    body: JSON.stringify({ avatar_url: null }),
+                }
+            );
+
+            if (!patchRes.ok) {
+                throw new Error(`Failed to remove avatar (${patchRes.status})`);
+            }
+
+            const rows = await patchRes.json();
+            if (!Array.isArray(rows) || rows.length === 0) {
+                throw new Error('Avatar removal failed: no rows affected');
+            }
+
+            // Update localStorage cache
+            const cached = localStorage.getItem(PROFILE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    parsed.avatar_url = null;
+                    localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+                } catch { /* skip */ }
+            }
+
+            // Refresh team members
+            try { await fetchTeamMembers(); } catch { /* non-critical */ }
+
+            toast.success('Photo removed!');
+        } catch (error) {
+            console.error('[ProfileTab] Avatar removal error:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to remove avatar');
+        }
     };
 
-    /** Save profile — upload avatar to Storage + persist all fields to user_profiles */
+    /** Save profile — persist all fields to user_profiles (avatar is uploaded separately on crop) */
     const handleSaveProfile = async () => {
-        if (!user?.id) {
+        if (isImpersonated) {
+            toast.error('Cannot edit profile while impersonating');
+            return;
+        }
+        if (!authUser?.id) {
             toast.error('Not authenticated');
+            return;
+        }
+
+        // Validate birthday is not in the future
+        if (profile.birthday && profile.birthday > new Date().toISOString().split('T')[0]) {
+            toast.error('Birthday cannot be in the future');
             return;
         }
 
         setSaving(true);
 
         try {
-            let avatarPublicUrl: string | null = profile.avatar_url;
+            const token = getAuthToken();
+            if (!token) throw new Error('No auth token found');
 
-            // 1) Upload avatar to Supabase Storage if pending
-            if (pendingAvatarBlob.current) {
-                const filePath = `${user.id}/avatar.png`;
+            // Avatar URL: use current profile value (already persisted by handleAvatarUpload/handleRemoveAvatar)
+            // Never persist data: URLs — those are transient previews
+            const avatarPublicUrl: string | null = profile.avatar_url?.startsWith('data:') ? null : (profile.avatar_url || null);
 
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, pendingAvatarBlob.current, {
-                        upsert: true,
-                        contentType: 'image/png',
-                    });
-
-                if (uploadError) throw new Error(`Avatar upload failed: ${uploadError.message}`);
-
-                // Get public URL with cache-bust
-                const { data: urlData } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-
-                avatarPublicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-                pendingAvatarBlob.current = null;
-            } else if (pendingAvatarRemoved.current) {
-                // Remove avatar from storage
-                const filePath = `${user.id}/avatar.png`;
-                await supabase.storage.from('avatars').remove([filePath]);
-                avatarPublicUrl = null;
-                pendingAvatarRemoved.current = false;
-            }
-
-            // 2) Build profile_metadata JSONB
+            // Build profile_metadata JSONB
             const profileMetadata = {
                 first_name: profile.first_name,
                 last_name: profile.last_name,
@@ -315,32 +490,41 @@ export const ProfileTab: React.FC = () => {
                 learning_topics: profile.learning_topics,
             };
 
-            // 3) PATCH user_profiles via direct fetch (bypass AbortController)
-            const token = getAuthToken();
-            if (!token) throw new Error('No auth token found');
+            // PATCH user_profiles via direct fetch (bypass AbortController)
+            const patchBody = {
+                full_name: `${profile.first_name} ${profile.last_name}`.trim(),
+                avatar_url: avatarPublicUrl,
+                profile_metadata: profileMetadata,
+            };
+            console.log('[ProfileTab] Saving profile:', { userId: authUser.id, avatar_url: avatarPublicUrl, metadataKeys: Object.keys(profileMetadata) });
 
             const res = await fetch(
-                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}`,
+                `${supabaseUrl}/rest/v1/user_profiles?id=eq.${authUser.id}`,
                 {
                     method: 'PATCH',
                     headers: {
                         'apikey': supabaseAnonKey,
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal',
+                        'Prefer': 'return=representation',
                     },
-                    body: JSON.stringify({
-                        full_name: `${profile.first_name} ${profile.last_name}`.trim(),
-                        avatar_url: avatarPublicUrl,
-                        profile_metadata: profileMetadata,
-                    }),
+                    body: JSON.stringify(patchBody),
                 }
             );
 
             if (!res.ok) {
                 const errText = await res.text();
+                console.error('[ProfileTab] Profile PATCH failed:', res.status, errText);
                 throw new Error(`Profile update failed (${res.status}): ${errText}`);
             }
+
+            // Validate that the row was actually updated (return=representation returns the updated row)
+            const updatedRows = await res.json();
+            if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+                console.error('[ProfileTab] PATCH returned 0 rows — RLS may have blocked the update');
+                throw new Error('Profile update failed: no rows affected. Please refresh and try again.');
+            }
+            console.log('[ProfileTab] Profile saved successfully:', { metadataKeys: Object.keys(updatedRows[0]?.profile_metadata || {}) });
 
             // 4) Update local state with the persisted public URL
             const updatedProfile = {
@@ -359,6 +543,8 @@ export const ProfileTab: React.FC = () => {
                 await fetchTeamMembers();
             } catch { /* non-critical */ }
 
+            // Reset edit tracking after successful save
+            userHasEdited.current = false;
             toast.success('Profile saved successfully!');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to save profile';
@@ -369,16 +555,17 @@ export const ProfileTab: React.FC = () => {
         }
     };
 
-    const toggleArrayItem = (field: keyof ProfileData, item: string) => {
-        const current = profile[field] as string[];
-        const updated = current.includes(item)
-            ? current.filter(i => i !== item)
-            : [...current, item];
-        setProfile({ ...profile, [field]: updated });
-    };
-
     return (
-        <div className="space-y-8 max-w-4xl">
+        <div className="space-y-8">
+
+            {/* Impersonation read-only banner */}
+            {isImpersonated && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 flex items-center gap-2">
+                    <span className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+                        Viewing {effectiveUser.fullName}'s profile (read-only while impersonating)
+                    </span>
+                </div>
+            )}
 
             {/* Header */}
             <div>
@@ -534,7 +721,7 @@ export const ProfileTab: React.FC = () => {
                         <input
                             type="text"
                             value={profile.first_name}
-                            onChange={(e) => setProfile({ ...profile, first_name: e.target.value, full_name: `${e.target.value} ${profile.last_name}`.trim() })}
+                            onChange={(e) => { userHasEdited.current = true; const val = e.target.value; setProfile(prev => ({ ...prev, first_name: val, full_name: `${val} ${prev.last_name}`.trim() })); }}
                             placeholder="John"
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
@@ -547,7 +734,7 @@ export const ProfileTab: React.FC = () => {
                         <input
                             type="text"
                             value={profile.last_name}
-                            onChange={(e) => setProfile({ ...profile, last_name: e.target.value, full_name: `${profile.first_name} ${e.target.value}`.trim() })}
+                            onChange={(e) => { userHasEdited.current = true; const val = e.target.value; setProfile(prev => ({ ...prev, last_name: val, full_name: `${prev.first_name} ${val}`.trim() })); }}
                             placeholder="Doe"
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
@@ -562,7 +749,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="email"
                                 value={profile.email}
-                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, email: e.target.value })); }}
                                 placeholder="john@example.com"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -575,7 +762,7 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <PhoneInput
                             value={profile.phone}
-                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, phone: e.target.value })); }}
                             className="py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                     </div>
@@ -589,7 +776,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="text"
                                 value={profile.title}
-                                onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, title: e.target.value })); }}
                                 placeholder="Sales Manager"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -600,13 +787,55 @@ export const ProfileTab: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Department
                         </label>
-                        <input
-                            type="text"
-                            value={profile.department}
-                            onChange={(e) => setProfile({ ...profile, department: e.target.value })}
-                            placeholder="Sales"
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
+                        {(() => {
+                            const DEPARTMENTS = [
+                                'Sales', 'Marketing', 'Operations', 'Finance', 'Accounting',
+                                'Human Resources', 'Engineering', 'Product', 'Design',
+                                'Customer Success', 'Customer Support', 'Legal',
+                                'IT', 'Administration', 'Executive', 'Business Development',
+                                'Research & Development', 'Quality Assurance', 'Logistics',
+                                'Procurement', 'Project Management',
+                            ];
+                            const currentVal = profile.department || '';
+                            const isPreset = DEPARTMENTS.includes(currentVal);
+                            return (
+                                <div className="space-y-2">
+                                    <select
+                                        value={deptOtherMode ? '__other__' : (isPreset ? currentVal : '')}
+                                        onChange={(e) => {
+                                            userHasEdited.current = true;
+                                            if (e.target.value === '__other__') {
+                                                setDeptOtherMode(true);
+                                                setProfile(prev => ({ ...prev, department: '' }));
+                                                setTimeout(() => {
+                                                    document.getElementById('department-other-input')?.focus();
+                                                }, 50);
+                                            } else {
+                                                setDeptOtherMode(false);
+                                                setProfile(prev => ({ ...prev, department: e.target.value }));
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    >
+                                        <option value="">Select department...</option>
+                                        {DEPARTMENTS.map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                        <option value="__other__">Other</option>
+                                    </select>
+                                    {deptOtherMode && (
+                                        <input
+                                            id="department-other-input"
+                                            type="text"
+                                            value={currentVal}
+                                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, department: e.target.value })); }}
+                                            placeholder="Enter department name..."
+                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div>
@@ -615,11 +844,11 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <AddressAutocomplete
                             value={profile.location}
-                            onChange={(value) => setProfile({ ...profile, location: value })}
+                            onChange={(value) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, location: value })); }}
                             onAddressSelect={(components: AddressComponents) => {
-                                // Format as "City, State, Country" for profile location
+                                userHasEdited.current = true;
                                 const parts = [components.city, components.state, components.country].filter(Boolean);
-                                setProfile({ ...profile, location: parts.join(', ') });
+                                setProfile(prev => ({ ...prev, location: parts.join(', ') }));
                             }}
                             placeholder="Start typing your city..."
                             searchTypes={['(cities)']}
@@ -633,7 +862,7 @@ export const ProfileTab: React.FC = () => {
                         </label>
                         <select
                             value={profile.timezone}
-                            onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+                            onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, timezone: e.target.value })); }}
                             className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         >
                             {TIMEZONE_OPTIONS.map(tz => (
@@ -651,7 +880,8 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="date"
                                 value={profile.birthday}
-                                onChange={(e) => setProfile({ ...profile, birthday: e.target.value })}
+                                max={new Date().toISOString().split('T')[0]}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, birthday: e.target.value })); }}
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
                         </div>
@@ -665,7 +895,7 @@ export const ProfileTab: React.FC = () => {
                     </label>
                     <textarea
                         value={profile.bio}
-                        onChange={(e) => setProfile({ ...profile, bio: e.target.value.slice(0, 500) })}
+                        onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, bio: e.target.value.slice(0, 500) })); }}
                         placeholder="Tell us about yourself..."
                         rows={4}
                         className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -692,7 +922,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="url"
                                 value={profile.linkedin}
-                                onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, linkedin: e.target.value })); }}
                                 placeholder="linkedin.com/in/johndoe"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -708,7 +938,7 @@ export const ProfileTab: React.FC = () => {
                             <input
                                 type="url"
                                 value={profile.website}
-                                onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                                onChange={(e) => { userHasEdited.current = true; setProfile(prev => ({ ...prev, website: e.target.value })); }}
                                 placeholder="johndoe.com"
                                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
@@ -717,150 +947,17 @@ export const ProfileTab: React.FC = () => {
                 </div>
             </div>
 
-            {/* AI CoPilot Context */}
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800 p-8">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                        <Brain className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            AI CoPilot Context
-                            <Sparkles className="w-5 h-5 text-purple-600" />
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Help your AI assistant understand you better
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    {/* Work Style */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Coffee className="w-4 h-4 inline mr-2" />
-                            Work Style
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Early Bird', 'Night Owl', 'Flexible', 'Remote', 'In-Office', 'Hybrid'].map(style => (
-                                <button
-                                    key={style}
-                                    onClick={() => toggleArrayItem('work_style', style)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.work_style.includes(style)
-                                            ? 'bg-purple-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400'
-                                        }
-                  `}
-                                >
-                                    {style}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Communication Preference */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Lightbulb className="w-4 h-4 inline mr-2" />
-                            Communication Style
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Direct', 'Detailed', 'Visual', 'Data-Driven', 'Collaborative', 'Async'].map(style => (
-                                <button
-                                    key={style}
-                                    onClick={() => toggleArrayItem('communication_preference', style)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.communication_preference.includes(style)
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400'
-                                        }
-                  `}
-                                >
-                                    {style}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Goals */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Target className="w-4 h-4 inline mr-2" />
-                            Current Goals
-                        </label>
-                        <textarea
-                            value={profile.goals.join('\n')}
-                            onChange={(e) => setProfile({ ...profile, goals: e.target.value.split('\n').filter(g => g.trim()) })}
-                            placeholder="- Increase sales by 20%&#10;- Learn React&#10;- Improve customer satisfaction"
-                            rows={3}
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                        />
-                    </div>
-
-                    {/* Expertise */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Award className="w-4 h-4 inline mr-2" />
-                            Areas of Expertise
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Sales', 'Marketing', 'Product', 'Engineering', 'Design', 'Operations', 'Finance', 'HR', 'Customer Success'].map(area => (
-                                <button
-                                    key={area}
-                                    onClick={() => toggleArrayItem('expertise', area)}
-                                    className={`
-                    px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${profile.expertise.includes(area)
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-green-400'
-                                        }
-                  `}
-                                >
-                                    {area}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Interests */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            <Heart className="w-4 h-4 inline mr-2" />
-                            Interests & Hobbies
-                        </label>
-                        <input
-                            type="text"
-                            value={profile.interests.join(', ')}
-                            onChange={(e) => setProfile({ ...profile, interests: e.target.value.split(',').map(i => i.trim()).filter(Boolean) })}
-                            placeholder="Travel, Photography, Cooking, Tech"
-                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                        />
-                    </div>
-                </div>
-
-                {/* AI Context Info */}
-                <div className="mt-6 p-4 bg-purple-100 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-800">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                        <Sparkles className="w-4 h-4 inline mr-2 text-purple-600" />
-                        This information helps your AI CoPilot provide more personalized assistance, suggest relevant content, and understand your work style better.
-                    </p>
-                </div>
-            </div>
-
             {/* Save Button */}
             <div className="flex justify-end gap-3 pb-8">
                 <button
-                    onClick={() => setProfile(createDefaultProfile(user))}
+                    onClick={() => setProfile(createDefaultProfile(authUser))}
                     className="px-6 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors"
                 >
                     Reset
                 </button>
                 <button
                     onClick={handleSaveProfile}
-                    disabled={saving}
+                    disabled={saving || isImpersonated}
                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
                 >
                     {saving ? (

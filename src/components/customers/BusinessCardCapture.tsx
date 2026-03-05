@@ -6,8 +6,9 @@
 
 import React, { useState, useRef } from 'react';
 import { Loader2, AlertCircle, CreditCard, Check, RotateCcw } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { getAuthToken, getSupabaseUrl } from '@/utils/auth.utils';
+import { compressImageForOCR } from '@/utils/image.utils';
 
 interface ExtractedContact {
     first_name: string;
@@ -39,45 +40,70 @@ export const BusinessCardCapture: React.FC<BusinessCardCaptureProps> = ({
     const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !currentOrganization?.id) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile || !currentOrganization?.id) return;
 
         // Show preview
-        const previewUrl = URL.createObjectURL(file);
+        const previewUrl = URL.createObjectURL(rawFile);
         setPreview(previewUrl);
         setShowProcessing(true);
         setIsProcessing(true);
         setError(null);
 
         try {
-            // Step 1: Upload to Supabase Storage
+            // Step 1: Compress and upload to Supabase Storage
             setProgress('Uploading image...');
+            const file = await compressImageForOCR(rawFile);
             const timestamp = Date.now();
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
             const path = `${currentOrganization.id}/${timestamp}_${safeName}`;
 
-            const { error: uploadError } = await supabase.storage
-                .from('business-cards')
-                .upload(path, file, {
-                    cacheControl: '3600',
-                    upsert: false,
-                });
+            const supabaseUrl = getSupabaseUrl();
+            const token = await getAuthToken();
+            if (!token) throw new Error('Please sign in to scan business cards');
 
-            if (uploadError) throw new Error('Failed to upload: ' + uploadError.message);
+            const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            // Upload via direct fetch (avoids Supabase JS AbortController issue)
+            const uploadRes = await fetch(
+                `${supabaseUrl}/storage/v1/object/business-cards/${path}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'apikey': anonKey,
+                        'Cache-Control': '3600',
+                    },
+                    body: file,
+                }
+            );
+
+            if (!uploadRes.ok) {
+                const err = await uploadRes.json().catch(() => ({}));
+                throw new Error('Failed to upload: ' + (err.message || uploadRes.statusText));
+            }
 
             // Step 2: Get a signed URL for the uploaded image
-            const { data: signedUrlData } = await supabase.storage
-                .from('business-cards')
-                .createSignedUrl(path, 3600);
+            const signedUrlRes = await fetch(
+                `${supabaseUrl}/storage/v1/object/sign/business-cards/${path}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'apikey': anonKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ expiresIn: 3600 }),
+                }
+            );
 
-            const imageUrl = signedUrlData?.signedUrl || path;
+            const signedUrlData = signedUrlRes.ok ? await signedUrlRes.json() : null;
+            const imageUrl = signedUrlData?.signedURL
+                ? `${supabaseUrl}/storage/v1${signedUrlData.signedURL}`
+                : path;
 
             // Step 3: Call OCR Edge Function
-            setProgress('Scanning card...');
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            // Get current session token for the Edge Function call
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            setProgress('Scanning card with AI...');
 
             const ocrResponse = await fetch(
                 `${supabaseUrl}/functions/v1/ocr-extract`,
@@ -96,15 +122,19 @@ export const BusinessCardCapture: React.FC<BusinessCardCaptureProps> = ({
 
             if (!ocrResponse.ok) {
                 const errorData = await ocrResponse.json().catch(() => ({}));
+                if (errorData.error === 'token_limit_reached') {
+                    throw new Error('Out of AI tokens this month. Upgrade your plan for more.');
+                }
                 throw new Error(errorData.error || 'OCR processing failed');
             }
 
             const ocrData = await ocrResponse.json();
 
             if (ocrData.success && ocrData.contact) {
-                setProgress('Contact info extracted!');
+                const tokenInfo = ocrData.tokensUsed ? ` (${ocrData.tokensUsed} AI tokens)` : '';
+                setProgress(`Contact extracted!${tokenInfo}`);
                 // Small delay so user sees the success message
-                await new Promise(r => setTimeout(r, 800));
+                await new Promise(r => setTimeout(r, 1000));
                 onContactExtracted(ocrData.contact, imageUrl);
                 resetState();
             } else {

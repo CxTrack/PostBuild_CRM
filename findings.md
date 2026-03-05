@@ -18,7 +18,7 @@
 
 ### Cross-App Communication
 - **Discovery:** Marketing Website and CRM share Supabase session via cookies
-- **Implication:** User authenticated on easyaicrm.com is automatically authenticated on crm.easyaicrm.com
+- **Implication:** User authenticated on cxtrack.com is automatically authenticated on crm.cxtrack.com
 - **Constraint:** Both apps must use same Supabase project and URL
 
 ---

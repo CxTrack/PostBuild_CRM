@@ -3,15 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { invoiceService, Invoice } from '@/services/invoice.service';
 import { stripeService } from '@/services/stripe.service';
+import { stripeConnectService } from '@/services/stripeConnect.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { ArrowLeft, Edit, Send, Trash2, Loader2, CreditCard, DollarSign, Link as LinkIcon, Share2 } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Trash2, Loader2, CreditCard, DollarSign, Link as LinkIcon, Share2, Settings as SettingsIcon, Copy, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ShareDropdown, { ShareOption } from '@/components/share/ShareDropdown';
 import ShareModal from '@/components/share/ShareModal';
 import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { getTermsLabel } from '@/config/paymentTerms';
 
 interface OrganizationInfo {
   name: string;
@@ -94,19 +96,31 @@ export default function InvoiceDetail() {
   };
 
   const handleGeneratePaymentLink = async () => {
-    if (!invoice) return;
+    if (!invoice || !currentOrganization) return;
 
     try {
       setGeneratingLink(true);
-      const link = await stripeService.createPaymentLink(
+
+      // Check if Stripe Connect is active
+      const stripeStatus = await stripeConnectService.getAccountStatus(currentOrganization.id);
+
+      if (stripeStatus.status !== 'active') {
+        // Show dialog with message to connect Stripe first
+        setPaymentLink('');
+        setShowPaymentLinkDialog(true);
+        return;
+      }
+
+      // Use Stripe Connect to create checkout session
+      const result = await stripeConnectService.createCheckoutSession(
         invoice.id,
         invoice.amount_due,
         'USD'
       );
-      setPaymentLink(link);
+      setPaymentLink(result.url);
       setShowPaymentLinkDialog(true);
-    } catch (error) {
-      toast.error('Failed to generate payment link. Please ensure Stripe is configured in settings.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to generate payment link. Please ensure Stripe is connected in settings.');
     } finally {
       setGeneratingLink(false);
     }
@@ -383,7 +397,7 @@ export default function InvoiceDetail() {
             {invoice.payment_terms && (
               <div className="mb-4">
                 <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Payment Terms</h3>
-                <p className="text-gray-900 dark:text-white">{invoice.payment_terms}</p>
+                <p className="text-gray-900 dark:text-white">{getTermsLabel(invoice.payment_terms)}</p>
               </div>
             )}
             {invoice.notes && (
@@ -473,33 +487,77 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      {showPaymentLinkDialog && paymentLink && (
+      {showPaymentLinkDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Payment Link Generated
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Share this link with your customer to accept online payments:
-            </p>
+            {paymentLink ? (
+              <>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  Payment Link Generated
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Share this link with your customer to accept online payments:
+                </p>
 
-            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg mb-4">
-              <p className="text-sm text-gray-900 dark:text-white break-all">{paymentLink}</p>
-            </div>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg mb-4">
+                  <p className="text-sm text-gray-900 dark:text-white break-all flex-1">{paymentLink}</p>
+                  <button
+                    onClick={copyPaymentLink}
+                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <Copy className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowPaymentLinkDialog(false)}
-                className="flex-1"
-              >
-                Close
-              </Button>
-              <Button onClick={copyPaymentLink} className="flex-1">
-                <LinkIcon className="w-4 h-4 mr-2" />
-                Copy Link
-              </Button>
-            </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPaymentLinkDialog(false)}
+                    className="flex-1"
+                  >
+                    Close
+                  </Button>
+                  <Button onClick={copyPaymentLink} className="flex-1">
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex-shrink-0">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Stripe Not Connected
+                  </h2>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Connect your Stripe account in Settings to accept online payments and generate payment links for your invoices.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPaymentLinkDialog(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowPaymentLinkDialog(false);
+                      navigate('/dashboard/settings');
+                    }}
+                    className="flex-1"
+                  >
+                    <SettingsIcon className="w-4 h-4 mr-2" />
+                    Go to Settings
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

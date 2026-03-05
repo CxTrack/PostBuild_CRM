@@ -6,7 +6,7 @@ export interface Message {
     conversation_id?: string;
     content: string;
     sender_id: string;
-    message_type?: 'text' | 'image' | 'file' | 'system';
+    message_type?: 'text' | 'image' | 'file' | 'system' | 'sms';
     metadata?: Record<string, unknown>;
     is_edited?: boolean;
     edited_at?: string;
@@ -49,7 +49,7 @@ export interface Conversation {
     organization_id?: string;
     name?: string;
     is_group?: boolean;
-    channel_type?: 'direct' | 'group' | 'channel';
+    channel_type?: 'direct' | 'group' | 'channel' | 'sms';
     description?: string;
     created_by?: string;
     created_at?: string;

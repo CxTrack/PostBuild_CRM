@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Phone, PhoneIncoming, PhoneOutgoing, Play, Pause, Clock,
-  FileText, ChevronDown, ChevronUp, Volume2
+  FileText, ChevronDown, ChevronUp, Volume2, Sparkles, Tag,
+  CheckCircle, TrendingUp, TrendingDown, Minus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { useOrganizationStore } from '@/stores/organizationStore';
-import type { Call } from '@/types/database.types';
+import type { Call, CallSummary } from '@/types/database.types';
 
 interface RecentCallsSectionProps {
   customerId: string;
@@ -17,6 +18,7 @@ const RecentCallsSection: React.FC<RecentCallsSectionProps> = ({ customerId }) =
   const navigate = useNavigate();
   const { currentOrganization } = useOrganizationStore();
   const [calls, setCalls] = useState<Call[]>([]);
+  const [summaries, setSummaries] = useState<Record<string, CallSummary>>({});
   const [loading, setLoading] = useState(true);
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
   const [playingCallId, setPlayingCallId] = useState<string | null>(null);
@@ -38,6 +40,21 @@ const RecentCallsSection: React.FC<RecentCallsSectionProps> = ({ customerId }) =
 
         if (error) throw error;
         setCalls(data || []);
+
+        // Fetch AI summaries for these calls
+        if (data && data.length > 0) {
+          const callIds = data.map(c => c.id);
+          const { data: sumData } = await supabase
+            .from('call_summaries')
+            .select('*')
+            .in('call_id', callIds);
+
+          if (sumData) {
+            const map: Record<string, CallSummary> = {};
+            sumData.forEach(s => { map[s.call_id] = s; });
+            setSummaries(map);
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch calls:', err);
       } finally {
@@ -160,55 +177,119 @@ const RecentCallsSection: React.FC<RecentCallsSectionProps> = ({ customerId }) =
                 </div>
 
                 {/* Expanded details */}
-                {isExpanded && (
-                  <div className="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
-                    {/* Audio player */}
-                    {call.recording_url && (
-                      <div className="flex items-center gap-3 pt-3">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleAudio(call); }}
-                          className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
-                        >
-                          {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <Volume2 size={14} className="text-gray-400" />
-                          <span className="text-xs text-gray-500">{isPlaying ? 'Playing...' : 'Play recording'}</span>
+                {isExpanded && (() => {
+                  const summary = summaries[call.id];
+                  const summaryText = summary?.summary_text || call.call_summary;
+                  const sentiment = summary?.sentiment;
+                  const keyTopics = summary?.key_topics || [];
+                  const actionItems = summary?.action_items || [];
+
+                  const SentimentIcon = sentiment === 'positive' ? TrendingUp
+                    : sentiment === 'negative' ? TrendingDown : Minus;
+                  const sentimentColor = sentiment === 'positive'
+                    ? 'text-green-600 dark:text-green-400'
+                    : sentiment === 'negative'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-500 dark:text-gray-400';
+
+                  return (
+                    <div className="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+                      {/* Audio player */}
+                      {call.recording_url && (
+                        <div className="flex items-center gap-3 pt-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleAudio(call); }}
+                            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
+                          >
+                            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <Volume2 size={14} className="text-gray-400" />
+                            <span className="text-xs text-gray-500">{isPlaying ? 'Playing...' : 'Play recording'}</span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Summary */}
-                    {call.call_summary && (
-                      <div className="pt-2">
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                          <FileText size={12} /> Summary
-                        </p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {call.call_summary}
-                        </p>
-                      </div>
-                    )}
+                      {/* AI Summary */}
+                      {summaryText ? (
+                        <div className="pt-2">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <Sparkles size={12} className="text-purple-500" /> AI Summary
+                            </p>
+                            {sentiment && (
+                              <span className={`flex items-center gap-1 text-[10px] font-medium ${sentimentColor}`}>
+                                <SentimentIcon size={10} />
+                                {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {summaryText}
+                          </p>
+                        </div>
+                      ) : (
+                        /* Fallback: show transcript snippet if no summary available */
+                        call.transcript && (
+                          <div className="pt-2">
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
+                              <FileText size={12} /> Transcript Preview
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3 italic">
+                              {call.transcript}
+                            </p>
+                          </div>
+                        )
+                      )}
 
-                    {/* Transcript snippet */}
-                    {call.transcript && (
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Transcript</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">
-                          {call.transcript}
-                        </p>
-                      </div>
-                    )}
+                      {/* Key Topics */}
+                      {keyTopics.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Tag size={10} className="text-gray-400 shrink-0" />
+                          {keyTopics.slice(0, 4).map((topic, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-full"
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                          {keyTopics.length > 4 && (
+                            <span className="text-[10px] text-gray-400">+{keyTopics.length - 4} more</span>
+                          )}
+                        </div>
+                      )}
 
-                    {/* View full detail link */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/calls/${call.id}`); }}
-                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                    >
-                      View Full Details →
-                    </button>
-                  </div>
-                )}
+                      {/* Action Items */}
+                      {actionItems.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
+                            <CheckCircle size={10} /> Action Items
+                          </p>
+                          <ul className="space-y-0.5">
+                            {actionItems.slice(0, 3).map((item, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                <span className="text-blue-500 mt-0.5 shrink-0">•</span>
+                                <span>{typeof item === 'string' ? item : item.description}</span>
+                              </li>
+                            ))}
+                            {actionItems.length > 3 && (
+                              <li className="text-[10px] text-gray-400 pl-3">+{actionItems.length - 3} more</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* View full detail link */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/calls/${call.id}`); }}
+                        className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                      >
+                        View Full Details →
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'soft-modern' | 'midnight';
+export type Theme = 'light' | 'dark' | 'soft-modern' | 'midnight' | 'ocean';
 
 interface ThemeState {
   theme: Theme;
@@ -11,7 +11,7 @@ interface ThemeState {
 
 const applyTheme = (theme: Theme) => {
   const root = document.documentElement;
-  root.classList.remove('light', 'dark', 'soft-modern', 'midnight');
+  root.classList.remove('light', 'dark', 'soft-modern', 'midnight', 'ocean');
 
   if (theme === 'dark') {
     root.classList.add('dark');
@@ -19,6 +19,8 @@ const applyTheme = (theme: Theme) => {
     root.classList.add('soft-modern');
   } else if (theme === 'midnight') {
     root.classList.add('dark', 'midnight');
+  } else if (theme === 'ocean') {
+    root.classList.add('dark', 'ocean');
   } else {
     root.classList.add('light');
   }
@@ -27,11 +29,11 @@ const applyTheme = (theme: Theme) => {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'light',
+      theme: 'ocean',
 
       toggleTheme: () => {
         const currentTheme = get().theme;
-        const themeOrder: Theme[] = ['light', 'dark', 'soft-modern', 'midnight'];
+        const themeOrder: Theme[] = ['ocean', 'midnight', 'light'];
         const currentIndex = themeOrder.indexOf(currentTheme);
         const newTheme = themeOrder[(currentIndex + 1) % themeOrder.length];
         applyTheme(newTheme);

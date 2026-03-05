@@ -1,4 +1,5 @@
 ﻿import { supabase } from '../lib/supabase';
+import { getAuthToken, getSupabaseUrl } from '../utils/auth.utils';
 
 export interface TwilioSettings {
     id: string;
@@ -124,27 +125,32 @@ export const twilioService = {
         }
     ): Promise<SMSResult> {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
+            const token = await getAuthToken();
+            if (!token) {
                 return { success: false, error: 'Not authenticated' };
             }
 
-            const response = await supabase.functions.invoke('send-sms', {
-                body: {
+            const response = await fetch(`${getSupabaseUrl()}/functions/v1/send-sms`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
                     to,
                     body,
                     organizationId,
                     documentType: options?.documentType,
                     documentId: options?.documentId,
-                },
+                }),
             });
 
-            if (response.error) {
-                return { success: false, error: response.error.message };
+            const data = await response.json();
+            if (!response.ok) {
+                return { success: false, error: data.error || `SMS failed (${response.status})` };
             }
 
-            return response.data as SMSResult;
+            return data as SMSResult;
         } catch (error: any) {
             return { success: false, error: error.message };
         }
@@ -163,27 +169,32 @@ export const twilioService = {
         }
     ): Promise<CallResult> {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
+            const token = await getAuthToken();
+            if (!token) {
                 return { success: false, error: 'Not authenticated' };
             }
 
-            const response = await supabase.functions.invoke('make-call', {
-                body: {
+            const response = await fetch(`${getSupabaseUrl()}/functions/v1/make-call`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
                     to,
                     organizationId,
                     twimlUrl: options?.twimlUrl,
                     customerId: options?.customerId,
                     callType: options?.callType || 'outbound',
-                },
+                }),
             });
 
-            if (response.error) {
-                return { success: false, error: response.error.message };
+            const data = await response.json();
+            if (!response.ok) {
+                return { success: false, error: data.error || `Call failed (${response.status})` };
             }
 
-            return response.data as CallResult;
+            return data as CallResult;
         } catch (error: any) {
             return { success: false, error: error.message };
         }

@@ -7,6 +7,8 @@ import { shareLinkService, ShareLink } from '@/services/shareLink.service';
 import { emailService } from '@/services/email.service';
 import { smsService } from '@/services/sms.service';
 import { pdfService } from '@/services/pdf.service';
+import { stripeConnectService } from '@/services/stripeConnect.service';
+import { supabase } from '@/lib/supabase';
 import { Quote } from '@/services/quote.service';
 import { Invoice } from '@/services/invoice.service';
 import { PhoneInput } from '../ui/PhoneInput';
@@ -68,6 +70,8 @@ export default function ShareModal({
     password: '',
   });
 
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+
   const documentNumber = documentType === 'quote'
     ? (document as Quote).quote_number
     : (document as Invoice).invoice_number;
@@ -76,12 +80,48 @@ export default function ShareModal({
     if (isOpen) {
       setActiveTab(initialTab);
       loadExistingLink();
+      if (documentType === 'invoice') {
+        loadOrGeneratePaymentLink();
+      }
     }
   }, [isOpen, initialTab]);
 
+  const loadOrGeneratePaymentLink = async () => {
+    try {
+      const inv = document as Invoice;
+      // Check if invoice already has a payment link
+      if ((inv as any).stripe_payment_link_url) {
+        setPaymentLinkUrl((inv as any).stripe_payment_link_url);
+        return;
+      }
+
+      // Check if Stripe Connect is active
+      const status = await stripeConnectService.getAccountStatus(organizationId);
+      if (!status?.charges_enabled) return;
+
+      // Generate a checkout session
+      const session = await stripeConnectService.createCheckoutSession(
+        inv.id,
+        inv.amount_due || inv.total_amount,
+        'USD'
+      );
+
+      if (session?.url) {
+        setPaymentLinkUrl(session.url);
+        // Save the payment link URL to the invoice
+        await supabase
+          .from('invoices')
+          .update({ stripe_payment_link_url: session.url })
+          .eq('id', inv.id);
+      }
+    } catch {
+      // Stripe not connected or error — no payment link, that's fine
+    }
+  };
+
   useEffect(() => {
     if (shareLink) {
-      generateQRCode(shareLinkService.getShareUrl(shareLink.share_token, documentType));
+      generateQRCode(shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined));
     }
   }, [shareLink]);
 
@@ -135,7 +175,7 @@ export default function ShareModal({
 
   const handleCopyLink = () => {
     if (shareLink) {
-      const url = shareLinkService.getShareUrl(shareLink.share_token, documentType);
+      const url = shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined);
       navigator.clipboard.writeText(url);
       setCopied(true);
       toast.success('Link copied to clipboard');
@@ -162,7 +202,7 @@ export default function ShareModal({
         documentType,
         documentId: document.id,
         documentNumber,
-        shareLink: shareLink ? shareLinkService.getShareUrl(shareLink.share_token, documentType) : '',
+        shareLink: shareLink ? shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined) : '',
       });
 
       if (result.success) {
@@ -190,7 +230,7 @@ export default function ShareModal({
         await handleGenerateLink();
       }
 
-      const url = shareLink ? shareLinkService.getShareUrl(shareLink.share_token, documentType) : '';
+      const url = shareLink ? shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined) : '';
 
       const result = documentType === 'quote'
         ? await smsService.sendQuoteSMS(organizationId, document.id, documentNumber, smsData.phone, url, organizationInfo.name)
@@ -209,12 +249,12 @@ export default function ShareModal({
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     try {
       if (documentType === 'quote') {
-        pdfService.generateQuotePDF(document as Quote, organizationInfo);
+        await pdfService.generateQuotePDF(document as Quote, organizationInfo);
       } else {
-        pdfService.generateInvoicePDF(document as Invoice, organizationInfo);
+        await pdfService.generateInvoicePDF(document as Invoice, organizationInfo, paymentLinkUrl || undefined);
       }
       toast.success('PDF downloaded successfully');
     } catch (error: any) {
@@ -224,7 +264,7 @@ export default function ShareModal({
 
   useEffect(() => {
     if (shareLink) {
-      const url = shareLinkService.getShareUrl(shareLink.share_token, documentType);
+      const url = shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined);
       setEmailData(prev => ({
         ...prev,
         subject: emailService.generateEmailSubject(documentType, documentNumber, organizationInfo.name),
@@ -343,7 +383,7 @@ export default function ShareModal({
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        value={shareLinkService.getShareUrl(shareLink.share_token, documentType)}
+                        value={shareLinkService.getShareUrl(shareLink.share_token, documentType, documentType === 'invoice' ? paymentLinkUrl || undefined : undefined)}
                         readOnly
                         className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                       />
@@ -455,10 +495,10 @@ export default function ShareModal({
                 <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    SMS Configuration Required
+                    SMS Sending
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    Configure your Twilio credentials in Settings to enable SMS sending.
+                    SMS will be sent using your provisioned phone number or Twilio credentials configured in Settings.
                   </p>
                 </div>
               </div>

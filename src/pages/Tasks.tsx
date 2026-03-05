@@ -1,5 +1,6 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useTaskStore, type TaskStatus } from '@/stores/taskStore';
 import { supabase } from '@/lib/supabase';
 import {
   Plus,
@@ -16,6 +17,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { PageContainer } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
 import TaskModal from '@/components/tasks/TaskModal';
@@ -23,6 +25,7 @@ import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
 import { useThemeStore } from '@/stores/themeStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 type ViewMode = 'table' | 'kanban';
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -53,10 +56,26 @@ const priorityColors: Record<Priority, string> = {
   urgent: 'bg-rose-500',
 };
 
-const statusStyles: Record<Status, string> = {
-  'To Do': 'bg-gray-50 text-gray-700 border-gray-200',
-  'In Progress': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+// Bidirectional status mapping between display labels and DB values
+const DB_TO_DISPLAY: Record<string, Status> = {
+  pending: 'To Do',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+};
+const DISPLAY_TO_DB: Record<Status, TaskStatus> = {
+  'To Do': 'pending',
+  'In Progress': 'in_progress',
+  'Completed': 'completed',
+};
+
+const statusStyles: Record<string, string> = {
+  'To Do': 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+  'In Progress': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+  'Completed': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
+  // DB-value aliases (fallback if raw DB status leaks through)
+  pending: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+  in_progress: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
 };
 
 
@@ -70,49 +89,56 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const { currentOrganization } = useOrganizationStore();
-  const { canAccessSharedModule } = usePermissions();
+  const { canAccessSharedModule, role } = usePermissions();
+  const { user } = useAuthContext();
   const labels = usePageLabels('tasks');
 
   const hasAccess = canAccessSharedModule('tasks');
 
+  const fetchTasks = useCallback(async () => {
+    if (!currentOrganization?.id) return;
+
+    let query = supabase
+      .from('tasks')
+      .select('*, customer:customers(id, name)')
+      .eq('organization_id', currentOrganization.id);
+
+    // Regular users only see their own tasks (created by them or assigned to them)
+    if (role === 'user' && user?.id) {
+      query = query.or(`created_by.eq.${user.id},assigned_to.eq.${user.id}`);
+    }
+
+    const { data, error } = await query.order('due_date', { ascending: true });
+
+    if (error) {
+      return;
+    }
+
+    // Map database fields to component's expected format
+    const mappedTasks = (data || []).map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      type: t.type || 'other',
+      priority: t.priority || 'medium',
+      status: DB_TO_DISPLAY[t.status] || 'To Do',
+      dueDate: new Date(t.due_date),
+      customer: t.customer?.name || '',
+      showOnCalendar: t.show_on_calendar,
+      startTime: t.start_time,
+      created_at: t.created_at,
+      due_date: t.due_date,
+      start_time: t.start_time,
+      duration: t.duration,
+      show_on_calendar: t.show_on_calendar,
+    }));
+
+    setTasks(mappedTasks);
+  }, [currentOrganization?.id, user?.id, role]);
+
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (!currentOrganization?.id) return;
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('organization_id', currentOrganization.id)
-        .order('due_date', { ascending: true });
-
-      if (error) {
-        return;
-      }
-
-      // Map database fields to component's expected format
-      const mappedTasks = (data || []).map(t => ({
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        type: t.type || 'other',
-        priority: t.priority || 'medium',
-        status: t.status || 'To Do',
-        dueDate: new Date(t.due_date),
-        customer: t.customer_name,
-        showOnCalendar: t.show_on_calendar,
-        startTime: t.start_time,
-        created_at: t.created_at,
-        due_date: t.due_date,
-        start_time: t.start_time,
-        duration: t.duration,
-        show_on_calendar: t.show_on_calendar,
-      }));
-
-      setTasks(mappedTasks);
-    };
-
     fetchTasks();
-  }, [currentOrganization?.id]);
+  }, [fetchTasks]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,6 +150,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { confirm: confirmDialog, DialogComponent } = useConfirmDialog();
 
   const isOverdue = (dueDate: Date, status: Status): boolean => {
     const today = new Date();
@@ -206,31 +233,65 @@ export default function Tasks({ embedded = false }: TasksProps) {
     setSelectAll(false);
   };
 
-  const bulkArchive = () => {
-    if (!confirm(`Archive ${selectedTasks.size} ${labels.entityPlural}?`)) return;
+  const bulkArchive = async () => {
+    const confirmed = await confirmDialog({
+      title: `Archive ${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)}`,
+      message: `Are you sure you want to archive ${selectedTasks.size} ${labels.entityPlural}?`,
+      variant: 'warning',
+      confirmText: 'Archive',
+    });
+    if (!confirmed) return;
     setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
     setSelectedTasks(new Set());
     setSelectAll(false);
   };
 
-  const bulkDelete = () => {
-    setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
-    setSelectedTasks(new Set());
-    setSelectAll(false);
-    setShowDeleteModal(false);
-    toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
+  const bulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedTasks);
+      const { error } = await supabase.from('tasks').delete().in('id', ids);
+      if (error) throw error;
+      setTasks((prev) => prev.filter((task) => !selectedTasks.has(task.id)));
+      setSelectedTasks(new Set());
+      setSelectAll(false);
+      setShowDeleteModal(false);
+      toast.success(`${labels.entityPlural.charAt(0).toUpperCase() + labels.entityPlural.slice(1)} deleted successfully`);
+    } catch {
+      toast.error('Failed to delete');
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    if (!confirm(`Are you sure you want to delete this ${labels.entitySingular}?`)) return;
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-    toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
+  const deleteTask = async (taskId: string) => {
+    const confirmed = await confirmDialog({
+      title: `Delete ${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)}`,
+      message: `Are you sure you want to delete this ${labels.entitySingular}? This action cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+      if (error) throw error;
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      toast.success(`${labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1)} deleted successfully`);
+    } catch {
+      toast.error('Failed to delete');
+    }
   };
 
-  const updateTaskStatus = (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    const displayStatus = newStatus as Status;
+    const dbStatus = DISPLAY_TO_DB[displayStatus] || newStatus;
+    // Optimistic UI update
     setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, status: newStatus as Status } : task))
+      prev.map((task) => (task.id === taskId ? { ...task, status: displayStatus } : task))
     );
+    try {
+      await useTaskStore.getState().updateTask(taskId, { status: dbStatus as TaskStatus });
+    } catch {
+      toast.error('Failed to update status');
+      fetchTasks(); // Revert on failure
+    }
   };
 
   const openTaskDetail = (task: Task) => {
@@ -286,10 +347,10 @@ export default function Tasks({ embedded = false }: TasksProps) {
           <div className={cardOuterClass}>
             <div className={cardClass}>
               {!embedded && (
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <div>
-                    <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">{labels.title}</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{labels.title}</h1>
+                    <p className="hidden md:block text-gray-600 dark:text-gray-400 mt-1">{labels.subtitle}</p>
                   </div>
 
                   <button
@@ -297,7 +358,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                       setSelectedTask(null);
                       setShowTaskModal(true);
                     }}
-                    className={theme === 'soft-modern' ? 'btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all' : 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors'}
+                    className={theme === 'soft-modern' ? 'btn-primary flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all w-full md:w-auto' : 'flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors w-full md:w-auto'}
                   >
                     <Plus size={18} />
                     {labels.newButton}
@@ -450,36 +511,46 @@ export default function Tasks({ embedded = false }: TasksProps) {
                 {/* Desktop Table View */}
                 <div className={theme === 'soft-modern' ? 'hidden md:block card overflow-hidden' : 'hidden md:block overflow-hidden bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700'}>
                   <div className="w-full overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[900px]">
+                    <table className="w-full table-fixed">
+                      <colgroup>
+                        <col className="w-10" />
+                        <col className="w-10" />
+                        <col />
+                        <col className="w-[140px]" />
+                        <col className="w-[90px]" />
+                        <col className="w-[100px]" />
+                        <col className="w-[130px]" />
+                        <col className="w-[80px]" />
+                      </colgroup>
                       <thead className={theme === 'soft-modern' ? 'bg-base border-b-2 border-default' : 'bg-gray-50 dark:bg-gray-700 border-b-2 border-gray-100 dark:border-gray-600'}>
                         <tr>
-                          <th className="w-12 px-3 py-3 text-left">
+                          <th className="px-2 py-3 text-left">
                             <input
                               type="checkbox"
                               checked={selectAll}
                               onChange={handleSelectAll}
-                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                             />
                           </th>
-                          <th className="w-12 text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="text-center px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             #
                           </th>
-                          <th className="min-w-[250px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Task
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Status
                           </th>
-                          <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Priority
                           </th>
-                          <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Due Date
                           </th>
-                          <th className="w-36 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Customer
                           </th>
-                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <th className="px-2 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Actions
                           </th>
                         </tr>
@@ -494,31 +565,37 @@ export default function Tasks({ embedded = false }: TasksProps) {
                               className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700 ${overdue ? 'border-l-4 border-l-rose-500' : ''
                                 }`}
                             >
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   checked={selectedTasks.has(task.id)}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectTask(task.id);
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  onChange={() => handleSelectTask(task.id)}
+                                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 dark:text-blue-500 focus:ring-blue-500 cursor-pointer"
                                 />
                               </td>
-                              <td className="text-center px-3 py-3">
+                              <td className="text-center px-2 py-3">
                                 <span className="text-sm font-medium text-gray-400">
                                   {index + 1}
                                 </span>
                               </td>
 
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  {task.status === 'Completed' ? (
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                                  ) : (
-                                    <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                                  )}
+                              <td className="px-3 py-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateTaskStatus(task.id, task.status === 'Completed' ? 'To Do' : 'Completed');
+                                    }}
+                                    className="flex-shrink-0 p-1.5 -m-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 transition-all"
+                                    title={task.status === 'Completed' ? 'Mark as incomplete' : 'Mark as complete'}
+                                  >
+                                    {task.status === 'Completed' ? (
+                                      <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    ) : (
+                                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-400 hover:text-emerald-400 transition-colors" />
+                                    )}
+                                  </button>
                                   <div className="min-w-0">
                                     <div className="font-medium text-gray-900 dark:text-white truncate">{task.title}</div>
                                     {task.description && (
@@ -530,7 +607,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3">
                                 <select
                                   value={task.status}
                                   onChange={(e) => {
@@ -538,7 +615,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                     updateTaskStatus(task.id, e.target.value);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className={`px-2 py-1.5 rounded-lg text-sm font-medium border-2 transition-colors w-full ${statusStyles[task.status]
+                                  className={`px-2 py-1.5 rounded-lg text-xs font-medium border-2 transition-colors max-w-full ${statusStyles[task.status]
                                     }`}
                                 >
                                   <option value="To Do">To Do</option>
@@ -547,10 +624,10 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </select>
                               </td>
 
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
+                              <td className="px-2 py-3">
+                                <div className="flex items-center gap-1.5">
                                   <div
-                                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityColors[task.priority]
+                                    className={`w-2 h-2 rounded-full flex-shrink-0 ${priorityColors[task.priority]
                                       }`}
                                   />
                                   <span className="text-sm text-gray-700 dark:text-gray-300 capitalize truncate">
@@ -559,9 +636,9 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {overdue && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+                              <td className="px-2 py-3">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {overdue && <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
                                   <span
                                     className={`text-sm truncate ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'
                                       }`}
@@ -571,13 +648,19 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 </div>
                               </td>
 
-                              <td className="px-3 py-3">
-                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer || ''}>
-                                  {task.customer || '€”'}
-                                </span>
+                              <td className="px-2 py-3">
+                                {task.customer ? (
+                                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate block" title={task.customer}>
+                                    {task.customer}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-amber-600 dark:text-amber-400 italic truncate block">
+                                    No customer
+                                  </span>
+                                )}
                               </td>
 
-                              <td className="px-3 py-3">
+                              <td className="px-2 py-3">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     onClick={(e) => {
@@ -625,12 +708,12 @@ export default function Tasks({ embedded = false }: TasksProps) {
                                 e.stopPropagation();
                                 handleSelectTask(task.id);
                               }}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedTasks.has(task.id)
+                              className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedTasks.has(task.id)
                                 ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'border-gray-300 dark:border-gray-600'
+                                : 'border-gray-400 dark:border-gray-500'
                                 }`}
                             >
-                              {selectedTasks.has(task.id) && <CheckCircle2 size={12} />}
+                              {selectedTasks.has(task.id) && <CheckCircle2 size={14} />}
                             </button>
                             <h3 className="font-semibold text-gray-900 dark:text-white truncate pr-2">
                               {task.title}
@@ -646,7 +729,11 @@ export default function Tasks({ embedded = false }: TasksProps) {
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Customer</span>
-                            <span className="font-medium text-gray-900 dark:text-white">{task.customer || '€”'}</span>
+                            {task.customer ? (
+                              <span className="font-medium text-gray-900 dark:text-white">{task.customer}</span>
+                            ) : (
+                              <span className="font-medium text-amber-600 dark:text-amber-400 italic">No customer</span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Due Date</span>
@@ -701,9 +788,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
               <KanbanBoard
                 tasks={filteredTasks}
                 onTaskMove={(taskId, newStatus) => {
-                  setTasks((prev) =>
-                    prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task))
-                  );
+                  updateTaskStatus(taskId, newStatus);
                 }}
                 onTaskClick={openTaskDetail}
               />
@@ -802,6 +887,7 @@ export default function Tasks({ embedded = false }: TasksProps) {
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
+            fetchTasks();
           }}
           task={selectedTask as any}
           defaultShowOnCalendar={false}
@@ -815,16 +901,23 @@ export default function Tasks({ embedded = false }: TasksProps) {
           onClose={() => {
             setShowTaskDetailModal(false);
             setSelectedTask(null);
+            fetchTasks();
           }}
           onUpdate={async (id, data) => {
-            setTasks((prev) =>
-              prev.map((task) => (task.id === id ? { ...task, ...data } as any : task))
-            );
+            await useTaskStore.getState().updateTask(id, data);
             setShowTaskDetailModal(false);
             setSelectedTask(null);
+            fetchTasks();
+          }}
+          onDelete={async (id) => {
+            const { error } = await supabase.from('tasks').delete().eq('id', id);
+            if (error) throw error;
+            setTasks((prev) => prev.filter((t) => t.id !== id));
           }}
         />
       )}
+
+      <DialogComponent />
     </>
   );
 }

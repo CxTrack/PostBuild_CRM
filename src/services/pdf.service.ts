@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Quote } from './quote.service';
 import { Invoice } from './invoice.service';
 import { formatPhoneDisplay } from '../utils/phone.utils';
+import { getTermsLabel } from '../config/paymentTerms';
 
 interface OrganizationInfo {
   name: string;
@@ -14,28 +15,75 @@ interface OrganizationInfo {
   phone?: string;
   email?: string;
   website?: string;
+  logo_url?: string;
+  template_color?: string;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return [r, g, b];
+}
+
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const pdfService = {
-  generateQuotePDF(quote: Quote, organizationInfo: OrganizationInfo): void {
+  async generateQuotePDF(quote: Quote, organizationInfo: OrganizationInfo): Promise<void> {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 20;
 
+      // Template color (default slate-600 if no template)
+      const headerColor: [number, number, number] = organizationInfo.template_color
+        ? hexToRgb(organizationInfo.template_color)
+        : [71, 85, 105];
+
+      // Logo
+      let logoStartX = 15;
+      if (organizationInfo.logo_url) {
+        const logoBase64 = await fetchImageAsBase64(organizationInfo.logo_url);
+        if (logoBase64) {
+          doc.addImage(logoBase64, 'PNG', 15, yPos - 5, 20, 20);
+          logoStartX = 40;
+        }
+      }
+
+      // Accent bar
+      doc.setFillColor(...headerColor);
+      doc.rect(0, 0, pageWidth, 3, 'F');
+
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...headerColor);
       doc.text('QUOTE', pageWidth - 15, yPos, { align: 'right' });
+      doc.setTextColor(0);
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(organizationInfo.name, 15, yPos);
+      doc.text(organizationInfo.name, logoStartX, yPos);
       yPos += 5;
 
       doc.setFontSize(9);
       if (organizationInfo.address) {
-        doc.text(organizationInfo.address, 15, yPos);
+        doc.text(organizationInfo.address, logoStartX, yPos);
         yPos += 4;
       }
 
@@ -46,22 +94,22 @@ export const pdfService = {
       ].filter(Boolean).join(', ');
 
       if (cityStateLine) {
-        doc.text(cityStateLine, 15, yPos);
+        doc.text(cityStateLine, logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.country) {
-        doc.text(organizationInfo.country, 15, yPos);
+        doc.text(organizationInfo.country, logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.phone) {
-        doc.text(formatPhoneDisplay(organizationInfo.phone), 15, yPos);
+        doc.text(formatPhoneDisplay(organizationInfo.phone), logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.email) {
-        doc.text(organizationInfo.email, 15, yPos);
+        doc.text(organizationInfo.email, logoStartX, yPos);
         yPos += 4;
       }
 
@@ -123,7 +171,7 @@ export const pdfService = {
         head: [['Item', 'Description', 'Qty', 'Unit Price', 'Discount', 'Amount']],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold' },
+        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: 'bold' },
         columnStyles: {
           2: { halign: 'center' },
           3: { halign: 'right' },
@@ -206,25 +254,46 @@ export const pdfService = {
     }
   },
 
-  generateInvoicePDF(invoice: Invoice, organizationInfo: OrganizationInfo): void {
+  async generateInvoicePDF(invoice: Invoice, organizationInfo: OrganizationInfo, paymentLinkUrl?: string): Promise<void> {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 20;
 
+      // Template color (default slate-600 if no template)
+      const headerColor: [number, number, number] = organizationInfo.template_color
+        ? hexToRgb(organizationInfo.template_color)
+        : [71, 85, 105];
+
+      // Logo
+      let logoStartX = 15;
+      if (organizationInfo.logo_url) {
+        const logoBase64 = await fetchImageAsBase64(organizationInfo.logo_url);
+        if (logoBase64) {
+          doc.addImage(logoBase64, 'PNG', 15, yPos - 5, 20, 20);
+          logoStartX = 40;
+        }
+      }
+
+      // Accent bar
+      doc.setFillColor(...headerColor);
+      doc.rect(0, 0, pageWidth, 3, 'F');
+
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...headerColor);
       doc.text('INVOICE', pageWidth - 15, yPos, { align: 'right' });
+      doc.setTextColor(0);
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(organizationInfo.name, 15, yPos);
+      doc.text(organizationInfo.name, logoStartX, yPos);
       yPos += 5;
 
       doc.setFontSize(9);
       if (organizationInfo.address) {
-        doc.text(organizationInfo.address, 15, yPos);
+        doc.text(organizationInfo.address, logoStartX, yPos);
         yPos += 4;
       }
 
@@ -235,22 +304,22 @@ export const pdfService = {
       ].filter(Boolean).join(', ');
 
       if (cityStateLine) {
-        doc.text(cityStateLine, 15, yPos);
+        doc.text(cityStateLine, logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.country) {
-        doc.text(organizationInfo.country, 15, yPos);
+        doc.text(organizationInfo.country, logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.phone) {
-        doc.text(formatPhoneDisplay(organizationInfo.phone), 15, yPos);
+        doc.text(formatPhoneDisplay(organizationInfo.phone), logoStartX, yPos);
         yPos += 4;
       }
 
       if (organizationInfo.email) {
-        doc.text(organizationInfo.email, 15, yPos);
+        doc.text(organizationInfo.email, logoStartX, yPos);
         yPos += 4;
       }
 
@@ -272,16 +341,6 @@ export const pdfService = {
       doc.text('Due Date:', 15, yPos);
       doc.setFont('helvetica', 'normal');
       doc.text(new Date(invoice.due_date).toLocaleDateString(), 55, yPos);
-
-      yPos += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Status:', 15, yPos);
-      doc.setFont('helvetica', 'normal');
-      const statusColor = invoice.status === 'paid' ? [34, 197, 94] :
-                         invoice.status === 'overdue' ? [239, 68, 68] : [251, 191, 36];
-      doc.setTextColor(...statusColor);
-      doc.text(invoice.status.toUpperCase(), 55, yPos);
-      doc.setTextColor(0);
 
       yPos = 45;
       doc.setFontSize(10);
@@ -320,7 +379,7 @@ export const pdfService = {
         head: [['Item', 'Description', 'Qty', 'Unit Price', 'Discount', 'Amount']],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold' },
+        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: 'bold' },
         columnStyles: {
           2: { halign: 'center' },
           3: { halign: 'right' },
@@ -370,6 +429,22 @@ export const pdfService = {
       doc.text('Amount Due:', totalsX, totalsY);
       doc.text(`$${invoice.amount_due.toFixed(2)}`, pageWidth - 15, totalsY, { align: 'right' });
 
+      // Payment link section for invoices
+      if (paymentLinkUrl && invoice.status !== 'paid') {
+        totalsY += 15;
+        doc.setFillColor(...headerColor);
+        doc.roundedRect(15, totalsY - 3, pageWidth - 30, 20, 2, 2, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255);
+        doc.text('Pay Online', 25, totalsY + 5);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(paymentLinkUrl, 25, totalsY + 12);
+        doc.setTextColor(0);
+        totalsY += 20;
+      }
+
       if (invoice.notes || invoice.terms || invoice.payment_terms) {
         totalsY += 15;
         doc.setFontSize(10);
@@ -379,7 +454,7 @@ export const pdfService = {
           doc.text('Payment Terms:', 15, totalsY);
           totalsY += 5;
           doc.setFont('helvetica', 'normal');
-          doc.text(invoice.payment_terms, 15, totalsY);
+          doc.text(getTermsLabel(invoice.payment_terms), 15, totalsY);
           totalsY += 10;
         }
 
@@ -419,8 +494,19 @@ export const pdfService = {
   },
 
   formatAddress(address: any): string[] {
+    if (!address) return [];
+
+    // Handle JSON string
     if (typeof address === 'string') {
-      return [address];
+      try {
+        const parsed = JSON.parse(address);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return this.formatAddress(parsed);
+        }
+      } catch {
+        // Not JSON, treat as plain string
+        return [address];
+      }
     }
 
     const lines: string[] = [];

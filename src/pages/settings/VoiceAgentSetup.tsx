@@ -4,13 +4,18 @@ import {
     ChevronRight, ChevronLeft, Check, Save, RefreshCw, Zap,
     Clock, AlertCircle, Play, Pause, CheckCircle, Phone, Loader2,
     BookOpen, Globe, Plus, Trash2, Link, FileText, Brain,
-    Square, Search, Filter
+    Square, Search, Filter, Monitor
 } from 'lucide-react';
 import { useVoiceAgentStore, INDUSTRY_OPTIONS, TONE_DESCRIPTIONS, AgentTone, HandlingPreference, FallbackBehavior } from '@/stores/voiceAgentStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { INDUSTRY_TEMPLATES } from '@/config/modules.config';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
+import MemoryContextSettings, { type MemorySettings } from '@/components/voice/MemoryContextSettings';
+import BookingAvailabilityEditor from '@/components/voice/BookingAvailabilityEditor';
+import { type BookingAvailability, getDefaultBookingAvailability } from '@/utils/bookingPrompt';
+import AgentPersonalizationPanel from '@/components/voice/AgentPersonalizationPanel';
+import { useCoPilot } from '@/contexts/CoPilotContext';
 import toast from 'react-hot-toast';
 
 const STEPS = [
@@ -52,10 +57,20 @@ export const VoiceAgentSetup = () => {
         fetchVoices,
         setVoice,
     } = useVoiceAgentStore();
+    const { openPanel, setContext, clearMessages, startPersonalizationInterview } = useCoPilot();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'voice' | 'prompt' | 'knowledge' | 'memory' | 'scheduling'>('settings');
+    const [memorySettings, setMemorySettings] = useState<MemorySettings>({
+        memory_enabled: true,
+        memory_call_history: true,
+        memory_customer_notes: true,
+        memory_calendar_tasks: true,
+    });
+    const [memorySaving, setMemorySaving] = useState(false);
+    const [bookingAvailability, setBookingAvailability] = useState<BookingAvailability>(getDefaultBookingAvailability());
+    const [schedulingSaving, setSchedulingSaving] = useState(false);
     // Voice selection state
     const [voiceSearch, setVoiceSearch] = useState('');
     const [voiceGenderFilter, setVoiceGenderFilter] = useState<'all' | 'male' | 'female'>('all');
@@ -68,6 +83,12 @@ export const VoiceAgentSetup = () => {
     const [kbTextContent, setKbTextContent] = useState('');
     const [kbUrl, setKbUrl] = useState('');
     const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
+    // KB creation form — collect at least one source with the name
+    const [kbSourceType, setKbSourceType] = useState<'text' | 'url'>('text');
+    const [kbCreateTextTitle, setKbCreateTextTitle] = useState('');
+    const [kbCreateTextContent, setKbCreateTextContent] = useState('');
+    const [kbCreateUrl, setKbCreateUrl] = useState('');
+    const [kbCreating, setKbCreating] = useState(false);
     const [formData, setFormData] = useState({
         agent_name: '',
         business_name: '',
@@ -115,6 +136,17 @@ export const VoiceAgentSetup = () => {
         fetchKnowledgeBases();
         fetchVoices();
     }, [fetchConfig, fetchUsage, fetchKnowledgeBases, fetchVoices]);
+
+    // Load booking availability from org metadata
+    useEffect(() => {
+        const meta = currentOrganization?.metadata as Record<string, unknown> | undefined;
+        if (meta?.business_hours) {
+            const bh = meta.business_hours as BookingAvailability;
+            if (bh.timezone && bh.schedule) {
+                setBookingAvailability(bh);
+            }
+        }
+    }, [currentOrganization]);
 
     // Cleanup audio on unmount
     useEffect(() => {
@@ -225,6 +257,14 @@ export const VoiceAgentSetup = () => {
             });
             setCurrentStep(config.setup_step || 0);
 
+            // Load memory settings from config
+            setMemorySettings({
+                memory_enabled: config.memory_enabled ?? true,
+                memory_call_history: config.memory_call_history ?? true,
+                memory_customer_notes: config.memory_customer_notes ?? true,
+                memory_calendar_tasks: config.memory_calendar_tasks ?? true,
+            });
+
             // Auto-backfill: if agent is provisioned but prompt is empty in DB, fetch from Retell
             if (config.retell_agent_id && !config.general_prompt) {
                 fetchRetellPrompt();
@@ -288,6 +328,9 @@ export const VoiceAgentSetup = () => {
 
             // If not yet provisioned with Retell, trigger provisioning
             if (!config?.retell_agent_id) {
+                // Pull regionCode/countryCode from org metadata if available (set during onboarding)
+                const orgMeta = currentOrganization?.metadata as Record<string, any> | undefined;
+                const voiceConfig = orgMeta?.voice_config;
                 const result = await provisionAgent({
                     agentName: formData.agent_name || 'AI Assistant',
                     businessName: formData.business_name || 'My Business',
@@ -295,6 +338,9 @@ export const VoiceAgentSetup = () => {
                     ownerPhone: formData.broker_phone,
                     ownerName: formData.broker_name || formData.agent_name,
                     agentInstructions: formData.business_description,
+                    countryCode: currentOrganization?.country || voiceConfig?.countryCode || undefined,
+                    areaCode: voiceConfig?.areaCode || undefined,
+                    regionCode: voiceConfig?.regionCode || undefined,
                 });
 
                 if (result.success) {
@@ -363,17 +409,58 @@ export const VoiceAgentSetup = () => {
             toast.error('Please enter a knowledge base name');
             return;
         }
-        const result = await createKnowledgeBase(kbName.trim());
-        if (result.success) {
-            toast.success('Knowledge base created!');
-            setKbName('');
-            if (result.knowledgeBaseId) {
-                setSelectedKbId(result.knowledgeBaseId);
-                // Auto-attach to agent
-                await attachKBsToAgent([result.knowledgeBaseId]);
+
+        // Collect the initial source based on selected type
+        let texts: Array<{ title: string; text: string }> | undefined;
+        let urls: string[] | undefined;
+
+        if (kbSourceType === 'text') {
+            if (!kbCreateTextTitle.trim() || !kbCreateTextContent.trim()) {
+                toast.error('Please provide both a title and content for the initial text source');
+                return;
             }
+            texts = [{ title: kbCreateTextTitle.trim(), text: kbCreateTextContent.trim() }];
         } else {
-            toast.error(result.error || 'Failed to create knowledge base');
+            if (!kbCreateUrl.trim()) {
+                toast.error('Please provide a URL to scrape');
+                return;
+            }
+            try {
+                new URL(kbCreateUrl.trim());
+            } catch {
+                toast.error('Please enter a valid URL (e.g., https://yourbusiness.com)');
+                return;
+            }
+            urls = [kbCreateUrl.trim()];
+        }
+
+        setKbCreating(true);
+        try {
+            const result = await createKnowledgeBase(kbName.trim(), texts, urls);
+            if (result.success) {
+                toast.success('Knowledge base created!');
+                setKbName('');
+                setKbCreateTextTitle('');
+                setKbCreateTextContent('');
+                setKbCreateUrl('');
+                if (result.knowledgeBaseId) {
+                    setSelectedKbId(result.knowledgeBaseId);
+                    // Auto-attach to agent
+                    await attachKBsToAgent([result.knowledgeBaseId]);
+                }
+            } else {
+                // Parse nested error messages for cleaner display
+                let errorMsg = result.error || 'Failed to create knowledge base';
+                try {
+                    if (errorMsg.includes('"message"')) {
+                        const parsed = JSON.parse(errorMsg);
+                        errorMsg = parsed.message || errorMsg;
+                    }
+                } catch { /* use original */ }
+                toast.error(errorMsg);
+            }
+        } finally {
+            setKbCreating(false);
         }
     };
 
@@ -477,95 +564,117 @@ export const VoiceAgentSetup = () => {
 
     const isSetupComplete = config?.setup_completed;
 
+    const usagePercent = usage ? Math.min((usage.minutes_used / usage.minutes_included) * 100, 100) : 0;
+    const usageColor = usagePercent >= 100 ? 'bg-red-500' : usagePercent >= 80 ? 'bg-yellow-500' : 'bg-purple-500';
+
     return (
-        <div className="max-w-4xl space-y-6">
-            {/* Header with Usage */}
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-6 border-2 border-purple-200 dark:border-purple-800">
-                <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                            <Mic className="w-8 h-8 text-white" />
+        <>
+        {/* Mobile gate — hidden on md+ */}
+        <div className="block md:hidden">
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
+                    <Monitor className="w-7 h-7 text-gray-400 dark:text-gray-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Desktop Required</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                    Voice Agent configuration is optimized for desktop. Please switch to a computer for the best experience.
+                </p>
+            </div>
+        </div>
+
+        {/* Desktop layout — hidden on mobile */}
+        <div className="hidden md:block space-y-5">
+            {/* No Phone Number Banner */}
+            {!isProvisioned() && !getPhoneNumber() && (
+                <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-transparent p-5">
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Phone className="w-5 h-5 text-purple-400" />
                         </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                {isSetupComplete ? (config?.agent_name || 'AI Voice Agent') : 'Set Up Your Voice Agent'}
-                            </h2>
-                            <p className="text-gray-600 dark:text-gray-400">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-bold text-white dark:text-white">No Phone Number Assigned</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 {isSetupComplete
-                                    ? `${config?.is_active ? '🟢 Active' : '🔴 Paused'} • Handling calls 24/7`
-                                    : 'Configure your AI assistant in a few easy steps'}
+                                    ? 'Your voice agent is configured but needs a phone number. Use the Provision button below to get one.'
+                                    : 'Complete the setup wizard below to configure your AI voice agent and get a dedicated phone number.'}
                             </p>
                         </div>
                     </div>
+                </div>
+            )}
 
+            {/* Compact Header — agent info + usage in one row */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                    {/* Agent avatar */}
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+
+                    {/* Agent name + status */}
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                            {isSetupComplete ? (config?.agent_name || 'AI Voice Agent') : 'Set Up Your Voice Agent'}
+                        </h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {isSetupComplete
+                                ? <>
+                                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${config?.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    {config?.is_active ? 'Active' : 'Paused'} &middot; Handling calls 24/7
+                                  </>
+                                : 'Configure your AI assistant in a few easy steps'}
+                        </p>
+                    </div>
+
+                    {/* Toggle active button */}
                     {isSetupComplete && (
                         <button
                             onClick={handleToggleActive}
                             disabled={saving}
-                            className={`px-4 py-2 rounded-xl font-medium transition-colors ${config?.is_active
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${config?.is_active
                                 ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
                                 : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
                                 }`}
                         >
                             {config?.is_active ? (
-                                <><Pause className="w-4 h-4 inline mr-2" />Pause Agent</>
+                                <><Pause className="w-3 h-3 inline mr-1" />Pause</>
                             ) : (
-                                <><Play className="w-4 h-4 inline mr-2" />Resume Agent</>
+                                <><Play className="w-3 h-3 inline mr-1" />Resume</>
                             )}
                         </button>
                     )}
-                </div>
 
-                {/* Usage Stats */}
-                {usage && (
-                    <div className="mt-6 pt-6 border-t border-purple-200 dark:border-purple-800">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{usage.minutes_used.toFixed(1)}</p>
-                                <p className="text-sm text-gray-500">Minutes Used</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{usage.minutes_included}</p>
-                                <p className="text-sm text-gray-500">Minutes Included</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                    {Math.max(0, usage.minutes_included - usage.minutes_used).toFixed(1)}
+                    {/* Inline usage */}
+                    {usage && isSetupComplete && (
+                        <div className="flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                    {usage.minutes_used.toFixed(1)} <span className="text-gray-400 font-normal">/ {usage.minutes_included} min</span>
                                 </p>
-                                <p className="text-sm text-gray-500">Remaining</p>
                             </div>
-                        </div>
-                        <div className="mt-4">
-                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div className="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full rounded-full transition-all ${
-                                        usage.minutes_used >= usage.minutes_included
-                                            ? 'bg-red-500'
-                                            : usage.minutes_used >= usage.minutes_included * 0.8
-                                                ? 'bg-gradient-to-r from-yellow-500 to-red-500'
-                                                : 'bg-gradient-to-r from-purple-500 to-blue-500'
-                                    }`}
-                                    style={{ width: `${Math.min((usage.minutes_used / usage.minutes_included) * 100, 100)}%` }}
+                                    className={`h-full rounded-full transition-all ${usageColor}`}
+                                    style={{ width: `${usagePercent}%` }}
                                 />
                             </div>
                         </div>
-                        {usage.minutes_used >= usage.minutes_included * 0.8 && (
-                            <div className={`mt-3 p-3 rounded-lg text-sm ${
-                                usage.minutes_used >= usage.minutes_included
-                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
-                                    : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
-                            }`}>
-                                <div className="flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                    <span>
-                                        {usage.minutes_used >= usage.minutes_included
-                                            ? 'You have exceeded your included voice minutes. Upgrade your plan to continue using the AI Voice Agent.'
-                                            : `You've used ${Math.round((usage.minutes_used / usage.minutes_included) * 100)}% of your included minutes this month.`
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                    )}
+                </div>
+                {/* Usage warning — only when approaching limit */}
+                {usage && usage.minutes_used >= usage.minutes_included * 0.8 && (
+                    <div className={`mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
+                        usage.minutes_used >= usage.minutes_included
+                            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                            : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
+                    }`}>
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                            {usage.minutes_used >= usage.minutes_included
+                                ? 'Voice minutes exceeded. Upgrade your plan to continue.'
+                                : `${Math.round(usagePercent)}% of included minutes used this month.`
+                            }
+                        </span>
                     </div>
                 )}
             </div>
@@ -599,12 +708,12 @@ export const VoiceAgentSetup = () => {
                     </div>
 
                     {/* Step Content */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                         {currentStep === 0 && (
                             <div className="space-y-6">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Basic Information</h3>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Agent Name
@@ -613,7 +722,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.agent_name}
                                             onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Alex, Sarah, Max"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">This is how your AI will introduce itself</p>
@@ -626,7 +735,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.business_name}
                                             onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="Your Company Name"
                                         />
                                     </div>
@@ -639,7 +748,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.industry}
                                         onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="">Select your industry</option>
                                         {INDUSTRY_OPTIONS.map(opt => (
@@ -653,7 +762,7 @@ export const VoiceAgentSetup = () => {
                                             placeholder="Enter your industry"
                                             value={formData.customIndustry}
                                             onChange={(e) => setFormData({ ...formData, customIndustry: e.target.value })}
-                                            className="mt-2 w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="mt-2 w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                         />
                                     )}
                                 </div>
@@ -666,7 +775,7 @@ export const VoiceAgentSetup = () => {
                                         value={formData.business_description}
                                         onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
                                         rows={4}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                         placeholder="Describe your business, services, and what makes you unique. This helps the AI represent your brand accurately."
                                     />
                                 </div>
@@ -676,7 +785,7 @@ export const VoiceAgentSetup = () => {
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                                         SMS Call Summary Notifications
                                     </p>
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Your Name
@@ -685,7 +794,7 @@ export const VoiceAgentSetup = () => {
                                                 type="text"
                                                 value={formData.broker_name}
                                                 onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                                                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                                 placeholder="e.g., John Smith"
                                             />
                                             <p className="text-xs text-gray-500 mt-1">Used in SMS call summary greetings</p>
@@ -702,7 +811,7 @@ export const VoiceAgentSetup = () => {
                                                     setFormData({ ...formData, broker_phone: formatted });
                                                     if (phoneError) setPhoneError('');
                                                 }}
-                                                className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                                className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
                                                 placeholder="(555) 123-4567"
                                                 maxLength={14}
                                             />
@@ -759,7 +868,7 @@ export const VoiceAgentSetup = () => {
                                             value={newReason}
                                             onChange={(e) => setNewReason(e.target.value)}
                                             onKeyPress={(e) => e.key === 'Enter' && addCallReason()}
-                                            className="flex-1 px-4 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Pricing questions, Support, Schedule appointment"
                                         />
                                         <button
@@ -811,7 +920,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.fallback_behavior}
                                         onChange={(e) => setFormData({ ...formData, fallback_behavior: e.target.value as FallbackBehavior })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="take_message">Take a message</option>
                                         <option value="transfer_to_voicemail">Transfer to voicemail</option>
@@ -826,7 +935,7 @@ export const VoiceAgentSetup = () => {
                             <div className="space-y-6">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Review & Activate</h3>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
                                         <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Agent Info</h4>
                                         <div className="space-y-2 text-sm">
@@ -846,7 +955,7 @@ export const VoiceAgentSetup = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
                                     <div className="flex items-start gap-3">
                                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
                                         <div>
@@ -897,21 +1006,22 @@ export const VoiceAgentSetup = () => {
 
             {/* Post-Setup: Full Configuration */}
             {isSetupComplete && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                     {/* Phone Number & Call Forwarding */}
                     {isProvisioned() && getPhoneNumber() && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <PhoneNumberReveal
                                 phoneNumber={getPhoneNumber()!}
                                 phoneNumberPretty={getPhoneNumber()!}
+                                compact
                             />
-                            <CallForwardingInstructions phoneNumber={getPhoneNumber()!} />
+                            <CallForwardingInstructions phoneNumber={getPhoneNumber()!} defaultExpanded={false} />
                         </div>
                     )}
 
                     {/* Provisioning Status (if not yet provisioned) */}
                     {!isProvisioned() && config?.provisioning_status !== 'completed' && (
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-2xl p-6">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
                             <div className="flex items-start gap-3">
                                 <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
@@ -945,6 +1055,8 @@ export const VoiceAgentSetup = () => {
                             { id: 'voice' as const, label: 'Voice Selection', icon: Volume2 },
                             { id: 'prompt' as const, label: 'Prompt & Personality', icon: Brain },
                             { id: 'knowledge' as const, label: 'Knowledge Base', icon: BookOpen },
+                            { id: 'memory' as const, label: 'Memory & Context', icon: Brain },
+                            { id: 'scheduling' as const, label: 'Scheduling', icon: Clock },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -963,10 +1075,10 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: General Settings */}
                     {activeTab === 'settings' && (
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">General Settings</h3>
 
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Agent Name
@@ -975,7 +1087,7 @@ export const VoiceAgentSetup = () => {
                                         type="text"
                                         value={formData.agent_name}
                                         onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     />
                                 </div>
                                 <div>
@@ -985,7 +1097,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={formData.agent_tone}
                                         onChange={(e) => setFormData({ ...formData, agent_tone: e.target.value as AgentTone })}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                     >
                                         <option value="professional">Professional</option>
                                         <option value="friendly">Friendly</option>
@@ -1000,7 +1112,7 @@ export const VoiceAgentSetup = () => {
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                                     SMS Call Summary Notifications
                                 </p>
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Your Name
@@ -1009,7 +1121,7 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={formData.broker_name}
                                             onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., John Smith"
                                         />
                                     </div>
@@ -1025,7 +1137,7 @@ export const VoiceAgentSetup = () => {
                                                 setFormData({ ...formData, broker_phone: formatted });
                                                 if (phoneError) setPhoneError('');
                                             }}
-                                            className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                                            className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
                                             placeholder="(555) 123-4567"
                                             maxLength={14}
                                         />
@@ -1051,8 +1163,8 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Voice Selection */}
                     {activeTab === 'voice' && (
-                        <div className="space-y-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="space-y-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Choose Your Agent's Voice</h3>
                                     <p className="text-sm text-gray-500 mt-1">
@@ -1069,13 +1181,13 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={voiceSearch}
                                             onChange={(e) => setVoiceSearch(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
                                             placeholder="Search voices by name, accent, provider..."
                                         />
                                     </div>
 
                                     {/* Gender Filter */}
-                                    <div className="flex rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                                         {(['all', 'male', 'female'] as const).map((g) => (
                                             <button
                                                 key={g}
@@ -1095,7 +1207,7 @@ export const VoiceAgentSetup = () => {
                                     <select
                                         value={voiceProviderFilter}
                                         onChange={(e) => setVoiceProviderFilter(e.target.value)}
-                                        className="px-4 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
+                                        className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white text-sm"
                                     >
                                         <option value="all">All Providers</option>
                                         {voiceProviders.map((p) => (
@@ -1263,88 +1375,45 @@ export const VoiceAgentSetup = () => {
 
                     {/* Tab: Prompt & Personality */}
                     {activeTab === 'prompt' && (
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Prompt & Personality</h3>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Customize your AI agent's instructions and opening message. Changes are synced directly to the Retell AI engine.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Opening Message
-                                </label>
-                                <textarea
-                                    value={formData.begin_message}
-                                    onChange={(e) => setFormData({ ...formData, begin_message: e.target.value })}
-                                    rows={3}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                    placeholder="Hello! Thank you for calling. How can I help you today?"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    The first thing your agent says when it answers. Leave empty for dynamic greeting.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Agent Instructions (System Prompt)
-                                </label>
-                                <textarea
-                                    value={formData.general_prompt}
-                                    onChange={(e) => setFormData({ ...formData, general_prompt: e.target.value })}
-                                    rows={12}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white font-mono text-sm"
-                                    placeholder={`You are a professional AI assistant for [Business Name]. Your role is to help callers with:\n- Scheduling appointments\n- Answering common questions\n- Taking messages when the team is unavailable\n\nBe polite, professional, and helpful. If you don't know the answer, offer to take a message and have someone call back.\n\nBusiness hours: Monday-Friday 9am-5pm\nServices offered: ...`}
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This is the core personality and instruction set for your AI agent. Include business details, services, hours, policies, and how to handle common scenarios.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Business Description
-                                </label>
-                                <textarea
-                                    value={formData.business_description}
-                                    onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
-                                    rows={4}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
-                                    placeholder="Describe your business, services, and what makes you unique..."
-                                />
-                            </div>
-
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                    <Brain className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="font-medium text-blue-800 dark:text-blue-200">How it works</p>
-                                        <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                            The <strong>Agent Instructions</strong> control your AI's behavior on every call. Include your business hours, services, pricing FAQs, and call handling rules. The <strong>Opening Message</strong> is the first thing callers hear.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={handleSaveSettings}
-                                    disabled={saving}
-                                    className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {saving ? 'Saving & Syncing...' : 'Save & Sync to Agent'}
-                                </button>
-                            </div>
-                        </div>
+                        <AgentPersonalizationPanel
+                            formData={{
+                                general_prompt: formData.general_prompt,
+                                begin_message: formData.begin_message,
+                                business_description: formData.business_description,
+                            }}
+                            setFormData={(updater) => setFormData((prev) => {
+                                const partial = typeof updater === 'function' ? updater(prev) : updater;
+                                return { ...prev, ...partial };
+                            })}
+                            onSave={handleSaveSettings}
+                            saving={saving}
+                            isProvisioned={isProvisioned()}
+                            onOpenCoPilot={() => {
+                                const industry = currentOrganization?.industry_template || 'general_business';
+                                const businessName = config?.business_name || currentOrganization?.name || '';
+                                const agentName = config?.agent_name || '';
+                                const currentValues = config?.personalization_values || {};
+                                clearMessages();
+                                setContext({
+                                    page: 'VoiceAgentSetup',
+                                    data: {
+                                        personalizationMode: true,
+                                        industry,
+                                        currentValues,
+                                        agentName,
+                                        businessName,
+                                    },
+                                });
+                                openPanel();
+                                startPersonalizationInterview(industry, businessName, agentName, currentValues);
+                            }}
+                        />
                     )}
 
                     {/* Tab: Knowledge Base */}
                     {activeTab === 'knowledge' && (
-                        <div className="space-y-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                        <div className="space-y-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Knowledge Base</h3>
                                     <p className="text-sm text-gray-500 mt-1">
@@ -1392,32 +1461,108 @@ export const VoiceAgentSetup = () => {
                                 )}
 
                                 {/* Create New KB */}
-                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Create New Knowledge Base</h4>
-                                    <div className="flex gap-3">
+                                <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Create New Knowledge Base</h4>
+
+                                    {/* KB Name */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Name</label>
                                         <input
                                             type="text"
                                             value={kbName}
                                             onChange={(e) => setKbName(e.target.value)}
-                                            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="e.g., Company FAQ, Service Catalog"
                                             maxLength={40}
                                         />
-                                        <button
-                                            onClick={handleCreateKB}
-                                            disabled={kbLoading || !kbName.trim()}
-                                            className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                                        >
-                                            {kbLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                            Create
-                                        </button>
                                     </div>
+
+                                    {/* Source Type Tabs */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Initial Source (required)</label>
+                                        <div className="flex gap-2 mb-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setKbSourceType('text')}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                    kbSourceType === 'text'
+                                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-transparent hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                                Text Content
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setKbSourceType('url')}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                    kbSourceType === 'url'
+                                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-transparent hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                <Globe className="w-4 h-4" />
+                                                Website URL
+                                            </button>
+                                        </div>
+
+                                        {/* Text Source Fields */}
+                                        {kbSourceType === 'text' && (
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    value={kbCreateTextTitle}
+                                                    onChange={(e) => setKbCreateTextTitle(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                    placeholder="Title (e.g., Business Hours, Pricing, Services)"
+                                                />
+                                                <textarea
+                                                    value={kbCreateTextContent}
+                                                    onChange={(e) => setKbCreateTextContent(e.target.value)}
+                                                    rows={5}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                                    placeholder="Enter the content your agent should know about this topic..."
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* URL Source Field */}
+                                        {kbSourceType === 'url' && (
+                                            <div className="space-y-2">
+                                                <input
+                                                    type="url"
+                                                    value={kbCreateUrl}
+                                                    onChange={(e) => setKbCreateUrl(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                    placeholder="https://yourbusiness.com/about"
+                                                />
+                                                <p className="text-xs text-gray-500">
+                                                    The AI will scrape and index the page content. You can add more URLs after creation.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Create Button */}
+                                    <button
+                                        onClick={handleCreateKB}
+                                        disabled={kbCreating || !kbName.trim() || (
+                                            kbSourceType === 'text'
+                                                ? (!kbCreateTextTitle.trim() || !kbCreateTextContent.trim())
+                                                : !kbCreateUrl.trim()
+                                        )}
+                                        className="w-full px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {kbCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        {kbCreating ? 'Creating...' : 'Create Knowledge Base'}
+                                    </button>
                                 </div>
                             </div>
 
                             {/* Add Content to Selected KB */}
                             {selectedKbId && (
-                                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-6 space-y-6">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                         Add Content to: {knowledgeBases.find(kb => kb.knowledge_base_id === selectedKbId)?.knowledge_base_name}
                                     </h3>
@@ -1432,14 +1577,14 @@ export const VoiceAgentSetup = () => {
                                             type="text"
                                             value={kbTextTitle}
                                             onChange={(e) => setKbTextTitle(e.target.value)}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                             placeholder="Title (e.g., Business Hours, Pricing, Services)"
                                         />
                                         <textarea
                                             value={kbTextContent}
                                             onChange={(e) => setKbTextContent(e.target.value)}
                                             rows={6}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white resize-none"
                                             placeholder="Enter the content your agent should know about this topic..."
                                         />
                                         <button
@@ -1463,7 +1608,7 @@ export const VoiceAgentSetup = () => {
                                                 type="url"
                                                 value={kbUrl}
                                                 onChange={(e) => setKbUrl(e.target.value)}
-                                                className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
+                                                className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white"
                                                 placeholder="https://yourbusiness.com/about"
                                             />
                                             <button
@@ -1496,9 +1641,162 @@ export const VoiceAgentSetup = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Tab: Memory & Context */}
+                    {activeTab === 'memory' && (
+                        <MemoryContextSettings
+                            settings={memorySettings}
+                            onChange={(updates) => setMemorySettings(prev => ({ ...prev, ...updates }))}
+                            onSave={async () => {
+                                setMemorySaving(true);
+                                try {
+                                    await saveConfig({
+                                        memory_enabled: memorySettings.memory_enabled,
+                                        memory_call_history: memorySettings.memory_call_history,
+                                        memory_customer_notes: memorySettings.memory_customer_notes,
+                                        memory_calendar_tasks: memorySettings.memory_calendar_tasks,
+                                    });
+                                    toast.success('Memory settings saved');
+                                } catch {
+                                    toast.error('Failed to save memory settings');
+                                } finally {
+                                    setMemorySaving(false);
+                                }
+                            }}
+                            saving={memorySaving}
+                            isProvisioned={isProvisioned()}
+                        />
+                    )}
+
+                    {activeTab === 'scheduling' && (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-5">
+                            <BookingAvailabilityEditor
+                                value={bookingAvailability}
+                                onChange={setBookingAvailability}
+                                showPreview={true}
+                            />
+
+                            {/* Save Button */}
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    disabled={schedulingSaving || !isProvisioned()}
+                                    onClick={async () => {
+                                        setSchedulingSaving(true);
+                                        try {
+                                            const orgId = currentOrganization?.id;
+                                            if (!orgId) throw new Error('No organization');
+
+                                            // 1. Save to org metadata
+                                            const token = (() => {
+                                                for (const key of Object.keys(localStorage)) {
+                                                    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                                                        try {
+                                                            const parsed = JSON.parse(localStorage.getItem(key) || '');
+                                                            return parsed?.access_token;
+                                                        } catch { /* skip */ }
+                                                    }
+                                                }
+                                                return null;
+                                            })();
+
+                                            if (!token) throw new Error('Not authenticated');
+
+                                            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                                            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+                                            // Merge with existing metadata
+                                            const existingMeta = (currentOrganization?.metadata || {}) as Record<string, unknown>;
+                                            const updatedMeta = { ...existingMeta, business_hours: bookingAvailability };
+
+                                            const metaRes = await fetch(
+                                                `${supabaseUrl}/rest/v1/organizations?id=eq.${orgId}`,
+                                                {
+                                                    method: 'PATCH',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': `Bearer ${token}`,
+                                                        'apikey': supabaseKey || '',
+                                                        'Prefer': 'return=minimal',
+                                                    },
+                                                    body: JSON.stringify({ metadata: updatedMeta }),
+                                                }
+                                            );
+
+                                            if (!metaRes.ok) throw new Error('Failed to save availability');
+
+                                            // 2. Update Retell agent prompt with new booking rules
+                                            await updateRetellAgent({
+                                                businessHours: bookingAvailability,
+                                            });
+
+                                            toast.success('Booking availability saved and agent updated');
+                                        } catch (err) {
+                                            console.error('Failed to save scheduling:', err);
+                                            toast.error('Failed to save booking availability');
+                                        } finally {
+                                            setSchedulingSaving(false);
+                                        }
+                                    }}
+                                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed
+                                               text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    {schedulingSaving ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-4 w-4" />
+                                            Save Availability
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Fix legacy Cal.com tools for existing agents */}
+                            {isProvisioned() && (
+                                <div className="border border-gray-700 rounded-lg p-4 bg-gray-900/30">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-300">Legacy Tool Migration</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                If your agent was set up before the booking system update, click here to convert legacy Cal.com tools to the new webhook-based tools.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                try {
+                                                    toast.loading('Fixing booking tools...', { id: 'fix-tools' });
+                                                    await updateRetellAgent({ fixTools: true });
+                                                    toast.success('Booking tools updated successfully', { id: 'fix-tools' });
+                                                } catch {
+                                                    toast.error('Failed to fix tools', { id: 'fix-tools' });
+                                                }
+                                            }}
+                                            className="px-4 py-2 text-xs font-medium text-amber-400 border border-amber-500/30 rounded-lg
+                                                       hover:bg-amber-500/10 transition-colors whitespace-nowrap flex items-center gap-1.5"
+                                        >
+                                            <Zap className="h-3.5 w-3.5" />
+                                            Fix Tools
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isProvisioned() && (
+                                <p className="text-sm text-amber-400">
+                                    Provision your voice agent first to configure booking availability.
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
+        </>
     );
 };
 

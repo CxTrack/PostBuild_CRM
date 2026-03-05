@@ -5,6 +5,7 @@ import { shareLinkService } from '@/services/shareLink.service';
 import { quoteService, Quote } from '@/services/quote.service';
 import { pdfService } from '@/services/pdf.service';
 import toast from 'react-hot-toast';
+import { getTermsLabel } from '@/config/paymentTerms';
 
 export default function PublicQuoteView() {
   const { token } = useParams<{ token: string }>();
@@ -310,7 +311,7 @@ export default function PublicQuoteView() {
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       Payment Terms
                     </h4>
-                    <p className="text-gray-600 dark:text-gray-400">{quote.payment_terms}</p>
+                    <p className="text-gray-600 dark:text-gray-400">{getTermsLabel(quote.payment_terms)}</p>
                   </div>
                 )}
                 {quote.notes && (

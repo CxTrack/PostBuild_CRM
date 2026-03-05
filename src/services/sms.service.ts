@@ -91,6 +91,95 @@ export function substituteTemplateVars(
   return result;
 }
 
+// Bridge outbound SMS to the chat interface so it appears under "Customer Texts"
+export async function bridgeSmsToChat(opts: {
+  organizationId: string;
+  customerId?: string;
+  customerName?: string;
+  customerPhone: string;
+  messageBody: string;
+  userId: string;
+}): Promise<void> {
+  const token = getAuthToken();
+  if (!token) return;
+
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const headers = {
+    'apikey': anonKey,
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // 1. Find existing SMS conversation for this customer+org
+    const searchUrl = `${supabaseUrl}/rest/v1/conversations?organization_id=eq.${opts.organizationId}&channel_type=eq.sms&customer_phone=eq.${encodeURIComponent(opts.customerPhone)}&limit=1`;
+    const searchRes = await fetch(searchUrl, { headers });
+    const existing = searchRes.ok ? await searchRes.json() : [];
+
+    let conversationId: string;
+
+    if (existing.length > 0) {
+      conversationId = existing[0].id;
+      // Update the conversation's updated_at to bring it to the top
+      await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${conversationId}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ updated_at: new Date().toISOString() }),
+      });
+    } else {
+      // 2. Create new SMS conversation
+      const convRes = await fetch(`${supabaseUrl}/rest/v1/conversations`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          organization_id: opts.organizationId,
+          channel_type: 'sms',
+          is_group: false,
+          name: opts.customerName || opts.customerPhone,
+          customer_id: opts.customerId || null,
+          customer_phone: opts.customerPhone,
+          created_by: opts.userId,
+        }),
+      });
+
+      if (!convRes.ok) {
+        console.error('[SMS Bridge] Failed to create conversation:', convRes.status);
+        return;
+      }
+
+      const convData = await convRes.json();
+      const conv = Array.isArray(convData) ? convData[0] : convData;
+      conversationId = conv.id;
+
+      // Add the user as a participant so they can see this conversation
+      await fetch(`${supabaseUrl}/rest/v1/conversation_participants`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ conversation_id: conversationId, user_id: opts.userId, role: 'member' }),
+      });
+    }
+
+    // 3. Insert the outbound message
+    await fetch(`${supabaseUrl}/rest/v1/messages`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        sender_id: opts.userId,
+        content: opts.messageBody,
+        message_type: 'sms',
+        metadata: {
+          direction: 'outbound',
+          customer_phone: opts.customerPhone,
+          customer_name: opts.customerName || null,
+        },
+      }),
+    });
+  } catch (err) {
+    console.error('[SMS Bridge] Error bridging SMS to chat:', err);
+  }
+}
+
 export const smsService = {
   async getSMSSettings(organizationId: string): Promise<SMSSettings | null> {
     const { data, error } = await supabase
@@ -238,6 +327,21 @@ export const smsService = {
       });
 
       const result = await response.json();
+
+      // Bridge outbound SMS to chat interface (fire-and-forget)
+      if (result.success) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          bridgeSmsToChat({
+            organizationId,
+            customerId: options?.customerId,
+            customerPhone: phoneValidation.formatted,
+            messageBody: body,
+            userId: user.id,
+          }).catch(err => console.error('[SMS Bridge] async error:', err));
+        }
+      }
+
       return result;
     } catch (error: any) {
       return { success: false, error: error.message };

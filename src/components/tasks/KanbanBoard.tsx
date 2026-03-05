@@ -44,16 +44,16 @@ const priorityColors = {
 
 const statusConfig = {
   'To Do': {
-    bg: 'bg-gray-50',
-    border: 'border-gray-200',
+    bg: 'bg-gray-50 dark:bg-gray-800/50',
+    border: 'border-gray-200 dark:border-gray-700',
   },
   'In Progress': {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
+    border: 'border-blue-200 dark:border-blue-800',
   },
   'Completed': {
-    bg: 'bg-green-50',
-    border: 'border-green-200',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+    border: 'border-green-200 dark:border-green-800',
   },
 };
 
@@ -82,39 +82,39 @@ function SortableTaskCard({ task, onTaskClick }: { task: Task; onTaskClick?: (ta
       {...attributes}
       {...listeners}
       onClick={() => onTaskClick?.(task)}
-      className={`bg-white border-2 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all ${
-        isOverdue ? 'border-red-500' : 'border-gray-200'
+      className={`bg-white dark:bg-gray-800 border-2 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all ${
+        isOverdue ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
       }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${priorityColors[task.priority]}`} />
-          <span className="text-xs font-medium text-gray-600 capitalize">{task.priority}</span>
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 capitalize">{task.priority}</span>
         </div>
-        <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-          <MoreVertical className="w-4 h-4 text-gray-400" />
+        <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+          <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         </button>
       </div>
 
-      <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+      <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{task.title}</h4>
       {task.description && (
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{task.description}</p>
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
+        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
           <Calendar className="w-3.5 h-3.5" />
-          <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
+          <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
             {formatDate(task.dueDate)}
             {task.showOnCalendar && task.startTime && (
-              <span className="ml-1 text-primary-600 font-medium">• {task.startTime}</span>
+              <span className="ml-1 text-primary-600 dark:text-primary-400 font-medium">• {task.startTime}</span>
             )}
           </span>
-          {isOverdue && <AlertCircle className="w-3.5 h-3.5 text-red-500 ml-auto" />}
+          {isOverdue && <AlertCircle className="w-3.5 h-3.5 text-red-500 dark:text-red-400 ml-auto" />}
         </div>
 
         {task.customer && (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
             <User className="w-3.5 h-3.5" />
             <span>{task.customer}</span>
           </div>
@@ -139,8 +139,8 @@ function KanbanColumn({
     <div className="flex-1 min-w-[300px]">
       <div className={`${config.bg} border-2 ${config.border} rounded-2xl p-4 h-full`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">{status}</h3>
-          <span className="px-2.5 py-1 bg-white border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700">
+          <h3 className="font-semibold text-gray-900 dark:text-white">{status}</h3>
+          <span className="px-2.5 py-1 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">
             {tasks.length}
           </span>
         </div>
@@ -154,7 +154,7 @@ function KanbanColumn({
         </SortableContext>
 
         {tasks.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">
+          <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
             No tasks
           </div>
         )}
@@ -232,14 +232,14 @@ export default function KanbanBoard({ tasks, onTaskMove, onTaskClick }: KanbanBo
 
       <DragOverlay>
         {activeTask && (
-          <div className="bg-white border-2 border-gray-300 rounded-xl p-4 shadow-xl rotate-3">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl p-4 shadow-xl rotate-3">
             <div className="flex items-center gap-2 mb-2">
               <div className={`w-2.5 h-2.5 rounded-full ${priorityColors[activeTask.priority]}`} />
-              <span className="text-xs font-medium text-gray-600 capitalize">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 capitalize">
                 {activeTask.priority}
               </span>
             </div>
-            <h4 className="font-semibold text-gray-900">{activeTask.title}</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white">{activeTask.title}</h4>
           </div>
         )}
       </DragOverlay>

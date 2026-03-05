@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   Users, CreditCard, BarChart2, MessageSquare,
   Settings, Shield, LayoutDashboard,
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug
+  FileBarChart, Plug, Mail, Building2, GitMerge, Code2, Handshake
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -25,10 +25,18 @@ import { FinancialAnalyticsTab } from './FinancialAnalyticsTab';
 import { ModuleUsageTab } from './ModuleUsageTab';
 import { APIMonitoringTab } from './APIMonitoringTab';
 import { AuditLogsTab } from './AuditLogsTab';
+import { SecurityHealthTab } from './SecurityHealthTab';
 import { SettingsTab } from './SettingsTab';
 import { BroadcastPanel } from '../../components/admin/BroadcastPanel';
 import { ReportingEngine } from '../../components/admin/ReportingEngine';
 import { MCPConnectionPanel } from '../../components/admin/MCPConnectionPanel';
+import { PhoneLifecycleTab } from './PhoneLifecycleTab';
+import { SmsComplianceTab } from '../../components/admin/SmsComplianceTab';
+import { MarketingEmailsTab } from '../../components/admin/MarketingEmailsTab';
+import { OrgDetailView } from './OrgDetailView';
+import { OrgMergeTool } from '../../components/admin/OrgMergeTool';
+import { CodeQualityTab } from './CodeQualityTab';
+import { ResellersTab } from './ResellersTab';
 
 interface TabItem {
   id: string;
@@ -55,7 +63,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'users', label: 'Users & Orgs', icon: Users, component: UsersTab },
       { id: 'modules', label: 'Module Usage', icon: Layers, component: ModuleUsageTab },
       { id: 'ai', label: 'AI & LLM', icon: Brain, component: AIAnalyticsTab },
-      { id: 'voice', label: 'Voice & Calls', icon: Phone, component: VoiceAnalyticsTab },
+      { id: 'voice', label: 'Voice & SMS', icon: Phone, component: VoiceAnalyticsTab },
       { id: 'financial', label: 'Financial', icon: TrendingUp, component: FinancialAnalyticsTab },
     ],
   },
@@ -63,15 +71,22 @@ const TAB_GROUPS: TabGroup[] = [
     label: 'Operations',
     tabs: [
       { id: 'billing', label: 'Billing & Revenue', icon: CreditCard, component: BillingTab },
+      { id: 'resellers', label: 'Reseller Partners', icon: Handshake, component: ResellersTab },
       { id: 'plans', label: 'Subscription Plans', icon: DollarSign, component: PlansTab },
+      { id: 'phone-lifecycle', label: 'Phone Numbers', icon: Phone, component: PhoneLifecycleTab },
       { id: 'support', label: 'Support Tickets', icon: MessageSquare, component: SupportTab },
+      { id: 'sms-compliance', label: 'SMS Compliance', icon: MessageSquare, component: SmsComplianceTab },
+      { id: 'marketing-emails', label: 'Marketing Emails', icon: Mail, component: MarketingEmailsTab },
       { id: 'reports', label: 'Reports', icon: FileBarChart, component: ReportingEngine },
+      { id: 'org-merge', label: 'Org Merge', icon: GitMerge, component: OrgMergeTool },
     ],
   },
   {
     label: 'System',
     tabs: [
+      { id: 'security', label: 'Security & Health', icon: Shield, component: SecurityHealthTab },
       { id: 'api-monitoring', label: 'API Monitoring', icon: Activity, component: APIMonitoringTab },
+      { id: 'code-quality', label: 'Code Quality', icon: Code2, component: CodeQualityTab },
       { id: 'audit', label: 'Audit Logs', icon: Shield, component: AuditLogsTab },
       { id: 'broadcasts', label: 'Broadcasts', icon: Send, component: BroadcastPanel },
       { id: 'mcp', label: 'MCP / AI Ops', icon: Plug, component: MCPConnectionPanel },
@@ -83,8 +98,8 @@ const TAB_GROUPS: TabGroup[] = [
 const ALL_TABS = TAB_GROUPS.flatMap((g) => g.tabs);
 
 export const AdminPage = () => {
-  const [activeTab, setActiveTab] = useState('command-center');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { activeTab, setActiveTab, selectedOrgId, selectedOrgContext } = useAdminStore();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const { user } = useAuthContext();
   const { lastRefreshed, fetchAll } = useAdminStore();
 
@@ -240,8 +255,17 @@ export const AdminPage = () => {
                 <Menu className="w-5 h-5" />
               </button>
               <h2 className="text-lg md:text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                {activeTabData && <activeTabData.icon className="w-5 h-5 text-gray-400 hidden sm:block" />}
-                {activeTabData?.label || 'Command Center'}
+                {selectedOrgId ? (
+                  <>
+                    <Building2 className="w-5 h-5 text-purple-500 hidden sm:block" />
+                    <span>Organization Detail</span>
+                  </>
+                ) : (
+                  <>
+                    {activeTabData && <activeTabData.icon className="w-5 h-5 text-gray-400 hidden sm:block" />}
+                    {activeTabData?.label || 'Command Center'}
+                  </>
+                )}
               </h2>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
@@ -274,7 +298,7 @@ export const AdminPage = () => {
 
         {/* Tab Content */}
         <div className="p-4 md:p-6 lg:p-8 w-full">
-          <ActiveComponent />
+          {selectedOrgId ? <OrgDetailView /> : <ActiveComponent />}
         </div>
       </main>
     </div>

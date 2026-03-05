@@ -92,7 +92,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ isOpen, onCl
                 participants: participants.map(p => {
                     const m = teamMembers.find(member => member.id === p.user_id);
                     return {
-                        user: { full_name: m?.full_name || 'User' }
+                        user: { id: p.user_id, full_name: m?.full_name || 'User' }
                     };
                 })
             });

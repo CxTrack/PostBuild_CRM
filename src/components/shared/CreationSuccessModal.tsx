@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 
 interface SuccessAction {
     label: string;
-    path: string;
+    path?: string;
+    onClick?: () => void;
     icon: React.ReactNode;
     variant?: 'primary' | 'secondary';
 }
@@ -62,20 +63,28 @@ export default function CreationSuccessModal({
                         What would you like to do next?
                     </p>
 
-                    {actions.map((action, index) => (
-                        <Link
-                            key={index}
-                            to={action.path}
-                            onClick={onClose}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${action.variant === 'primary'
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
-                                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
-                                }`}
-                        >
-                            {action.icon}
-                            {action.label}
-                        </Link>
-                    ))}
+                    {actions.map((action, index) => {
+                        const className = `w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${action.variant === 'primary'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                            : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                            }`;
+
+                        if (action.onClick) {
+                            return (
+                                <button key={index} onClick={action.onClick} className={className}>
+                                    {action.icon}
+                                    {action.label}
+                                </button>
+                            );
+                        }
+
+                        return (
+                            <Link key={index} to={action.path || '#'} onClick={onClose} className={className}>
+                                {action.icon}
+                                {action.label}
+                            </Link>
+                        );
+                    })}
 
                     <button
                         onClick={onClose}

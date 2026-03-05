@@ -10,12 +10,17 @@ interface AuthState {
   profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
+  error: string | null;
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (accessToken: string, newPassword: string) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       profile: null,
       loading: false,
       initialized: false,
+      error: null,
 
       /* ----------------------------------------
        * INITIALIZE (run once on app startup)
@@ -35,12 +41,19 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ loading: true });
 
-        // Check for tokens in URL (from marketing site OAuth redirect)
+        // Check for tokens in URL query params or hash fragment (OAuth redirect)
+        // Skip on pages that handle their own tokens
+        const currentPath = window.location.pathname;
+        const selfHandledPaths = ['/reset-password', '/auth/callback'];
+        const isSelfHandledPage = selfHandledPaths.includes(currentPath);
         const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+        const providerToken = urlParams.get('provider_token') || hashParams.get('provider_token');
+        const providerRefreshToken = urlParams.get('provider_refresh_token') || hashParams.get('provider_refresh_token');
 
-        if (accessToken && refreshToken) {
+        if (accessToken && refreshToken && !isSelfHandledPage) {
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -48,6 +61,17 @@ export const useAuthStore = create<AuthState>()(
 
           if (!error && data.session) {
             const profile = await getUserProfile(data.session.user.id);
+
+            // Capture Microsoft provider tokens for auto email connection
+            const authProvider = data.session.user.app_metadata?.provider;
+            if ((authProvider === 'azure' || authProvider === 'microsoft') && providerToken) {
+              sessionStorage.setItem('microsoft_provider_tokens', JSON.stringify({
+                provider_token: providerToken,
+                provider_refresh_token: providerRefreshToken || '',
+                timestamp: Date.now(),
+              }));
+            }
+
             set({
               user: data.session.user,
               profile,
@@ -101,6 +125,33 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /* ----------------------------------------
+       * SIGN IN WITH GOOGLE (OAuth)
+       * ---------------------------------------- */
+      signInWithGoogle: async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/onboarding/profile`,
+          },
+        });
+        if (error) throw error;
+      },
+
+      /* ----------------------------------------
+       * SIGN IN WITH MICROSOFT (OAuth)
+       * ---------------------------------------- */
+      signInWithMicrosoft: async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'azure',
+          options: {
+            redirectTo: `${window.location.origin}/onboarding/profile`,
+            scopes: 'email profile openid offline_access https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Calendars.ReadWrite',
+          },
+        });
+        if (error) throw error;
+      },
+
+      /* ----------------------------------------
        * SIGN OUT
        * ---------------------------------------- */
       signOut: async () => {
@@ -118,6 +169,38 @@ export const useAuthStore = create<AuthState>()(
 
         if (error) throw error;
       },
+
+      /* ----------------------------------------
+       * UPDATE PASSWORD (after reset link clicked)
+       * ---------------------------------------- */
+      updatePassword: async (accessToken, newPassword) => {
+        set({ loading: true, error: null });
+        try {
+          // First set the session using the recovery token
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: new URLSearchParams(window.location.hash.substring(1)).get('refresh_token') || '',
+          });
+
+          if (sessionError) throw sessionError;
+
+          // Now update the password
+          const { error } = await supabase.auth.updateUser({ password: newPassword });
+          if (error) throw error;
+
+          // Sign out so user logs in with new password
+          await supabase.auth.signOut();
+          set({ user: null, profile: null, loading: false });
+        } catch (err: any) {
+          set({ loading: false, error: err.message || 'Failed to reset password' });
+          throw err;
+        }
+      },
+
+      /* ----------------------------------------
+       * CLEAR ERROR
+       * ---------------------------------------- */
+      clearError: () => set({ error: null }),
 
       /* ----------------------------------------
        * UPDATE PROFILE

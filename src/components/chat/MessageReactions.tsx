@@ -64,7 +64,7 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
             })}
 
             {/* Add Reaction Button */}
-            <div className="relative">
+            <div className={`relative ${showPicker ? 'z-40' : ''}`}>
                 <button
                     onClick={() => setShowPicker(!showPicker)}
                     className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xs opacity-0 group-hover:opacity-100"

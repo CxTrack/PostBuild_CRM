@@ -112,7 +112,7 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
         const organizationId = useOrganizationStore.getState().currentOrganization?.id;
         if (!organizationId) {
             set({ error: 'No organization selected', loading: false });
-            return;
+            throw new Error('No organization selected');
         }
 
         try {
@@ -133,6 +133,7 @@ export const useCustomFieldsStore = create<CustomFieldsStore>((set, get) => ({
         } catch (error) {
           const message = error instanceof Error ? error.message : 'An error occurred';
             set({ error: message, loading: false });
+            throw error;
         }
     },
 

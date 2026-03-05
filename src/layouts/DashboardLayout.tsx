@@ -16,7 +16,6 @@ import {
   X,
   Moon,
   Sun,
-  Bell,
   Package,
   TrendingUp,
   Shield,
@@ -28,6 +27,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   GripVertical,
+  Mail,
 } from 'lucide-react';
 
 import {
@@ -47,7 +47,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
+import { getAuthToken } from '../utils/auth.utils';
+
 import { useCoPilot } from '../contexts/CoPilotContext';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { useVisibleModules } from '../hooks/useVisibleModules';
@@ -56,6 +58,10 @@ import { BroadcastBanner } from '../components/BroadcastBanner';
 import { CoPilotIntro } from '../components/tour/SubtleHints';
 import CoPilotPanel from '../components/copilot/CoPilotPanel';
 import CoPilotButton from '../components/copilot/CoPilotButton';
+import { useImpersonationStore } from '../stores/impersonationStore';
+import { useEffectiveUser } from '../hooks/useEffectiveUser';
+import { ImpersonationBanner } from '../components/admin/ImpersonationBanner';
+import { NotificationBell } from '../components/ui/NotificationBell';
 
 
 
@@ -83,6 +89,7 @@ const MODULE_ICONS: Record<string, any> = {
   inventory: Package,
   suppliers: Users,
   financials: DollarSign,
+  email: Mail,
 };
 
 const MODULE_TOUR_IDS: Record<string, string> = {
@@ -127,7 +134,7 @@ const SortableNavItem: React.FC<{
   return (
     <div ref={setNodeRef} style={style} className="group/drag relative">
       <Link
-        to={item.isLocked ? '/dashboard/upgrade' : item.path}
+        to={item.path}
         className={
           theme === 'soft-modern'
             ? `nav-item flex items-center px-4 py-3 ${active ? 'active' : ''} ${item.isLocked ? 'opacity-60' : ''}`
@@ -177,7 +184,7 @@ export const DashboardLayout = () => {
 
   const { theme, toggleTheme } = useThemeStore();
   const { preferences } = usePreferencesStore();
-  const { currentOrganization, teamMembers } = useOrganizationStore();
+  const { currentOrganization, teamMembers, allOrgsDeactivated } = useOrganizationStore();
   const { fetchPipelineStages } = usePipelineConfigStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -185,6 +192,8 @@ export const DashboardLayout = () => {
   const { user } = useAuthContext();
   const { isOpen: isCoPilotOpen, panelSide } = useCoPilot();
   const { loadPreferences, saveSidebarOrder } = usePreferencesStore();
+  const { isImpersonating, restoreFromSession } = useImpersonationStore();
+  const effectiveUser = useEffectiveUser();
 
   // DnD sensors — require 8px movement before dragging starts to avoid accidental drags on clicks
   const sensors = useSensors(
@@ -239,11 +248,26 @@ export const DashboardLayout = () => {
     });
   };
 
+  // Auto-collapse sidebar when CoPilot opens (desktop only) for better UX
+  useEffect(() => {
+    if (isCoPilotOpen && !sidebarCollapsed && window.innerWidth >= 768) {
+      setSidebarCollapsed(true);
+      try { localStorage.setItem('cxtrack_sidebar_collapsed', 'true'); } catch {}
+    }
+  }, [isCoPilotOpen]);
+
   useEffect(() => {
     if (user) {
       loadPreferences();
     }
   }, [user, loadPreferences]);
+
+  // Restore impersonation session on page refresh
+  useEffect(() => {
+    if (user) {
+      restoreFromSession();
+    }
+  }, [user, restoreFromSession]);
 
   useEffect(() => {
     if (currentOrganization) {
@@ -251,8 +275,96 @@ export const DashboardLayout = () => {
     }
   }, [currentOrganization, fetchPipelineStages]);
 
-  const ADMIN_EMAILS = ['cto@cxtrack.com', 'manik.sharma@cxtrack.com', 'abdullah.nassar@cxtrack.com', 'info@cxtrack.com'];
-  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Auto-connect Microsoft email when user logged in via Microsoft OAuth
+  useEffect(() => {
+    const autoConnectMicrosoftEmail = async () => {
+      const stored = sessionStorage.getItem('microsoft_provider_tokens');
+      if (!stored || !currentOrganization?.id) return;
+
+      // Remove immediately to prevent double-fire
+      sessionStorage.removeItem('microsoft_provider_tokens');
+
+      try {
+        const { provider_token, provider_refresh_token, timestamp } = JSON.parse(stored);
+
+        // Expire after 5 minutes (tokens may be stale)
+        if (Date.now() - timestamp > 5 * 60 * 1000) return;
+
+        const token = await getAuthToken();
+        if (!token) return;
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            provider: 'microsoft',
+            provider_token,
+            provider_refresh_token,
+            organization_id: currentOrganization.id,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[AutoConnect] Microsoft email connected:', data.email_address);
+          if (data.email_address) {
+            const { default: toast } = await import('react-hot-toast');
+            toast.success(`Your Outlook email (${data.email_address}) is connected and ready to send from CxTrack.`, { duration: 5000 });
+          }
+        } else {
+          console.warn('[AutoConnect] Failed:', await res.text());
+        }
+      } catch (err) {
+        console.warn('[AutoConnect] Error:', err);
+      }
+    };
+
+    autoConnectMicrosoftEmail();
+  }, [currentOrganization?.id]);
+
+  // Background inbox sync - runs every 15 minutes if user has an active email connection
+  useEffect(() => {
+    if (!currentOrganization?.id) return;
+
+    const syncInbox = async () => {
+      const lastSync = localStorage.getItem('cxtrack_last_email_sync');
+      const fifteenMinAgo = Date.now() - 15 * 60 * 1000;
+
+      if (lastSync && parseInt(lastSync) > fifteenMinAgo) return;
+
+      try {
+        const token = await getAuthToken();
+        if (!token) return;
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/sync-inbox-emails`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[InboxSync] response:', data);
+          localStorage.setItem('cxtrack_last_email_sync', Date.now().toString());
+          if (data.synced > 0) {
+            console.log(`[InboxSync] ${data.synced} new emails synced`);
+          }
+        }
+      } catch {
+        // Silent background sync
+      }
+    };
+
+    // Run after a short delay to not block initial load
+    const timer = setTimeout(syncInbox, 5000);
+    return () => clearTimeout(timer);
+  }, [currentOrganization?.id]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -261,12 +373,7 @@ export const DashboardLayout = () => {
         return;
       }
 
-      // Allow admin in local dev OR for authorized emails
-      if (isLocalDev || (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))) {
-        setIsSuperAdmin(true);
-        return;
-      }
-
+      // DB is source of truth for admin status
       try {
         const { data, error } = await supabase
           .from('admin_settings')
@@ -282,7 +389,7 @@ export const DashboardLayout = () => {
     };
 
     checkAdminStatus();
-  }, [user, isLocalDev]);
+  }, [user]);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return location.pathname === '/dashboard';
@@ -377,15 +484,51 @@ export const DashboardLayout = () => {
     moreNavItems.push(SETTINGS_ITEM);
   }
 
+  // Account Deactivated Screen - blocks access when all orgs are deactivated
+  if (allOrgsDeactivated) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Account Deactivated</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+            Your organization's account has been deactivated. Your data has been preserved.
+            If you believe this is an error, please contact our support team.
+          </p>
+          <a
+            href="mailto:support@cxtrack.com"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors mb-4"
+          >
+            Contact support@cxtrack.com
+          </a>
+          <div>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate('/auth');
+              }}
+              className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
+    <div className={`h-screen flex flex-col ${isCoPilotOpen && panelSide === 'left' ? 'md:flex-row-reverse' : 'md:flex-row'} bg-gray-50 dark:bg-gray-900 ${isImpersonating ? 'pt-10' : ''}`}>
+      <ImpersonationBanner />
       <BroadcastBanner />
       {/* Desktop Sidebar - Hidden on Mobile */}
       <aside
         className={`hidden md:flex md:flex-col ${sidebarCollapsed ? 'md:w-[68px]' : 'md:w-64'} transition-all duration-300 ${theme === 'soft-modern'
-          ? 'bg-white border-r border-gray-200/60'
-          : 'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'
-          } ${isCoPilotOpen && panelSide === 'left' ? 'md:ml-[400px]' : ''}`}
+          ? `bg-white ${isCoPilotOpen && panelSide === 'left' ? 'border-l' : 'border-r'} border-gray-200/60`
+          : `bg-white dark:bg-gray-800 ${isCoPilotOpen && panelSide === 'left' ? 'border-l' : 'border-r'} border-gray-200 dark:border-gray-700`
+          }`}
       >
         {/* Logo + Collapse Toggle */}
         <div className={`${theme === 'soft-modern' ? "p-6 border-b border-default" : "p-4 border-b border-gray-200 dark:border-gray-700"} flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`} data-tour="sidebar">
@@ -452,6 +595,7 @@ export const DashboardLayout = () => {
             </SortableContext>
           </DndContext>
 
+          {/* Settings - pinned after modules */}
           <Link
             to={SETTINGS_ITEM.path}
             className={
@@ -534,12 +678,14 @@ export const DashboardLayout = () => {
               ? 'hover:bg-gray-100 dark:hover:bg-gray-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-            title={sidebarCollapsed ? (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User') : undefined}
+            title={sidebarCollapsed ? effectiveUser.fullName : undefined}
           >
             <div className="flex items-center">
               {(() => {
-                const currentUserAvatar = teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
-                const initial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
+                const currentUserAvatar = effectiveUser.isImpersonated
+                  ? effectiveUser.avatarUrl
+                  : teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                const initial = (effectiveUser.fullName || 'U')[0].toUpperCase();
                 return currentUserAvatar ? (
                   <img src={currentUserAvatar} alt="" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
                 ) : (
@@ -551,15 +697,15 @@ export const DashboardLayout = () => {
               {!sidebarCollapsed && (
                 <div className="ml-3 text-left">
                   <p className={theme === 'soft-modern' ? "text-xs font-bold text-primary" : "text-xs font-bold text-gray-900 dark:text-white"}>
-                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                    {effectiveUser.fullName}
                   </p>
-                  {isSuperAdmin && (
+                  {isSuperAdmin && !isImpersonating && (
                     <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">Super Admin</p>
                   )}
                 </div>
               )}
             </div>
-            {!sidebarCollapsed && isSuperAdmin && (
+            {!sidebarCollapsed && isSuperAdmin && !isImpersonating && (
               <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400 stroke-[2.5px]" />
             )}
           </button>
@@ -585,10 +731,7 @@ export const DashboardLayout = () => {
             <Link to="/dashboard/calendar" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
               <Calendar size={18} />
             </Link>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative text-gray-500 dark:text-gray-400">
-              <Bell size={18} />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-            </button>
+            <NotificationBell />
             <button
               onClick={toggleTheme}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400"
@@ -666,12 +809,21 @@ export const DashboardLayout = () => {
 
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
-                    {(user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
-                  </div>
+                  {(() => {
+                    const mobileAvatar = effectiveUser.isImpersonated
+                      ? effectiveUser.avatarUrl
+                      : teamMembers.find((m: any) => m.id === user?.id)?.avatar_url;
+                    return mobileAvatar ? (
+                      <img src={mobileAvatar} alt="" className="w-10 h-10 rounded-full object-cover mr-3" />
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                        {(effectiveUser.fullName || 'U')[0].toUpperCase()}
+                      </div>
+                    );
+                  })()}
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                      {effectiveUser.fullName}
                     </p>
                     {isSuperAdmin && (
                       <p className="text-sm text-purple-600 dark:text-purple-400">Super Admin</p>

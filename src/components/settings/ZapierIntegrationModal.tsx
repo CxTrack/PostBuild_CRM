@@ -33,7 +33,7 @@ export const ZapierIntegrationModal = ({ isOpen, onClose, organizationId }: Zapi
                     <div className="flex items-center justify-center gap-8 py-4">
                         <div className="flex flex-col items-center gap-2">
                             <div className="w-16 h-16 bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-100 dark:border-gray-700 flex items-center justify-center shadow-sm">
-                                <img src="/logo.png" alt="CxTrack" className="w-10 h-10 object-contain" />
+                                <img src="/cx-icon.png" alt="CxTrack" className="w-10 h-10 object-contain" />
                             </div>
                             <span className="text-xs font-semibold text-gray-500">CxTrack</span>
                         </div>

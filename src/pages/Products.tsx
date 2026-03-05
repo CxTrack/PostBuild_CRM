@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, Grid, List, Package,
   MoreVertical,
@@ -12,15 +12,19 @@ import {
 import { useProductStore } from '../stores/productStore';
 import { useOrganizationStore } from '../stores/organizationStore';
 import { useThemeStore } from '../stores/themeStore';
+import { useCustomFieldsStore } from '../stores/customFieldsStore';
 import { PageContainer, Card, IconBadge } from '../components/theme/ThemeComponents';
 import { CompactStatsBar } from '../components/compact/CompactViews';
 import { ResizableTable, ColumnDef } from '../components/compact/ResizableTable';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import ManageCustomFieldsModal from '@/components/products/ManageCustomFieldsModal';
+import CustomFieldValue from '@/components/products/CustomFieldValue';
 import type { ProductType } from '../types/app.types';
 
 export default function Products() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'compact' | 'grid' | 'list'>('compact');
   const [filterType, setFilterType] = useState<'all' | ProductType>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,11 +35,35 @@ export default function Products() {
   const { theme } = useThemeStore();
   const { confirm, DialogComponent } = useConfirmDialog();
   const labels = usePageLabels('products');
+  const { fields: customFieldDefs, fetchFields: fetchCustomFields } = useCustomFieldsStore();
   const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
+  const [showManageFields, setShowManageFields] = useState(false);
+  const isAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+
+  // Custom field definitions for products that should show in list view
+  const listCustomFields = useMemo(
+    () => customFieldDefs.filter(f => f.entity_type === 'product' && f.show_in_list),
+    [customFieldDefs]
+  );
+
+  // Build dynamic custom field column defs for the table
+  const customFieldColumns: ColumnDef[] = useMemo(() =>
+    listCustomFields.map(field => ({
+      id: `cf_${field.field_key}`,
+      header: field.field_label,
+      defaultWidth: field.field_type === 'textarea' ? 200 : 120,
+      minWidth: 80,
+      render: (product: any) => (
+        <CustomFieldValue field={field} value={product.custom_fields?.[field.field_key]} />
+      ),
+    })),
+    [listCustomFields]
+  );
 
   useEffect(() => {
     fetchProducts(currentOrganization?.id);
-  }, [currentOrganization?.id, fetchProducts]);
+    fetchCustomFields('product');
+  }, [currentOrganization?.id, fetchProducts, fetchCustomFields]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -265,22 +293,34 @@ export default function Products() {
 
   return (
     <PageContainer className="gap-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>
-        <Link
-          to="/dashboard/products/new"
-          className="flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
-        >
-          <Plus size={18} className="mr-2" />
-          <span className="whitespace-nowrap">{labels.newButton}</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowManageFields(true)}
+              className="flex items-center justify-center px-3 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl transition-all text-sm font-medium"
+              title="Manage custom fields"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              Fields
+            </button>
+          )}
+          <Link
+            to="/dashboard/products/new"
+            className="flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-lg shadow-blue-500/20 active:scale-95 text-sm"
+          >
+            <Plus size={18} className="mr-2" />
+            <span className="whitespace-nowrap">{labels.newButton}</span>
+          </Link>
+        </div>
       </div>
 
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -449,7 +489,7 @@ export default function Products() {
             <ResizableTable
               storageKey={isMortgage ? "loan-products" : "products"}
               data={filteredProducts}
-              onRowClick={(product) => window.location.href = `/dashboard/products/${product.id}/edit`}
+              onRowClick={(product) => navigate(`/dashboard/products/${product.id}/edit`)}
               columns={isMortgage ? [
                 {
                   id: 'product',
@@ -538,6 +578,7 @@ export default function Products() {
                     </span>
                   ),
                 },
+                ...customFieldColumns,
                 {
                   id: 'actions',
                   header: 'Actions',
@@ -645,6 +686,7 @@ export default function Products() {
                     </span>
                   ),
                 },
+                ...customFieldColumns,
                 {
                   id: 'actions',
                   header: 'Actions',
@@ -883,6 +925,7 @@ export default function Products() {
         )}
       </div>
       <DialogComponent />
+      <ManageCustomFieldsModal isOpen={showManageFields} onClose={() => { setShowManageFields(false); fetchCustomFields('product'); }} />
     </PageContainer>
   );
 }

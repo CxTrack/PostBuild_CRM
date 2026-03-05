@@ -1,0 +1,970 @@
+import React, { useEffect, useState } from 'react';
+import { Users, UserPlus, Calendar as CalendarIcon, TrendingUp, CheckCircle, FileText, DollarSign, Phone, Package, LayoutGrid, Building2, Link, Copy, Zap, Code, Key, MoreVertical, Loader2, X, Settings as SettingsIcon, Info, UserCheck, UserX, Clock, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { Webhook } from '@/services/webhook.service';
+import { ApiKey } from '@/services/apiKey.service';
+import { INDUSTRY_TEMPLATES, INDUSTRY_LABELS, AVAILABLE_MODULES } from '@/config/modules.config';
+import { useOrganizationStore, type JoinRequest } from '@/stores/organizationStore';
+import { useTeamStore } from '@/stores/teamStore';
+import toast from 'react-hot-toast';
+
+interface TeamMember {
+  id: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  avatar_url?: string;
+  color?: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  industry_template?: string;
+  slug?: string;
+  metadata?: any;
+}
+
+interface TeamIntegrationsTabProps {
+  currentOrganization: Organization;
+  teamMembers: TeamMember[];
+  handleRoleChange: (memberId: string, newRole: string) => void;
+  updateOrganization: (data: any) => Promise<void>;
+  webhooks: Webhook[];
+  apiKeys: ApiKey[];
+  loadingWebhooks: boolean;
+  loadingApiKeys: boolean;
+  onShowInviteModal: () => void;
+  onShowWebhookModal: (webhook?: Webhook) => void;
+  onShowApiKeyModal: () => void;
+  onShowZapierModal: () => void;
+  onDeleteWebhook: (id: string) => void;
+  onDeleteApiKey: (id: string) => void;
+  onRemoveMember: (memberId: string) => Promise<void>;
+  bookingUrl: string;
+}
+
+export default function TeamIntegrationsTab({
+  currentOrganization,
+  teamMembers,
+  handleRoleChange,
+  updateOrganization,
+  webhooks,
+  apiKeys,
+  loadingWebhooks,
+  loadingApiKeys,
+  onShowInviteModal,
+  onShowWebhookModal,
+  onShowApiKeyModal,
+  onShowZapierModal,
+  onDeleteWebhook,
+  onDeleteApiKey,
+  onRemoveMember,
+  bookingUrl,
+}: TeamIntegrationsTabProps) {
+  const { joinRequests, fetchJoinRequests, reviewJoinRequest, currentMembership } = useOrganizationStore();
+  const { teams, fetchTeams, createTeam, deleteTeam, addMember, removeMember } = useTeamStore();
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [approveRole, setApproveRole] = useState<string>('user');
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDescription, setNewTeamDescription] = useState('');
+  const [newTeamColor, setNewTeamColor] = useState('#6366f1');
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [addMemberDropdown, setAddMemberDropdown] = useState<string | null>(null);
+  const [confirmDeleteTeam, setConfirmDeleteTeam] = useState<string | null>(null);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ teamId: string; userId: string; name: string } | null>(null);
+  const [memberMenuId, setMemberMenuId] = useState<string | null>(null);
+  const [confirmRemoveOrgMember, setConfirmRemoveOrgMember] = useState<{ id: string; name: string } | null>(null);
+  const [removingOrgMember, setRemovingOrgMember] = useState(false);
+
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+
+  const TEAM_COLORS = [
+    { name: 'Indigo', value: '#6366f1' },
+    { name: 'Emerald', value: '#10b981' },
+    { name: 'Amber', value: '#f59e0b' },
+    { name: 'Rose', value: '#f43f5e' },
+    { name: 'Cyan', value: '#06b6d4' },
+    { name: 'Violet', value: '#8b5cf6' },
+  ];
+
+  useEffect(() => {
+    fetchJoinRequests();
+    fetchTeams();
+  }, [currentOrganization?.id]);
+
+  const handleReviewRequest = async (requestId: string, action: 'approved' | 'denied') => {
+    setReviewingId(requestId);
+    try {
+      await reviewJoinRequest(requestId, action, action === 'approved' ? approveRole : undefined);
+      toast.success(action === 'approved' ? 'Request approved! User has been added to the team.' : 'Request denied.');
+    } catch (err: any) {
+      toast.error(err.message || `Failed to ${action === 'approved' ? 'approve' : 'deny'} request`);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) return;
+    setCreatingTeam(true);
+    try {
+      await createTeam({ name: newTeamName.trim(), description: newTeamDescription.trim() || undefined, color: newTeamColor });
+      toast.success(`Team "${newTeamName.trim()}" created`);
+      setNewTeamName('');
+      setNewTeamDescription('');
+      setNewTeamColor('#6366f1');
+      setShowCreateTeam(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create team');
+    } finally {
+      setCreatingTeam(false);
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: string) => {
+    try {
+      await deleteTeam(teamId);
+      toast.success('Team deleted');
+      setConfirmDeleteTeam(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete team');
+    }
+  };
+
+  const handleAddMember = async (teamId: string, userId: string) => {
+    try {
+      await addMember(teamId, userId);
+      toast.success('Member added to team');
+      setAddMemberDropdown(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add member');
+    }
+  };
+
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    try {
+      await removeMember(teamId, userId);
+      toast.success('Member removed from team');
+      setConfirmRemoveMember(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
+    }
+  };
+
+  // Close member menu when clicking outside
+  useEffect(() => {
+    if (!memberMenuId) return;
+    const handleClick = () => setMemberMenuId(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [memberMenuId]);
+
+  const handleRemoveOrgMember = async () => {
+    if (!confirmRemoveOrgMember) return;
+    setRemovingOrgMember(true);
+    try {
+      await onRemoveMember(confirmRemoveOrgMember.id);
+      toast.success(`${confirmRemoveOrgMember.name} has been removed from the organization`);
+      setConfirmRemoveOrgMember(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
+    } finally {
+      setRemovingOrgMember(false);
+    }
+  };
+
+  const industry = currentOrganization?.industry_template || 'general_business';
+  const industryModules = INDUSTRY_TEMPLATES[industry] || INDUSTRY_TEMPLATES.general_business;
+  const shareableModules = industryModules.filter((m: string) => m !== 'dashboard');
+
+  const moduleIcons: Record<string, React.ReactNode> = {
+    crm: <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
+    calendar: <CalendarIcon className="w-6 h-6 text-green-600 dark:text-green-400" />,
+    pipeline: <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />,
+    tasks: <CheckCircle className="w-6 h-6 text-orange-600 dark:text-orange-400" />,
+    quotes: <FileText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+    invoices: <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+    calls: <Phone className="w-6 h-6 text-red-600 dark:text-red-400" />,
+    products: <Package className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+    inventory: <LayoutGrid className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />,
+    suppliers: <Building2 className="w-6 h-6 text-gray-600 dark:text-gray-400" />,
+    financials: <DollarSign className="w-6 h-6 text-teal-600 dark:text-teal-400" />,
+  };
+
+  const moduleDescriptions: Record<string, string> = {
+    crm: 'Share customer/contact database with team',
+    calendar: 'Collaborative calendar and scheduling',
+    pipeline: 'Collaborative deal tracking and revenue visibility',
+    tasks: 'Assign and track tasks across the team',
+    quotes: 'Share quote/proposal access with team',
+    invoices: 'Share invoice management with team',
+    calls: 'Share call logs and recordings',
+    products: 'Share product catalog with team',
+    inventory: 'Share inventory tracking with team',
+    suppliers: 'Share supplier information with team',
+    financials: 'Share financial data and reports',
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Team Members */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Team Members</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage who has access to your CRM data</p>
+          </div>
+          <button
+            onClick={onShowInviteModal}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm flex items-center gap-2 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Invite Member
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {teamMembers.length > 0 ? (
+            teamMembers.map((member) => (
+              <div key={member.id} className={`flex items-center justify-between p-4 border-2 ${member.role === 'owner' ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'} rounded-xl transition-all`}>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden" style={{ backgroundColor: member.color || '#6366f1' }}>
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={member.full_name || ''} className="w-full h-full object-cover" />
+                    ) : (
+                      (member.full_name || member.email).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 dark:text-white">{member.full_name || 'Unnamed User'}</p>
+                      <span className={`px-2 py-0.5 text-xs font-semibold rounded ${member.role === 'owner' ? 'bg-blue-600 text-white' :
+                        member.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
+                        'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                      }`}>
+                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{member.email}</p>
+                  </div>
+                </div>
+                {member.role !== 'owner' ? (
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={member.role}
+                      onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                      className="px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="user">User</option>
+                    </select>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMemberMenuId(memberMenuId === member.id ? null : member.id); }}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                      {memberMenuId === member.id && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMemberMenuId(null);
+                              setConfirmRemoveOrgMember({ id: member.id, name: member.full_name || member.email });
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove from Organization
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Full Access</div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3 opacity-20" />
+              <p className="text-gray-500">No team members found</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Teams */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Teams</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize members into teams for better collaboration</p>
+          </div>
+          {isOwnerOrAdmin && !showCreateTeam && (
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium text-sm flex items-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Team
+            </button>
+          )}
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Create Team Form */}
+          {showCreateTeam && (
+            <div className="p-4 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl bg-indigo-50/30 dark:bg-indigo-900/10">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">New Team</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    placeholder="e.g. Sales, Engineering, Support"
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={newTeamDescription}
+                    onChange={(e) => setNewTeamDescription(e.target.value)}
+                    placeholder="What does this team work on?"
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    {TEAM_COLORS.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setNewTeamColor(c.value)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${newTeamColor === c.value ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                        style={{ backgroundColor: c.value }}
+                        title={c.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={handleCreateTeam}
+                    disabled={!newTeamName.trim() || creatingTeam}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {creatingTeam && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Team
+                  </button>
+                  <button
+                    onClick={() => { setShowCreateTeam(false); setNewTeamName(''); setNewTeamDescription(''); setNewTeamColor('#6366f1'); }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Team Cards */}
+          {teams.length > 0 ? (
+            teams.map((team) => {
+              const memberIds = team.team_members.map((m) => m.user_id);
+              const availableMembers = teamMembers.filter((m) => !memberIds.includes(m.id));
+
+              return (
+                <div key={team.id} className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: team.color }} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white">{team.name}</h4>
+                          <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
+                            {team.team_members.length} {team.team_members.length === 1 ? 'member' : 'members'}
+                          </span>
+                        </div>
+                        {team.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{team.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Add Member Button */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setAddMemberDropdown(addMemberDropdown === team.id ? null : team.id)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
+                          title="Add member"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                        {addMemberDropdown === team.id && (
+                          <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 max-h-48 overflow-y-auto">
+                            {availableMembers.length > 0 ? (
+                              availableMembers.map((m) => (
+                                <button
+                                  key={m.id}
+                                  onClick={() => handleAddMember(team.id, m.id)}
+                                  className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                >
+                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: m.color || '#6366f1' }}>
+                                    {m.avatar_url ? (
+                                      <img src={m.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                      (m.full_name || m.email).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                                    )}
+                                  </div>
+                                  <span className="text-gray-900 dark:text-white truncate">{m.full_name || m.email}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <p className="px-3 py-2 text-xs text-gray-500 italic">All members are in this team</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Delete Team */}
+                      {isOwnerOrAdmin && (
+                        <button
+                          onClick={() => setConfirmDeleteTeam(team.id)}
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500"
+                          title="Delete team"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Member Avatars */}
+                  {team.team_members.length > 0 && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <div className="flex -space-x-2">
+                        {team.team_members.map((tm) => (
+                          <button
+                            key={tm.user_id}
+                            onClick={() => setConfirmRemoveMember({ teamId: team.id, userId: tm.user_id, name: tm.user_profiles?.full_name || tm.user_profiles?.email || 'this member' })}
+                            className="relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white dark:border-gray-800 hover:z-10 hover:ring-2 hover:ring-red-400 transition-all cursor-pointer"
+                            style={{ backgroundColor: '#6366f1' }}
+                            title={`${tm.user_profiles?.full_name || tm.user_profiles?.email || 'Member'} - click to remove`}
+                          >
+                            {tm.user_profiles?.avatar_url ? (
+                              <img src={tm.user_profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              (tm.user_profiles?.full_name || tm.user_profiles?.email || '?').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delete Team Confirmation */}
+                  {confirmDeleteTeam === team.id && (
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <p className="text-sm text-red-700 dark:text-red-400 mb-2">Delete "{team.name}"? This cannot be undone.</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteTeam(team.id)}
+                          className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteTeam(null)}
+                          className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Remove Member Confirmation */}
+                  {confirmRemoveMember && confirmRemoveMember.teamId === team.id && (
+                    <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm text-amber-700 dark:text-amber-400 mb-2">Remove {confirmRemoveMember.name} from this team?</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleRemoveMember(confirmRemoveMember.teamId, confirmRemoveMember.userId)}
+                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium transition-colors"
+                        >
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => setConfirmRemoveMember(null)}
+                          className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3 opacity-20" />
+              <p className="text-gray-500">No teams yet. Create one to organize your members.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Join Requests */}
+      {joinRequests.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Join Requests</h3>
+              <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                {joinRequests.length}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">People requesting to join your organization</p>
+          </div>
+
+          <div className="p-6 space-y-3">
+            {joinRequests.map((request) => (
+              <div key={request.id} className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center shrink-0">
+                      <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {request.user_name || 'Unnamed User'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{request.user_email}</p>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                        <Clock className="w-3 h-3" />
+                        {new Date(request.created_at).toLocaleDateString()}
+                      </div>
+                      {request.message && (
+                        <div className="mt-2 flex items-start gap-1.5 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <MessageSquare className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+                          <p className="text-xs text-gray-600 dark:text-gray-300">{request.message}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={approveRole}
+                      onChange={(e) => setApproveRole(e.target.value)}
+                      className="px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      <option value="user">User</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button
+                      onClick={() => handleReviewRequest(request.id, 'approved')}
+                      disabled={reviewingId === request.id}
+                      className="p-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg transition-colors disabled:opacity-50"
+                      title="Approve"
+                    >
+                      {reviewingId === request.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleReviewRequest(request.id, 'denied')}
+                      disabled={reviewingId === request.id}
+                      className="p-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                      title="Deny"
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Shared Resources */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Shared Resources</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Control what team members can access</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {shareableModules.map((moduleId: string) => {
+            const label = INDUSTRY_LABELS[industry]?.[moduleId]?.name || AVAILABLE_MODULES[moduleId]?.name || moduleId;
+            const description = moduleDescriptions[moduleId] || `Share ${label} with team`;
+            const icon = moduleIcons[moduleId] || <LayoutGrid className="w-6 h-6 text-gray-600 dark:text-gray-400" />;
+            const isShared = currentOrganization?.metadata?.sharing?.[moduleId] ?? true;
+
+            return (
+              <div key={moduleId} className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">{icon}</div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white mb-1">{label}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isShared}
+                    onChange={async (e) => {
+                      const currentSharing = currentOrganization?.metadata?.sharing || {};
+                      const newMetadata = {
+                        ...currentOrganization?.metadata,
+                        sharing: { ...currentSharing, [moduleId]: e.target.checked }
+                      };
+                      await updateOrganization({ metadata: newMetadata });
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* External Sharing & Integrations */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">External Sharing</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Share data with external tools and platforms</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Public Booking Link */}
+          <div className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <Link className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">Public Booking Link</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Share this link for customers to book appointments</p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const currentSharing = currentOrganization?.metadata?.sharing || {};
+                    await updateOrganization({
+                      metadata: {
+                        ...currentOrganization?.metadata,
+                        sharing: { ...currentSharing, booking_link_enabled: true }
+                      }
+                    });
+                    toast.success('Booking link activated!');
+                  } catch {
+                    toast.error('Failed to activate booking link');
+                  }
+                }}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              >
+                {currentOrganization?.metadata?.sharing?.booking_link_enabled ? 'Active' : 'Generate Link'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+              <input type="text" value={bookingUrl} readOnly className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white outline-none" />
+              <button
+                onClick={() => {
+                  if (bookingUrl) {
+                    navigator.clipboard.writeText(bookingUrl);
+                    toast.success('Link copied to clipboard');
+                  }
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <Copy className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Zapier Integration */}
+          <div className="p-4 border-2 border-orange-200 dark:border-orange-900/30 rounded-xl bg-orange-50/30 dark:bg-orange-900/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">Zapier Integration</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Connect to 6,000+ apps</p>
+                </div>
+              </div>
+              <button
+                onClick={onShowZapierModal}
+                className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium text-sm transition-colors shadow-sm shadow-orange-200 dark:shadow-none"
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+
+          {/* Webhooks */}
+          <div className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                  <Code className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">Webhooks</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Receive real-time CRM events</p>
+                </div>
+              </div>
+              <button
+                onClick={() => onShowWebhookModal(undefined)}
+                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium transition-colors"
+              >
+                Add Webhook
+              </button>
+            </div>
+
+            {loadingWebhooks ? (
+              <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>
+            ) : webhooks.length > 0 ? (
+              <div className="space-y-2">
+                {webhooks.map(webhook => (
+                  <div key={webhook.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{webhook.url}</p>
+                      <p className="text-[10px] text-gray-500">{webhook.events.join(', ')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => onShowWebhookModal(webhook)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-500">
+                        <SettingsIcon size={14} />
+                      </button>
+                      <button onClick={() => onDeleteWebhook(webhook.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-red-500">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-2 italic">No webhooks configured</p>
+            )}
+          </div>
+
+          {/* API Keys */}
+          <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50/30 dark:bg-gray-900/10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border border-gray-200 dark:border-gray-600">
+                  <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">API Keys</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage access keys for custom integrations</p>
+                </div>
+              </div>
+              <button
+                onClick={onShowApiKeyModal}
+                className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 font-medium text-sm transition-colors"
+              >
+                New Key
+              </button>
+            </div>
+
+            {loadingApiKeys ? (
+              <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-gray-600" /></div>
+            ) : apiKeys.length > 0 ? (
+              <div className="space-y-2">
+                {apiKeys.map(apiKey => (
+                  <div key={apiKey.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{apiKey.name}</p>
+                        {apiKey.permissions?.mcp && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded">MCP</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-mono text-gray-500">Prefix: {apiKey.key_prefix}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] text-gray-400 italic">
+                        Used: {apiKey.last_used_at ? new Date(apiKey.last_used_at).toLocaleDateString() : 'Never'}
+                      </span>
+                      <button onClick={() => onDeleteApiKey(apiKey.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-red-500">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-2 italic">No active API keys</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MCP Server */}
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
+            <Code className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white">MCP Server</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Connect external AI tools to your CRM data</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Endpoint URL */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">MCP Endpoint URL</label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200 select-all">
+                https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText('https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server');
+                  toast.success('Copied endpoint URL');
+                }}
+                className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Copy URL"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* MCP API key creation */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">MCP API Key</label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Create an API key with MCP permissions to authenticate external tools. Use the "New Key" button in the API Keys section above and note the key.
+            </p>
+            {apiKeys.filter(k => k.permissions?.mcp).length > 0 ? (
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle size={16} />
+                <span>{apiKeys.filter(k => k.permissions?.mcp).length} MCP key(s) active</span>
+              </div>
+            ) : (
+              <button
+                onClick={onShowApiKeyModal}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm transition-colors flex items-center gap-2"
+              >
+                <Plus size={14} />
+                Create MCP API Key
+              </button>
+            )}
+          </div>
+
+          {/* Connection instructions */}
+          <div className="p-4 bg-white/60 dark:bg-gray-800/40 rounded-xl border border-purple-100 dark:border-purple-900/50">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Connect to Claude Desktop or Cursor</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Add this to your MCP client configuration:
+            </p>
+            <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-[11px] font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">{`{
+  "mcpServers": {
+    "cxtrack": {
+      "url": "https://zkpfzrbbupgiqkzqydji.supabase.co/functions/v1/mcp-server",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}`}</pre>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
+              Available tools: search_customers, get_customer_detail, list_recent_calls, search_call_transcripts, list_pipeline, list_tasks, get_business_summary
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Permission Levels Info */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+            <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-3">Permission Levels</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Owner:</strong> Full control including billing and team management</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Admin:</strong> Manage all CRM data and settings except billing</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Full Access:</strong> Create, edit, and delete all records</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Can Edit:</strong> View and edit existing records</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Can View:</strong> Read-only access to CRM data</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Remove Member Confirmation Modal */}
+      {confirmRemoveOrgMember && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => !removingOrgMember && setConfirmRemoveOrgMember(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-xl p-6 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Remove Team Member</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
+              Are you sure you want to remove <strong>{confirmRemoveOrgMember.name}</strong> from this organization? They will lose access to all shared data immediately.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmRemoveOrgMember(null)}
+                disabled={removingOrgMember}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemoveOrgMember}
+                disabled={removingOrgMember}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {removingOrgMember ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Remove Member
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

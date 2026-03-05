@@ -11,12 +11,42 @@ interface State {
   errorInfo?: ErrorInfo;
 }
 
+/**
+ * Detect stale chunk / dynamic import errors that happen after a new
+ * Netlify deploy (old HTML references JS files that no longer exist).
+ */
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || '';
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Loading CSS chunk') ||
+    msg.includes("Importing a module script failed") ||
+    (error.name === 'TypeError' && msg.includes('Failed to fetch'))
+  );
+}
+
+const RELOAD_KEY = 'cxtrack-chunk-reload';
+
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Auto-reload once for stale chunk errors (new deploy invalidated old chunks)
+    if (isChunkLoadError(error)) {
+      const lastReload = sessionStorage.getItem(RELOAD_KEY);
+      const now = Date.now();
+      // Only auto-reload if we haven't reloaded in the last 10 seconds
+      // (prevents infinite reload loops)
+      if (!lastReload || now - parseInt(lastReload, 10) > 10_000) {
+        sessionStorage.setItem(RELOAD_KEY, String(now));
+        window.location.reload();
+        // Return no-error state while reload happens
+        return { hasError: false };
+      }
+    }
     return { hasError: true, error };
   }
 
@@ -25,6 +55,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
+    sessionStorage.removeItem(RELOAD_KEY);
     this.setState({ hasError: false, error: undefined, errorInfo: undefined });
     window.location.reload();
   };

@@ -1,11 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, MailSearch, ShieldCheck, Zap, CalendarDays, Loader2, Phone, Bot } from 'lucide-react';
+import { CheckCircle2, MailSearch, ShieldCheck, Zap, CalendarDays, Loader2, Phone, Bot, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import PhoneNumberReveal from '@/components/voice/PhoneNumberReveal';
 import CallForwardingInstructions from '@/components/voice/CallForwardingInstructions';
 import { retellService } from '@/services/retell.service';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { markOnboardingComplete, detectCalendarProvider } from '@/utils/onboarding';
+
+function getAuthToken(): string | null {
+  try {
+    const ref = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1];
+    if (!ref) return null;
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || null;
+  } catch {
+    return null;
+  }
+}
 
 type ProvisioningStep = 'idle' | 'reserving_number' | 'creating_agent' | 'configuring' | 'done' | 'error';
 
@@ -29,9 +44,22 @@ export default function SuccessPage() {
   const [provisionError, setProvisionError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+
     const leadData = sessionStorage.getItem('onboarding_lead');
+    let parsedLead: any = null;
     if (leadData) {
-      setLead(JSON.parse(leadData));
+      parsedLead = JSON.parse(leadData);
+      setLead(parsedLead);
+    }
+
+    // Mark onboarding as complete in the database (fire-and-forget)
+    markOnboardingComplete();
+
+    // Auto-detect calendar provider from auth method (fire-and-forget)
+    // This sets outlook/google/native on the org for the voice agent booking flow
+    if (parsedLead?.organizationId) {
+      detectCalendarProvider(parsedLead.organizationId);
     }
 
     // Trigger confetti effect
@@ -41,16 +69,15 @@ export default function SuccessPage() {
   const triggerConfetti = () => {
     import('canvas-confetti')
       .then((confetti) => {
-        confetti.default({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#FFD700', '#ffffff', '#000000'],
-        });
+        const colors = ['#FFD700', '#C850C0', '#1E90FF', '#ffffff'];
+        // Center burst
+        confetti.default({ particleCount: 120, spread: 70, origin: { y: 0.6, x: 0.5 }, colors });
+        // Left burst
+        setTimeout(() => confetti.default({ particleCount: 80, spread: 60, origin: { y: 0.65, x: 0.25 }, colors }), 200);
+        // Right burst
+        setTimeout(() => confetti.default({ particleCount: 80, spread: 60, origin: { y: 0.65, x: 0.75 }, colors }), 400);
       })
-      .catch(() => {
-        console.log('Confetti animation triggered (library not installed)');
-      });
+      .catch(() => {});
   };
 
   const type = searchParams.get('type');
@@ -84,7 +111,10 @@ export default function SuccessPage() {
         ownerPhone: lead.phone || '',
         ownerName: lead.name || lead.firstName || '',
         agentInstructions: lead.voiceConfig.agentInstructions || '',
+        voiceId: lead.voiceConfig.voiceId || undefined,
         countryCode: lead.country === 'CA' ? 'CA' : 'US',
+        areaCode: lead.voiceConfig?.areaCode || undefined,
+        regionCode: lead.voiceConfig?.regionCode || undefined,
       });
 
       clearTimeout(stepTimer1);
@@ -98,6 +128,31 @@ export default function SuccessPage() {
         // Extra confetti for the reveal
         triggerConfetti();
         toast.success('Your AI phone agent is live!');
+
+        // Send welcome email with phone number + call forwarding instructions (fire-and-forget)
+        try {
+          const token = getAuthToken();
+          if (token && lead?.email) {
+            fetch(`${supabaseUrl}/functions/v1/send-welcome-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'apikey': supabaseAnonKey || '',
+              },
+              body: JSON.stringify({
+                organizationId: lead.organizationId,
+                recipientEmail: lead.email,
+                recipientName: lead.firstName || lead.name || '',
+                businessName: lead.company || lead.businessName || '',
+                phoneNumber: result.phoneNumber,
+                phoneNumberPretty: result.phoneNumberPretty || result.phoneNumber,
+                countryCode: lead.country === 'CA' ? 'CA' : 'US',
+                agentName: lead.voiceConfig?.agentName || 'AI Assistant',
+              }),
+            }).catch(err => console.warn('[SuccessPage] Welcome email failed:', err));
+          }
+        } catch { /* Don't block success flow */ }
       } else {
         setProvisioningStep('error');
         setProvisionError(result.error || 'Failed to provision agent. Please try again or contact support.');
@@ -137,6 +192,8 @@ export default function SuccessPage() {
     return `Your ${plan?.toUpperCase() || 'CRM'} environment is being provisioned. Welcome to the future of high-performance business operations.`;
   };
 
+  const canAccessCards = true; // Always allow access to dashboard & roadmap cards
+
   const roadmap = isRequest
     ? [
         { icon: MailSearch, label: 'Technical Review', status: 'In Progress', desc: 'Analyzing brief' },
@@ -145,10 +202,8 @@ export default function SuccessPage() {
       ]
     : [
         { icon: ShieldCheck, label: 'Environment Setup', status: 'Active', desc: 'Provisioning instance' },
-        { icon: Zap, label: 'Agent Training', status: 'Awaiting', desc: 'Training AI models' },
-        ...(plan === 'elite_premium' || plan === 'enterprise'
-          ? [{ icon: CalendarDays, label: 'Kickoff Call', status: 'Awaiting', desc: 'Launch strategy' }]
-          : []),
+        { icon: Settings, label: 'Configure Your Agent', status: canAccessCards ? 'Ready' : 'Locked', desc: 'Customize in Settings', link: canAccessCards ? '/dashboard/settings?tab=voiceagent' : undefined },
+        { icon: CalendarDays, label: 'Book Kickoff Meeting', status: canAccessCards ? 'Ready' : 'Locked', desc: 'Opens in new window', externalLink: canAccessCards ? 'https://cal.com/admincxtrack/30min' : undefined },
       ];
 
   return (
@@ -189,52 +244,88 @@ export default function SuccessPage() {
         {/* Roadmap */}
         <div className="pt-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {roadmap.map((step, i) => (
-              <div
-                key={i}
-                className="relative p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden group text-left"
-                style={{ animationDelay: `${0.5 + i * 0.1}s` }}
-              >
-                <div
-                  className={`absolute top-0 left-0 w-1 h-full ${
-                    step.status === 'In Progress' || step.status === 'Active'
-                      ? 'bg-[#FFD700]'
-                      : 'bg-white/5'
-                  }`}
-                />
+            {roadmap.map((step, i) => {
+              const stepData = step as any;
+              const isLocked = step.status === 'Locked';
+              const hasInternalLink = stepData.link && !isLocked;
+              const hasExternalLink = stepData.externalLink && !isLocked;
 
-                <step.icon
-                  size={28}
-                  className={`mb-6 ${
-                    step.status === 'In Progress' || step.status === 'Active'
-                      ? 'text-[#FFD700]'
-                      : 'text-white/20'
-                  }`}
-                />
+              const cardContent = (
+                <>
+                  <div
+                    className={`absolute top-0 left-0 w-1 h-full ${
+                      isLocked ? 'bg-white/5'
+                        : step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
+                        ? 'bg-[#FFD700]'
+                        : 'bg-white/5'
+                    }`}
+                  />
 
-                <div className="space-y-1">
-                  <div className="text-white font-black text-xs uppercase tracking-[0.2em]">
-                    {step.label}
+                  <step.icon
+                    size={28}
+                    className={`mb-6 ${
+                      isLocked ? 'text-white/10'
+                        : step.status === 'In Progress' || step.status === 'Active' || step.status === 'Ready'
+                        ? 'text-[#FFD700]'
+                        : 'text-white/20'
+                    }`}
+                  />
+
+                  <div className="space-y-1">
+                    <div className={`font-black text-xs uppercase tracking-[0.2em] ${isLocked ? 'text-white/20' : 'text-white'}`}>
+                      {step.label}
+                    </div>
+                    <div className={`text-[10px] uppercase font-bold tracking-widest ${isLocked ? 'text-white/10' : 'text-white/30'}`}>
+                      {isLocked ? 'Activate phone first' : step.desc}
+                    </div>
                   </div>
-                  <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest">
-                    {step.desc}
-                  </div>
-                </div>
 
-                <div
-                  className={`mt-6 inline-flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                    step.status === 'Active' || step.status === 'In Progress'
-                      ? 'bg-[#FFD700]/10 text-[#FFD700]'
-                      : 'bg-white/5 text-white/20'
-                  }`}
-                >
-                  {step.status === 'In Progress' && (
-                    <Loader2 size={8} className="animate-spin" />
-                  )}
-                  {step.status}
+                  <div
+                    className={`mt-6 inline-flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                      isLocked ? 'bg-white/5 text-white/15'
+                        : step.status === 'Active' || step.status === 'In Progress'
+                        ? 'bg-[#FFD700]/10 text-[#FFD700]'
+                        : step.status === 'Ready'
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-white/5 text-white/20'
+                    }`}
+                  >
+                    {step.status === 'In Progress' && (
+                      <Loader2 size={8} className="animate-spin" />
+                    )}
+                    {step.status}
+                  </div>
+                </>
+              );
+
+              const cardClass = `relative p-8 rounded-[2rem] border overflow-hidden group text-left transition-all ${
+                isLocked
+                  ? 'bg-white/[0.01] border-white/[0.03] opacity-50 cursor-not-allowed'
+                  : 'bg-white/[0.02] border-white/5'
+              } ${(hasInternalLink || hasExternalLink) ? 'cursor-pointer hover:bg-white/[0.04] hover:border-[#FFD700]/20' : ''}`;
+
+              if (hasExternalLink) {
+                return (
+                  <a key={i} href={stepData.externalLink} target="_blank" rel="noopener noreferrer" className={cardClass}>
+                    {cardContent}
+                  </a>
+                );
+              }
+
+              if (hasInternalLink) {
+                return (
+                  <Link key={i} to={stepData.link} className={cardClass}>
+                    {cardContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={i} className={cardClass}>
+                  {cardContent}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -322,7 +413,24 @@ export default function SuccessPage() {
                   phoneNumberPretty={provisionedNumberPretty || undefined}
                 />
 
-                <CallForwardingInstructions phoneNumber={provisionedNumber} />
+                <CallForwardingInstructions phoneNumber={provisionedNumber} countryCode={lead?.country} />
+
+                {/* Setup help links */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                  <a
+                    href="https://cal.com/admincxtrack/30min"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-6 py-3 bg-[#FFD700]/10 border border-[#FFD700]/20 text-[#FFD700] font-bold text-sm rounded-xl hover:bg-[#FFD700]/20 transition-all"
+                  >
+                    <CalendarDays size={16} />
+                    Book a Welcome Setup Call
+                  </a>
+                </div>
+                <p className="text-white/40 text-xs text-center mt-3">
+                  You can also find your call forwarding instructions and voice agent settings in your CRM under{' '}
+                  <strong className="text-white/60">Settings &rarr; Voice Agent</strong>
+                </p>
               </div>
             )}
 
@@ -332,7 +440,7 @@ export default function SuccessPage() {
                   <p className="text-red-400 font-bold text-sm mb-2">Provisioning Failed</p>
                   <p className="text-white/50 text-sm">{provisionError}</p>
                 </div>
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   <button
                     onClick={handleProvisionAgent}
                     className="px-8 py-3 bg-[#FFD700] text-black font-black rounded-xl text-sm uppercase tracking-widest hover:bg-yellow-400 transition-all"
@@ -340,10 +448,16 @@ export default function SuccessPage() {
                     Try Again
                   </button>
                   <Link
-                    to="/dashboard"
-                    className="px-8 py-3 bg-white/5 text-white font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
+                    to={`/onboarding/voice-setup?plan=${plan || 'free'}`}
+                    className="px-8 py-3 bg-white/10 text-white font-bold rounded-xl text-sm hover:bg-white/15 transition-all"
                   >
-                    Skip &mdash; Set Up Later
+                    Change Province
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="px-8 py-3 bg-white/5 text-white/60 font-bold rounded-xl text-sm hover:bg-white/10 transition-all"
+                  >
+                    Skip - Set Up Later
                   </Link>
                 </div>
               </div>
@@ -354,23 +468,19 @@ export default function SuccessPage() {
         {/* Action Buttons */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 pt-12">
           {!isRequest && (
-            <Link
-              to="/dashboard"
-              className="w-full md:w-auto px-12 py-6 bg-white text-black font-black rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center"
-            >
-              Go to Dashboard
-            </Link>
+              <Link
+                to="/dashboard"
+                className="w-full md:w-auto px-12 py-6 bg-white text-black font-black rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center"
+              >
+                Go to Dashboard
+              </Link>
           )}
-          {(isRequest || plan === 'elite_premium' || plan === 'enterprise') && (
+          {isRequest && (
             <a
               href="https://cal.com/admincxtrack/30min"
               target="_blank"
               rel="noopener noreferrer"
-              className={`w-full md:w-auto px-12 py-6 rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm font-black border text-center ${
-                isRequest
-                  ? 'bg-[#FFD700] text-black border-[#FFD700] shadow-[0_20px_40px_rgba(255,215,0,0.2)]'
-                  : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
-              }`}
+              className="w-full md:w-auto px-12 py-6 rounded-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-sm font-black border text-center bg-[#FFD700] text-black border-[#FFD700] shadow-[0_20px_40px_rgba(255,215,0,0.2)]"
             >
               Book Kickoff Call
             </a>

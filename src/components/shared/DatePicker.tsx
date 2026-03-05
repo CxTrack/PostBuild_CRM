@@ -46,7 +46,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   };
 
   return (
-    <div className="relative" ref={pickerRef}>
+    <div className={`relative ${isOpen ? 'z-40' : ''}`} ref={pickerRef}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label} {required && '*'}

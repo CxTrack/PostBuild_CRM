@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import OrderSummary from '@/components/onboarding/OrderSummary';
 import CheckoutForm from '@/components/onboarding/CheckoutForm';
+import { updateOnboardingStep } from '@/utils/onboarding';
 
 const pricingMap: Record<string, number> = {
   free: 0,
@@ -23,6 +24,7 @@ export default function CheckoutPage() {
       navigate('/register');
       return;
     }
+    updateOnboardingStep('checkout');
     const parsedLead = JSON.parse(leadData);
     setLead(parsedLead);
 

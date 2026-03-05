@@ -18,19 +18,37 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
+export interface JoinRequest {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'denied';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 interface OrganizationState {
   currentOrganization: Organization | null;
   currentMembership: OrganizationMember | null;
   organizations: Array<{ organization: Organization; membership: OrganizationMember }>;
   teamMembers: Array<UserProfile & { role: string; color: string }>;
+  joinRequests: JoinRequest[];
   loading: boolean;
   demoMode: boolean;
+  allOrgsDeactivated: boolean;
   _hasHydrated: boolean;
   fetchUserOrganizations: (userId: string) => Promise<void>;
   setCurrentOrganization: (orgId: string) => Promise<void>;
   fetchTeamMembers: () => Promise<void>;
+  fetchJoinRequests: () => Promise<void>;
+  reviewJoinRequest: (requestId: string, action: 'approved' | 'denied', role?: string) => Promise<void>;
   updateOrganization: (data: Partial<Organization>) => Promise<void>;
   updateMember: (memberId: string, data: Partial<OrganizationMember>) => Promise<void>;
+  removeOrgMember: (userId: string) => Promise<void>;
   inviteMember: (email: string, role: string) => Promise<void>;
   getOrganizationId: () => string;
   clearCache: () => void;
@@ -59,8 +77,10 @@ export const useOrganizationStore = create<OrganizationState>()(
       currentMembership: null,
       organizations: [],
       teamMembers: [],
+      joinRequests: [],
       loading: false,
       demoMode: false,
+      allOrgsDeactivated: false,
       _hasHydrated: false,
 
       setHasHydrated: (state: boolean) => {
@@ -82,6 +102,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           currentMembership: null,
           organizations: [],
           teamMembers: [],
+          joinRequests: [],
         });
       },
 
@@ -159,20 +180,40 @@ export const useOrganizationStore = create<OrganizationState>()(
               },
             }));
 
-          console.log('[OrgStore] Valid organizations after filtering:', orgs.length);
-          set({ organizations: orgs });
+          // Filter out deactivated organizations
+          const activeOrgs = orgs.filter((o: { organization: Organization }) => !(o.organization as any).deactivated_at);
+          const hadOrgsButAllDeactivated = orgs.length > 0 && activeOrgs.length === 0;
 
-          if (orgs.length === 0) {
+          console.log('[OrgStore] Valid organizations after filtering:', activeOrgs.length, hadOrgsButAllDeactivated ? '(all deactivated)' : '');
+          set({ organizations: activeOrgs, allOrgsDeactivated: hadOrgsButAllDeactivated });
+
+          if (activeOrgs.length === 0 && !hadOrgsButAllDeactivated) {
             console.warn('[OrgStore] No organizations found for user:', userId);
           }
 
           // If no current org selected or cached org doesn't belong to this user, select the first one
           const currentOrg = get().currentOrganization;
-          const orgBelongsToUser = orgs.some(o => o.organization.id === currentOrg?.id);
+          const orgBelongsToUser = activeOrgs.some((o: { organization: Organization }) => o.organization.id === currentOrg?.id);
 
-          if ((!currentOrg || !orgBelongsToUser) && orgs.length > 0) {
-            console.log('[OrgStore] Setting current organization to:', orgs[0].organization.name);
-            await get().setCurrentOrganization(orgs[0].organization.id);
+          if ((!currentOrg || !orgBelongsToUser) && activeOrgs.length > 0) {
+            console.log('[OrgStore] Setting current organization to:', activeOrgs[0].organization.name);
+            await get().setCurrentOrganization(activeOrgs[0].organization.id);
+          } else if (currentOrg && orgBelongsToUser) {
+            // Org is cached — update with fresh DB data (e.g. industry_template may have changed)
+            const freshOrgData = activeOrgs.find((o: { organization: Organization }) => o.organization.id === currentOrg.id);
+            if (freshOrgData) {
+              set({
+                currentOrganization: freshOrgData.organization,
+                currentMembership: freshOrgData.membership,
+              });
+            }
+            // teamMembers aren't persisted — re-fetch them
+            console.log('[OrgStore] Org refreshed from DB, refreshing team members...');
+            try {
+              await get().fetchTeamMembers();
+            } catch (error) {
+              console.error('[OrgStore] Error refreshing team members:', error);
+            }
           }
         } catch (error) {
           console.error('[OrgStore] fetchUserOrganizations failed:', error);
@@ -218,7 +259,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           if (!token) return;
 
           const res = await fetch(
-            `${supabaseUrl}/rest/v1/organization_members?organization_id=eq.${currentOrganization.id}&select=role,user:user_profiles(*)`,
+            `${supabaseUrl}/rest/v1/organization_members?organization_id=eq.${currentOrganization.id}&is_impersonation=eq.false&select=role,user:user_profiles(*)`,
             {
               headers: {
                 'apikey': supabaseAnonKey,
@@ -245,6 +286,67 @@ export const useOrganizationStore = create<OrganizationState>()(
         } catch (error) {
           const message = error instanceof Error ? error.message : 'An error occurred';
           throw error;
+        }
+      },
+
+      fetchJoinRequests: async () => {
+        const { currentOrganization } = get();
+        if (!currentOrganization) return;
+
+        const token = getAuthToken();
+        if (!token) return;
+
+        try {
+          const res = await fetch(
+            `${supabaseUrl}/rest/v1/organization_join_requests?organization_id=eq.${currentOrganization.id}&status=eq.pending&order=created_at.desc`,
+            {
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!res.ok) throw new Error(`Join requests fetch failed (${res.status})`);
+          const data = await res.json();
+          set({ joinRequests: data || [] });
+        } catch (error) {
+          console.error('[OrgStore] fetchJoinRequests failed:', error);
+        }
+      },
+
+      reviewJoinRequest: async (requestId: string, action: 'approved' | 'denied', role?: string) => {
+        const token = getAuthToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/rpc/review_join_request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            p_request_id: requestId,
+            p_action: action,
+            p_role: role || 'user',
+          }),
+        });
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(errBody || `Review failed (${res.status})`);
+        }
+
+        const result = await res.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to review request');
+        }
+
+        // Refresh join requests and team members
+        await get().fetchJoinRequests();
+        if (action === 'approved') {
+          await get().fetchTeamMembers();
         }
       },
 
@@ -276,6 +378,22 @@ export const useOrganizationStore = create<OrganizationState>()(
           .from('organization_members')
           .update(data)
           .eq('id', memberId);
+
+        if (error) throw error;
+
+        // Refresh team members
+        await get().fetchTeamMembers();
+      },
+
+      removeOrgMember: async (userId: string) => {
+        const { currentOrganization } = get();
+        if (!currentOrganization) throw new Error('No organization selected');
+
+        const { error } = await supabase
+          .from('organization_members')
+          .delete()
+          .eq('user_id', userId)
+          .eq('organization_id', currentOrganization.id);
 
         if (error) throw error;
 

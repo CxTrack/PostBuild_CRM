@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, supabaseUrl } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles } from 'lucide-react';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2 } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -10,11 +10,25 @@ import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
 import { FileAttachmentButton, FilePreview } from '@/components/chat/FileAttachment';
 import { CreateGroupModal } from '@/components/chat/CreateGroupModal';
 import ActionCard from '@/components/copilot/ActionCard';
+import SmsAgentSuggestions from '@/components/chat/SmsAgentSuggestions';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import type { ActionStatus } from '@/types/copilot-actions.types';
 import toast from 'react-hot-toast';
 
+
+// Read auth token from localStorage (AbortController workaround)
+const getAuthToken = (): string | null => {
+    for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try {
+                const stored = JSON.parse(localStorage.getItem(key) || '');
+                if (stored?.access_token) return stored.access_token;
+            } catch { /* skip */ }
+        }
+    }
+    return null;
+};
 
 interface ChatPageProps {
     isPopup?: boolean;
@@ -30,42 +44,62 @@ const MessageBubble = React.memo<{
     compact: boolean;
     onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
     onCancelAction?: (messageId: string) => void;
-}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact, onConfirmAction, onCancelAction }) => (
-    <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} group`}>
-        <div className={`
+}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact, onConfirmAction, onCancelAction }) => {
+    // For SMS messages, check metadata.direction to determine side
+    const isSms = msg.message_type === 'sms';
+    const isInboundSms = isSms && (msg.metadata as any)?.direction === 'inbound';
+    const displayOwn = isSms ? !isInboundSms : isOwn;
+    const customerName = isInboundSms ? ((msg.metadata as any)?.customer_name || 'Customer') : null;
+
+    return (
+        <div className={`flex flex-col ${displayOwn ? 'items-end' : 'items-start'} group`}>
+            {/* Show customer name label for inbound SMS */}
+            {isInboundSms && customerName && (
+                <span className="text-[10px] text-green-600 dark:text-green-400 font-medium ml-1 mb-0.5 flex items-center gap-1">
+                    <Phone size={8} /> {customerName}
+                </span>
+            )}
+            {/* SMS direction indicator for outbound */}
+            {isSms && !isInboundSms && (
+                <span className="text-[10px] text-blue-400 font-medium mr-1 mb-0.5 flex items-center gap-1">
+                    SMS <Phone size={8} />
+                </span>
+            )}
+            <div className={`
       max-w-[70%] ${compact ? 'px-3 py-2' : 'px-5 py-3'} rounded-2xl
-      ${isOwn
-                ? 'bg-blue-600 text-white rounded-br-sm'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm'}
+      ${displayOwn
+                    ? (isSms ? 'bg-green-600 text-white rounded-br-sm' : 'bg-blue-600 text-white rounded-br-sm')
+                    : (isInboundSms ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm')}
     `}>
-            <p className={`${compact ? 'text-sm' : 'text-[15px]'} leading-relaxed whitespace-pre-wrap`}>{msg.content}</p>
-            <p className={`text-[10px] mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
-            {msg.reactions && msg.reactions.length > 0 && (
-                <MessageReactions
-                    messageId={msg.id}
-                    reactions={msg.reactions}
-                    currentUserId={currentUserId}
-                    onAddReaction={onAddReaction}
-                    onRemoveReaction={onRemoveReaction}
-                    isOwnMessage={isOwn}
-                />
+                <p className={`${compact ? 'text-sm' : 'text-[15px]'} leading-relaxed whitespace-pre-wrap`}>{msg.content}</p>
+                <p className={`text-[10px] mt-1 ${displayOwn ? (isSms ? 'text-green-100' : 'text-blue-100') : 'text-gray-500 dark:text-gray-400'}`}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                {msg.reactions && msg.reactions.length > 0 && (
+                    <MessageReactions
+                        messageId={msg.id}
+                        reactions={msg.reactions}
+                        currentUserId={currentUserId}
+                        onAddReaction={onAddReaction}
+                        onRemoveReaction={onRemoveReaction}
+                        isOwnMessage={displayOwn}
+                    />
+                )}
+            </div>
+            {msg.action && onConfirmAction && onCancelAction && (
+                <div className="max-w-[70%] w-full">
+                    <ActionCard
+                        action={msg.action}
+                        status={msg.actionStatus || 'proposed'}
+                        result={msg.actionResult}
+                        onConfirm={(editedFields) => onConfirmAction(msg.id, editedFields)}
+                        onCancel={() => onCancelAction(msg.id)}
+                    />
+                </div>
             )}
         </div>
-        {msg.action && onConfirmAction && onCancelAction && (
-            <div className="max-w-[70%] w-full">
-                <ActionCard
-                    action={msg.action}
-                    status={msg.actionStatus || 'proposed'}
-                    result={msg.actionResult}
-                    onConfirm={(editedFields) => onConfirmAction(msg.id, editedFields)}
-                    onCancel={() => onCancelAction(msg.id)}
-                />
-            </div>
-        )}
-    </div>
-));
+    );
+});
 MessageBubble.displayName = 'MessageBubble';
 
 // Memoized conversation item
@@ -73,28 +107,33 @@ const ConversationItem = React.memo<{
     conv: Conversation;
     isActive: boolean;
     onClick: () => void;
-}>(({ conv, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`
+}>(({ conv, isActive, onClick }) => {
+    const isSms = conv.channel_type === 'sms';
+    return (
+        <button
+            onClick={onClick}
+            className={`
       w-full p-3 rounded-2xl mb-1
       flex items-center gap-3
       transition-all duration-200
       ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
     `}
-    >
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-            {conv.participants?.[0]?.user?.full_name?.charAt(0) || 'U'}
-        </div>
-        <div className="flex-1 text-left overflow-hidden">
-            <p className="font-semibold text-gray-900 dark:text-white truncate">
-                {conv.channel_type === 'channel' ? `# ${conv.name || 'channel'}` :
-                    conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
-            </p>
-            <p className="text-xs text-gray-500 truncate">Click to view message</p>
-        </div>
-    </button>
-));
+        >
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${isSms ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
+                {isSms ? <Phone size={20} /> : (conv.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
+            </div>
+            <div className="flex-1 text-left overflow-hidden">
+                <p className="font-semibold text-gray-900 dark:text-white truncate">
+                    {conv.channel_type === 'channel' ? `# ${conv.name || 'channel'}` :
+                        conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                    {isSms ? `SMS - ${(conv as any).customer_phone || 'Customer'}` : 'Click to view message'}
+                </p>
+            </div>
+        </button>
+    );
+});
 ConversationItem.displayName = 'ConversationItem';
 
 export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
@@ -116,6 +155,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
         return saved ? JSON.parse(saved) : DEFAULT_CHAT_SETTINGS;
     });
+    // SMS Agent Suggestions state
+    const [showSmsSuggestions, setShowSmsSuggestions] = useState(false);
+    const [lastInboundSmsText, setLastInboundSmsText] = useState('');
+    const [smsSuggestionKey, setSmsSuggestionKey] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +180,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     const newMsg = payload.new;
                     if (newMsg.sender_id !== user?.id) {
                         setMessages(prev => [...prev, newMsg as Message]);
+                        // Trigger SMS suggestions for inbound SMS
+                        if (newMsg.message_type === 'sms' && (newMsg.metadata as any)?.direction === 'inbound') {
+                            setLastInboundSmsText(newMsg.content);
+                            setSmsSuggestionKey(prev => prev + 1);
+                            setShowSmsSuggestions(true);
+                        }
                     }
                 })
                 .subscribe();
@@ -156,15 +205,24 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const fetchConversations = async () => {
         if (!user) return;
 
-        const { data, error: fetchError } = await supabase
+        const orgId = useOrganizationStore.getState().currentOrganization?.id;
+
+        let query = supabase
             .from('conversations')
             .select(`
         *,
         participants:conversation_participants(
-          user:user_profiles(full_name)
+          user:user_profiles(id, full_name)
         )
       `)
             .order('updated_at', { ascending: false });
+
+        // Scope to current organization so multi-org users only see relevant conversations
+        if (orgId) {
+            query = query.eq('organization_id', orgId);
+        }
+
+        const { data, error: fetchError } = await query;
 
         if (fetchError) {
             console.error('Error fetching conversations:', fetchError);
@@ -172,7 +230,18 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
 
         if (data) {
-            setConversations(data);
+            // For direct/group convos, filter out current user from participants
+            // so the display shows the other person's name (not your own)
+            const processed = data.map(conv => {
+                if (conv.channel_type !== 'channel' && conv.participants) {
+                    const others = conv.participants.filter(
+                        (p: any) => p.user?.id !== user.id
+                    );
+                    return { ...conv, participants: others.length > 0 ? others : conv.participants };
+                }
+                return conv;
+            });
+            setConversations(processed);
         }
     };
 
@@ -195,6 +264,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 setMessages([]);
             } else if (data) {
                 setMessages(data);
+                // Trigger SMS suggestions if last message is inbound SMS
+                if (activeConversation?.channel_type === 'sms' && data.length > 0) {
+                    const lastMsg = data[data.length - 1];
+                    if (lastMsg.message_type === 'sms' && (lastMsg.metadata as any)?.direction === 'inbound') {
+                        setLastInboundSmsText(lastMsg.content);
+                        setSmsSuggestionKey(prev => prev + 1);
+                        setShowSmsSuggestions(true);
+                    } else {
+                        setShowSmsSuggestions(false);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error loading messages:", error);
@@ -208,6 +288,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const messageContent = newMessage;
         setNewMessage('');
         setAttachedFile(null);
+        setShowSmsSuggestions(false);
 
         const newMsg: Message = {
             id: `temp-${Date.now()}`,
@@ -220,19 +301,56 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
 
         setMessages(prev => [...prev, newMsg]);
 
-        // If it's a real conversation, try to save to DB
+        // If it's a real conversation, save to DB via direct fetch (avoids AbortController)
         if (activeConversation && !activeConversation.id.startsWith('new-') && activeConversation.id !== 'ai-agent' && user) {
-            const { error } = await supabase
-                .from('messages')
-                .insert({
-                    conversation_id: activeConversation.id,
-                    sender_id: user.id,
-                    content: messageContent,
-                });
+            const token = getAuthToken();
+            if (token) {
+                try {
+                    // For SMS conversations, send the message as an SMS too
+                    if (activeConversation.channel_type === 'sms' && (activeConversation as any).customer_phone) {
+                        const chatOrgId = useOrganizationStore.getState().currentOrganization?.id;
+                        const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                to: (activeConversation as any).customer_phone,
+                                body: messageContent,
+                                organizationId: chatOrgId,
+                                customer_id: (activeConversation as any).customer_id,
+                                document_type: 'custom',
+                            }),
+                        });
+                        if (!smsRes.ok) {
+                            console.error('SMS send failed:', smsRes.status);
+                            toast.error('Failed to send SMS. Message saved to chat only.');
+                        }
+                    }
 
-            if (error) {
-                console.error('Error sending message:', error);
-                // Optionally, revert the message or show an error to the user
+                    const msgRes = await fetch(`${supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal',
+                        },
+                        body: JSON.stringify({
+                            conversation_id: activeConversation.id,
+                            sender_id: user.id,
+                            content: messageContent,
+                            message_type: activeConversation.channel_type === 'sms' ? 'sms' : 'text',
+                        }),
+                    });
+                    if (!msgRes.ok) {
+                        console.error('Message send failed:', msgRes.status);
+                        toast.error('Failed to save message.');
+                    }
+                } catch (err) {
+                    console.error('Error sending message:', err);
+                }
             }
         }
 
@@ -445,7 +563,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         // Check if a direct conversation already exists with this member
         const existing = conversations.find(c =>
             (!c.channel_type || c.channel_type === 'direct') &&
-            c.participants?.some(p => p.user?.full_name === member.full_name)
+            c.participants?.some(p => p.user?.id === member.id)
         );
 
         if (existing) {
@@ -454,38 +572,118 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             return;
         }
 
-        // Create new direct conversation
-        const { data: conv, error } = await supabase
-            .from('conversations')
-            .insert({
-                organization_id: useOrganizationStore.getState().currentOrganization?.id,
-                channel_type: 'direct',
-                is_group: false,
-                created_by: user.id,
-            })
-            .select()
-            .single();
-
-        if (error || !conv) {
-            console.error('Failed to create conversation:', error);
+        // Use direct fetch to avoid Supabase AbortController issue
+        const token = getAuthToken();
+        if (!token) {
+            toast.error('Session expired. Please refresh and try again.');
             return;
         }
 
-        // Add both participants
-        await supabase.from('conversation_participants').insert([
-            { conversation_id: conv.id, user_id: user.id, role: 'member' },
-            { conversation_id: conv.id, user_id: member.id, role: 'member' },
-        ]);
+        const orgId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!orgId) {
+            toast.error('No organization selected.');
+            return;
+        }
 
-        const newConv = {
-            ...conv,
-            participants: [{ user: { full_name: member.full_name } }],
-        };
+        try {
+            // Generate UUID client-side so we can reference it immediately
+            // without relying on return=representation (which applies SELECT RLS
+            // and fails because the user isn't a participant yet).
+            const conversationId = crypto.randomUUID();
 
-        setConversations(prev => [newConv, ...prev]);
-        setActiveConversation(newConv);
-        setShowNewMessageModal(false);
-        setMessages([]);
+            // Step 1: Create conversation with return=minimal (bypasses SELECT RLS)
+            const convRes = await fetch(`${supabaseUrl}/rest/v1/conversations`, {
+                method: 'POST',
+                headers: {
+                    'apikey': supabaseAnonKey,
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({
+                    id: conversationId,
+                    organization_id: orgId,
+                    channel_type: 'direct',
+                    is_group: false,
+                    created_by: user.id,
+                }),
+            });
+
+            if (!convRes.ok) {
+                const errBody = await convRes.text();
+                console.error('Conversation creation failed:', convRes.status, errBody);
+                throw new Error(`Failed to create conversation (${convRes.status})`);
+            }
+
+            // Step 2: Add both participants
+            const partRes = await fetch(`${supabaseUrl}/rest/v1/conversation_participants`, {
+                method: 'POST',
+                headers: {
+                    'apikey': supabaseAnonKey,
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify([
+                    { conversation_id: conversationId, user_id: user.id, role: 'member' },
+                    { conversation_id: conversationId, user_id: member.id, role: 'member' },
+                ]),
+            });
+
+            if (!partRes.ok) {
+                console.error('Failed to add participants:', partRes.status);
+                throw new Error('Failed to add participants');
+            }
+
+            // Build conversation object locally using the known UUID
+            const newConv = {
+                id: conversationId,
+                organization_id: orgId,
+                channel_type: 'direct',
+                is_group: false,
+                created_by: user.id,
+                created_at: new Date().toISOString(),
+                participants: [{ user: { id: member.id, full_name: member.full_name } }],
+            };
+
+            setConversations(prev => [newConv, ...prev]);
+            setActiveConversation(newConv);
+            setShowNewMessageModal(false);
+            setMessages([]);
+        } catch (error) {
+            console.error('Failed to start conversation:', error);
+            toast.error('Failed to start conversation. Please try again.');
+        }
+    };
+
+    const handleClearChat = async () => {
+        if (!activeConversation || activeConversation.id === 'ai-agent') return;
+        if (!confirm('Are you sure you want to clear all messages in this conversation? This cannot be undone.')) return;
+
+        const token = getAuthToken();
+        if (!token) return;
+
+        try {
+            const res = await fetch(
+                `${supabaseUrl}/rest/v1/messages?conversation_id=eq.${activeConversation.id}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Prefer': 'return=minimal',
+                    },
+                }
+            );
+            if (res.ok) {
+                setMessages([]);
+                toast.success('Chat cleared.');
+            } else {
+                toast.error('Failed to clear chat.');
+            }
+        } catch {
+            toast.error('Failed to clear chat.');
+        }
     };
 
     const handleSaveSettings = (settings: ChatSettings) => {
@@ -574,6 +772,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
 
                             const channels = filteredConversations.filter(c => c.channel_type === 'channel');
                             const groups = filteredConversations.filter(c => c.channel_type === 'group');
+                            const smsConversations = filteredConversations.filter(c => c.channel_type === 'sms');
                             const directMessages = filteredConversations.filter(c => !c.channel_type || c.channel_type === 'direct');
 
                             return (
@@ -663,7 +862,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     )}
 
                                     {/* Direct Messages Section */}
-                                    <div className="mb-8">
+                                    <div className="mb-4">
                                         <div className="flex items-center justify-between px-3 py-2">
                                             <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Direct Messages</span>
                                             <button
@@ -677,6 +876,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
                                         ))}
                                     </div>
+
+                                    {/* SMS / Customer Texts Section */}
+                                    {smsConversations.length > 0 && (
+                                        <div className="mb-8">
+                                            <div className="flex items-center justify-between px-3 py-2">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Phone size={12} />
+                                                    Customer Texts
+                                                </span>
+                                            </div>
+                                            {smsConversations.map(conv => (
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {filteredConversations.length === 0 && (
                                         <div className="text-center py-10 text-gray-400">
@@ -725,8 +939,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     >
                                         <ArrowLeft size={20} />
                                     </button>
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-sm">
-                                        {activeConversation.name?.charAt(0) || activeConversation.participants?.[0]?.user?.full_name?.charAt(0) || 'U'}
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${activeConversation.channel_type === 'sms' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
+                                        {activeConversation.channel_type === 'sms'
+                                            ? <Phone size={18} />
+                                            : (activeConversation.name?.charAt(0) || activeConversation.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -734,11 +950,30 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 activeConversation.name || activeConversation.participants?.[0]?.user?.full_name || 'Chat'}
                                         </h3>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                            <span className="text-xs text-gray-500">Online</span>
+                                            {activeConversation.channel_type === 'sms' ? (
+                                                <>
+                                                    <Phone size={10} className="text-green-500" />
+                                                    <span className="text-xs text-gray-500">SMS - {(activeConversation as any).customer_phone || 'Customer'}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                                    <span className="text-xs text-gray-500">Online</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
+                                {/* Clear Chat Button */}
+                                {activeConversation.id !== 'ai-agent' && (
+                                    <button
+                                        onClick={handleClearChat}
+                                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                                        title="Clear chat history"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
 
                             {/* Messages Area */}
@@ -777,11 +1012,33 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 </div>
                             )}
 
+                            {/* SMS Agent Suggestions */}
+                            {activeConversation.channel_type === 'sms' && (
+                                <SmsAgentSuggestions
+                                    key={smsSuggestionKey}
+                                    organizationId={useOrganizationStore.getState().currentOrganization?.id || ''}
+                                    inboundMessage={lastInboundSmsText}
+                                    customerName={activeConversation.name || undefined}
+                                    customerPhone={(activeConversation as any).customer_phone || undefined}
+                                    conversationHistory={messages.slice(-10).map(m => ({
+                                        role: (m.message_type === 'sms' && (m.metadata as any)?.direction === 'inbound' ? 'customer' : 'agent') as 'customer' | 'agent',
+                                        content: m.content,
+                                    }))}
+                                    onSelectSuggestion={(text) => {
+                                        setNewMessage(text);
+                                        setShowSmsSuggestions(false);
+                                        inputRef.current?.focus();
+                                    }}
+                                    onDismiss={() => setShowSmsSuggestions(false)}
+                                    visible={showSmsSuggestions}
+                                />
+                            )}
+
                             {/* Input Area */}
                             <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-2">
                                     {/* Emoji Button */}
-                                    <div className="relative">
+                                    <div className={`relative ${showEmojiPicker ? 'z-40' : ''}`}>
                                         <button
                                             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                             className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -843,7 +1100,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <div className="p-4">
                                 <p className="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Suggested Contacts</p>
                                 <div className="space-y-2">
-                                    {teamMembers.map(u => (
+                                    {teamMembers.filter(u => u.id !== user?.id).map(u => (
                                         <button
                                             key={u.id}
                                             onClick={() => handleStartNewConversation(u)}

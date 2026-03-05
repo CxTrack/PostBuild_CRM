@@ -2,12 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CxTrack - CRM Platform</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png" />
+    <title>CxTrack</title>
+    <meta name="description" content="CxTrack is an AI-powered CRM platform with voice agents, pipeline management, and industry-specific templates for high-performance business operations." />
+    <meta property="og:title" content="CxTrack - AI-Powered CRM Platform" />
+    <meta property="og:description" content="The intelligent CRM with built-in AI voice agents, smart pipeline management, and industry-specific workflows." />
+    <meta property="og:image" content="https://crm.cxtrack.com/og-image.png" />
+    <meta property="og:url" content="https://crm.cxtrack.com" />
+    <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
+    <meta name="twitter:title" content="CxTrack - AI-Powered CRM Platform" />
+    <meta name="twitter:description" content="The intelligent CRM with built-in AI voice agents, smart pipeline management, and industry-specific workflows." />
+    <meta name="twitter:image" content="https://crm.cxtrack.com/og-image.png" />
 
     <script>
       try {
@@ -34,7 +44,7 @@
         // Vite replaces the placeholder at build time; if not set, it stays as the literal string
         if (apiKey && apiKey.indexOf('VITE_') === -1) {
           var script = document.createElement('script');
-          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places&loading=async';
+          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places&v=weekly&loading=async';
           script.async = true;
           document.head.appendChild(script);
         }

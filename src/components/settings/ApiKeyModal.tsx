@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { X, Loader2, Key, Copy, Check, Eye, EyeOff, Server } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { apiKeyService } from '@/services/apiKey.service';
@@ -15,6 +15,7 @@ interface ApiKeyModalProps {
 export const ApiKeyModal = ({ isOpen, onClose, organizationId, onCreated }: ApiKeyModalProps) => {
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
+    const [enableMcp, setEnableMcp] = useState(false);
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [showKey, setShowKey] = useState(false);
@@ -28,7 +29,7 @@ export const ApiKeyModal = ({ isOpen, onClose, organizationId, onCreated }: ApiK
 
         try {
             setLoading(true);
-            const { key } = await apiKeyService.createApiKey(organizationId, name);
+            const { key } = await apiKeyService.createApiKey(organizationId, name, enableMcp ? { mcp: true } : undefined);
             setGeneratedKey(key);
             onCreated();
             toast.success('API key generated successfully');
@@ -83,6 +84,31 @@ export const ApiKeyModal = ({ isOpen, onClose, organizationId, onCreated }: ApiK
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
                                     Use a descriptive name to identify where this key is used.
                                 </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                    Permissions
+                                </label>
+                                <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={enableMcp}
+                                        onChange={e => setEnableMcp(e.target.checked)}
+                                        className="mt-0.5 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <Server className="w-4 h-4 text-purple-500" />
+                                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                                MCP Server Access
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Allow this key to connect via Model Context Protocol (Claude Desktop, Cursor, etc.)
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
 
                             <div className="flex gap-3 pt-4">

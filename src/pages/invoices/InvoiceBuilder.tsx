@@ -7,7 +7,7 @@ import { useInvoiceStore } from '@/stores/invoiceStore';
 import { invoiceService, InvoiceLineItem, InvoiceFormData } from '@/services/invoice.service';
 import { settingsService } from '@/services/settings.service';
 import { pdfService } from '@/services/pdf.service';
-import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check } from 'lucide-react';
+import { Plus, Minus, Trash2, GripVertical, Save, X, Loader2, Package, Briefcase, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ProductSelector from '@/components/products/ProductSelector';
@@ -22,6 +22,7 @@ import { getSafeErrorMessage } from '@/utils/errorHandler';
 import { getCustomerFullName } from '@/utils/customer.utils';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { getInvoiceFieldLabels } from '@/config/modules.config';
+import { PAYMENT_TERMS_OPTIONS, calculateDueDate } from '@/config/paymentTerms';
 
 export default function InvoiceBuilder() {
   const { id } = useParams();
@@ -100,14 +101,24 @@ export default function InvoiceBuilder() {
     try {
       const [settings, orgInfo] = await Promise.all([
         settingsService.getBusinessSettings(currentOrganization.id),
-        settingsService.getOrganizationForPDF(currentOrganization.id)
+        settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'invoice')
       ]);
       setOrganizationInfo(orgInfo);
       if (settings) {
-        setFormData(prev => ({
-          ...prev,
-          ...(settings.default_payment_terms ? { payment_terms: settings.default_payment_terms } : {}),
-        }));
+        setFormData(prev => {
+          const updated = {
+            ...prev,
+            ...(settings.default_payment_terms ? { payment_terms: settings.default_payment_terms } : {}),
+          };
+          // Auto-calculate due date from default payment terms for new invoices
+          if (!id && settings.default_payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === settings.default_payment_terms)) {
+            const newDueDate = calculateDueDate(prev.invoice_date, settings.default_payment_terms);
+            if (newDueDate) {
+              updated.due_date = newDueDate;
+            }
+          }
+          return updated;
+        });
         // Store org tax settings for use when applying tax
         if (settings.default_tax_rate) {
           setOrgTaxRate(settings.default_tax_rate);
@@ -158,6 +169,7 @@ export default function InvoiceBuilder() {
           terms: invoice.terms || '',
           status: invoice.status,
         });
+        setSavedInvoice(invoice);
       }
     } catch (error) {
       toast.error('Failed to load invoice');
@@ -298,10 +310,9 @@ export default function InvoiceBuilder() {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
 
-    if (field === 'quantity' || field === 'unit_price' || field === 'discount_amount' || field === 'tax_rate') {
+    if (field === 'quantity' || field === 'unit_price') {
       const item = updatedItems[index];
-      const lineTotal = (item.quantity * item.unit_price) - (item.discount_amount || 0);
-      updatedItems[index].line_total = lineTotal;
+      updatedItems[index].line_total = item.quantity * item.unit_price;
     }
 
     setFormData(prev => ({ ...prev, items: updatedItems }));
@@ -355,6 +366,7 @@ export default function InvoiceBuilder() {
   };
 
   const handleSaveDraft = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -402,6 +414,7 @@ export default function InvoiceBuilder() {
   };
 
   const handleCreate = async () => {
+    if (saving) return; // Prevent double submission
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
@@ -466,9 +479,9 @@ export default function InvoiceBuilder() {
       }
       try {
 
-        const organizationInfo = await settingsService.getOrganizationForPDF(currentOrganization.id);
+        const organizationInfo = await settingsService.getOrganizationForPDFWithTemplate(currentOrganization.id, 'invoice');
 
-        pdfService.generateInvoicePDF(savedInvoice, organizationInfo);
+        await pdfService.generateInvoicePDF(savedInvoice, organizationInfo, (savedInvoice as any).stripe_payment_link_url || undefined);
         toast.success('Invoice PDF downloaded');
       } catch (error) {
         toast.error('Failed to generate PDF');
@@ -482,19 +495,19 @@ export default function InvoiceBuilder() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-screen min-h-screen bg-gray-50 dark:bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 py-6">
       <div className="max-w-[1920px] mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id ? `Edit ${labels.entitySingular}` : labels.newButton}
+              {id ? `Edit ${labels.entitySingular}` : `New ${labels.entitySingular}`}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Build a professional {labels.entitySingular} for your {fieldLabels.customerLabel.toLowerCase()}
@@ -511,7 +524,7 @@ export default function InvoiceBuilder() {
             </Button>
             <ShareDropdown
               onSelect={handleShareOption}
-              disabled={!savedInvoice || savedInvoice?.status === 'draft'}
+              disabled={!savedInvoice}
               buttonText="Share"
               variant="secondary"
             />
@@ -535,7 +548,7 @@ export default function InvoiceBuilder() {
                   {id ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                id ? `Update ${labels.entitySingular}` : labels.newButton
+                id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`
               )}
             </Button>
           </div>
@@ -732,19 +745,19 @@ export default function InvoiceBuilder() {
                           </div>
                         </div>
 
-                        <div className="col-span-2">
+                        <div className="col-span-3">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Unit Price *
                           </label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                            <Input
+                            <input
                               type="number"
                               value={item.unit_price}
                               onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                               onBlur={() => handleItemBlur(index)}
                               placeholder="0.00"
-                              className="text-sm text-right pl-7"
+                              className="w-full text-sm text-right pl-7 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               min="0"
                               step="0.01"
                               disabled={!item.product_type}
@@ -753,22 +766,6 @@ export default function InvoiceBuilder() {
                         </div>
 
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Discount ($)
-                          </label>
-                          <Input
-                            type="number"
-                            value={item.discount_amount || 0}
-                            onChange={(e) => updateLineItem(index, 'discount_amount', parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
-                            className="text-sm text-center"
-                            min="0"
-                            step="0.01"
-                            disabled={!item.product_type}
-                          />
-                        </div>
-
-                        <div className="col-span-1">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Total
                           </label>
@@ -853,6 +850,21 @@ export default function InvoiceBuilder() {
           </div>
 
           <div className="space-y-6">
+            {/* Logo & Branding Preview */}
+            {organizationInfo?.logo_url && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex items-center gap-3">
+                <img
+                  src={organizationInfo.logo_url}
+                  alt="Company logo"
+                  className="w-10 h-10 object-contain rounded"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{organizationInfo.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Logo will appear on PDF</p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{fieldLabels.sectionTitle}</h2>
               <div className="space-y-4">
@@ -863,7 +875,20 @@ export default function InvoiceBuilder() {
                   <Input
                     type="date"
                     value={formData.invoice_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, invoice_date: e.target.value }))}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setFormData(prev => {
+                        const updated = { ...prev, invoice_date: newDate };
+                        // Recalculate due date if payment terms are set
+                        if (prev.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === prev.payment_terms)) {
+                          const newDueDate = calculateDueDate(newDate, prev.payment_terms);
+                          if (newDueDate) {
+                            updated.due_date = newDueDate;
+                          }
+                        }
+                        return updated;
+                      });
+                    }}
                   />
                 </div>
                 <div>
@@ -880,12 +905,39 @@ export default function InvoiceBuilder() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Payment Terms
                   </label>
-                  <Input
-                    type="text"
-                    value={formData.payment_terms || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                    placeholder="Net 30"
-                  />
+                  <select
+                    value={PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) ? formData.payment_terms : (formData.payment_terms ? 'custom' : '')}
+                    onChange={(e) => {
+                      const selectedKey = e.target.value;
+                      setFormData(prev => ({ ...prev, payment_terms: selectedKey }));
+                      if (selectedKey && selectedKey !== 'custom') {
+                        const newDueDate = calculateDueDate(formData.invoice_date, selectedKey);
+                        if (newDueDate) {
+                          setFormData(prev => ({ ...prev, payment_terms: selectedKey, due_date: newDueDate }));
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select payment terms...</option>
+                    {PAYMENT_TERMS_OPTIONS.map(option => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                  {formData.payment_terms === 'custom' && (
+                    <Input
+                      type="text"
+                      value={formData.payment_terms === 'custom' ? '' : formData.payment_terms}
+                      onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value || 'custom' }))}
+                      placeholder="Enter custom payment terms..."
+                      className="mt-2"
+                    />
+                  )}
+                  {formData.payment_terms && PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {PAYMENT_TERMS_OPTIONS.find(o => o.key === formData.payment_terms)?.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -902,7 +954,7 @@ export default function InvoiceBuilder() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Discount</span>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <input
                       type="number"
                       value={formData.discount_amount}
                       onChange={(e) => {
@@ -910,7 +962,7 @@ export default function InvoiceBuilder() {
                         setFormData(prev => ({ ...prev, discount_amount: discount }));
                         calculateTotals(formData.items);
                       }}
-                      className="w-24 text-sm"
+                      className="w-24 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       min="0"
                       step="0.01"
                     />
@@ -920,7 +972,7 @@ export default function InvoiceBuilder() {
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600 dark:text-gray-400">{orgTaxLabel || 'Tax'}</span>
                     <div className="flex items-center gap-1">
-                      <Input
+                      <input
                         type="number"
                         value={invoiceTaxRate}
                         onChange={(e) => {
@@ -931,7 +983,7 @@ export default function InvoiceBuilder() {
                           setFormData(prev => ({ ...prev, items: updatedItems }));
                           calculateTotals(updatedItems);
                         }}
-                        className="w-20 text-sm"
+                        className="w-20 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         min="0"
                         max="100"
                         step="0.01"
@@ -944,6 +996,18 @@ export default function InvoiceBuilder() {
                     ${formData.tax_amount.toFixed(2)}
                   </span>
                 </div>
+                {!id && invoiceTaxRate === 0 && orgTaxRate === 0 && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      No default tax rate configured.{' '}
+                      <button type="button" onClick={() => navigate('/settings')} className="underline hover:no-underline font-medium">
+                        Set it in Business Settings
+                      </button>{' '}
+                      to auto-apply on new documents.
+                    </p>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
@@ -973,35 +1037,7 @@ export default function InvoiceBuilder() {
           </div>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pb-8">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Draft
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={
-              saving ||
-              !formData.customer_id ||
-              formData.items.length === 0 ||
-              formData.total_amount <= 0
-            }
-            className="px-6"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {id ? 'Updating...' : 'Creating...'}
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                {id ? `Update ${labels.entitySingular}` : `Create ${labels.entitySingular}`}
-              </>
-            )}
-          </Button>
-        </div>
+        <div className="pb-8" />
 
         {savedInvoice && currentOrganization && user && organizationInfo && (
           <ShareModal

@@ -18,7 +18,7 @@ The AddressAutocomplete component is live in Profile Settings (Location) and Cus
    - Places API
    - Geocoding API
 4. Create an API key
-5. Restrict the key to HTTP referrers: `crm.easyaicrm.com/*`
+5. Restrict the key to HTTP referrers: `crm.cxtrack.com/*`
 6. In `.env` and `.env.production`, uncomment and set:
    ```
    VITE_GOOGLE_MAPS_API_KEY=your_key_here
@@ -47,7 +47,7 @@ Stripe keys were previously in the codebase but have been deprecated. To enable 
 
 ## 3. Custom Domain SSL
 
-**Status:** Active on crm.easyaicrm.com
+**Status:** Active on crm.cxtrack.com
 
 Ensure SSL certificates are renewed and DNS records are properly configured.
 

@@ -4,7 +4,7 @@ import {
   Users, Calendar, FileText, DollarSign, TrendingUp,
   UserPlus, CalendarPlus, FilePlus, Phone,
   ArrowRight, Activity, Package, GripVertical, CheckCircle, User,
-  ArrowUpRight, Clock, ChevronRight, Plus
+  ArrowUpRight, Clock, ChevronRight, Plus, SlidersHorizontal
 } from 'lucide-react';
 import {
   DndContext,
@@ -44,6 +44,8 @@ import { Card, NestedCard, Button } from '@/components/theme/ThemeComponents';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import AIQuarterback from '@/components/dashboard/AIQuarterback';
+import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
 
 type ActivityFilter = 'all' | 'appointments' | 'quotes' | 'invoices' | 'products' | 'customers' | 'tasks';
 
@@ -115,7 +117,7 @@ export const Dashboard: React.FC = () => {
   const { theme } = useThemeStore();
   const { customers, fetchCustomers } = useCustomerStore();
   const { calls, fetchCalls } = useCallStore();
-  const { events: calendarEvents, fetchEvents } = useCalendarStore();
+  const { events: calendarEvents, fetchEvents, outlookEvents, fetchOutlookEventsRange } = useCalendarStore();
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { products, fetchProducts } = useProductStore();
@@ -154,6 +156,7 @@ export const Dashboard: React.FC = () => {
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'call' | 'email' | 'sms'>('all');
   const [revenueStats, setRevenueStats] = useState<RevenueStats | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [scheduleMode, setScheduleMode] = useState<'upcoming' | 'today'>('upcoming');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -285,13 +288,6 @@ export const Dashboard: React.FC = () => {
 
   const [quickActions, setQuickActions] = useState<QuickAction[]>([]);
 
-  // Update quick actions when filtered actions change
-  useEffect(() => {
-    if (filteredQuickActions.length > 0) {
-      setQuickActions(filteredQuickActions);
-    }
-  }, [filteredQuickActions]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -334,96 +330,101 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0 && enabledModuleIds.length > 0) {
-      const defaultActions: (QuickAction & { moduleId: string })[] = [
-        {
-          id: 'add-customer',
-          moduleId: 'crm',
-          label: crmLabels.newButton,
-          icon: UserPlus,
-          onClick: handleAddCustomer,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'schedule',
-          moduleId: 'calendar',
-          label: calendarLabels.newButton,
-          icon: CalendarPlus,
-          onClick: handleSchedule,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'create-quote',
-          moduleId: 'quotes',
-          label: quotesLabels.newButton,
-          icon: FilePlus,
-          onClick: handleCreateQuote,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'new-invoice',
-          moduleId: 'invoices',
-          label: invoicesLabels.newButton,
-          icon: FileText,
-          onClick: handleNewInvoice,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'create-task',
-          moduleId: 'tasks',
-          label: tasksLabels.newButton,
-          icon: CheckCircle,
-          onClick: handleCreateTask,
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'add-product',
-          moduleId: 'products',
-          label: productsLabels.newButton,
-          icon: Package,
-          onClick: () => navigate('/dashboard/products'),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'new-expense',
-          moduleId: 'financials',
-          label: financialsLabels.newButton,
-          icon: DollarSign,
-          onClick: () => navigate('/dashboard/financials'),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-        {
-          id: 'log-call',
-          moduleId: 'calls',
-          label: callsLabels.newButton,
-          icon: Phone,
-          onClick: () => setShowLogCallModal(true),
-          bgColor: 'bg-primary-100 dark:bg-primary-500/20',
-          iconColor: 'text-primary-600 dark:text-white',
-        },
-      ];
+    if (enabledModuleIds.length === 0) return;
 
-      // Filter to only include actions for enabled modules
-      const enabledActions = defaultActions.filter(a => enabledModuleIds.includes(a.moduleId));
+    const defaultActions: (QuickAction & { moduleId: string })[] = [
+      {
+        id: 'add-customer',
+        moduleId: 'crm',
+        label: crmLabels.newButton,
+        icon: UserPlus,
+        onClick: handleAddCustomer,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'schedule',
+        moduleId: 'calendar',
+        label: calendarLabels.newButton,
+        icon: CalendarPlus,
+        onClick: handleSchedule,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'create-quote',
+        moduleId: 'quotes',
+        label: quotesLabels.newButton,
+        icon: FilePlus,
+        onClick: handleCreateQuote,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'new-invoice',
+        moduleId: 'invoices',
+        label: invoicesLabels.newButton,
+        icon: FileText,
+        onClick: handleNewInvoice,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'create-task',
+        moduleId: 'tasks',
+        label: tasksLabels.newButton,
+        icon: CheckCircle,
+        onClick: handleCreateTask,
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'add-product',
+        moduleId: 'products',
+        label: productsLabels.newButton,
+        icon: Package,
+        onClick: () => navigate('/dashboard/products'),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'new-expense',
+        moduleId: 'financials',
+        label: financialsLabels.newButton,
+        icon: DollarSign,
+        onClick: () => navigate('/dashboard/financials'),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+      {
+        id: 'log-call',
+        moduleId: 'calls',
+        label: callsLabels.newButton,
+        icon: Phone,
+        onClick: () => setShowLogCallModal(true),
+        bgColor: 'bg-primary-100 dark:bg-primary-500/20',
+        iconColor: 'text-primary-600 dark:text-white',
+      },
+    ];
 
-      const orderedActions = preferences.quickActionsOrder
+    // Filter to only include actions for enabled modules
+    const enabledActions = defaultActions.filter(a => enabledModuleIds.includes(a.moduleId));
+
+    const savedOrder = preferences.quickActionsOrder;
+
+    if (savedOrder && savedOrder.length > 0) {
+      // Build ordered list from saved preference — ONLY saved items, no appending extras
+      const orderedActions = savedOrder
         .map((id: string) => enabledActions.find(a => a.id === id))
-        .filter((a): a is (QuickAction & { moduleId: string }) => a !== undefined);
+        .filter((a): a is (QuickAction & { moduleId: string }) => a !== undefined)
+        .slice(0, 5); // Hard cap at 5
 
-      // Add any missing enabled actions
-      const existingIds = new Set(preferences.quickActionsOrder);
-      const missingActions = enabledActions.filter(a => !existingIds.has(a.id));
-
-      // Strip moduleId before setting state
-      const finalActions = [...orderedActions, ...missingActions].map(({ moduleId, ...action }) => action as QuickAction);
+      const finalActions = orderedActions.map(({ moduleId, ...action }) => action as QuickAction);
       setQuickActions(finalActions);
+    } else {
+      // No saved preference — use first 5 enabled actions as default
+      const defaultSelection = enabledActions.slice(0, 5).map(({ moduleId, ...action }) => action as QuickAction);
+      setQuickActions(defaultSelection);
     }
   }, [preferences.quickActionsOrder, crmLabels.newButton, quotesLabels.newButton, invoicesLabels.newButton, tasksLabels.newButton, calendarLabels.newButton, productsLabels.newButton, financialsLabels.newButton, callsLabels.newButton, enabledModuleIds]);
 
@@ -437,6 +438,12 @@ export const Dashboard: React.FC = () => {
     fetchTasks();
     fetchPipelineStats();
 
+    // Fetch Outlook events for the next 30 days (dashboard widget)
+    const now = new Date();
+    const thirtyDaysOut = new Date(now);
+    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+    fetchOutlookEventsRange(now.toISOString(), thirtyDaysOut.toISOString());
+
     if (currentOrganization) {
       revenueService.getRevenueStats(currentOrganization.id)
         .then(setRevenueStats)
@@ -449,23 +456,49 @@ export const Dashboard: React.FC = () => {
   const activeCustomers = customers.filter(c => c.status === 'Active').length;
   const recentCalls = calls.slice(0, 3);
 
-  const upcomingAppointments = calendarEvents
+  // Merge native CRM events + Outlook events for the dashboard widget
+  const mappedOutlookEvents = outlookEvents.map(evt => ({
+    id: evt.id,
+    title: evt.title,
+    start_time: evt.start_time,
+    end_time: evt.end_time,
+    status: 'scheduled' as const,
+    customer_id: null as string | null,
+    source: 'outlook' as const,
+    organizer: evt.organizer,
+    meeting_url: evt.meeting_url,
+    web_link: evt.web_link,
+  }));
+
+  const allCalendarItems = [
+    ...calendarEvents.map(e => ({ ...e, source: 'crm' as const })),
+    ...mappedOutlookEvents,
+  ];
+
+  const upcomingAppointments = allCalendarItems
     .filter(event => {
       const eventDate = new Date(event.start_time);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return eventDate >= today && event.status === 'scheduled';
+      return eventDate >= today;
     })
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .slice(0, 5);
 
-  const todaysAppointments = calendarEvents.filter(event => {
+  const todayOnlyAppointments = allCalendarItems
+    .filter(event => {
+      const eventDate = new Date(event.start_time);
+      const today = new Date();
+      return eventDate.toDateString() === today.toDateString();
+    })
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+  const displayedAppointments = scheduleMode === 'upcoming' ? upcomingAppointments : todayOnlyAppointments;
+
+  const todaysAppointments = allCalendarItems.filter(event => {
     const eventDate = new Date(event.start_time);
     const today = new Date();
-    return (
-      eventDate.toDateString() === today.toDateString() &&
-      event.status === 'scheduled'
-    );
+    return eventDate.toDateString() === today.toDateString();
   }).length;
 
   const getAllActivities = () => {
@@ -556,7 +589,7 @@ export const Dashboard: React.FC = () => {
         id: task.id,
         type: 'task',
         title: `Task: ${task.title}`,
-        subtitle: `${customerName} �� ${task.type}`,
+        subtitle: `${customerName} \u00b7 ${task.type}`,
         timestamp: task.created_at,
         icon: CheckCircle,
         iconBg: 'bg-teal-100 dark:bg-teal-900/30',
@@ -664,84 +697,40 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="px-4 mb-4">
-          <div className="grid grid-cols-2 gap-4">
-            {enabledModuleIds.includes('crm') && (
-              <button
-                onClick={handleAddCustomer}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <UserPlus size={24} className="text-blue-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{crmLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create new {crmLabels.entitySingular}</p>
-              </button>
-            )}
+          {/* Mobile Quick Actions Header */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Quick Actions
+            </h3>
+            <QuickActionsConfigPopover
+              allAvailableActions={filteredQuickActions.map(a => ({
+                id: a.id,
+                label: a.label,
+                icon: a.icon,
+              }))}
+              selectedActionIds={quickActions.map(a => a.id)}
+              onSelectionChange={(selectedIds) => {
+                saveQuickActionsOrder(selectedIds);
+              }}
+            />
+          </div>
 
-            {enabledModuleIds.includes('calendar') && (
-              <button
-                onClick={handleSchedule}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <CalendarPlus size={24} className="text-green-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{calendarLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Book {calendarLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('quotes') && (
-              <button
-                onClick={handleCreateQuote}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <FilePlus size={24} className="text-purple-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{quotesLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">New {quotesLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('invoices') && (
-              <button
-                onClick={handleNewInvoice}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <FileText size={24} className="text-orange-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{invoicesLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create {invoicesLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('tasks') && (
-              <button
-                onClick={handleCreateTask}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-teal-100 dark:bg-teal-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <CheckCircle size={24} className="text-teal-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{tasksLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Create {tasksLabels.entitySingular}</p>
-              </button>
-            )}
-
-            {enabledModuleIds.includes('calls') && (
-              <button
-                onClick={() => setShowLogCallModal(true)}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
-              >
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
-                  <Phone size={24} className="text-emerald-600 dark:text-white" />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{callsLabels.newButton}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Log {callsLabels.entitySingular}</p>
-              </button>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  onClick={action.onClick}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98] shadow-sm text-left"
+                >
+                  <div className={`w-12 h-12 ${action.bgColor} rounded-xl flex items-center justify-center mb-3`}>
+                    <Icon size={24} className={action.iconColor} />
+                  </div>
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">{action.label}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -769,7 +758,7 @@ export const Dashboard: React.FC = () => {
               {recentCalls.map((call) => (
                 <Link
                   key={call.id}
-                  to={`/calls/${call.id}`}
+                  to={`/dashboard/calls/${call.id}`}
                   className="block bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-center space-x-3">
@@ -789,7 +778,7 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {call.phone_number} �� {Math.floor(call.duration_seconds / 60)}m
+                        {call.phone_number} &middot; {Math.floor(call.duration_seconds / 60)}m
                       </p>
                     </div>
                   </div>
@@ -797,6 +786,11 @@ export const Dashboard: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* AI Quarterback - Mobile */}
+        <div className="px-4">
+          <AIQuarterback compact />
         </div>
 
         <div className="px-4 pb-24">
@@ -1047,7 +1041,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/calendar" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Calendar
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' ��'}
+                    {theme !== 'soft-modern' && ' &middot;'}
                   </Link>
                 </div>
               </div>
@@ -1097,7 +1091,7 @@ export const Dashboard: React.FC = () => {
                   <Link to="/pipeline" className={theme === 'soft-modern' ? "text-body-sm font-medium text-primary hover:underline flex items-center gap-1" : "text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"}>
                     View Pipeline
                     {theme === 'soft-modern' && <ArrowUpRight size={12} />}
-                    {theme !== 'soft-modern' && ' ��'}
+                    {theme !== 'soft-modern' && ' &middot;'}
                   </Link>
                 </div>
               </div>
@@ -1110,6 +1104,30 @@ export const Dashboard: React.FC = () => {
                 boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)'
               } : undefined}
             >
+
+              {/* Quick Actions Header */}
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className={theme === 'soft-modern'
+                    ? "text-sm font-semibold uppercase tracking-wider"
+                    : "text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  }
+                  style={theme === 'soft-modern' ? { color: '#8B8680' } : undefined}
+                >
+                  Quick Actions
+                </h3>
+                <QuickActionsConfigPopover
+                  allAvailableActions={filteredQuickActions.map(a => ({
+                    id: a.id,
+                    label: a.label,
+                    icon: a.icon,
+                  }))}
+                  selectedActionIds={quickActions.map(a => a.id)}
+                  onSelectionChange={(selectedIds) => {
+                    saveQuickActionsOrder(selectedIds);
+                  }}
+                />
+              </div>
 
               <DndContext
                 sensors={sensors}
@@ -1128,6 +1146,9 @@ export const Dashboard: React.FC = () => {
                 </SortableContext>
               </DndContext>
             </div>
+
+            {/* AI Quarterback - Proactive Business Insights */}
+            <AIQuarterback />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
               <Card className="flex flex-col h-[600px] overflow-hidden">
@@ -1221,9 +1242,27 @@ export const Dashboard: React.FC = () => {
                     <div className="p-2 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 shadow-md shrink-0">
                       <Calendar className="w-5 h-5 text-white" />
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Appointments</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Your scheduled meetings</p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setScheduleMode('today')}
+                        className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
+                          scheduleMode === 'today'
+                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => setScheduleMode('upcoming')}
+                        className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
+                          scheduleMode === 'upcoming'
+                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        Upcoming
+                      </button>
                     </div>
                   </div>
                   <Link to="/calendar" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-500 font-medium flex items-center gap-1 transition-colors shrink-0">
@@ -1233,12 +1272,14 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-3">
-                  {upcomingAppointments.length === 0 ? (
+                  {displayedAppointments.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Calendar size={32} className="text-gray-400 dark:text-gray-500" />
                       </div>
-                      <p className="text-gray-600 dark:text-gray-400 font-medium mb-3">No upcoming appointments</p>
+                      <p className="text-gray-600 dark:text-gray-400 font-medium mb-3">
+                        {scheduleMode === 'today' ? 'No appointments today' : 'No upcoming appointments'}
+                      </p>
                       <Button
                         variant="primary"
                         onClick={() => setShowEventModal(true)}
@@ -1249,31 +1290,48 @@ export const Dashboard: React.FC = () => {
                       </Button>
                     </div>
                   ) : (
-                    upcomingAppointments.map((event) => {
-                      const customerName = event.customer_id
+                    displayedAppointments.map((event) => {
+                      const isOutlook = event.source === 'outlook';
+                      const customerName = !isOutlook && event.customer_id
                         ? customers.find(c => c.id === event.customer_id)?.name
                         : null;
+                      const subtitle = isOutlook && (event as any).organizer
+                        ? (event as any).organizer
+                        : customerName
+                          ? `with ${customerName}`
+                          : null;
                       return (
                         <NestedCard
                           key={event.id}
                           onClick={() => navigate('/calendar')}
                         >
                           <div className="flex items-start gap-4 min-w-0">
-                            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-inner shrink-0">
+                            <div className={`p-3 rounded-xl shadow-inner shrink-0 ${
+                              isOutlook
+                                ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                            }`}>
                               <Calendar className="w-5 h-5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors truncate">
-                                {event.title}
-                              </h4>
-                              {customerName && (
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors truncate">
+                                  {event.title}
+                                </h4>
+                                {isOutlook && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 shrink-0">
+                                    Outlook
+                                  </span>
+                                )}
+                              </div>
+                              {subtitle && (
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
-                                  with {customerName}
+                                  {subtitle}
                                 </p>
                               )}
                               <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400 flex-wrap">
                                 <Clock className="w-4 h-4 shrink-0" />
-                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy �� h:mm a')}</span>
+                                <span className="truncate">{format(new Date(event.start_time), 'MMM dd, yyyy')} &middot; {format(new Date(event.start_time), 'h:mm a')}</span>
                               </div>
                             </div>
                             <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -1425,6 +1483,7 @@ export const Dashboard: React.FC = () => {
                 </div>
               </Card>
             </div>
+
           </div>
         </div>
       </div>

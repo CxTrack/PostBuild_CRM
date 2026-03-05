@@ -199,7 +199,7 @@ export default function LogCallModal({
     return name.includes(search) || phone.includes(search);
   });
 
-  const isDark = theme === 'dark';
+  const isDark = theme === 'dark' || theme === 'midnight';
 
   if (!isOpen) return null;
 

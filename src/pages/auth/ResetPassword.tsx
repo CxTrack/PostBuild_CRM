@@ -1,8 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface ResetPasswordFormData {
@@ -12,79 +14,169 @@ interface ResetPasswordFormData {
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
-  const { updatePassword, loading, error, clearError } = useAuthStore();
+  const { loading, error, clearError } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
+  const isDark = theme === 'dark' || theme === 'midnight';
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Capture hash params immediately before they get cleaned
+  const hashParamsRef = useRef(new URLSearchParams(window.location.hash.substring(1)));
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<ResetPasswordFormData>();
   const password = watch('password');
 
+  // On mount, check if we have a valid recovery session
+  useEffect(() => {
+    const hashParams = hashParamsRef.current;
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const type = hashParams.get('type');
+
+    if (accessToken && refreshToken && type === 'recovery') {
+      // Set the recovery session
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(async ({ error }) => {
+        if (error) {
+          setIsValidToken(false);
+          toast.error('This reset link has expired. Please request a new one.');
+          setTimeout(() => navigate('/forgot-password'), 2000);
+          return;
+        }
+
+        // Validate the session is truly active by verifying with the server
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          setIsValidToken(false);
+          toast.error('This reset link has expired. Please request a new one.');
+          setTimeout(() => navigate('/forgot-password'), 2000);
+          return;
+        }
+
+        setIsValidToken(true);
+        // Clean the URL hash
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    } else {
+      // No token in URL — check for PKCE token_hash in query params
+      const queryParams = new URLSearchParams(window.location.search);
+      const tokenHash = queryParams.get('token_hash');
+      const queryType = queryParams.get('type');
+
+      if (tokenHash && queryType === 'recovery') {
+        supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        }).then(({ error }) => {
+          if (error) {
+            setIsValidToken(false);
+            toast.error('This reset link has expired. Please request a new one.');
+            setTimeout(() => navigate('/forgot-password'), 2000);
+          } else {
+            setIsValidToken(true);
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        });
+      } else {
+        // No token in URL — check if there's already an active session (authStore may have set it)
+        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+          if (user && !userError) {
+            setIsValidToken(true);
+          } else {
+            setIsValidToken(false);
+            toast.error('Invalid or expired reset link. Please request a new one.');
+            setTimeout(() => navigate('/forgot-password'), 2000);
+          }
+        });
+      }
+    }
+  }, [navigate]);
+
   const onSubmit = async (data: ResetPasswordFormData) => {
     clearError();
+    setSubmitting(true);
     try {
-      // Get access token from URL hash
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
+      const { error } = await supabase.auth.updateUser({ password: data.password });
+      if (error) throw error;
 
-      if (!accessToken) {
-        throw new Error('Invalid or expired reset link');
-      }
-
-      await updatePassword(accessToken, data.password);
-      toast.success('Password reset successfully', {
-        style: {
-          background: '#1a1a1a',
-          color: '#FFD700',
-          border: '1px solid rgba(255,215,0,0.2)'
-        }
+      toast.success('Password reset successfully!', {
+        style: isDark
+          ? { background: '#1a1a1a', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }
+          : { background: '#FFFFFF', color: '#B8860B', border: '1px solid rgba(184,134,11,0.2)' }
       });
 
-      // Redirect to login after success
+      // Sign out so user logs in with new password
+      await supabase.auth.signOut();
+
       setTimeout(() => {
         navigate('/login');
       }, 1500);
-    } catch (err) {
-      const errorMessage = error?.includes('Invalid') || error?.includes('expired')
+    } catch (err: any) {
+      const errorMessage = err.message?.includes('Invalid') || err.message?.includes('expired')
         ? 'This password reset link has expired. Please request a new one.'
-        : error || 'Failed to reset password. Please try again.';
+        : err.message || 'Failed to reset password. Please try again.';
 
       toast.error(errorMessage);
 
-      // Redirect to forgot password for invalid/expired tokens
       if (errorMessage.includes('expired') || errorMessage.includes('Invalid')) {
         setTimeout(() => navigate('/forgot-password'), 2000);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // Show loading while validating token
+  if (isValidToken === null) {
+    return (
+      <main className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Theme Toggle */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-5 right-5 z-20 p-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.07] border border-gray-200 dark:border-white/[0.1] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-all text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80"
+        aria-label="Toggle theme"
+        title={`Current: ${theme}`}
+      >
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
       {/* Background elements */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#B8860B]/5 dark:bg-[#FFD700]/5 blur-[120px] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl">
+        <div className="bg-gray-50/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-xl dark:shadow-2xl">
           <div className="flex flex-col items-center mb-8">
             <Link to="/" className="group">
               <img
-                src="/logo.svg"
+                src="/cxtrack-logo.png"
                 alt="CxTrack"
                 className="h-12 mb-6 opacity-90 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
               />
             </Link>
-            <h1 className="text-3xl font-bold text-white tracking-tight text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight text-center">
               Reset Your Password
             </h1>
-            <p className="text-white/40 text-sm mt-2 text-center max-w-[280px]">
+            <p className="text-gray-500 dark:text-white/40 text-sm mt-2 text-center max-w-[280px]">
               Enter your new password below
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
               {error}
             </div>
           )}
@@ -99,7 +191,7 @@ const ResetPassword: React.FC = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
@@ -110,7 +202,7 @@ const ResetPassword: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-white/30 dark:hover:text-white/60 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                 >
@@ -118,7 +210,7 @@ const ResetPassword: React.FC = () => {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.password.message}</p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400 ml-1">{errors.password.message}</p>
               )}
             </div>
 
@@ -131,7 +223,7 @@ const ResetPassword: React.FC = () => {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
+                  className="w-full bg-gray-50 dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 transition-all"
                   {...register('confirmPassword', {
                     required: 'Please confirm your password',
                     validate: value => value === password || 'Passwords do not match'
@@ -139,7 +231,7 @@ const ResetPassword: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:text-white/30 dark:hover:text-white/60 transition-colors"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   tabIndex={-1}
                 >
@@ -147,16 +239,16 @@ const ResetPassword: React.FC = () => {
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-400 ml-1">{errors.confirmPassword.message}</p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400 ml-1">{errors.confirmPassword.message}</p>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
+              disabled={submitting}
+              className="w-full bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-bold py-4 rounded-xl transition-all shadow-lg dark:shadow-[0_0_20px_rgba(255,215,0,0.2)] disabled:opacity-50 mt-2"
             >
-              {loading ? (
+              {submitting ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -171,7 +263,7 @@ const ResetPassword: React.FC = () => {
           </form>
         </div>
 
-        <p className="text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
+        <p className="text-gray-300 dark:text-white/10 text-[10px] uppercase tracking-widest font-bold text-center mt-8">
           &copy; 2026 CxTrack Intelligent Systems. Proprietary Access Only.
         </p>
       </div>

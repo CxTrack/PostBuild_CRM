@@ -185,7 +185,7 @@ export const AIAnalyticsTab = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Free Tier Tokens</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">5,000/month</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">50,000/month</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Enterprise Tokens</span>

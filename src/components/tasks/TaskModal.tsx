@@ -69,19 +69,19 @@ export default function TaskModal({
   const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
 
   const taskTypeOptions = [
-    { value: 'call', label: 'Call', icon: <Phone size={16} />, color: 'text-blue-600' },
-    { value: 'email', label: 'Email', icon: <Mail size={16} />, color: 'text-purple-600' },
-    { value: 'sms', label: 'SMS', icon: <MessageSquare size={16} />, color: 'text-green-600' },
-    { value: 'follow_up', label: 'Follow Up', icon: <RefreshCw size={16} />, color: 'text-orange-600' },
-    { value: 'meeting', label: 'Meeting Prep', icon: <Users size={16} />, color: 'text-indigo-600' },
-    { value: 'other', label: 'Other', icon: <FileText size={16} />, color: 'text-gray-600' },
+    { value: 'call', label: 'Call', icon: <Phone size={16} />, color: 'text-blue-600 dark:text-blue-400' },
+    { value: 'email', label: 'Email', icon: <Mail size={16} />, color: 'text-purple-600 dark:text-purple-400' },
+    { value: 'sms', label: 'SMS', icon: <MessageSquare size={16} />, color: 'text-green-600 dark:text-green-400' },
+    { value: 'follow_up', label: 'Follow Up', icon: <RefreshCw size={16} />, color: 'text-orange-600 dark:text-orange-400' },
+    { value: 'meeting', label: 'Meeting Prep', icon: <Users size={16} />, color: 'text-indigo-600 dark:text-indigo-400' },
+    { value: 'other', label: 'Other', icon: <FileText size={16} />, color: 'text-gray-600 dark:text-gray-400' },
   ];
 
   const priorityOptions = [
-    { value: 'low', label: 'Low', icon: <div className="w-2 h-2 bg-green-500 rounded-full" />, color: 'text-green-600' },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2 h-2 bg-yellow-500 rounded-full" />, color: 'text-yellow-600' },
-    { value: 'high', label: 'High', icon: <div className="w-2 h-2 bg-orange-500 rounded-full" />, color: 'text-orange-600' },
-    { value: 'urgent', label: 'Urgent', icon: <div className="w-2 h-2 bg-red-500 rounded-full" />, color: 'text-red-600' },
+    { value: 'low', label: 'Low', icon: <div className="w-2 h-2 bg-green-500 rounded-full" />, color: 'text-green-600 dark:text-green-400' },
+    { value: 'medium', label: 'Medium', icon: <div className="w-2 h-2 bg-yellow-500 rounded-full" />, color: 'text-yellow-600 dark:text-yellow-400' },
+    { value: 'high', label: 'High', icon: <div className="w-2 h-2 bg-orange-500 rounded-full" />, color: 'text-orange-600 dark:text-orange-400' },
+    { value: 'urgent', label: 'Urgent', icon: <div className="w-2 h-2 bg-red-500 rounded-full" />, color: 'text-red-600 dark:text-red-400' },
   ];
 
   const statusOptions = [
@@ -232,9 +232,16 @@ export default function TaskModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800">
+    <>
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl sm:max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {task ? 'Edit Task' : 'Create Task'}
           </h2>
@@ -246,7 +253,7 @@ export default function TaskModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form id="task-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-4 sm:p-6 space-y-6">
           {error && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl">
               <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
@@ -448,37 +455,41 @@ export default function TaskModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-            >
-              {saving ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
-            </button>
-          </div>
         </form>
-      </div>
 
-      <QuickAddCustomerModal
-        isOpen={showQuickAddCustomer}
-        onClose={() => setShowQuickAddCustomer(false)}
-        onCustomerCreated={(customer) => {
-          setFormData({
-            ...formData,
-            customer_id: customer.id,
-            customer_name: customer.name,
-          });
-          setShowQuickAddCustomer(false);
-        }}
-      />
+        {/* Fixed footer — outside form, uses form= attribute to submit */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="task-form"
+            disabled={saving}
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+          >
+            {saving ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
+          </button>
+        </div>
+      </div>
     </div>
+
+    <QuickAddCustomerModal
+      isOpen={showQuickAddCustomer}
+      onClose={() => setShowQuickAddCustomer(false)}
+      onCustomerCreated={(customer) => {
+        setFormData({
+          ...formData,
+          customer_id: customer.id,
+          customer_name: customer.name,
+        });
+        setShowQuickAddCustomer(false);
+      }}
+    />
+    </>
   );
 }

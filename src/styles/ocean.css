@@ -1,0 +1,425 @@
+/* ============================================
+   OCEAN THEME — Deep Navy + Cyan Experience
+   Matches cxtrack.com marketing site ocean theme
+   ============================================ */
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+
+.ocean {
+  --oc-bg-void: #0A1628;
+  --oc-bg-deep: #071222;
+  --oc-bg-surface: rgba(0, 212, 255, 0.03);
+  --oc-bg-elevated: rgba(0, 212, 255, 0.06);
+  --oc-bg-hover: rgba(0, 212, 255, 0.08);
+
+  --oc-text-primary: #E0F7FA;
+  --oc-text-secondary: rgba(224, 247, 250, 0.7);
+  --oc-text-tertiary: rgba(224, 247, 250, 0.4);
+
+  --oc-border-subtle: rgba(0, 212, 255, 0.06);
+  --oc-border-default: rgba(0, 212, 255, 0.1);
+  --oc-border-strong: rgba(0, 212, 255, 0.2);
+
+  --oc-accent-cyan: #00D4FF;
+  --oc-accent-cyan-glow: rgba(0, 212, 255, 0.5);
+  --oc-accent-cyan-subtle: rgba(0, 212, 255, 0.12);
+  --oc-accent-teal: #2DD4BF;
+  --oc-accent-green: #34d399;
+  --oc-accent-red: #FF6B6B;
+  --oc-accent-warning: #F9AB00;
+  --oc-accent-blue: #00B4D8;
+
+  --oc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --oc-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --oc-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --oc-shadow-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 40px rgba(0, 212, 255, 0.08);
+
+  --oc-transition: 200ms cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: dark;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   BASE OVERRIDES
+   Override dark theme's gray-900 → deep navy
+   ============================================ */
+
+.ocean,
+.ocean body {
+  background-color: var(--oc-bg-void) !important;
+  color: var(--oc-text-primary);
+}
+
+/* Page-level backgrounds → deep navy */
+.ocean .bg-gray-50,
+.ocean .dark\:bg-gray-900 {
+  background-color: var(--oc-bg-void) !important;
+}
+
+/* Card/container backgrounds → glass surface */
+.ocean .dark\:bg-gray-800 {
+  background-color: var(--oc-bg-surface) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Exclude form inputs from blur */
+.ocean input.dark\:bg-gray-800,
+.ocean select.dark\:bg-gray-800,
+.ocean textarea.dark\:bg-gray-800 {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Elevated surfaces → elevated glass */
+.ocean .dark\:bg-gray-700 {
+  background-color: var(--oc-bg-elevated) !important;
+}
+
+/* ============================================
+   TEXT COLOR OVERRIDES
+   Cool cyan-whites instead of cold whites
+   ============================================ */
+
+.ocean .dark\:text-white {
+  color: var(--oc-text-primary) !important;
+}
+
+.ocean .dark\:text-gray-300,
+.ocean .dark\:text-gray-400 {
+  color: var(--oc-text-secondary) !important;
+}
+
+.ocean .dark\:text-gray-500 {
+  color: var(--oc-text-tertiary) !important;
+}
+
+/* ============================================
+   BORDER OVERRIDES
+   Subtle ocean-tinted borders
+   ============================================ */
+
+.ocean .dark\:border-gray-700 {
+  border-color: var(--oc-border-default) !important;
+}
+
+.ocean .dark\:border-gray-600 {
+  border-color: var(--oc-border-strong) !important;
+}
+
+/* ============================================
+   PRIMARY ACCENT → CYAN
+   Override blue primary with electric cyan
+   ============================================ */
+
+.ocean .bg-primary-600,
+.ocean .dark\:bg-primary-500 {
+  background: linear-gradient(135deg, #00D4FF, #00B4D8) !important;
+  color: #000000 !important;
+}
+
+.ocean .bg-primary-600:hover,
+.ocean .dark\:bg-primary-500:hover,
+.ocean .hover\:bg-primary-700:hover,
+.ocean .dark\:hover\:bg-primary-600:hover {
+  background: linear-gradient(135deg, #4AE3FF, #00D4FF) !important;
+  box-shadow: var(--oc-shadow-glow-cyan);
+}
+
+.ocean .text-primary-600,
+.ocean .dark\:text-primary-400,
+.ocean .text-primary-500 {
+  color: var(--oc-accent-cyan) !important;
+}
+
+.ocean .border-primary-600,
+.ocean .border-primary-500 {
+  border-color: var(--oc-accent-cyan) !important;
+}
+
+.ocean .bg-primary-50,
+.ocean .dark\:bg-primary-900\/20 {
+  background-color: var(--oc-accent-cyan-subtle) !important;
+}
+
+/* Focus rings → cyan */
+.ocean .focus\:border-primary-500:focus,
+.ocean .focus\:ring-primary-500:focus {
+  border-color: var(--oc-accent-cyan) !important;
+  --tw-ring-color: rgba(0, 212, 255, 0.3) !important;
+}
+
+/* ============================================
+   SIDEBAR & NAVIGATION
+   ============================================ */
+
+.ocean aside,
+.ocean [class*="border-r"][class*="dark:bg-gray-800"] {
+  background-color: var(--oc-bg-void) !important;
+  border-color: var(--oc-border-subtle) !important;
+}
+
+/* Active nav item → cyan accent */
+.ocean .bg-primary-50.dark\:bg-primary-900\/20,
+.ocean [class*="bg-primary-50"][class*="dark:bg-primary"] {
+  background-color: var(--oc-accent-cyan-subtle) !important;
+}
+
+.ocean .text-primary-700.dark\:text-primary-300,
+.ocean [class*="text-primary-700"][class*="dark:text-primary"] {
+  color: var(--oc-accent-cyan) !important;
+}
+
+/* Nav hover states */
+.ocean .hover\:bg-gray-100:hover,
+.ocean .dark\:hover\:bg-gray-700:hover {
+  background-color: var(--oc-bg-hover) !important;
+}
+
+/* Mobile nav & header */
+.ocean header,
+.ocean nav[class*="fixed"][class*="bottom-0"] {
+  background-color: var(--oc-bg-void) !important;
+  border-color: var(--oc-border-subtle) !important;
+}
+
+/* ============================================
+   CARDS & CONTAINERS
+   ============================================ */
+
+.ocean .bg-white.dark\:bg-gray-800 {
+  background-color: var(--oc-bg-surface) !important;
+  border-color: var(--oc-border-default) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.ocean .bg-gray-50.dark\:bg-gray-700,
+.ocean .bg-gray-100.dark\:bg-gray-700 {
+  background-color: var(--oc-bg-elevated) !important;
+}
+
+.ocean .hover\:border-primary-500:hover {
+  border-color: var(--oc-accent-cyan) !important;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.ocean .dark\:bg-gray-700[class*="border"] {
+  background-color: var(--oc-bg-elevated) !important;
+  border-color: var(--oc-border-default) !important;
+}
+
+.ocean .dark\:bg-gray-700[class*="border"]:hover {
+  border-color: var(--oc-border-strong) !important;
+  background-color: var(--oc-bg-hover) !important;
+}
+
+/* ============================================
+   INPUTS & FORMS
+   ============================================ */
+
+.ocean input.dark\:bg-gray-700,
+.ocean select.dark\:bg-gray-700,
+.ocean textarea.dark\:bg-gray-700,
+.ocean .dark\:bg-gray-700 input,
+.ocean .dark\:bg-gray-700 select,
+.ocean .dark\:bg-gray-700 textarea {
+  background-color: rgba(0, 212, 255, 0.04) !important;
+  border-color: var(--oc-border-default) !important;
+  color: var(--oc-text-primary) !important;
+}
+
+.ocean input.dark\:bg-gray-900,
+.ocean select.dark\:bg-gray-900,
+.ocean textarea.dark\:bg-gray-900 {
+  background-color: rgba(0, 212, 255, 0.04) !important;
+  border-color: var(--oc-border-default) !important;
+  color: var(--oc-text-primary) !important;
+}
+
+.ocean input:focus,
+.ocean select:focus,
+.ocean textarea:focus {
+  border-color: var(--oc-accent-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15) !important;
+}
+
+.ocean input::placeholder,
+.ocean textarea::placeholder {
+  color: var(--oc-text-tertiary) !important;
+}
+
+.ocean select,
+.ocean input[type="date"],
+.ocean input[type="time"],
+.ocean input[type="datetime-local"] {
+  color-scheme: dark !important;
+}
+
+.ocean select option {
+  background-color: #0E1F38 !important;
+  color: #E0F7FA !important;
+}
+
+.ocean select.bg-white,
+.ocean select[class*="bg-white"],
+.ocean .bg-white > select {
+  background-color: var(--oc-bg-elevated) !important;
+  color: var(--oc-text-primary) !important;
+  border-color: var(--oc-border-default) !important;
+}
+
+.ocean select.bg-gray-50,
+.ocean select[class*="bg-gray-50"] {
+  background-color: var(--oc-bg-elevated) !important;
+  color: var(--oc-text-primary) !important;
+}
+
+.ocean select[class*="text-gray-700"] {
+  color: var(--oc-text-secondary) !important;
+}
+
+.ocean select[class*="text-blue-700"] {
+  color: #67e8f9 !important;
+}
+
+.ocean select[class*="text-emerald-700"] {
+  color: #6ee7b7 !important;
+}
+
+/* Dropdown menus */
+.ocean [class*="absolute"][class*="z-50"][class*="dark:bg-gray-800"],
+.ocean [class*="absolute"][class*="z-"][class*="dark:bg-gray-800"] {
+  background-color: #0E1F38 !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-color: var(--oc-border-strong) !important;
+}
+
+.ocean [class*="absolute"][class*="z-"] button:hover,
+.ocean [class*="absolute"][class*="z-"] a:hover,
+.ocean [class*="absolute"][class*="z-"] [class*="hover\:bg-"]:hover {
+  background-color: rgba(0, 212, 255, 0.08) !important;
+}
+
+/* ============================================
+   BADGES & STATUS INDICATORS
+   ============================================ */
+
+.ocean .dark\:bg-green-900\/30 { background-color: rgba(52, 211, 153, 0.12) !important; }
+.ocean .dark\:text-green-400 { color: var(--oc-accent-green) !important; }
+
+.ocean .dark\:bg-red-900\/30 { background-color: rgba(255, 107, 107, 0.12) !important; }
+.ocean .dark\:text-red-400 { color: var(--oc-accent-red) !important; }
+
+.ocean .dark\:bg-amber-900\/30 { background-color: rgba(249, 171, 0, 0.12) !important; }
+.ocean .dark\:text-amber-400 { color: var(--oc-accent-warning) !important; }
+
+.ocean .dark\:bg-blue-900\/30 { background-color: rgba(0, 212, 255, 0.12) !important; }
+.ocean .dark\:text-blue-400 { color: var(--oc-accent-cyan) !important; }
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.ocean table thead {
+  background-color: var(--oc-bg-elevated) !important;
+}
+
+.ocean table th {
+  color: var(--oc-text-secondary) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+}
+
+.ocean table td {
+  color: var(--oc-text-primary) !important;
+  border-bottom-color: var(--oc-border-subtle) !important;
+}
+
+.ocean table tbody tr:hover {
+  background-color: var(--oc-bg-hover) !important;
+}
+
+/* ============================================
+   MODALS & OVERLAYS
+   ============================================ */
+
+.ocean [class*="bg-black/50"],
+.ocean [class*="bg-black\/50"] {
+  background-color: rgba(7, 18, 34, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+.ocean ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.ocean ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ocean ::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 2px;
+}
+
+.ocean ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.2);
+}
+
+.ocean * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.1) transparent;
+}
+
+/* ============================================
+   STAT CARDS / GRADIENT ICON BADGES
+   ============================================ */
+
+.ocean [class*="bg-gradient-to"] {
+  opacity: 0.9;
+}
+
+/* ============================================
+   SELECTION & HIGHLIGHTS
+   ============================================ */
+
+.ocean ::selection {
+  background-color: rgba(0, 212, 255, 0.3);
+  color: var(--oc-text-primary);
+}
+
+/* ============================================
+   TRANSITIONS
+   ============================================ */
+
+.ocean * {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ocean canvas,
+.ocean video,
+.ocean img,
+.ocean svg {
+  transition: none !important;
+}

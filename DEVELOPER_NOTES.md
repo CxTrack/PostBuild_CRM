@@ -438,7 +438,7 @@ See "Supabase Integration" section above. Auth state transitions can kill in-fli
 |---------|-------|
 | Branch | `CRM-Template-Configuration` |
 | Host | Netlify |
-| Domain | crm.easyaicrm.com |
+| Domain | crm.cxtrack.com |
 | Supabase Project | `zkpfzrbbupgiqkzqydji` |
 | Build Command | `npm run build` |
 | Output | `dist/` |

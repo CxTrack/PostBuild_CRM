@@ -6,6 +6,8 @@ import {
     Bot, PhoneIncoming, PhoneOutgoing, Clock, Package, MessageSquare
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { fetchTodayOutlookEvents, fetchOutlookEvents, type OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import { fetchTodayGoogleEvents, fetchGoogleEvents, type GoogleCalendarEvent } from '@/services/googleCalendar.service';
 import {
     DndContext,
     closestCenter,
@@ -37,6 +39,9 @@ import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import SendSMSModal from '@/components/sms/SendSMSModal';
+import AIQuarterback from '@/components/dashboard/AIQuarterback';
+import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
+import { useCoPilot } from '@/contexts/CoPilotContext';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
@@ -168,6 +173,7 @@ export const DashboardPage = () => {
     const { tasks, fetchTasks } = useTaskStore();
     const { fetchPipelineStats } = useDealStore();
     const { preferences, saveQuickActionsOrder } = usePreferencesStore();
+    const { isOpen: isCoPilotOpen } = useCoPilot();
 
     // Industry-specific labels
     const crmLabels = usePageLabels('crm');
@@ -187,6 +193,14 @@ export const DashboardPage = () => {
 
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSMSModal, setShowSMSModal] = useState(false);
+    const [outlookEvents, setOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
+    const [upcomingOutlookEvents, setUpcomingOutlookEvents] = useState<OutlookCalendarEvent[]>([]);
+    const [outlookNeedsReauth, setOutlookNeedsReauth] = useState(false);
+    const [outlookNoConnection, setOutlookNoConnection] = useState(false);
+    const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+    const [upcomingGoogleEvents, setUpcomingGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+    const [googleNeedsReauth, setGoogleNeedsReauth] = useState(false);
+    const [scheduleMode, setScheduleMode] = useState<'upcoming' | 'today'>('upcoming');
 
     // Define all quick actions with their module mapping
     const allQuickActions = [
@@ -298,19 +312,22 @@ export const DashboardPage = () => {
     };
 
     // Update quick actions when filtered actions or preferences change
+    // Hard cap at 5 visible quick actions
+    const MAX_QUICK_ACTIONS = 5;
+
     useEffect(() => {
         if (filteredQuickActions.length > 0) {
-            if (preferences.quickActionsOrder && preferences.quickActionsOrder.length > 0) {
-                // Reorder based on saved preferences, but only include enabled modules
-                const ordered = preferences.quickActionsOrder
-                    .map(id => filteredQuickActions.find(a => a.id === id))
-                    .filter((a): a is typeof filteredQuickActions[0] => a !== undefined);
-
-                const existingIds = new Set(preferences.quickActionsOrder);
-                const missing = filteredQuickActions.filter(a => !existingIds.has(a.id));
-                setQuickActions([...ordered, ...missing]);
+            const savedOrder = preferences.quickActionsOrder;
+            if (savedOrder && savedOrder.length > 0) {
+                // Build ordered list from saved preference - ONLY saved items, no appending extras
+                const ordered = savedOrder
+                    .map((id: string) => filteredQuickActions.find(a => a.id === id))
+                    .filter((a): a is typeof filteredQuickActions[0] => a !== undefined)
+                    .slice(0, MAX_QUICK_ACTIONS);
+                setQuickActions(ordered);
             } else {
-                setQuickActions(filteredQuickActions);
+                // No saved preference - use first 5 enabled actions as default
+                setQuickActions(filteredQuickActions.slice(0, MAX_QUICK_ACTIONS));
             }
         }
     }, [filteredQuickActions.length, enabledModuleIds.length, preferences.quickActionsOrder]);
@@ -330,8 +347,62 @@ export const DashboardPage = () => {
         return () => clearInterval(timer);
     }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchPipelineStats]);
 
+    // Fetch Outlook calendar events (today + upcoming 30 days)
+    useEffect(() => {
+        let cancelled = false;
+        const loadOutlookEvents = async () => {
+            try {
+                const result = await fetchTodayOutlookEvents();
+                if (cancelled) return;
+                setOutlookEvents(result.events);
+                setOutlookNeedsReauth(result.needsReauth);
+                setOutlookNoConnection(result.noConnection);
+
+                // Also fetch upcoming 30 days for the "Upcoming" toggle
+                const now = new Date();
+                const thirtyDaysOut = new Date(now);
+                thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                const upcoming = await fetchOutlookEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                if (!cancelled) setUpcomingOutlookEvents(upcoming);
+            } catch {
+                // Silently fail - Outlook integration is optional
+            }
+        };
+        if (currentOrganization?.id) {
+            loadOutlookEvents();
+        }
+        return () => { cancelled = true; };
+    }, [currentOrganization?.id]);
+
+    // Fetch Google Calendar events (today + upcoming 30 days)
+    useEffect(() => {
+        let cancelled = false;
+        const loadGoogleEvents = async () => {
+            try {
+                const result = await fetchTodayGoogleEvents();
+                if (cancelled) return;
+                setGoogleEvents(result.events);
+                setGoogleNeedsReauth(result.needsReauth);
+
+                // Also fetch upcoming 30 days for the "Upcoming" toggle
+                const now = new Date();
+                const thirtyDaysOut = new Date(now);
+                thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                const upcoming = await fetchGoogleEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                if (!cancelled) setUpcomingGoogleEvents(upcoming);
+            } catch {
+                // Silently fail - Google Calendar integration is optional
+            }
+        };
+        if (currentOrganization?.id) {
+            loadGoogleEvents();
+        }
+        return () => { cancelled = true; };
+    }, [currentOrganization?.id]);
+
     const activeCustomers = customers.filter(c => c.status === 'Active').length;
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());
+    const totalTodaysEvents = todaysEvents.length + outlookEvents.length + googleEvents.length;
     const pendingTasks = tasks.filter(t => t.status !== 'completed');
     const pipelineValue = quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
     const revenueValue = invoices
@@ -341,13 +412,48 @@ export const DashboardPage = () => {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const todaysCalls = calls.filter(c => new Date(c.created_at) >= startOfDay);
-    const upcomingAppointments = events
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    const todaysAppointments = events
         .filter(event => {
             const date = new Date(event.start_time);
-            return date >= startOfDay;
+            return date >= startOfDay && date <= endOfDay;
         })
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    // Helper to normalize external calendar events for display
+    const normalizeExternalEvent = (e: OutlookCalendarEvent | GoogleCalendarEvent) => ({
+        id: e.id,
+        title: e.title,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        location: e.location,
+        is_all_day: e.is_all_day,
+        organizer: e.organizer,
+        meeting_url: e.meeting_url,
+        web_link: e.web_link,
+        attendees: e.attendees,
+        source: e.source as 'outlook' | 'google',
+    });
+
+    // Merge local + Outlook + Google events for today's schedule
+    const mergedTodaysSchedule = [
+        ...todaysAppointments.map(e => ({ ...e, source: 'local' as const })),
+        ...outlookEvents.map(normalizeExternalEvent),
+        ...googleEvents.map(normalizeExternalEvent),
+    ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+    // Merge local + Outlook + Google for upcoming view (next 5 from now onward)
+    const mergedUpcoming = [
+        ...events.filter(e => new Date(e.start_time) >= startOfDay)
+            .map(e => ({ ...e, source: 'local' as const })),
+        ...upcomingOutlookEvents.map(normalizeExternalEvent),
+        ...upcomingGoogleEvents.map(normalizeExternalEvent),
+    ]
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 10);
+        .slice(0, 5);
+
+    // What to display based on toggle
+    const displayedSchedule = scheduleMode === 'today' ? mergedTodaysSchedule : mergedUpcoming;
 
     return (
         <PageContainer className="gap-4">
@@ -366,8 +472,8 @@ export const DashboardPage = () => {
                 </div>
             </div>
 
-            {/* Mini Stat Cards Row (6 Columns) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Mini Stat Cards Row (responsive to CoPilot panel) */}
+            <div className={`hidden md:grid md:grid-cols-3 gap-3 ${isCoPilotOpen ? '2xl:grid-cols-6' : 'lg:grid-cols-6'}`}>
                 <CompactStatCard
                     label={crmLabels.entityPlural}
                     value={customers.length}
@@ -378,7 +484,7 @@ export const DashboardPage = () => {
                 />
                 <CompactStatCard
                     label={calendarLabels.entityPlural}
-                    value={todaysEvents.length}
+                    value={totalTodaysEvents}
                     subValue="Today"
                     icon={Calendar}
                     color="green"
@@ -418,6 +524,24 @@ export const DashboardPage = () => {
                 />
             </div>
 
+            {/* Quick Actions Header + Config */}
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Quick Actions
+                </h3>
+                <QuickActionsConfigPopover
+                    allAvailableActions={filteredQuickActions.map(a => ({
+                        id: a.id,
+                        label: a.label,
+                        icon: a.icon,
+                    }))}
+                    selectedActionIds={quickActions.map(a => a.id)}
+                    onSelectionChange={(selectedIds) => {
+                        saveQuickActionsOrder(selectedIds);
+                    }}
+                />
+            </div>
+
             {/* Draggable Quick Actions */}
             <div className="mb-2">
                 <DndContext
@@ -429,14 +553,19 @@ export const DashboardPage = () => {
                         items={quickActions.map(a => a.id)}
                         strategy={rectSortingStrategy}
                     >
-                        <div className={`grid grid-cols-2 gap-3 ${quickActions.length <= 5 ? 'md:grid-cols-5' : quickActions.length <= 6 ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-4 lg:grid-cols-7'}`}>
-                            {quickActions.map((action) => (
-                                <SortableQuickAction key={action.id} action={action} />
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            {quickActions.map((action, index) => (
+                                <div key={action.id} className={index >= 4 ? 'hidden md:block' : ''}>
+                                    <SortableQuickAction action={action} />
+                                </div>
                             ))}
                         </div>
                     </SortableContext>
                 </DndContext>
             </div>
+
+            {/* AI Quarterback - Proactive Business Insights */}
+            <AIQuarterback compact />
 
             {/* Main Grid Layout */}
             <div className="flex flex-col gap-4">
@@ -460,7 +589,16 @@ export const DashboardPage = () => {
                                     const isInvoice = 'invoice_number' in item;
 
                                     return (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <div
+                                            key={i}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isCall) navigate(`/dashboard/calls/${item.id}`);
+                                                else if (isQuote) navigate(`/quotes/${item.id}`);
+                                                else if (isInvoice) navigate(`/invoices/${item.id}`);
+                                            }}
+                                            className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                        >
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCall ? 'bg-blue-100 text-blue-600' :
                                                 isQuote ? 'bg-purple-100 text-purple-600' :
                                                     'bg-green-100 text-green-600'
@@ -471,12 +609,18 @@ export const DashboardPage = () => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                    {isCall ? 'Call Logged' :
-                                                        isQuote ? `Quote #${(item as any).quote_number}` :
-                                                            isInvoice ? `Invoice #${(item as any).invoice_number}` : 'Activity'}
+                                                    {isCall
+                                                        ? ((item as any).customers
+                                                            ? ([(item as any).customers.first_name, (item as any).customers.last_name].filter(Boolean).join(' ')
+                                                                || (item as any).customers.name || (item as any).customers.company)
+                                                            : (item as any).customer_phone || 'Unknown Customer')
+                                                        : isQuote ? `Quote #${(item as any).quote_number}`
+                                                            : isInvoice ? `Invoice #${(item as any).invoice_number}` : 'Activity'}
                                                 </p>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                    {(item as any).customer_name || 'Unknown Customer'}
+                                                    {isCall
+                                                        ? 'Call Logged'
+                                                        : ((item as any).customer_name || 'Unknown Customer')}
                                                 </p>
                                             </div>
                                             <span className="text-xs text-gray-400 whitespace-nowrap">
@@ -490,51 +634,96 @@ export const DashboardPage = () => {
                         </div>
                     </CompactWidget>
 
-                    {/* Today's Schedule */}
+                    {/* Schedule Widget with Today/Upcoming Toggle */}
                     <CompactWidget
-                        title="Today's Schedule"
+                        title=""
                         className="h-[350px] border border-gray-200 dark:border-gray-800 shadow-sm"
-                        onClick={() => navigate('/dashboard/calendar')}
                         action={
-                            <button onClick={(e) => { e.stopPropagation(); navigate('/dashboard/calendar'); }} className="text-primary-600 hover:text-primary-700">
-                                <Plus size={16} />
-                            </button>
+                            <div className="flex items-center gap-2 w-full">
+                                <div className="flex items-center gap-1 flex-1">
+                                    <button
+                                        onClick={() => setScheduleMode('today')}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                            scheduleMode === 'today'
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        Today
+                                    </button>
+                                    <button
+                                        onClick={() => setScheduleMode('upcoming')}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                                            scheduleMode === 'upcoming'
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        Upcoming
+                                    </button>
+                                </div>
+                                <button onClick={() => navigate('/dashboard/calendar')} className="text-primary-600 hover:text-primary-700">
+                                    <Calendar size={16} />
+                                </button>
+                            </div>
                         }
                     >
                         <div className="h-full overflow-y-auto scrollbar-thin">
-                            {upcomingAppointments.length === 0 ? (
+                            {outlookNeedsReauth && !outlookNoConnection && (
+                                <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        Reconnect your Microsoft account in{' '}
+                                        <span className="underline cursor-pointer" onClick={() => navigate('/dashboard/settings?tab=communications&subTab=email')}>Settings</span>
+                                        {' '}to sync your Outlook calendar.
+                                    </p>
+                                </div>
+                            )}
+                            {googleNeedsReauth && (
+                                <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        Reconnect your Google account in{' '}
+                                        <span className="underline cursor-pointer" onClick={() => navigate('/dashboard/settings?tab=communications&subTab=email')}>Settings</span>
+                                        {' '}to sync your Google Calendar.
+                                    </p>
+                                </div>
+                            )}
+                            {displayedSchedule.length === 0 && !(outlookNeedsReauth && !outlookNoConnection) && !googleNeedsReauth ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                     <Calendar size={24} className="mb-2 opacity-50" />
-                                    No upcoming appointments
+                                    {scheduleMode === 'today' ? 'No appointments today' : 'No upcoming appointments'}
                                 </div>
                             ) : (
                                 <>
-                                    {upcomingAppointments.map(event => (
-                                        <div key={event.id} className="flex gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                            <div className="flex flex-col items-center min-w-[3rem] pr-3 border-r border-gray-100 dark:border-gray-800">
-                                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase">
+                                    {displayedSchedule.map(event => (
+                                        <div
+                                            key={`${event.source}-${event.id}`}
+                                            onClick={() => (event.source === 'outlook' || event.source === 'google') && (event as any).web_link ? window.open((event as any).web_link, '_blank') : navigate('/dashboard/calendar')}
+                                            className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex flex-col items-center justify-center w-10 shrink-0">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase leading-tight">
                                                     {format(new Date(event.start_time), 'MMM')}
                                                 </span>
-                                                <span className="text-lg font-bold text-primary-600">
-                                                    {format(new Date(event.start_time), 'dd')}
+                                                <span className="text-base font-bold text-primary-600 leading-tight">
+                                                    {format(new Date(event.start_time), 'd')}
                                                 </span>
                                             </div>
-                                            <div className="flex-1 min-w-0 py-0.5">
-                                                <div className="flex justify-between items-start">
-                                                    <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 text-sm">{event.title}</p>
-                                                    <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded ml-2">
-                                                        {format(new Date(event.start_time), 'HH:mm')}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    <Users size={12} />
-                                                    {event.customer_id ? (customers.find(c => c.id === event.customer_id)?.name || 'Unknown User') : 'No Customer'}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{event.title}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                    {(event as any).is_all_day
+                                                        ? 'All day'
+                                                        : format(new Date(event.start_time), 'h:mm a')}
+                                                    {event.source === 'outlook' && (event as any).organizer
+                                                        ? ` · ${(event as any).organizer}`
+                                                        : (event as any).customer_id
+                                                            ? ` · ${customers.find(c => c.id === (event as any).customer_id)?.name || ''}`
+                                                            : ''}
                                                 </p>
                                             </div>
                                         </div>
                                     ))}
-                                    {/* Bottom padding spacer */}
-                                    <div className="h-4" />
+                                    <div className="h-2" />
                                 </>
                             )}
                         </div>
@@ -560,7 +749,7 @@ export const DashboardPage = () => {
                         ) : (
                             <>
                                 {pendingTasks.map(task => (
-                                    <div key={task.id} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                    <div key={task.id} onClick={() => navigate('/dashboard/tasks')} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm ${task.priority === 'urgent' ? 'bg-red-500' :
                                             task.priority === 'high' ? 'bg-orange-500' : 'bg-green-500'
                                             }`} />

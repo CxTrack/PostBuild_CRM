@@ -16,6 +16,8 @@ export interface ColumnDef<T = any> {
     defaultWidth?: number;
     align?: 'left' | 'center' | 'right';
     render: (row: T, index: number) => React.ReactNode;
+    headerRender?: () => React.ReactNode;
+    resizable?: boolean; // default true
 }
 
 interface ResizableTableProps<T = any> {
@@ -28,6 +30,7 @@ interface ResizableTableProps<T = any> {
     storageKey?: string; // For persisting column widths
     className?: string;
     maxHeight?: string;
+    rowClassName?: (row: T, index: number) => string;
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -47,6 +50,7 @@ export const ResizableTable = <T extends any>({
     storageKey,
     className = '',
     maxHeight = 'calc(100vh - 380px)',
+    rowClassName,
 }: ResizableTableProps<T>) => {
     // Initialize column widths from localStorage or defaults
     const getInitialWidths = useCallback(() => {
@@ -155,18 +159,22 @@ export const ResizableTable = <T extends any>({
                         style={{ width: columnWidths[col.id] || col.defaultWidth || 150 }}
                         onClick={() => onSort && onSort(col.id)}
                     >
-                        <span className={`text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate flex-1 flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'
-                            }`}>
-                            {col.header}
-                            {sortColumn === col.id && (
-                                <span className="text-gray-400">
-                                    {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                            )}
-                        </span>
+                        {col.headerRender ? (
+                            col.headerRender()
+                        ) : (
+                            <span className={`text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate flex-1 flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'
+                                }`}>
+                                {col.header}
+                                {sortColumn === col.id && (
+                                    <span className="text-gray-400">
+                                        {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
+                                )}
+                            </span>
+                        )}
 
                         {/* Resize Handle */}
-                        {index < columns.length - 1 && (
+                        {index < columns.length - 1 && col.resizable !== false && (
                             <div
                                 className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group ${resizing === col.id ? 'bg-blue-500' : 'hover:bg-blue-400'
                                     }`}
@@ -195,7 +203,7 @@ export const ResizableTable = <T extends any>({
                             key={(row as any).id || rowIndex}
                             onClick={() => onRowClick?.(row)}
                             className={`flex items-center border-b border-gray-100 dark:border-gray-800 last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
-                                } transition-colors`}
+                                } transition-colors ${rowClassName ? rowClassName(row, rowIndex) : ''}`}
                             style={{ minWidth: totalWidth }}
                         >
                             {columns.map((col) => (
@@ -248,6 +256,17 @@ export const defaultProductColumns: Omit<ColumnDef, 'render'>[] = [
     { id: 'stock', header: 'Stock', defaultWidth: 60, minWidth: 50, align: 'center' },
     { id: 'status', header: 'Status', defaultWidth: 80, minWidth: 60 },
     { id: 'actions', header: 'Actions', defaultWidth: 70, minWidth: 60, align: 'right' },
+];
+
+export const defaultCustomerColumns: Omit<ColumnDef, 'render'>[] = [
+    { id: 'select', header: '', defaultWidth: 44, minWidth: 44, resizable: false },
+    { id: 'name', header: 'Name', defaultWidth: 220, minWidth: 150 },
+    { id: 'type', header: 'Type', defaultWidth: 110, minWidth: 80 },
+    { id: 'contact', header: 'Contact', defaultWidth: 200, minWidth: 130 },
+    { id: 'status', header: 'Status', defaultWidth: 90, minWidth: 70 },
+    { id: 'assigned_to', header: 'Assigned To', defaultWidth: 140, minWidth: 100 },
+    { id: 'total_spent', header: 'Total Spent', defaultWidth: 110, minWidth: 80, align: 'right' },
+    { id: 'actions', header: 'Actions', defaultWidth: 120, minWidth: 80, align: 'right' },
 ];
 
 export default ResizableTable;

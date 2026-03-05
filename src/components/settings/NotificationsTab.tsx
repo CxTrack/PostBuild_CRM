@@ -70,7 +70,7 @@ export const NotificationsTab: React.FC = () => {
     );
 
     return (
-        <div className="space-y-6 max-w-4xl">
+        <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     Notification Preferences

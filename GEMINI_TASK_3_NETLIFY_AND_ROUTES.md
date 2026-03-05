@@ -86,7 +86,7 @@ deploy_crm
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 ```
 
-**Why:** Google Maps API keys are designed to be client-side (restricted by HTTP referrer in Google Cloud Console). They will always appear in the built HTML. Disabling smart detection prevents false positives. The key is already restricted to the easyaicrm.com domain in Google Cloud Console.
+**Why:** Google Maps API keys are designed to be client-side (restricted by HTTP referrer in Google Cloud Console). They will always appear in the built HTML. Disabling smart detection prevents false positives. The key is already restricted to the cxtrack.com domain in Google Cloud Console.
 
 ### C2. Update Content-Security-Policy to allow Google Maps
 

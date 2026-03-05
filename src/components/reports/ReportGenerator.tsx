@@ -41,7 +41,7 @@ const FILTER_OPTIONS: Record<ReportType, { id: string; label: string; options: s
         { id: 'customer_type', label: 'Customer Type', options: ['All', 'Business', 'Personal'] },
     ],
     quotes: [
-        { id: 'status', label: 'Status', options: ['All', 'Draft', 'Sent', 'Accepted', 'Declined'] },
+        { id: 'status', label: 'Status', options: ['All', 'draft', 'sent', 'accepted', 'declined'] },
         { id: 'customer_type', label: 'Customer Type', options: ['All', 'Business', 'Personal'] },
     ],
     customers: [
@@ -273,7 +273,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="relative">
+        <div className={`relative ${isOpen ? 'z-40' : ''}`}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-1.5 font-medium border border-gray-200 dark:border-gray-700

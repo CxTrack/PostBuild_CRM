@@ -215,8 +215,12 @@ export const shareLinkService = {
     return data || [];
   },
 
-  getShareUrl(token: string, documentType: 'quote' | 'invoice'): string {
+  getShareUrl(token: string, documentType: 'quote' | 'invoice', payUrl?: string): string {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/share/${documentType}/${token}`;
+    const url = `${baseUrl}/share/${documentType}/${token}`;
+    if (payUrl) {
+      return `${url}?pay_url=${encodeURIComponent(payUrl)}`;
+    }
+    return url;
   },
 };

@@ -51,6 +51,8 @@ export const pricingTiers = [
             'Basic invoices & quotes',
             '10 invoices/quotes per month',
             'Voice AI Agent (60 min) - FIRST MONTH ONLY',
+            'AI Quarterback (CoPilot)',
+            '50K AI tokens/month',
         ],
         cta: 'Start Free',
         skipPayment: true,
@@ -68,6 +70,8 @@ export const pricingTiers = [
             '50 invoices & quotes/month',
             'Voice AI Agent (100 min/month)',
             'Inventory & pipeline access',
+            'AI Quarterback (CoPilot)',
+            '500K AI tokens/month',
         ],
         pricingNote: '$50/mo for first 3 months, then $150/mo',
         cta: 'Select Business',
@@ -86,6 +90,8 @@ export const pricingTiers = [
             'Unlimited invoices & quotes',
             'Voice AI Agent (500 min/month)',
             'Full suite of automations',
+            'AI Quarterback (CoPilot)',
+            '1M AI tokens/month',
         ],
         cta: 'Select Elite Premium',
         highlighted: true,
@@ -103,9 +109,85 @@ export const pricingTiers = [
             'Advanced automations',
             'Dedicated account manager',
             'Skool community access',
+            'AI Quarterback (CoPilot)',
+            '1M AI tokens/month',
         ],
         cta: 'Select Enterprise',
     },
+];
+
+// Canadian provinces with primary area codes for Twilio phone number search
+// Primary codes chosen based on Twilio availability (backend has full fallback list)
+export const CA_PROVINCES = [
+    { code: 'AB', name: 'Alberta', areaCode: 587 },
+    { code: 'BC', name: 'British Columbia', areaCode: 604 },
+    { code: 'MB', name: 'Manitoba', areaCode: 431 },
+    { code: 'NB', name: 'New Brunswick', areaCode: 506 },
+    { code: 'NL', name: 'Newfoundland & Labrador', areaCode: 709 },
+    { code: 'NS', name: 'Nova Scotia', areaCode: 902 },
+    { code: 'NT', name: 'Northwest Territories', areaCode: 867 },
+    { code: 'NU', name: 'Nunavut', areaCode: 867 },
+    { code: 'ON', name: 'Ontario', areaCode: 647 },
+    { code: 'PE', name: 'Prince Edward Island', areaCode: 902 },
+    { code: 'QC', name: 'Quebec', areaCode: 438 },
+    { code: 'SK', name: 'Saskatchewan', areaCode: 639 },
+    { code: 'YT', name: 'Yukon', areaCode: 867 },
+];
+
+// US states with primary area codes for Twilio phone number search
+// Primary codes chosen based on Twilio availability (backend has full fallback list)
+export const US_STATES = [
+    { code: 'AL', name: 'Alabama', areaCode: 205 },
+    { code: 'AK', name: 'Alaska', areaCode: 907 },
+    { code: 'AZ', name: 'Arizona', areaCode: 602 },
+    { code: 'AR', name: 'Arkansas', areaCode: 501 },
+    { code: 'CA', name: 'California', areaCode: 323 },
+    { code: 'CO', name: 'Colorado', areaCode: 720 },
+    { code: 'CT', name: 'Connecticut', areaCode: 203 },
+    { code: 'DE', name: 'Delaware', areaCode: 302 },
+    { code: 'FL', name: 'Florida', areaCode: 786 },
+    { code: 'GA', name: 'Georgia', areaCode: 470 },
+    { code: 'HI', name: 'Hawaii', areaCode: 808 },
+    { code: 'ID', name: 'Idaho', areaCode: 208 },
+    { code: 'IL', name: 'Illinois', areaCode: 312 },
+    { code: 'IN', name: 'Indiana', areaCode: 317 },
+    { code: 'IA', name: 'Iowa', areaCode: 515 },
+    { code: 'KS', name: 'Kansas', areaCode: 316 },
+    { code: 'KY', name: 'Kentucky', areaCode: 502 },
+    { code: 'LA', name: 'Louisiana', areaCode: 504 },
+    { code: 'ME', name: 'Maine', areaCode: 207 },
+    { code: 'MD', name: 'Maryland', areaCode: 301 },
+    { code: 'MA', name: 'Massachusetts', areaCode: 617 },
+    { code: 'MI', name: 'Michigan', areaCode: 313 },
+    { code: 'MN', name: 'Minnesota', areaCode: 612 },
+    { code: 'MS', name: 'Mississippi', areaCode: 601 },
+    { code: 'MO', name: 'Missouri', areaCode: 314 },
+    { code: 'MT', name: 'Montana', areaCode: 406 },
+    { code: 'NE', name: 'Nebraska', areaCode: 402 },
+    { code: 'NV', name: 'Nevada', areaCode: 725 },
+    { code: 'NH', name: 'New Hampshire', areaCode: 603 },
+    { code: 'NJ', name: 'New Jersey', areaCode: 201 },
+    { code: 'NM', name: 'New Mexico', areaCode: 505 },
+    { code: 'NY', name: 'New York', areaCode: 332 },
+    { code: 'NC', name: 'North Carolina', areaCode: 980 },
+    { code: 'ND', name: 'North Dakota', areaCode: 701 },
+    { code: 'OH', name: 'Ohio', areaCode: 216 },
+    { code: 'OK', name: 'Oklahoma', areaCode: 405 },
+    { code: 'OR', name: 'Oregon', areaCode: 503 },
+    { code: 'PA', name: 'Pennsylvania', areaCode: 215 },
+    { code: 'RI', name: 'Rhode Island', areaCode: 401 },
+    { code: 'SC', name: 'South Carolina', areaCode: 803 },
+    { code: 'SD', name: 'South Dakota', areaCode: 605 },
+    { code: 'TN', name: 'Tennessee', areaCode: 615 },
+    { code: 'TX', name: 'Texas', areaCode: 469 },
+    { code: 'UT', name: 'Utah', areaCode: 385 },
+    { code: 'VT', name: 'Vermont', areaCode: 802 },
+    { code: 'VA', name: 'Virginia', areaCode: 571 },
+    { code: 'WA', name: 'Washington', areaCode: 206 },
+    { code: 'WV', name: 'West Virginia', areaCode: 304 },
+    { code: 'WI', name: 'Wisconsin', areaCode: 414 },
+    { code: 'WY', name: 'Wyoming', areaCode: 307 },
+    { code: 'DC', name: 'Washington, D.C.', areaCode: 202 },
 ];
 
 export function detectCountryFromLocale(): string {
@@ -151,3 +233,15 @@ export async function detectCountryFromIP(): Promise<string> {
     }
     return detectCountryFromLocale();
 }
+
+// Color for each onboarding step in the progress ribbon
+// Follows the CxTrack marketing site brand palette
+export const STEP_COLORS: Record<string, string> = {
+    account:   '#1E90FF', // Sapphire Blue
+    profile:   '#C850C0', // Purple
+    selection: '#FF8C00', // Orange
+    industry:  '#00CED1', // Cyan
+    plan:      '#FFD700', // Electric Gold
+    voice:     '#C850C0', // Purple
+    checkout:  '#22C55E', // Green
+};

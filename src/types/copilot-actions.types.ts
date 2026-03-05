@@ -1,4 +1,13 @@
-export type ActionType = 'create_customer' | 'create_deal' | 'create_task' | 'add_note';
+export type ActionType =
+  | 'create_customer'
+  | 'create_deal'
+  | 'create_task'
+  | 'update_task'
+  | 'add_note'
+  | 'send_email'
+  | 'send_sms'
+  | 'draft_call_script'
+  | 'update_voice_agent';
 
 export type ActionStatus = 'proposed' | 'executing' | 'completed' | 'failed' | 'cancelled';
 
@@ -6,7 +15,7 @@ export interface ActionField {
   key: string;
   label: string;
   value: any;
-  type: 'text' | 'number' | 'date' | 'select';
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'hidden';
   required: boolean;
   options?: string[];
   editable: boolean;
@@ -23,4 +32,25 @@ export interface ActionResult {
   message: string;
   recordId?: string;
   recordType?: string;
+}
+
+// Quarterback choice system
+export type QuarterbackChoiceType = 'draft_email' | 'draft_sms' | 'draft_call_script' | 'other';
+
+export interface ChoiceOption {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  disabled?: boolean;
+  disabledReason?: string;
+}
+
+// Structured choices with multi-select support (personalization interview)
+export interface ChoicesConfig {
+  options: ChoiceOption[];
+  multiSelect?: boolean;
+  allowOther?: boolean;
+  otherPlaceholder?: string;
+  progressLabel?: string;
 }

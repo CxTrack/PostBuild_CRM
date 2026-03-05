@@ -21,6 +21,8 @@ interface CustomerStore {
   createCustomer: (customer: Partial<Customer>) => Promise<Customer | null>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
+  deleteCustomers: (ids: string[]) => Promise<{ succeeded: number; failed: number }>;
+  bulkReassignCustomers: (ids: string[], newAssignedTo: string) => Promise<{ succeeded: number; failed: number }>;
 
   fetchNotes: (customerId: string) => Promise<void>;
   addNote: (note: Partial<CustomerNote>) => Promise<void>;
@@ -64,7 +66,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
@@ -90,7 +92,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
         .eq('id', id)
         .eq('organization_id', organizationId)
         .maybeSingle();
@@ -121,12 +123,20 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customer.last_name
       ].filter(Boolean).join(' ').trim() || 'New Customer';
 
+      // Auto-assign to current user if not explicitly set
+      let assignedTo = customer.assigned_to;
+      if (assignedTo === undefined) {
+        const { data: { user } } = await supabase.auth.getUser();
+        assignedTo = user?.id || null;
+      }
+
       const insertData: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { organization_id: string } = {
         ...customer,
         name: fullName,
         organization_id: organizationId,
         country: customer.country || 'CA',
         status: customer.status || 'Active',
+        assigned_to: assignedTo,
       };
 
       const { data, error } = await supabase
@@ -189,10 +199,31 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     const organizationId = useOrganizationStore.getState().currentOrganization?.id;
     if (!organizationId) {
       set({ error: 'No organization selected', loading: false });
-      return;
+      throw new Error('No organization selected');
     }
 
     try {
+      // Delete customer-owned tables (meaningless without customer)
+      await supabase.from('customer_notes').delete().eq('customer_id', id);
+      await supabase.from('customer_contacts').delete().eq('customer_id', id);
+      await supabase.from('customer_documents').delete().eq('customer_id', id);
+      await supabase.from('customer_files').delete().eq('customer_id', id);
+      await supabase.from('customer_subscriptions').delete().eq('customer_id', id);
+      await supabase.from('sms_consent').delete().eq('customer_id', id);
+      await supabase.from('tasks').delete().eq('customer_id', id);
+      await supabase.from('pipeline_items').delete().eq('customer_id', id);
+      await supabase.from('calendar_events').delete().eq('customer_id', id);
+
+      // Unlink reference tables (preserve records, set customer_id to null)
+      await supabase.from('calls').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('conversations').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('email_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('invoices').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('payments').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('quotes').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('sms_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('support_tickets').update({ customer_id: null }).eq('customer_id', id);
+
       const { error } = await supabase
         .from('customers')
         .delete()
@@ -205,11 +236,62 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         customers: state.customers.filter((c) => c.id !== id),
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
-      set({ error: message });
+      const message = error instanceof Error ? error.message : 'Failed to delete customer. It may have associated quotes or invoices.';
+      set({ error: message, loading: false });
+      throw new Error(message);
     } finally {
       set({ loading: false });
     }
+  },
+
+  deleteCustomers: async (ids: string[]) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) throw new Error('No organization selected');
+
+    const { data, error } = await supabase.rpc('bulk_delete_customers', {
+      p_customer_ids: ids,
+    });
+
+    if (error) throw error;
+
+    const result = data as { succeeded: number; failed: number };
+
+    if (result.succeeded > 0) {
+      const deletedSet = new Set(ids);
+      set((state) => ({
+        customers: state.customers.filter((c) => !deletedSet.has(c.id)),
+      }));
+    }
+
+    return result;
+  },
+
+  bulkReassignCustomers: async (ids: string[], newAssignedTo: string) => {
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) throw new Error('No organization selected');
+
+    const { data, error } = await supabase.rpc('bulk_reassign_customers', {
+      p_customer_ids: ids,
+      p_new_assigned_to: newAssignedTo,
+    });
+
+    if (error) throw error;
+
+    const result = data as { succeeded: number; failed: number };
+
+    if (result.succeeded > 0) {
+      // Update local state
+      const idSet = new Set(ids);
+      set((state) => ({
+        customers: state.customers.map((c) =>
+          idSet.has(c.id) ? { ...c, assigned_to: newAssignedTo } : c
+        ),
+      }));
+      // Refetch to get updated assigned_user joins
+      await get().fetchCustomers();
+    }
+
+    return result;
   },
 
   fetchNotes: async (customerId: string) => {

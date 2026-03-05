@@ -4,7 +4,9 @@ import {
   ArrowLeft, Edit, Mail, Phone, Calendar,
   FileText, MessageSquare, CheckSquare, Activity, DollarSign,
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
-  TrendingUp, Upload, Download, File, Image, FileSpreadsheet
+  TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
+  AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
+  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck, Bot, PhoneCall, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -18,17 +20,28 @@ import { formatPhoneDisplay } from '@/utils/phone.utils';
 import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
+import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
+import SendEmailModal from '@/components/email/SendEmailModal';
 import AICustomerSummary from '@/components/customers/AICustomerSummary';
 import RecentCallsSection from '@/components/customers/RecentCallsSection';
+import LogCallModal from '@/components/calls/LogCallModal';
+import { useCallStore } from '@/stores/callStore';
+import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useIndustryLabel } from '@/hooks/useIndustryLabel';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
+import { retellService } from '@/services/retell.service';
+import { useVoiceAgentStore } from '@/stores/voiceAgentStore';
 import type { Customer } from '@/types/database.types';
 import type { Quote, Invoice } from '@/types/app.types';
 import type { Task } from '@/stores/taskStore';
+import { SmsConsentBadge } from '@/components/customer/SmsConsentBadge';
+import { useSmsConsentStore } from '@/stores/smsConsentStore';
 
 type TabType = 'overview' | 'communications' | 'documents' | 'tasks' | 'activity';
 
@@ -38,11 +51,12 @@ export const CustomerProfile: React.FC = () => {
   const quotesLabel = useIndustryLabel('quotes');
   const quotesLabels = usePageLabels('quotes');
   const invoicesLabels = usePageLabels('invoices');
-  const { visibleModules } = useVisibleModules();
+  const { visibleModules, planTier } = useVisibleModules();
   const enabledModuleIds = visibleModules.map(m => m.id);
   const {
     currentCustomer,
     fetchCustomerById,
+    updateCustomer,
     loading,
     notes,
     fetchNotes,
@@ -57,6 +71,8 @@ export const CustomerProfile: React.FC = () => {
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
   const { fetchTasks } = useTaskStore();
+  const { currentOrganization, currentMembership, teamMembers } = useOrganizationStore();
+  const { consentCache, fetchConsent } = useSmsConsentStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -64,7 +80,17 @@ export const CustomerProfile: React.FC = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [showSMSModal, setShowSMSModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailReplyTo, setEmailReplyTo] = useState<{ subject: string; messageId?: string; conversationId?: string; senderEmail?: string } | undefined>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [summaryRefreshTrigger, setSummaryRefreshTrigger] = useState(0);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
+  const [showAICallModal, setShowAICallModal] = useState(false);
+  const [aiCallLoading, setAiCallLoading] = useState(false);
+  const [aiCallReason, setAiCallReason] = useState('');
+  const assignDropdownRef = useRef<HTMLDivElement>(null);
+  const { confirm: confirmDeleteNote, DialogComponent: DeleteNoteDialog } = useConfirmDialog();
 
   useEffect(() => {
     if (id) {
@@ -77,6 +103,42 @@ export const CustomerProfile: React.FC = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (id && currentOrganization?.id) {
+      fetchConsent(id, currentOrganization.id);
+    }
+  }, [id, currentOrganization?.id]);
+
+  // Close assign dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (assignDropdownRef.current && !assignDropdownRef.current.contains(e.target as Node)) {
+        setShowAssignDropdown(false);
+      }
+    };
+    if (showAssignDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAssignDropdown]);
+
+  const canReassign = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
+
+  const handleReassign = async (newUserId: string | null) => {
+    if (!id) return;
+    setReassigning(true);
+    try {
+      await updateCustomer(id, { assigned_to: newUserId });
+      await fetchCustomerById(id);
+      toast.success('Customer reassigned successfully');
+    } catch (err) {
+      toast.error('Failed to reassign customer');
+    } finally {
+      setReassigning(false);
+      setShowAssignDropdown(false);
+    }
+  };
+
   if (loading || !currentCustomer) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -87,6 +149,8 @@ export const CustomerProfile: React.FC = () => {
 
   const customerQuotes = quotes.filter((q: Quote) => q.customer_id === id);
   const customerInvoices = invoices.filter((inv: Invoice) => inv.customer_id === id);
+  const smsConsentKey = currentOrganization?.id ? `${id}:${currentOrganization.id}` : '';
+  const smsOptedOut = smsConsentKey ? consentCache[smsConsentKey]?.status === 'opted_out' : false;
   const totalValue = customerInvoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
   const pendingInvoices = customerInvoices.filter((inv: Invoice) => inv.status !== 'paid').reduce((sum: number, inv: Invoice) => sum + inv.amount_due, 0);
 
@@ -106,17 +170,44 @@ export const CustomerProfile: React.FC = () => {
     setShowAddTaskModal(true);
   };
 
+  const handleMakeAICall = async () => {
+    if (!currentOrganization?.id || !currentCustomer?.phone) return;
+    setAiCallLoading(true);
+    try {
+      const result = await retellService.makeOutboundCall({
+        organizationId: currentOrganization.id,
+        toNumber: currentCustomer.phone,
+        customerId: currentCustomer.id,
+        customerName: currentCustomer.name,
+        callReason: aiCallReason || undefined,
+      });
+      if (result.success) {
+        toast.success(`AI agent is calling ${currentCustomer.name}...`);
+        setShowAICallModal(false);
+        setAiCallReason('');
+      } else if (result.notConfigured) {
+        toast.error('Voice AI is not configured. Set up your agent in Settings first.');
+      } else {
+        toast.error(result.error || 'Failed to initiate call');
+      }
+    } catch {
+      toast.error('Failed to initiate AI call');
+    } finally {
+      setAiCallLoading(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
-              <ArrowLeft size={20} className="mr-2" />
-              Back to Customers
+              <ArrowLeft size={20} className="mr-2 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Customers</span>
             </button>
 
             <div className="flex items-center space-x-2">
@@ -127,16 +218,16 @@ export const CustomerProfile: React.FC = () => {
           </div>
         </div>
 
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-xl font-bold shadow-sm">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-sm flex-shrink-0">
                 {currentCustomer.name.charAt(0).toUpperCase()}
               </div>
 
               <div>
-                <div className="flex items-center space-x-3">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                     {currentCustomer.name}
                   </h1>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${currentCustomer.status === 'Active'
@@ -145,24 +236,86 @@ export const CustomerProfile: React.FC = () => {
                     }`}>
                     {currentCustomer.status}
                   </span>
+
+                  {/* Assigned User */}
+                  <div className={`relative ${showAssignDropdown ? 'z-40' : ''}`} ref={assignDropdownRef}>
+                    <button
+                      onClick={() => canReassign && setShowAssignDropdown(!showAssignDropdown)}
+                      className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                        currentCustomer.assigned_user
+                          ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30'
+                          : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+                      } ${canReassign ? 'hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer' : 'cursor-default'}`}
+                      title={canReassign ? 'Click to reassign' : (currentCustomer.assigned_user?.full_name || 'Unassigned')}
+                    >
+                      {currentCustomer.assigned_user?.avatar_url ? (
+                        <img
+                          src={currentCustomer.assigned_user.avatar_url}
+                          alt=""
+                          className="w-3.5 h-3.5 rounded-full object-cover"
+                        />
+                      ) : (
+                        <UserCheck size={10} />
+                      )}
+                      <span>{currentCustomer.assigned_user?.full_name || 'Unassigned'}</span>
+                    </button>
+
+                    {showAssignDropdown && canReassign && (
+                      <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
+                        <button
+                          onClick={() => handleReassign(null)}
+                          className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                            <X size={10} className="text-gray-400" />
+                          </div>
+                          <span>Unassigned</span>
+                        </button>
+                        {teamMembers.map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => handleReassign(member.id)}
+                            disabled={reassigning}
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 ${
+                              currentCustomer.assigned_to === member.id
+                                ? 'text-primary-600 dark:text-primary-400 font-medium'
+                                : 'text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {member.avatar_url ? (
+                              <img src={member.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            ) : (
+                              <div
+                                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+                                style={{ backgroundColor: member.color }}
+                              >
+                                {(member.full_name || member.email).charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="truncate">{member.full_name || member.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-4 text-xs mt-0.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs mt-0.5">
                   {currentCustomer.email && (
-                    <a href={`mailto:${currentCustomer.email}`} className="text-gray-500 hover:text-primary-600 flex items-center">
-                      <Mail size={12} className="mr-1" /> {currentCustomer.email}
+                    <a href={`mailto:${currentCustomer.email}`} className="text-gray-500 hover:text-primary-600 flex items-center truncate max-w-[220px] sm:max-w-none">
+                      <Mail size={12} className="mr-1 flex-shrink-0" /> {currentCustomer.email}
                     </a>
                   )}
                   {currentCustomer.phone && (
                     <span className="text-gray-500 flex items-center">
-                      <Phone size={12} className="mr-1" /> {formatPhoneDisplay(currentCustomer.phone)}
+                      <Phone size={12} className="mr-1 flex-shrink-0" /> {formatPhoneDisplay(currentCustomer.phone)}
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-6 mr-6 border-r border-gray-100 dark:border-gray-700 pr-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 sm:mr-6 sm:border-r border-gray-100 dark:border-gray-700 sm:pr-6 w-full sm:w-auto border-b sm:border-b-0 pb-3 sm:pb-0">
                 <div className="text-center">
                   <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">Value</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">${totalValue.toLocaleString()}</p>
@@ -177,30 +330,31 @@ export const CustomerProfile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 {currentCustomer.phone && (
                   <button
-                    onClick={() => setShowSMSModal(true)}
-                    className="p-2 text-gray-500 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors"
-                    title="Send SMS"
+                    onClick={() => !smsOptedOut && setShowSMSModal(true)}
+                    disabled={smsOptedOut}
+                    className={`p-2 rounded-lg transition-colors ${smsOptedOut ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400'}`}
+                    title={smsOptedOut ? 'SMS disabled - customer has opted out' : 'Send SMS'}
                   >
                     <MessageSquare size={18} />
                   </button>
                 )}
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                  className="flex items-center px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                 >
-                  <Edit size={16} className="mr-2" />
-                  Edit Profile
+                  <Edit size={16} className="sm:mr-2" />
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6">
-          <div className="flex items-center space-x-8 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 sm:px-6">
+          <div className="flex items-center gap-1 sm:gap-8 overflow-x-auto scrollbar-hide border-b border-gray-200 dark:border-gray-700">
             {[
               { id: 'overview', label: 'Overview', icon: FileText },
               { id: 'communications', label: 'Communications', icon: MessageSquare },
@@ -213,12 +367,12 @@ export const CustomerProfile: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center py-4 border-b-2 transition-colors ${activeTab === tab.id
+                  className={`flex items-center py-3 sm:py-4 px-2 sm:px-0 border-b-2 transition-colors whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:text-primary-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
-                  <Icon size={18} className="mr-2" />
+                  <Icon size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
                   {tab.label}
                 </button>
               );
@@ -227,7 +381,7 @@ export const CustomerProfile: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {activeTab === 'overview' && (
           <OverviewTab
             customer={currentCustomer}
@@ -246,7 +400,13 @@ export const CustomerProfile: React.FC = () => {
               setShowNoteModal(true);
             }}
             onDeleteNote={async (id) => {
-              if (confirm('Are you sure you want to delete this note?')) {
+              const confirmed = await confirmDeleteNote({
+                title: 'Delete Note',
+                message: 'Are you sure you want to delete this note? This action cannot be undone.',
+                confirmText: 'Delete',
+                variant: 'danger',
+              });
+              if (confirmed) {
                 await deleteNoteStore(id);
                 toast.success('Note deleted');
               }
@@ -260,9 +420,23 @@ export const CustomerProfile: React.FC = () => {
             invoicesLabels={invoicesLabels}
             onEditCustomer={() => setShowEditModal(true)}
             onSendSMS={() => setShowSMSModal(true)}
+            onSendEmail={() => setShowEmailModal(true)}
+            onMakeAICall={() => setShowAICallModal(true)}
+            summaryRefreshTrigger={summaryRefreshTrigger}
+            smsOptedOut={smsOptedOut}
+            organizationId={currentOrganization?.id}
+            planTier={planTier}
           />
         )}
-        {activeTab === 'communications' && <CommunicationsTab customer={currentCustomer} />}
+        {activeTab === 'communications' && (
+          <CommunicationsTab
+            customer={currentCustomer}
+            onReplyEmail={(replyData) => {
+              setEmailReplyTo(replyData);
+              setShowEmailModal(true);
+            }}
+          />
+        )}
         {activeTab === 'documents' && <DocumentsTab customer={currentCustomer} />}
         {activeTab === 'tasks' && <TasksTab customer={currentCustomer} onAddTask={handleAddTask} />}
         {activeTab === 'activity' && <ActivityTab customer={currentCustomer} />}
@@ -308,17 +482,115 @@ export const CustomerProfile: React.FC = () => {
             }
             setShowNoteModal(false);
             setEditingNote(null);
+            setSummaryRefreshTrigger(t => t + 1);
           }}
         />
       )}
 
       <SendSMSModal
         isOpen={showSMSModal}
-        onClose={() => setShowSMSModal(false)}
+        onClose={() => {
+          setShowSMSModal(false);
+          setSummaryRefreshTrigger(t => t + 1);
+        }}
         customerPhone={currentCustomer.phone || ''}
         customerName={currentCustomer.name}
         customerId={currentCustomer.id}
       />
+
+      <SendEmailModal
+        isOpen={showEmailModal}
+        onClose={() => {
+          setShowEmailModal(false);
+          setEmailReplyTo(undefined);
+          setSummaryRefreshTrigger(t => t + 1);
+        }}
+        customerEmail={currentCustomer.email || ''}
+        customerName={currentCustomer.name}
+        customerId={currentCustomer.id}
+        organizationId={currentOrganization?.id}
+        replyTo={emailReplyTo}
+        onEmailSent={() => setSummaryRefreshTrigger(t => t + 1)}
+      />
+
+      {/* AI Outbound Call Confirmation Modal */}
+      {showAICallModal && currentCustomer.phone && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiCallLoading && setShowAICallModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-500/20 rounded-full flex items-center justify-center">
+                <Bot size={20} className="text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Start AI Call</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your AI agent will call this customer</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Customer</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{currentCustomer.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{formatPhoneDisplay(currentCustomer.phone)}</span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Reason for calling <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={aiCallReason}
+                onChange={(e) => setAiCallReason(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="">General follow-up</option>
+                <option value="following up on a recent inquiry">Follow-up on inquiry</option>
+                <option value="confirming an upcoming appointment">Appointment confirmation</option>
+                <option value="a reminder about an upcoming payment or invoice">Payment reminder</option>
+                <option value="scheduling a meeting or consultation">Schedule a meeting</option>
+                <option value="providing an update on their account or service">Account update</option>
+                <option value="qualifying them as a potential lead">Lead qualification</option>
+                <option value="checking in on their satisfaction with our services">Customer check-in</option>
+              </select>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">
+              The AI agent will introduce itself, state the reason for calling, and handle the conversation. A recording and transcript will be available after the call ends.
+            </p>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAICallModal(false)}
+                disabled={aiCallLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMakeAICall}
+                disabled={aiCallLoading}
+                className="flex-1 flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+              >
+                {aiCallLoading ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Calling...
+                  </>
+                ) : (
+                  <>
+                    <PhoneCall size={16} className="mr-2" />
+                    Start Call
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showEditModal && (
         <CustomerModal
@@ -330,6 +602,8 @@ export const CustomerProfile: React.FC = () => {
           customer={currentCustomer}
         />
       )}
+
+      <DeleteNoteDialog />
     </div>
   );
 };
@@ -354,6 +628,12 @@ function OverviewTab({
   invoicesLabels,
   onEditCustomer,
   onSendSMS,
+  onSendEmail,
+  onMakeAICall,
+  summaryRefreshTrigger,
+  smsOptedOut = false,
+  organizationId,
+  planTier,
 }: {
   customer: any;
   quotes: any[];
@@ -374,16 +654,47 @@ function OverviewTab({
   invoicesLabels: any;
   onEditCustomer: () => void;
   onSendSMS: () => void;
+  onSendEmail: () => void;
+  onMakeAICall: () => void;
+  summaryRefreshTrigger: number;
+  smsOptedOut?: boolean;
+  organizationId?: string;
+  planTier?: string;
 }) {
   const navigate = useNavigate();
-  const { currentOrganization } = useOrganizationStore();
+  const { currentOrganization, currentMembership } = useOrganizationStore();
+  const { deleteCustomer } = useCustomerStore();
+  const { confirm, DialogComponent } = useConfirmDialog();
   const isMortgage = currentOrganization?.industry_template === 'mortgage_broker';
   const isBusinessCustomer = customer.customer_type === 'business' || customer.type === 'Business';
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showDsarModal, setShowDsarModal] = useState(false);
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
+
+  const customerFullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+
+  const handleRemoveClient = async () => {
+    const confirmed = await confirm({
+      title: 'Remove Client',
+      message: `Are you sure you want to remove "${customerFullName}" from your CRM? This will remove the client record and associated data from your workspace.`,
+      confirmText: 'Remove Client',
+      confirmVariant: 'danger',
+    });
+    if (confirmed) {
+      try {
+        await deleteCustomer(customer.id);
+        toast.success('Client removed from CRM');
+        navigate('/dashboard/customers');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to remove client');
+      }
+    }
+  };
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Contact Information
@@ -393,30 +704,64 @@ function OverviewTab({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-              <p className="text-gray-900 dark:text-white">{customer.email || '�'}</p>
+              <p className="text-gray-900 dark:text-white truncate">{customer.email || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
-              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || '�'}</p>
+              <p className="text-gray-900 dark:text-white">{formatPhoneDisplay(customer.phone) || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not provided</span>}</p>
             </div>
+            {customer.company && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Company</p>
+                <p className="text-gray-900 dark:text-white">{customer.company}</p>
+              </div>
+            )}
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
-              <p className="text-gray-900 dark:text-white">{customer.address || '�'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Type</p>
+              <p className="text-gray-900 dark:text-white">{customer.customer_type || <span className="text-gray-400 dark:text-gray-500 italic text-sm">Not set</span>}</p>
             </div>
+            <div className="sm:col-span-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address</p>
+              {customer.address || customer.city || customer.state ? (
+                <p className="text-gray-900 dark:text-white">
+                  {[customer.address, customer.city, customer.state, customer.postal_code, customer.country].filter(Boolean).join(', ')}
+                </p>
+              ) : (
+                <button onClick={onEditCustomer} className="text-sm text-primary-600 dark:text-primary-400 hover:underline italic">
+                  + Add address
+                </button>
+              )}
+            </div>
+            {customer.website && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Website</p>
+                <a href={customer.website.startsWith('http') ? customer.website : `https://${customer.website}`} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline">{customer.website}</a>
+              </div>
+            )}
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer Since</p>
               <p className="text-gray-900 dark:text-white">
-                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : '�'}
+                {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : <span className="text-gray-400 dark:text-gray-500 italic text-sm">—</span>}
               </p>
             </div>
           </div>
         </div>
 
+        {/* SMS Consent Status */}
+        {customer.phone && organizationId && (
+          <SmsConsentBadge
+            customerId={customer.id}
+            organizationId={organizationId}
+            customerName={customer.name || customer.email || ''}
+            customerEmail={customer.email}
+          />
+        )}
+
         {/* AI Customer Summary */}
-        <AICustomerSummary customerId={customer.id} customerName={customer.name} />
+        <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
 
         {/* Recent Calls */}
         {enabledModuleIds.includes('calls') && (
@@ -425,7 +770,7 @@ function OverviewTab({
 
         {/* Contacts Section - Only for Business Customers */}
         {isBusinessCustomer && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users size={20} className="text-primary-600 dark:text-primary-400" />
@@ -447,39 +792,46 @@ function OverviewTab({
                     key={contact.id}
                     className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-primary-500/50 transition-all group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold flex-shrink-0">
                         {contact.name?.charAt(0)?.toUpperCase() || 'C'}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900 dark:text-white">{contact.name}</p>
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{contact.name}</p>
                           {contact.is_primary && (
-                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full">
+                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full flex-shrink-0">
                               Primary
                             </span>
                           )}
                         </div>
                         {contact.title && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{contact.title}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{contact.title}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                           {contact.email && (
-                            <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-primary-600">
-                              <Mail size={12} /> {contact.email}
+                            <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-primary-600 truncate">
+                              <Mail size={12} className="flex-shrink-0" /> <span className="truncate">{contact.email}</span>
                             </a>
                           )}
                           {contact.phone && (
                             <span className="flex items-center gap-1">
-                              <Phone size={12} /> {formatPhoneDisplay(contact.phone)}
+                              <Phone size={12} className="flex-shrink-0" /> {formatPhoneDisplay(contact.phone)}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        if (confirm('Remove this contact?')) {
+                      onClick={async () => {
+                        const contactName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact';
+                        const confirmed = await confirm({
+                          title: 'Remove Contact',
+                          message: `Are you sure you want to remove "${contactName}"? This action cannot be undone.`,
+                          confirmText: 'Remove',
+                          confirmVariant: 'danger',
+                        });
+                        if (confirmed) {
                           onDeleteContact(contact.id, customer.id);
                         }
                       }}
@@ -495,7 +847,7 @@ function OverviewTab({
         )}
 
         {enabledModuleIds.includes('quotes') && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Recent {quotesLabels.entityPlural}
@@ -544,7 +896,7 @@ function OverviewTab({
         )}
 
         {enabledModuleIds.includes('invoices') && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Recent {invoicesLabels.entityPlural}
@@ -594,7 +946,7 @@ function OverviewTab({
       </div>
 
       <div className="space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
             Quick Actions
           </h3>
@@ -610,13 +962,13 @@ function OverviewTab({
               </button>
             )}
 
-            {/* Send Email — mortgage_broker only */}
-            {isMortgage && customer.email && (
+            {/* Send Email — all industries */}
+            {customer.email && (
               <button
-                onClick={() => window.open(`mailto:${customer.email}`, '_blank')}
+                onClick={onSendEmail}
                 className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
               >
-                <Mail size={16} className="mr-3 text-gray-600 dark:text-gray-400" />
+                <Mail size={16} className="mr-3 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm text-gray-900 dark:text-white">Send Email</span>
               </button>
             )}
@@ -624,11 +976,26 @@ function OverviewTab({
             {/* Send SMS — all industries */}
             {customer.phone && (
               <button
-                onClick={onSendSMS}
-                className="w-full flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left"
+                onClick={!smsOptedOut ? onSendSMS : undefined}
+                disabled={smsOptedOut}
+                title={smsOptedOut ? 'SMS disabled - customer has opted out' : undefined}
+                className={`w-full flex items-center px-4 py-2 rounded-lg transition-colors text-left ${smsOptedOut ? 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-50' : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
               >
-                <MessageSquare size={16} className="mr-3 text-green-600 dark:text-green-400" />
+                <MessageSquare size={16} className={`mr-3 ${smsOptedOut ? 'text-gray-400 dark:text-gray-600' : 'text-green-600 dark:text-green-400'}`} />
                 <span className="text-sm text-gray-900 dark:text-white">Send SMS</span>
+                {smsOptedOut && <span className="ml-auto text-xs text-red-500 dark:text-red-400">Opted out</span>}
+              </button>
+            )}
+
+            {/* AI Outbound Call — elite_premium and enterprise only */}
+            {customer.phone && enabledModuleIds.includes('calls') && (planTier === 'elite_premium' || planTier === 'enterprise') && (
+              <button
+                onClick={onMakeAICall}
+                className="w-full flex items-center px-4 py-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors text-left group"
+              >
+                <Bot size={16} className="mr-3 text-purple-600 dark:text-purple-400" />
+                <span className="text-sm text-gray-900 dark:text-white">AI Agent Call</span>
+                <PhoneOutgoing size={12} className="ml-auto text-purple-400 dark:text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             )}
 
@@ -678,7 +1045,7 @@ function OverviewTab({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Notes
@@ -727,7 +1094,7 @@ function OverviewTab({
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Tags
@@ -749,33 +1116,414 @@ function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* Actions & Danger Zone — full width below grid */}
+      <div className="lg:col-span-3 mt-2 space-y-4">
+        {/* Support & Data Requests */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TicketPlus size={18} className="text-primary-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Support & Data Requests
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {/* Submit Support Ticket */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Submit Support Ticket
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Need help with this contact? Submit a ticket to CxTrack support.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTicketModal(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
+              >
+                <TicketPlus size={16} />
+                Submit Ticket
+              </button>
+            </div>
+
+            {/* Request Data Deletion / DSAR */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/30">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Request Data Deletion
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Submit a formal data deletion or access request on behalf of this client. Processed within 30 days per PIPEDA, GDPR, and CCPA.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDsarModal(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 hover:bg-amber-200 dark:hover:bg-amber-900/30 border border-amber-300 dark:border-amber-800/30 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
+              >
+                <ShieldAlert size={16} />
+                Data Request
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        {isOwnerOrAdmin && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-red-200 dark:border-red-900/30 p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={18} className="text-red-500" />
+              <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
+                Danger Zone
+              </h3>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Remove Client
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Remove this client from your CRM. For formal data erasure requests, use the Data Request option above.
+                </p>
+              </div>
+              <button
+                onClick={handleRemoveClient}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-800/50 rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
+              >
+                <Trash2 size={16} />
+                Remove Client
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <DialogComponent />
+      <SubmitTicketModal
+        isOpen={showTicketModal}
+        onClose={() => setShowTicketModal(false)}
+        source="customer_profile"
+        customerId={customer.id}
+        customerName={customerFullName}
+        customerEmail={customer.email}
+      />
+      <SubmitTicketModal
+        isOpen={showDsarModal}
+        onClose={() => setShowDsarModal(false)}
+        source="customer_profile"
+        customerId={customer.id}
+        customerName={customerFullName}
+        customerEmail={customer.email}
+        defaultCategory="data_request"
+        defaultSubject={`Data Deletion Request - ${customerFullName}`}
+        defaultDescription={`Formal request for data deletion/erasure for client: ${customerFullName}${customer.email ? ` (${customer.email})` : ''}.\n\nReason: `}
+      />
     </div>
   );
 }
 
-function CommunicationsTab({ customer: _customer }: { customer: Customer }) {
+function CommunicationsTab({ customer, onReplyEmail }: { customer: Customer; onReplyEmail?: (data: { subject: string; messageId?: string; conversationId?: string; senderEmail?: string }) => void }) {
+  const { currentOrganization } = useOrganizationStore();
+  const { calls, fetchCallsByCustomer, createCall, loading: callsLoading } = useCallStore();
+  const { events, fetchEvents } = useCalendarStore();
+  const navigate = useNavigate();
+  const [showLogCallModal, setShowLogCallModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'meetings' | 'emails'>('all');
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (customer.id && currentOrganization?.id) {
+      fetchCallsByCustomer(customer.id);
+      fetchEvents(currentOrganization.id);
+    }
+  }, [customer.id, currentOrganization?.id]);
+
+  // Fetch email logs for Communications tab
+  useEffect(() => {
+    const fetchEmailLogs = async () => {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+        const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const tokenKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+        const raw = tokenKey ? localStorage.getItem(tokenKey) : null;
+        const token = raw ? JSON.parse(raw)?.access_token : null;
+        if (!token) return;
+
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at,message_id,conversation_id&order=sent_at.desc&limit=50`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'apikey': SUPABASE_ANON_KEY,
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setEmailLogs(data || []);
+        }
+      } catch {
+        // Silent
+      }
+    };
+    fetchEmailLogs();
+
+    // Re-fetch when an email is sent to this customer
+    const handleEmailSent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.customerId === customer.id) {
+        setTimeout(() => fetchEmailLogs(), 1500);
+      }
+    };
+    window.addEventListener('email-sent', handleEmailSent);
+    return () => window.removeEventListener('email-sent', handleEmailSent);
+  }, [customer.id]);
+
+  const customerEvents = events.filter(e => e.customer_id === customer.id);
+
+  const timelineItems = [
+    ...calls.map(call => ({
+      id: call.id,
+      type: 'call' as const,
+      date: call.started_at || call.created_at,
+      title: `${call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`,
+      subtitle: call.notes || (call.status === 'completed' ? `Duration: ${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}` : call.status.replace('_', ' ')),
+      status: call.status,
+      direction: call.direction,
+      duration: call.duration_seconds,
+      callId: call.id,
+      emailData: null as any,
+    })),
+    ...customerEvents.map(event => ({
+      id: event.id,
+      type: 'meeting' as const,
+      date: event.start_time,
+      title: event.title,
+      subtitle: event.event_type.replace('_', ' '),
+      status: event.status,
+      direction: null as string | null,
+      duration: 0,
+      callId: null as string | null,
+      emailData: null as any,
+    })),
+    ...emailLogs.map(email => ({
+      id: email.id,
+      type: 'email' as const,
+      date: email.sent_at || email.created_at,
+      title: email.subject || '(No subject)',
+      subtitle: email.direction === 'inbound'
+        ? `From: ${email.sender_email || 'Unknown'}`
+        : `To: ${email.recipient_email}`,
+      status: email.status,
+      direction: email.direction,
+      duration: 0,
+      callId: null as string | null,
+      emailData: email,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const filteredItems = activeFilter === 'all'
+    ? timelineItems
+    : activeFilter === 'calls'
+      ? timelineItems.filter(i => i.type === 'call')
+      : activeFilter === 'meetings'
+        ? timelineItems.filter(i => i.type === 'meeting')
+        : timelineItems.filter(i => i.type === 'email');
+
+  const handleLogCall = async (callData: any) => {
+    try {
+      await createCall(callData);
+      toast.success('Call logged successfully');
+      fetchCallsByCustomer(customer.id);
+    } catch (error) {
+      toast.error('Failed to log call');
+      throw error;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': case 'confirmed': return 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400';
+      case 'failed': case 'cancelled': return 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400';
+      case 'scheduled': return 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400';
+      case 'no_answer': case 'missed': return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
+      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="text-center py-12">
-          <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No communications yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Emails, calls, and meetings will appear here
-          </p>
-          <button className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            Log Communication
-          </button>
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            {(['all', 'calls', 'meetings', 'emails'] as const).map(filter => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  activeFilter === filter
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
+        <button
+          onClick={() => setShowLogCallModal(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium w-full sm:w-auto"
+        >
+          <Phone size={16} />
+          Log Communication
+        </button>
       </div>
+
+      {/* Timeline */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        {callsLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-12 px-6">
+            <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No communications yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Calls, meetings, and emails will appear here once recorded
+            </p>
+            <button
+              onClick={() => setShowLogCallModal(true)}
+              className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              Log Communication
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredItems.map(item => (
+              <div key={item.id}>
+                <div
+                  onClick={() => {
+                    if (item.type === 'call' && item.callId) {
+                      navigate(`/dashboard/calls/${item.callId}`);
+                    } else if (item.type === 'email') {
+                      setExpandedEmailId(expandedEmailId === item.id ? null : item.id);
+                    }
+                  }}
+                  className={`flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                    item.type === 'call' || item.type === 'email' ? 'cursor-pointer' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      item.type === 'call'
+                        ? item.direction === 'inbound'
+                          ? 'bg-blue-50 dark:bg-blue-500/10'
+                          : 'bg-green-50 dark:bg-green-500/10'
+                        : item.type === 'email'
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                          : 'bg-purple-50 dark:bg-purple-500/10'
+                    }`}>
+                      {item.type === 'call' ? (
+                        item.direction === 'inbound'
+                          ? <PhoneIncoming size={16} className="text-blue-600 dark:text-blue-400" />
+                          : <PhoneOutgoing size={16} className="text-green-600 dark:text-green-400" />
+                      ) : item.type === 'email' ? (
+                        item.direction === 'inbound'
+                          ? <ArrowDownLeft size={16} className="text-indigo-600 dark:text-indigo-400" />
+                          : <ArrowUpRight size={16} className="text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Calendar size={16} className="text-purple-600 dark:text-purple-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
+                        {item.type === 'email' && item.emailData?.direction === 'inbound' && !item.emailData?.read_at && (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" title="Unread" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.subtitle && <>{item.subtitle} · </>}
+                        {format(new Date(item.date), 'MMM d, yyyy · h:mm a')}
+                        {item.type === 'call' && item.duration > 0 && (
+                          <> · {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
+                    item.type === 'email'
+                      ? item.direction === 'inbound'
+                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                        : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                      : getStatusColor(item.status)
+                  }`}>
+                    {item.type === 'email'
+                      ? item.direction === 'inbound' ? 'received' : 'sent'
+                      : item.status.replace('_', ' ')}
+                  </span>
+                </div>
+                {/* Expanded email body */}
+                {item.type === 'email' && expandedEmailId === item.id && item.emailData && (
+                  <div className="px-4 pb-4 pl-14">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      {item.emailData.body_text || '(No content)'}
+                    </div>
+                    {/* Reply button for inbound emails */}
+                    {item.emailData.direction === 'inbound' && onReplyEmail && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReplyEmail({
+                            subject: item.emailData.subject || '',
+                            messageId: item.emailData.message_id,
+                            conversationId: item.emailData.conversation_id,
+                            senderEmail: item.emailData.sender_email,
+                          });
+                        }}
+                        className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                      >
+                        <Reply size={14} />
+                        Reply
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Log Call Modal */}
+      <LogCallModal
+        isOpen={showLogCallModal}
+        onClose={() => {
+          setShowLogCallModal(false);
+          fetchCallsByCustomer(customer.id);
+        }}
+        onSubmit={handleLogCall}
+        preselectedCustomerId={customer.id}
+      />
     </div>
   );
 }
 
 function DocumentsTab({ customer }: { customer: Customer }) {
   const { documents, loading, fetchDocuments, uploadDocument, deleteDocument, getDownloadUrl } = useDocumentStore();
+  const { confirm: confirmDeleteDoc, DialogComponent: DeleteDocDialog } = useConfirmDialog();
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -817,7 +1565,13 @@ function DocumentsTab({ customer }: { customer: Customer }) {
   };
 
   const handleDelete = async (doc: CustomerDocument) => {
-    if (confirm(`Delete "${doc.file_name}"?`)) {
+    const confirmed = await confirmDeleteDoc({
+      title: 'Delete Document',
+      message: `Are you sure you want to delete "${doc.file_name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    });
+    if (confirmed) {
       await deleteDocument(doc.id, doc.file_path);
     }
   };
@@ -837,14 +1591,14 @@ function DocumentsTab({ customer }: { customer: Customer }) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Documents</h2>
           <div className="flex items-center gap-3">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+              className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 flex-1 sm:flex-none"
             >
               {categories.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -911,15 +1665,15 @@ function DocumentsTab({ customer }: { customer: Customer }) {
           </div>
         )}
       </div>
+      <DeleteDocDialog />
     </div>
   );
 }
 
 function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () => void }) {
-  const { getTasksByCustomer } = useTaskStore();
+  const { getTasksByCustomer, fetchTasks, updateTask, deleteTask } = useTaskStore();
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const { fetchTasks } = useTaskStore();
 
   const customerTasks = getTasksByCustomer(customer.id);
   const pendingTasks = customerTasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
@@ -956,7 +1710,7 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Tasks ({customerTasks.length})
@@ -1007,7 +1761,7 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
                           </div>
 
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
                               <h4 className="font-medium text-gray-900 dark:text-white">
                                 {task.title}
                               </h4>
@@ -1102,17 +1856,23 @@ function TasksTab({ customer, onAddTask }: { customer: Customer; onAddTask: () =
         )}
       </div>
 
-      {showTaskModal && (
-        <TaskModal
+      {showTaskModal && selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
           isOpen={showTaskModal}
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
             fetchTasks();
           }}
-          task={selectedTask}
-          customerId={customer.id}
-          customerName={customer.name}
+          onUpdate={async (id, data) => {
+            await updateTask(id, data);
+            fetchTasks();
+          }}
+          onDelete={async (id) => {
+            await deleteTask(id);
+            fetchTasks();
+          }}
         />
       )}
     </div>
@@ -1124,6 +1884,62 @@ function ActivityTab({ customer }: { customer: Customer }) {
   const { getTasksByCustomer } = useTaskStore();
   const { quotes } = useQuoteStore();
   const { invoices } = useInvoiceStore();
+  const { notes } = useCustomerStore();
+  const [smsLogs, setSmsLogs] = useState<any[]>([]);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+
+  // Fetch SMS + Email logs for this customer via direct REST API (AbortController-safe)
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+        const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const tokenKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+        const raw = tokenKey ? localStorage.getItem(tokenKey) : null;
+        const token = raw ? JSON.parse(raw)?.access_token : null;
+        if (!token) return;
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        };
+
+        // Fetch both in parallel
+        const [smsRes, emailRes] = await Promise.all([
+          fetch(
+            `${SUPABASE_URL}/rest/v1/sms_log?customer_id=eq.${customer.id}&select=id,recipient_phone,message_body,status,template_key,sent_at,created_at&order=created_at.desc&limit=50`,
+            { headers }
+          ),
+          fetch(
+            `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,status,sent_at,created_at&order=sent_at.desc&limit=50`,
+            { headers }
+          ),
+        ]);
+
+        if (smsRes.ok) {
+          const data = await smsRes.json();
+          setSmsLogs(data || []);
+        }
+        if (emailRes.ok) {
+          const data = await emailRes.json();
+          setEmailLogs(data || []);
+        }
+      } catch {
+        // Silent -- logs are supplementary
+      }
+    };
+    fetchLogs();
+
+    // Re-fetch when an email is sent to this customer
+    const handleEmailSent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.customerId === customer.id) {
+        setTimeout(() => fetchLogs(), 1500);
+      }
+    };
+    window.addEventListener('email-sent', handleEmailSent);
+    return () => window.removeEventListener('email-sent', handleEmailSent);
+  }, [customer.id]);
 
   const customerEvents = getEventsByCustomer(customer.id);
   const customerTasks = getTasksByCustomer(customer.id);
@@ -1171,6 +1987,29 @@ function ActivityTab({ customer }: { customer: Customer }) {
       date: new Date(invoice.created_at),
       status: invoice.status,
     })),
+    ...smsLogs.map(sms => ({
+      type: 'sms',
+      title: `SMS ${sms.status === 'sent' || sms.status === 'delivered' ? 'sent' : sms.status === 'failed' ? 'failed' : 'sent'}`,
+      description: sms.message_body ? (sms.message_body.length > 100 ? sms.message_body.substring(0, 100) + '...' : sms.message_body) : null,
+      date: new Date(sms.sent_at || sms.created_at),
+      status: sms.status,
+    })),
+    ...emailLogs.map(email => ({
+      type: email.direction === 'inbound' ? 'email_received' : 'email_sent',
+      title: email.direction === 'inbound' ? `Email received: ${email.subject}` : `Email sent: ${email.subject}`,
+      description: email.body_text ? (email.body_text.length > 100 ? email.body_text.substring(0, 100) + '...' : email.body_text) : null,
+      date: new Date(email.sent_at || email.created_at),
+      status: email.status,
+    })),
+    ...notes
+      .filter(n => n.customer_id === customer.id)
+      .map(note => ({
+        type: 'note',
+        title: `Note: ${note.note_type === 'general' ? 'General' : note.note_type === 'call' ? 'Call Note' : note.note_type === 'meeting' ? 'Meeting Note' : note.note_type === 'follow_up' ? 'Follow-up' : note.note_type}`,
+        description: note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content,
+        date: new Date(note.created_at),
+        status: note.is_pinned ? 'pinned' : null,
+      })),
     {
       type: 'created',
       title: 'Customer created',
@@ -1182,7 +2021,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
           Activity Timeline
         </h2>
@@ -1199,6 +2038,14 @@ function ActivityTab({ customer }: { customer: Customer }) {
                   return { icon: FileText, bg: 'bg-purple-100 dark:bg-purple-900/20', color: 'text-purple-600 dark:text-purple-400' };
                 case 'invoice':
                   return { icon: DollarSign, bg: 'bg-green-100 dark:bg-green-900/20', color: 'text-green-600 dark:text-green-400' };
+                case 'sms':
+                  return { icon: MessageSquare, bg: 'bg-emerald-100 dark:bg-emerald-900/20', color: 'text-emerald-600 dark:text-emerald-400' };
+                case 'email_sent':
+                  return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
+                case 'email_received':
+                  return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
+                case 'note':
+                  return { icon: Edit2, bg: 'bg-amber-100 dark:bg-amber-900/20', color: 'text-amber-600 dark:text-amber-400' };
                 default:
                   return { icon: Activity, bg: 'bg-primary-100 dark:bg-primary-900/20', color: 'text-primary-600 dark:text-primary-400' };
               }
@@ -1223,7 +2070,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {format(activity.date, 'MMM d, yyyy �� h:mm a')}
+                        {format(activity.date, 'MMM d, yyyy')} &middot; {format(activity.date, 'h:mm a')}
                       </p>
                     </div>
                     {activity.status && (
@@ -1259,6 +2106,8 @@ function ActivityTab({ customer }: { customer: Customer }) {
 
 function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; onClose: () => void; customer: Customer }) {
   const { createEvent } = useCalendarStore();
+  const { user } = useAuthContext();
+  const { currentOrganization } = useOrganizationStore();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -1322,6 +2171,8 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
       const endDateTime = `${formData.date}T${endTime24}:00`;
 
       const eventData = {
+        organization_id: currentOrganization?.id,
+        user_id: user?.id,
         title: formData.title,
         description: `Meeting with ${customer.name}`,
         event_type: 'meeting' as const,
@@ -1420,7 +2271,7 @@ function ScheduleMeetingModal({ isOpen, onClose, customer }: { isOpen: boolean; 
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-lg">
             <Calendar size={16} />
             <span>
-              {formData.date ? format(new Date(formData.date), 'MMM d, yyyy') : 'Select a date'} �� {formData.time} - {calculateEndTime()}
+              {formData.date ? format(new Date(formData.date + 'T00:00:00'), 'MMM d, yyyy') : 'Select a date'} &middot; {formData.time} - {calculateEndTime()}
             </span>
           </div>
 

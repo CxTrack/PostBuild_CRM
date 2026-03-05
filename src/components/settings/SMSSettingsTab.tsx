@@ -87,7 +87,7 @@ const SMSSettingsTab: React.FC<SMSSettingsTabProps> = ({ organizationId, industr
 
   if (loading) {
     return (
-      <div className="max-w-4xl space-y-6">
+      <div className="space-y-6">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
             <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4" />
@@ -100,7 +100,7 @@ const SMSSettingsTab: React.FC<SMSSettingsTabProps> = ({ organizationId, industr
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       {/* Phone Number Status */}
       <div className={`rounded-xl p-4 border ${hasPhone
         ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'

@@ -54,6 +54,8 @@ export interface OrganizationPDFInfo {
   phone?: string;
   email?: string;
   website?: string;
+  logo_url?: string;
+  template_color?: string;
 }
 
 export const settingsService = {
@@ -105,7 +107,10 @@ export const settingsService = {
         business_state,
         business_postal_code,
         business_country,
-        business_website
+        business_website,
+        logo_url,
+        default_quote_template_id,
+        default_invoice_template_id
       `)
       .eq('id', organizationId)
       .maybeSingle();
@@ -118,6 +123,19 @@ export const settingsService = {
       throw new Error('Organization not found');
     }
 
+    // Look up default template color (prefer quote template, fall back to invoice)
+    let templateColor: string | undefined;
+    const templateId = data.default_quote_template_id || data.default_invoice_template_id;
+    if (templateId) {
+      const { data: template } = await supabase
+        .from('document_templates')
+        .select('color_scheme')
+        .eq('id', templateId)
+        .maybeSingle();
+      if (template?.color_scheme?.primary) {
+        templateColor = template.color_scheme.primary;
+      }
+    }
 
     return {
       name: data.name,
@@ -129,6 +147,66 @@ export const settingsService = {
       phone: data.business_phone || undefined,
       email: data.business_email || undefined,
       website: data.business_website || undefined,
+      logo_url: data.logo_url || undefined,
+      template_color: templateColor,
+    };
+  },
+
+  async getOrganizationForPDFWithTemplate(
+    organizationId: string,
+    docType: 'quote' | 'invoice'
+  ): Promise<OrganizationPDFInfo> {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select(`
+        name,
+        business_email,
+        business_phone,
+        business_address,
+        business_city,
+        business_state,
+        business_postal_code,
+        business_country,
+        business_website,
+        logo_url,
+        default_quote_template_id,
+        default_invoice_template_id
+      `)
+      .eq('id', organizationId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Organization not found');
+
+    // Look up the template for the specific document type
+    let templateColor: string | undefined;
+    const templateId = docType === 'quote'
+      ? data.default_quote_template_id
+      : data.default_invoice_template_id;
+
+    if (templateId) {
+      const { data: template } = await supabase
+        .from('document_templates')
+        .select('color_scheme')
+        .eq('id', templateId)
+        .maybeSingle();
+      if (template?.color_scheme?.primary) {
+        templateColor = template.color_scheme.primary;
+      }
+    }
+
+    return {
+      name: data.name,
+      address: data.business_address || undefined,
+      city: data.business_city || undefined,
+      state: data.business_state || undefined,
+      postal_code: data.business_postal_code || undefined,
+      country: data.business_country || undefined,
+      phone: data.business_phone || undefined,
+      email: data.business_email || undefined,
+      website: data.business_website || undefined,
+      logo_url: data.logo_url || undefined,
+      template_color: templateColor,
     };
   },
 

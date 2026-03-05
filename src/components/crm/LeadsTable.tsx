@@ -42,7 +42,7 @@ export default function LeadsTable() {
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                <div className="flex items-center gap-1 relative">
+                                <div className={`flex items-center gap-1 relative ${showScoreInfo ? 'z-40' : ''}`}>
                                     Score
                                     <button
                                         onClick={() => setShowScoreInfo(!showScoreInfo)}

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  Plus, List, CheckCircle
+  Plus, List, CheckCircle, Loader2
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -10,17 +10,67 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useCustomerStore } from '@/stores/customerStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useThemeStore } from '@/stores/themeStore';
 import AgendaPanel from './AgendaPanel';
 import EventModal from '@/components/calendar/EventModal';
 import AppointmentDetailModal from '@/components/calendar/AppointmentDetailModal';
 import TaskModal from '@/components/tasks/TaskModal';
+import TaskDetailModal from '@/components/tasks/TaskDetailModal';
 import WeekView from '@/components/calendar/WeekView';
 import DayView from '@/components/calendar/DayView';
 import AgendaView from '@/components/calendar/AgendaView';
 import { Card, PageContainer } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import type { OutlookCalendarEvent } from '@/services/microsoftCalendar.service';
+import type { GoogleCalendarEvent } from '@/services/googleCalendar.service';
+
+/** Map an Outlook calendar event to a shape compatible with CalendarEvent views */
+function mapOutlookToCalendarEvent(evt: OutlookCalendarEvent) {
+  return {
+    id: evt.id,
+    title: evt.title,
+    start_time: evt.start_time,
+    end_time: evt.end_time,
+    location: evt.location || '',
+    description: evt.description || '',
+    meeting_url: evt.meeting_url || '',
+    color_code: '#7c3aed', // purple for Outlook events
+    color: '#7c3aed',
+    event_type: 'outlook',
+    status: evt.show_as === 'free' ? 'tentative' : 'confirmed',
+    attendee_name: evt.organizer || '',
+    attendee_email: '',
+    attendees: evt.attendees || [],
+    source: 'outlook' as const,
+    web_link: evt.web_link,
+    is_all_day: evt.is_all_day,
+  };
+}
+
+/** Map a Google calendar event to a shape compatible with CalendarEvent views */
+function mapGoogleToCalendarEvent(evt: GoogleCalendarEvent) {
+  return {
+    id: evt.id,
+    title: evt.title,
+    start_time: evt.start_time,
+    end_time: evt.end_time,
+    location: evt.location || '',
+    description: evt.description || '',
+    meeting_url: evt.meeting_url || '',
+    color_code: '#0ea5e9', // sky-blue for Google events
+    color: '#0ea5e9',
+    event_type: 'google',
+    status: evt.show_as === 'free' ? 'tentative' : 'confirmed',
+    attendee_name: evt.organizer || '',
+    attendee_email: '',
+    attendees: evt.attendees || [],
+    source: 'google' as const,
+    web_link: evt.web_link,
+    is_all_day: evt.is_all_day,
+  };
+}
 
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -35,10 +85,12 @@ export default function Calendar() {
   const [showEventTypeModal, setShowEventTypeModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
 
-  const { events, fetchEvents, updateEvent } = useCalendarStore();
+  const { events, fetchEvents, updateEvent, deleteEvent, outlookEvents, fetchOutlookTodayEvents, fetchOutlookEventsRange, googleEvents, fetchGoogleEventsRange, loading, outlookLoading, googleLoading } = useCalendarStore();
   const { currentOrganization, getOrganizationId } = useOrganizationStore();
-  const { fetchTasks, getTasksByDate } = useTaskStore();
+  const { customers, fetchCustomers, getCustomerById } = useCustomerStore();
+  const { fetchTasks, getTasksByDate, updateTask, deleteTask } = useTaskStore();
   const { theme } = useThemeStore();
   const labels = usePageLabels('calendar');
   const taskLabels = usePageLabels('tasks');
@@ -52,10 +104,42 @@ export default function Calendar() {
     }
     fetchEvents(orgId);
     fetchTasks();
+    if (customers.length === 0) fetchCustomers();
   }, [currentOrganization, fetchEvents, fetchTasks, getOrganizationId]);
 
+  // Fetch Outlook events whenever the visible date range changes
+  useEffect(() => {
+    let rangeStart: Date;
+    let rangeEnd: Date;
+
+    if (view === 'month') {
+      rangeStart = startOfWeek(startOfMonth(currentDate));
+      rangeEnd = endOfWeek(endOfMonth(currentDate));
+    } else if (view === 'week') {
+      rangeStart = startOfWeek(currentDate);
+      rangeEnd = endOfWeek(currentDate);
+    } else if (view === 'day') {
+      rangeStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0);
+      rangeEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 23, 59, 59);
+    } else {
+      // agenda view — fetch current month
+      rangeStart = startOfMonth(currentDate);
+      rangeEnd = endOfMonth(currentDate);
+    }
+
+    fetchOutlookEventsRange(rangeStart.toISOString(), rangeEnd.toISOString());
+    fetchGoogleEventsRange(rangeStart.toISOString(), rangeEnd.toISOString());
+  }, [currentDate, view, fetchOutlookEventsRange, fetchGoogleEventsRange]);
+
+  // Merge native events + Outlook events + Google events into a single array for views
+  const allEvents = useMemo(() => {
+    const mappedOutlook = outlookEvents.map(mapOutlookToCalendarEvent);
+    const mappedGoogle = googleEvents.map(mapGoogleToCalendarEvent);
+    return [...events, ...mappedOutlook, ...mappedGoogle];
+  }, [events, outlookEvents, googleEvents]);
+
   const getEventsForDate = (date: Date) => {
-    return events.filter(event =>
+    return allEvents.filter(event =>
       isSameDay(new Date(event.start_time), date)
     ).sort((a, b) =>
       new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
@@ -64,7 +148,7 @@ export default function Calendar() {
 
   const getTasksForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return getTasksByDate(dateStr).filter(task => task.show_on_calendar === true);
+    return getTasksByDate(dateStr).filter(task => task.show_on_calendar);
   };
 
   const getCalendarDays = () => {
@@ -217,8 +301,16 @@ export default function Calendar() {
         </div>
       </Card>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <div className={`flex-1 overflow-y-auto ${showAgendaPanel ? 'pr-0' : ''}`}>
+      <div className="flex-1 flex flex-col lg:flex-row gap-[5px] overflow-hidden">
+        <div className={`flex-1 overflow-y-auto relative ${showAgendaPanel ? 'pr-0' : ''}`}>
+          {(loading || outlookLoading) && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-[1px] rounded-xl">
+              <div className="flex items-center gap-3 px-5 py-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <Loader2 size={20} className="animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Loading events...</span>
+              </div>
+            </div>
+          )}
           {view === 'month' && (
             <Card className="overflow-hidden p-0">
               <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
@@ -290,7 +382,7 @@ export default function Calendar() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedTask(task);
-                              setShowTaskModal(true);
+                              setShowTaskDetailModal(true);
                             }}
                             className="px-2 py-1 text-xs rounded truncate hover:opacity-80 transition-opacity cursor-pointer bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-l-3 border-orange-500"
                             style={{
@@ -328,7 +420,7 @@ export default function Calendar() {
           {view === 'week' && (
             <WeekView
               currentDate={currentDate}
-              events={events}
+              events={allEvents}
               onEventClick={handleEventClick}
               onTimeSlotClick={(date, hour) => {
                 const newDate = new Date(date);
@@ -343,7 +435,7 @@ export default function Calendar() {
           {view === 'day' && (
             <DayView
               currentDate={currentDate}
-              events={events}
+              events={allEvents}
               onEventClick={handleEventClick}
               onTimeSlotClick={(hour) => {
                 const newDate = new Date(currentDate);
@@ -357,7 +449,7 @@ export default function Calendar() {
 
           {view === 'agenda' && (
             <AgendaView
-              events={events}
+              events={allEvents}
               onEventClick={handleEventClick}
             />
           )}
@@ -367,7 +459,22 @@ export default function Calendar() {
           <AgendaPanel
             selectedDate={selectedDate}
             events={getEventsForDate(selectedDate)}
+            tasks={getTasksForDate(selectedDate)}
             onEventClick={handleEventClick}
+            onTaskClick={(task) => {
+              setSelectedTask(task);
+              setShowTaskDetailModal(true);
+            }}
+            onDeleteEvent={async (id) => {
+              await deleteEvent(id);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
+            onDeleteTask={async (id) => {
+              await deleteTask(id);
+              fetchTasks();
+            }}
             onScheduleEvent={() => {
               setSelectedEvent(null);
               setShowEventModal(true);
@@ -445,22 +552,141 @@ export default function Calendar() {
         />
       )}
 
-      {showAppointmentDetailModal && selectedEvent && (
-        <AppointmentDetailModal
-          appointment={selectedEvent}
-          isOpen={showAppointmentDetailModal}
-          onClose={() => {
-            setShowAppointmentDetailModal(false);
-            setSelectedEvent(null);
-          }}
-          onUpdate={async (id, data) => {
-            await updateEvent(id, data);
-            let orgId;
-            try { orgId = getOrganizationId(); } catch (err) { }
-            fetchEvents(orgId);
-          }}
-        />
+      {/* Outlook event detail (read-only) */}
+      {showAppointmentDetailModal && selectedEvent && selectedEvent.source === 'outlook' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                  Outlook
+                </span>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {selectedEvent.title}
+                </h2>
+              </div>
+              <button
+                onClick={() => { setShowAppointmentDetailModal(false); setSelectedEvent(null); }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex items-center gap-2">
+                <CalendarIcon size={16} className="text-gray-400" />
+                <span>
+                  {format(new Date(selectedEvent.start_time), 'EEEE, MMMM d, yyyy')}
+                </span>
+              </div>
+              {!selectedEvent.is_all_day && (
+                <div className="flex items-center gap-2">
+                  <span className="w-4" />
+                  <span>
+                    {format(new Date(selectedEvent.start_time), 'h:mm a')} - {format(new Date(selectedEvent.end_time), 'h:mm a')}
+                  </span>
+                </div>
+              )}
+              {selectedEvent.is_all_day && (
+                <div className="flex items-center gap-2">
+                  <span className="w-4" />
+                  <span className="text-gray-500">All day</span>
+                </div>
+              )}
+              {selectedEvent.location && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">📍</span>
+                  <span>{selectedEvent.location}</span>
+                </div>
+              )}
+              {selectedEvent.attendee_name && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">👤</span>
+                  <span>Organizer: {selectedEvent.attendee_name}</span>
+                </div>
+              )}
+              {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1 mt-3">Attendees</p>
+                  <div className="space-y-1">
+                    {selectedEvent.attendees.map((a: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <span className={`w-2 h-2 rounded-full ${a.status === 'accepted' ? 'bg-green-500' : a.status === 'declined' ? 'bg-red-500' : 'bg-gray-400'}`} />
+                        <span>{a.name || a.email}</span>
+                        <span className="text-xs text-gray-400">({a.status})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedEvent.description && (
+                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm">
+                  {selectedEvent.description}
+                </div>
+              )}
+              {selectedEvent.meeting_url && (
+                <a
+                  href={selectedEvent.meeting_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Join Meeting
+                </a>
+              )}
+              {selectedEvent.web_link && (
+                <a
+                  href={selectedEvent.web_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                >
+                  Open in Outlook
+                </a>
+              )}
+            </div>
+
+            <button
+              onClick={() => { setShowAppointmentDetailModal(false); setSelectedEvent(null); }}
+              className="w-full mt-6 px-4 py-2.5 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
+
+      {/* Native event detail */}
+      {showAppointmentDetailModal && selectedEvent && selectedEvent.source !== 'outlook' && (() => {
+        const linkedCustomer = selectedEvent.customer_id ? getCustomerById(selectedEvent.customer_id) : null;
+        const resolvedName = linkedCustomer
+          ? `${linkedCustomer.first_name || ''} ${linkedCustomer.last_name || ''}`.trim()
+          : undefined;
+        return (
+          <AppointmentDetailModal
+            appointment={selectedEvent}
+            isOpen={showAppointmentDetailModal}
+            onClose={() => {
+              setShowAppointmentDetailModal(false);
+              setSelectedEvent(null);
+            }}
+            onUpdate={async (id, data) => {
+              await updateEvent(id, data);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
+            onDelete={async (id) => {
+              await deleteEvent(id);
+              let orgId;
+              try { orgId = getOrganizationId(); } catch (err) { }
+              fetchEvents(orgId);
+            }}
+            customerName={resolvedName}
+          />
+        );
+      })()}
 
       {showTaskModal && (
         <TaskModal
@@ -473,6 +699,26 @@ export default function Calendar() {
           task={selectedTask}
           preselectedDate={selectedDate}
           defaultShowOnCalendar={true}
+        />
+      )}
+
+      {showTaskDetailModal && selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          isOpen={showTaskDetailModal}
+          onClose={() => {
+            setShowTaskDetailModal(false);
+            setSelectedTask(null);
+            fetchTasks();
+          }}
+          onUpdate={async (id, data) => {
+            await updateTask(id, data);
+            fetchTasks();
+          }}
+          onDelete={async (id) => {
+            await deleteTask(id);
+            fetchTasks();
+          }}
         />
       )}
     </PageContainer>

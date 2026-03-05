@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Save, Package, DollarSign, Tag,
@@ -6,9 +6,12 @@ import {
 } from 'lucide-react';
 import { useProductStore } from '@/stores/productStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useCustomFieldsStore } from '@/stores/customFieldsStore';
 import toast from 'react-hot-toast';
 import type { ProductType, PricingModel, RecurringInterval } from '@/types/app.types';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
+import CustomFieldsSection from '@/components/products/CustomFieldsSection';
+import CategoryCombobox from '@/components/products/CategoryCombobox';
 import { Plus } from 'lucide-react';
 
 const LOAN_TYPES = [
@@ -31,12 +34,54 @@ const RATE_TYPES = [
   { value: 'hybrid', label: 'Hybrid', desc: 'Fixed for initial period, then adjustable' },
 ];
 
+const INITIAL_FORM_DATA = {
+  name: '',
+  description: '',
+  sku: '',
+  product_type: 'product' as ProductType,
+  category: '',
+  price: 0,
+  cost: 0,
+  pricing_model: 'one_time' as PricingModel,
+  recurring_interval: 'monthly' as RecurringInterval | undefined,
+  recurring_interval_count: 1,
+  usage_unit: '',
+  tax_rate: 0,
+  is_taxable: true,
+  track_inventory: false,
+  quantity_on_hand: 0,
+  low_stock_threshold: 10,
+  reorder_quantity: 50,
+  weight: undefined as number | undefined,
+  dimensions: '',
+  estimated_duration: undefined as number | undefined,
+  duration_unit: 'hours',
+  deliverables: '',
+  discount_type: 'fixed',
+  image_url: '',
+  is_active: true,
+  is_featured: false,
+  requires_approval: false,
+  loan_type: '',
+  interest_rate_type: 'fixed',
+  min_rate: undefined as number | undefined,
+  max_rate: undefined as number | undefined,
+  min_term_months: undefined as number | undefined,
+  max_term_months: undefined as number | undefined,
+  min_amount: undefined as number | undefined,
+  max_amount: undefined as number | undefined,
+  down_payment_min_pct: undefined as number | undefined,
+  insurance_required: false,
+  notes: '',
+};
+
 export default function ProductForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { createProduct, updateProduct, getProductById, fetchProducts } = useProductStore();
+  const { products, createProduct, updateProduct, getProductById, fetchProducts } = useProductStore();
   const { currentOrganization } = useOrganizationStore();
+  const { fields: customFieldDefs, fetchFields: fetchCustomFields } = useCustomFieldsStore();
 
   const isEdit = Boolean(id);
   const isDuplicate = Boolean(location.state?.duplicate);
@@ -45,61 +90,50 @@ export default function ProductForm() {
   const [saving, setSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdProduct, setCreatedProduct] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    sku: '',
-    product_type: 'product' as ProductType,
-    category: '',
-    price: 0,
-    cost: 0,
-    pricing_model: 'one_time' as PricingModel,
-    recurring_interval: 'monthly' as RecurringInterval | undefined,
-    recurring_interval_count: 1,
-    usage_unit: '',
-    tax_rate: 0,
-    is_taxable: true,
-    track_inventory: false,
-    quantity_on_hand: 0,
-    low_stock_threshold: 10,
-    reorder_quantity: 50,
-    weight: undefined as number | undefined,
-    dimensions: '',
-    estimated_duration: undefined as number | undefined,
-    duration_unit: 'hours',
-    deliverables: '',
-    discount_type: 'fixed',
-    image_url: '',
-    is_active: true,
-    is_featured: false,
-    requires_approval: false,
-    // Loan fields
-    loan_type: '',
-    interest_rate_type: 'fixed',
-    min_rate: undefined as number | undefined,
-    max_rate: undefined as number | undefined,
-    min_term_months: undefined as number | undefined,
-    max_term_months: undefined as number | undefined,
-    min_amount: undefined as number | undefined,
-    max_amount: undefined as number | undefined,
-    down_payment_min_pct: undefined as number | undefined,
-    insurance_required: false,
-    notes: '',
-  });
+  const [formData, setFormData] = useState({ ...INITIAL_FORM_DATA });
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
+  const [productLoading, setProductLoading] = useState(false);
 
-  useEffect(() => {
-    if (isEdit && id) {
-      // Make sure products are loaded
-      if (!getProductById(id)) {
-        fetchProducts(currentOrganization?.id);
+  // Get custom field definitions for products
+  const productCustomFields = customFieldDefs.filter(f => f.entity_type === 'product');
+
+  // Derive previously-used custom field values from existing products for suggestions
+  const customFieldSuggestions = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const field of productCustomFields) {
+      const unique = new Set<string>();
+      for (const p of products) {
+        const val = p.custom_fields?.[field.field_key];
+        if (val !== undefined && val !== null && val !== '') {
+          unique.add(String(val));
+        }
+      }
+      if (unique.size > 0) {
+        map[field.field_key] = Array.from(unique).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       }
     }
-  }, [id, isEdit, currentOrganization?.id, fetchProducts, getProductById]);
+    return map;
+  }, [products, productCustomFields]);
 
+  // Fetch custom fields on mount
+  useEffect(() => {
+    fetchCustomFields('product');
+  }, [fetchCustomFields]);
+
+  // Always fetch fresh products in edit mode to avoid stale cache
+  useEffect(() => {
+    if (isEdit && id && currentOrganization?.id) {
+      setProductLoading(true);
+      fetchProducts(currentOrganization.id).finally(() => setProductLoading(false));
+    }
+  }, [id, isEdit, currentOrganization?.id]);
+
+  // BUG FIX #2: Populate form when products are loaded - uses `products` as dependency
   useEffect(() => {
     if (isEdit && id) {
       const product = getProductById(id);
       if (product) {
+        setProductLoading(false);
         setFormData({
           name: product.name,
           description: product.description || '',
@@ -140,16 +174,29 @@ export default function ProductForm() {
           insurance_required: product.insurance_required || false,
           notes: product.notes || '',
         });
+        setCustomFieldValues(product.custom_fields || {});
       }
     } else if (isDuplicate && location.state?.duplicate) {
       const duplicate = location.state.duplicate;
       setFormData({
+        ...INITIAL_FORM_DATA,
         ...duplicate,
         name: `${duplicate.name} (Copy)`,
         sku: '',
       });
+      setCustomFieldValues(duplicate.custom_fields || {});
     }
-  }, [id, isEdit, isDuplicate, getProductById, location.state]);
+  }, [id, isEdit, isDuplicate, products, location.state]);
+
+  // BUG FIX #1: Reset form for "Add Another"
+  const handleAddAnother = useCallback(() => {
+    setFormData({ ...INITIAL_FORM_DATA });
+    setCustomFieldValues({});
+    setCreatedProduct(null);
+    setShowSuccessModal(false);
+    setSaving(false);
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,19 +217,33 @@ export default function ProductForm() {
       // Strip fields that don't exist in the DB schema
       const { is_featured, reorder_quantity, ...cleanFormData } = formData;
 
+      // Auto-generate SKU if empty (unique constraint on org_id + sku)
+      const sku = cleanFormData.sku?.trim() || `SKU-${Date.now().toString(36).toUpperCase()}`;
+
       const productData = {
         ...cleanFormData,
+        sku,
         organization_id: currentOrganization?.id || '',
+        // Coerce empty-string numeric fields back to 0 for the DB
+        price: Number(cleanFormData.price) || 0,
+        cost: Number(cleanFormData.cost) || 0,
+        tax_rate: Number(cleanFormData.tax_rate) || 0,
+        quantity_on_hand: Number(cleanFormData.quantity_on_hand) || 0,
+        low_stock_threshold: Number(cleanFormData.low_stock_threshold) || 0,
         // For mortgage, auto-set product_type to 'service' (loan products are services)
         product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
         // For mortgage, category is the loan type label
         category: isMortgage ? (LOAN_TYPES.find(t => t.value === cleanFormData.loan_type)?.label || cleanFormData.category) : cleanFormData.category,
+        // Include custom field values
+        custom_fields: customFieldValues,
       };
 
       if (isEdit && id) {
-        await updateProduct(id, productData);
+        // Don't send organization_id on updates (immutable, and avoids re-triggering unique constraints)
+        const { organization_id, ...updatePayload } = productData;
+        await updateProduct(id, updatePayload);
         toast.success(isMortgage ? 'Loan product updated' : 'Product updated successfully');
-        navigate(-1);
+        navigate('/dashboard/products');
       } else {
         const newProduct = await createProduct(productData);
         if (newProduct) {
@@ -190,7 +251,7 @@ export default function ProductForm() {
           toast.success(isMortgage ? 'Loan product created' : 'Product created successfully');
           setShowSuccessModal(true);
         } else {
-          navigate(-1);
+          navigate('/dashboard/products');
         }
       }
     } catch (error) {
@@ -225,7 +286,7 @@ export default function ProductForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard/products')}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
@@ -246,7 +307,7 @@ export default function ProductForm() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard/products')}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
@@ -265,6 +326,12 @@ export default function ProductForm() {
 
       {/* Form */}
       <div className="flex-1 overflow-y-auto p-6">
+        {productLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-500 dark:text-gray-400">Loading product...</span>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
 
           {/* ====== MORTGAGE BROKER LOAN FORM ====== */}
@@ -622,12 +689,11 @@ export default function ProductForm() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Category
                     </label>
-                    <input
-                      type="text"
+                    <CategoryCombobox
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className={inputClasses}
-                      placeholder="e.g., Consulting, Design"
+                      onChange={(val) => setFormData({ ...formData, category: val })}
+                      className={`${inputClasses} pr-16`}
+                      placeholder="e.g., Tequila, Vodka, Whiskey"
                     />
                   </div>
 
@@ -733,8 +799,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.quantity_on_hand}
-                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: parseInt(e.target.value) || 0 })}
+                              value={formData.quantity_on_hand === 0 || formData.quantity_on_hand === '' ? '' : formData.quantity_on_hand}
+                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -746,8 +812,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.low_stock_threshold}
-                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: parseInt(e.target.value) || 0 })}
+                              value={formData.low_stock_threshold === 0 || formData.low_stock_threshold === '' ? '' : formData.low_stock_threshold}
+                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -759,8 +825,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.reorder_quantity}
-                              onChange={(e) => setFormData({ ...formData, reorder_quantity: parseInt(e.target.value) || 0 })}
+                              value={formData.reorder_quantity === 0 || formData.reorder_quantity === '' ? '' : formData.reorder_quantity}
+                              onChange={(e) => setFormData({ ...formData, reorder_quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -779,7 +845,7 @@ export default function ProductForm() {
                             type="number"
                             step="0.01"
                             value={formData.weight || ''}
-                            onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })}
+                            onChange={(e) => setFormData({ ...formData, weight: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                             className={inputClasses}
                             placeholder="0.00"
                           />
@@ -902,7 +968,7 @@ export default function ProductForm() {
                           type="number"
                           step="0.5"
                           value={formData.estimated_duration || ''}
-                          onChange={(e) => setFormData({ ...formData, estimated_duration: parseFloat(e.target.value) || undefined })}
+                          onChange={(e) => setFormData({ ...formData, estimated_duration: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                           className={inputClasses}
                           placeholder="e.g., 2.5"
                         />
@@ -991,8 +1057,9 @@ export default function ProductForm() {
                           required
                           step="0.01"
                           min="0"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                          value={formData.price === 0 || formData.price === '' ? '' : formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.price === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
                       </div>
@@ -1008,8 +1075,9 @@ export default function ProductForm() {
                           type="number"
                           step="0.01"
                           min="0"
-                          value={formData.cost || ''}
-                          onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                          value={formData.cost === 0 || formData.cost === '' ? '' : formData.cost}
+                          onChange={(e) => setFormData({ ...formData, cost: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.cost === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
                       </div>
@@ -1043,8 +1111,9 @@ export default function ProductForm() {
                           step="0.01"
                           min="0"
                           max="100"
-                          value={formData.tax_rate}
-                          onChange={(e) => setFormData({ ...formData, tax_rate: parseFloat(e.target.value) || 0 })}
+                          value={formData.tax_rate === 0 || formData.tax_rate === '' ? '' : formData.tax_rate}
+                          onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.tax_rate === 0) e.target.select(); }}
                           className={inputClasses}
                         />
                       </div>
@@ -1080,9 +1149,20 @@ export default function ProductForm() {
                   </div>
                 </div>
               </div>
+
+              {/* Custom Fields */}
+              {productCustomFields.length > 0 && (
+                <CustomFieldsSection
+                  fields={productCustomFields}
+                  values={customFieldValues}
+                  onChange={(key, value) => setCustomFieldValues(prev => ({ ...prev, [key]: value }))}
+                  suggestions={customFieldSuggestions}
+                />
+              )}
             </>
           )}
         </form>
+        )}
       </div>
       <CreationSuccessModal
         isOpen={showSuccessModal}
@@ -1099,7 +1179,7 @@ export default function ProductForm() {
           },
           {
             label: 'Add Another',
-            path: '/dashboard/products/new',
+            onClick: handleAddAnother,
             icon: <Plus className="w-4 h-4" />,
             variant: 'secondary'
           }

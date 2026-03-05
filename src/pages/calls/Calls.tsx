@@ -12,6 +12,7 @@ import {
   Filter,
   Download,
   User,
+  UserPlus,
   Bot,
   MoreVertical,
   Users,
@@ -25,6 +26,7 @@ import { Call } from '@/types/database.types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import LogCallModal from '@/components/calls/LogCallModal';
+import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import { PageContainer, Card, IconBadge } from '@/components/theme/ThemeComponents';
 import { usePageLabels } from '@/hooks/usePageLabels';
 
@@ -47,6 +49,7 @@ export default function Calls() {
     setFilters,
     subscribeToLiveCalls,
     createCall,
+    updateCall,
   } = useCallStore();
 
   const navigate = useNavigate();
@@ -55,6 +58,8 @@ export default function Calls() {
   const [showFilters, setShowFilters] = useState(false);
   const [showLogCallModal, setShowLogCallModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickAddCallId, setQuickAddCallId] = useState<string | null>(null);
+  const [quickAddPhone, setQuickAddPhone] = useState('');
 
   useEffect(() => {
     const loadCallsData = async () => {
@@ -112,20 +117,46 @@ export default function Calls() {
       if (customer.first_name || customer.last_name) {
         return `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
       }
-      return customer.name || customer.company || 'Unknown Customer';
+      if (customer.name) return customer.name;
+      if (customer.company) return customer.company;
+    }
+    // Fallback: show formatted phone number
+    const phone = call.customer_phone || call.phone_number;
+    if (phone) {
+      const cleaned = phone.replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      }
+      if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+      }
+      return phone;
     }
     return 'Unknown Customer';
   };
 
   const handleLogCall = async (callData: any) => {
-    try {
-      await createCall(callData);
-      toast.success('Call logged successfully');
-      fetchCallStats();
-    } catch (error) {
-      toast.error('Failed to log call');
-      throw error;
+    await createCall(callData);
+    toast.success('Call logged successfully');
+    fetchCallStats();
+  };
+
+  const handleQuickAddCustomer = (callId: string, phone: string) => {
+    setQuickAddCallId(callId);
+    setQuickAddPhone(phone);
+  };
+
+  const handleCustomerCreatedFromCall = async (newCustomer: any) => {
+    if (quickAddCallId && newCustomer?.id) {
+      await updateCall(quickAddCallId, {
+        customer_id: newCustomer.id,
+        customer_phone: newCustomer.phone || quickAddPhone,
+      });
+      await fetchCalls();
+      toast.success('Customer created and linked to call');
     }
+    setQuickAddCallId(null);
+    setQuickAddPhone('');
   };
 
   // Premium AI feature glow styles
@@ -171,19 +202,19 @@ export default function Calls() {
   return (
     <PageContainer className="gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {labels.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="hidden md:block text-sm text-gray-600 dark:text-gray-400 mt-1">
             {labels.subtitle}
           </p>
         </div>
 
         <button
           onClick={() => setShowLogCallModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
+          className="flex items-center justify-center w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm active:scale-95"
         >
           <Plus size={18} className="mr-2" />
           {labels.newButton}
@@ -191,7 +222,7 @@ export default function Calls() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card hover className="flex items-center gap-4 p-4 h-24">
           <IconBadge
             icon={<Phone size={20} className="text-blue-600" />}
@@ -354,7 +385,7 @@ export default function Calls() {
               {calls.map((call) => (
                 <tr
                   key={call.id}
-                  onClick={() => navigate(`/calls/${call.id}`)}
+                  onClick={() => navigate(`/dashboard/calls/${call.id}`)}
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">
@@ -370,7 +401,7 @@ export default function Calls() {
                       )}
                       <div>
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {call.agent_name || 'Team Member'}
+                          {call.agent_name || (call.call_type === 'ai_agent' ? 'AI Phone Agent' : 'Team Member')}
                         </p>
                         <p className="text-xs text-gray-500">
                           {call.call_type === 'ai_agent' ? `${call.agent_type} AI` : 'Human'}
@@ -379,8 +410,24 @@ export default function Calls() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{getCustomerName(call)}</p>
-                    <p className="text-xs text-gray-500">{call.customer_phone || call.phone_number}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{getCustomerName(call)}</p>
+                        <p className="text-xs text-gray-500">{call.customer_phone || call.phone_number}</p>
+                      </div>
+                      {!call.customer_id && (call.customer_phone || call.phone_number) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAddCustomer(call.id, call.customer_phone || call.phone_number || '');
+                          }}
+                          className="flex-shrink-0 p-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                          title="Add as new customer"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -439,6 +486,13 @@ export default function Calls() {
         isOpen={showLogCallModal}
         onClose={() => setShowLogCallModal(false)}
         onSubmit={handleLogCall}
+      />
+
+      <QuickAddCustomerModal
+        isOpen={!!quickAddCallId}
+        onClose={() => { setQuickAddCallId(null); setQuickAddPhone(''); }}
+        onCustomerCreated={handleCustomerCreatedFromCall}
+        initialPhone={quickAddPhone}
       />
     </PageContainer>
   );

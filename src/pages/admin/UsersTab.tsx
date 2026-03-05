@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Search, Users, Building2, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Users, Building2, TrendingUp, UserCheck, Loader2, X, ExternalLink } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useAdminStore } from '../../stores/adminStore';
+import { useImpersonationStore } from '../../stores/impersonationStore';
 
 // Direct fetch helper (AbortController workaround)
 const getAuthToken = (): string | null => {
@@ -55,10 +57,13 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export const UsersTab = () => {
-  const { kpis, userGrowth, orgBreakdown, loading, fetchUserGrowth, fetchOrgBreakdown } = useAdminStore();
+  const { kpis, userGrowth, orgBreakdown, loading, fetchUserGrowth, fetchOrgBreakdown, setSelectedOrg } = useAdminStore();
+  const { startImpersonation, loading: impersonationLoading } = useImpersonationStore();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmUser, setConfirmUser] = useState<any | null>(null);
 
   useEffect(() => {
     fetchUserGrowth();
@@ -71,17 +76,30 @@ export const UsersTab = () => {
       const token = getAuthToken();
       if (!token) return;
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/user_profiles?select=*,organizations(name,plan,status)&order=created_at.desc&limit=100`,
+        `${SUPABASE_URL}/rest/v1/rpc/admin_get_user_list`,
         {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${token}`,
           },
+          body: JSON.stringify({ p_limit: 100 }),
         }
       );
       if (res.ok) {
         const data = await res.json();
-        setUsers(data || []);
+        // Map RPC response to expected shape for UI compatibility
+        const mapped = (Array.isArray(data) ? data : []).map((u: any) => ({
+          ...u,
+          id: u.user_id,
+          organization_id: u.organization_id,
+          organizations: u.org_name ? { name: u.org_name, plan: u.plan } : null,
+          org_deactivated_at: u.org_deactivated_at || null,
+          last_seen_at: u.last_sign_in_at,
+          is_active: u.status === 'active',
+        }));
+        setUsers(mapped);
       }
     } catch {
       // silently fail
@@ -122,8 +140,80 @@ export const UsersTab = () => {
     color: TIER_COLORS[key] || '#94a3b8',
   }));
 
+  const handleImpersonate = async (user: any) => {
+    if (!user.organization_id || !user.organizations?.name) return;
+    try {
+      await startImpersonation({
+        targetUserId: user.id,
+        targetUserName: user.full_name || user.email,
+        targetUserEmail: user.email,
+        targetOrgId: user.organization_id,
+        targetOrgName: user.organizations.name,
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Impersonation failed:', err);
+      alert('Failed to start impersonation. Check console for details.');
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Impersonation Confirmation Modal */}
+      {confirmUser && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50" onClick={() => setConfirmUser(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Impersonate User</h3>
+              <button onClick={() => setConfirmUser(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                You are about to view the CRM as this user. You will see their organization exactly as they experience it.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0">
+                {confirmUser.full_name?.charAt(0) || 'U'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{confirmUser.full_name || 'Unknown'}</p>
+                <p className="text-xs text-gray-500 truncate">{confirmUser.email}</p>
+                <p className="text-xs text-gray-400 truncate">{confirmUser.organizations?.name || 'No organization'}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmUser(null)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmUser(null);
+                  handleImpersonate(confirmUser);
+                }}
+                disabled={impersonationLoading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 rounded-lg transition-colors"
+              >
+                {impersonationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <UserCheck className="w-4 h-4" />
+                )}
+                View as User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Users" value={kpis?.total_users || users.length} icon={Users} color="purple" />
@@ -225,67 +315,120 @@ export const UsersTab = () => {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div>
+          <table className="w-full table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Organization</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Plan</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">Last Seen</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-[30%]">User</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[22%]">Organization</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[8%]">Plan</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell w-[12%]">Last Seen</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-[10%]">Status</th>
+                <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell w-[18%]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loadingUsers ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">Loading users...</td>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">Loading users...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">No users found</td>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No users found</td>
                 </tr>
-              ) : filteredUsers.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+              ) : filteredUsers.map(user => {
+                const isOrgDeactivated = !!user.org_deactivated_at;
+                return (
+                <tr key={user.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 ${isOrgDeactivated ? 'bg-red-50/50 dark:bg-red-500/5' : ''}`}>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 ${isOrgDeactivated ? 'bg-gradient-to-br from-red-500 to-red-700' : 'bg-gradient-to-br from-purple-600 to-blue-600'}`}>
                         {user.full_name?.charAt(0) || 'U'}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.full_name || 'Unknown'}</p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className={`text-sm font-medium truncate ${isOrgDeactivated ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>{user.full_name || 'Unknown'}</p>
+                        <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
-                    <p className="text-sm text-gray-900 dark:text-white truncate">{user.organizations?.name || '\u2014'}</p>
+                  <td className="px-3 py-2.5 hidden md:table-cell">
+                    {user.organization_id && user.organizations?.name ? (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <button
+                          onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
+                          className={`text-sm hover:underline truncate block text-left font-medium transition-colors ${isOrgDeactivated ? 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300' : 'text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300'}`}
+                          title={isOrgDeactivated ? `View deactivated organization (${new Date(user.org_deactivated_at).toLocaleDateString()})` : 'View organization details'}
+                        >
+                          {user.organizations.name}
+                        </button>
+                        {isOrgDeactivated && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 whitespace-nowrap shrink-0">
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">{'\u2014'}</p>
+                    )}
                   </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      user.organizations?.plan === 'elite' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  <td className="px-3 py-2.5 hidden md:table-cell">
+                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                      isOrgDeactivated ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500 line-through' :
+                      user.organizations?.plan === 'elite' || user.organizations?.plan === 'elite_premium' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                       user.organizations?.plan === 'business' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       user.organizations?.plan === 'enterprise' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                     }`}>
-                      {user.organizations?.plan || 'free'}
+                      {(user.organizations?.plan || 'free').replace('_premium', '')}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
+                  <td className="px-3 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
                     {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : 'Never'}
                   </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      user.is_active !== false
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {user.is_active !== false ? 'Active' : 'Inactive'}
-                    </span>
+                  <td className="px-3 py-2.5">
+                    {isOrgDeactivated ? (
+                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        Deactivated
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                        user.is_active !== false
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {user.is_active !== false ? 'Active' : 'Inactive'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                    {user.organization_id && user.organizations?.name ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setSelectedOrg(user.organization_id, { alertType: 'view_org', orgName: user.organizations.name })}
+                          className="p-1.5 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-lg transition-colors"
+                          title="View organization details"
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                        </button>
+                        {!isOrgDeactivated && (
+                          <button
+                            onClick={() => setConfirmUser(user)}
+                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors"
+                            title="Impersonate user"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-400">No org</span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
+
           </table>
         </div>
       </div>
