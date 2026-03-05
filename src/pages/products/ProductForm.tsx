@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import type { ProductType, PricingModel, RecurringInterval } from '@/types/app.types';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import CustomFieldsSection from '@/components/products/CustomFieldsSection';
+import CategoryCombobox from '@/components/products/CategoryCombobox';
 import { Plus } from 'lucide-react';
 
 const LOAN_TYPES = [
@@ -661,12 +662,11 @@ export default function ProductForm() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Category
                     </label>
-                    <input
-                      type="text"
+                    <CategoryCombobox
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className={inputClasses}
-                      placeholder="e.g., Consulting, Design"
+                      onChange={(val) => setFormData({ ...formData, category: val })}
+                      className={`${inputClasses} pr-16`}
+                      placeholder="e.g., Tequila, Vodka, Whiskey"
                     />
                   </div>
 
