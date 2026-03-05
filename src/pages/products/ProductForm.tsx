@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Save, Package, DollarSign, Tag,
@@ -6,9 +6,11 @@ import {
 } from 'lucide-react';
 import { useProductStore } from '@/stores/productStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { useCustomFieldsStore } from '@/stores/customFieldsStore';
 import toast from 'react-hot-toast';
 import type { ProductType, PricingModel, RecurringInterval } from '@/types/app.types';
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
+import CustomFieldsSection from '@/components/products/CustomFieldsSection';
 import { Plus } from 'lucide-react';
 
 const LOAN_TYPES = [
@@ -31,12 +33,54 @@ const RATE_TYPES = [
   { value: 'hybrid', label: 'Hybrid', desc: 'Fixed for initial period, then adjustable' },
 ];
 
+const INITIAL_FORM_DATA = {
+  name: '',
+  description: '',
+  sku: '',
+  product_type: 'product' as ProductType,
+  category: '',
+  price: 0,
+  cost: 0,
+  pricing_model: 'one_time' as PricingModel,
+  recurring_interval: 'monthly' as RecurringInterval | undefined,
+  recurring_interval_count: 1,
+  usage_unit: '',
+  tax_rate: 0,
+  is_taxable: true,
+  track_inventory: false,
+  quantity_on_hand: 0,
+  low_stock_threshold: 10,
+  reorder_quantity: 50,
+  weight: undefined as number | undefined,
+  dimensions: '',
+  estimated_duration: undefined as number | undefined,
+  duration_unit: 'hours',
+  deliverables: '',
+  discount_type: 'fixed',
+  image_url: '',
+  is_active: true,
+  is_featured: false,
+  requires_approval: false,
+  loan_type: '',
+  interest_rate_type: 'fixed',
+  min_rate: undefined as number | undefined,
+  max_rate: undefined as number | undefined,
+  min_term_months: undefined as number | undefined,
+  max_term_months: undefined as number | undefined,
+  min_amount: undefined as number | undefined,
+  max_amount: undefined as number | undefined,
+  down_payment_min_pct: undefined as number | undefined,
+  insurance_required: false,
+  notes: '',
+};
+
 export default function ProductForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { createProduct, updateProduct, getProductById, fetchProducts } = useProductStore();
+  const { products, createProduct, updateProduct, getProductById, fetchProducts } = useProductStore();
   const { currentOrganization } = useOrganizationStore();
+  const { fields: customFieldDefs, fetchFields: fetchCustomFields } = useCustomFieldsStore();
 
   const isEdit = Boolean(id);
   const isDuplicate = Boolean(location.state?.duplicate);
@@ -45,61 +89,35 @@ export default function ProductForm() {
   const [saving, setSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdProduct, setCreatedProduct] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    sku: '',
-    product_type: 'product' as ProductType,
-    category: '',
-    price: 0,
-    cost: 0,
-    pricing_model: 'one_time' as PricingModel,
-    recurring_interval: 'monthly' as RecurringInterval | undefined,
-    recurring_interval_count: 1,
-    usage_unit: '',
-    tax_rate: 0,
-    is_taxable: true,
-    track_inventory: false,
-    quantity_on_hand: 0,
-    low_stock_threshold: 10,
-    reorder_quantity: 50,
-    weight: undefined as number | undefined,
-    dimensions: '',
-    estimated_duration: undefined as number | undefined,
-    duration_unit: 'hours',
-    deliverables: '',
-    discount_type: 'fixed',
-    image_url: '',
-    is_active: true,
-    is_featured: false,
-    requires_approval: false,
-    // Loan fields
-    loan_type: '',
-    interest_rate_type: 'fixed',
-    min_rate: undefined as number | undefined,
-    max_rate: undefined as number | undefined,
-    min_term_months: undefined as number | undefined,
-    max_term_months: undefined as number | undefined,
-    min_amount: undefined as number | undefined,
-    max_amount: undefined as number | undefined,
-    down_payment_min_pct: undefined as number | undefined,
-    insurance_required: false,
-    notes: '',
-  });
+  const [formData, setFormData] = useState({ ...INITIAL_FORM_DATA });
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
+  const [productLoading, setProductLoading] = useState(false);
 
+  // Get custom field definitions for products
+  const productCustomFields = customFieldDefs.filter(f => f.entity_type === 'product');
+
+  // Fetch custom fields on mount
+  useEffect(() => {
+    fetchCustomFields('product');
+  }, [fetchCustomFields]);
+
+  // BUG FIX #2: Load products for edit mode, with proper dependency on products array
   useEffect(() => {
     if (isEdit && id) {
-      // Make sure products are loaded
-      if (!getProductById(id)) {
-        fetchProducts(currentOrganization?.id);
+      const product = getProductById(id);
+      if (!product) {
+        setProductLoading(true);
+        fetchProducts(currentOrganization?.id).finally(() => setProductLoading(false));
       }
     }
-  }, [id, isEdit, currentOrganization?.id, fetchProducts, getProductById]);
+  }, [id, isEdit, currentOrganization?.id]);
 
+  // BUG FIX #2: Populate form when products are loaded - uses `products` as dependency
   useEffect(() => {
     if (isEdit && id) {
       const product = getProductById(id);
       if (product) {
+        setProductLoading(false);
         setFormData({
           name: product.name,
           description: product.description || '',
@@ -140,16 +158,29 @@ export default function ProductForm() {
           insurance_required: product.insurance_required || false,
           notes: product.notes || '',
         });
+        setCustomFieldValues(product.custom_fields || {});
       }
     } else if (isDuplicate && location.state?.duplicate) {
       const duplicate = location.state.duplicate;
       setFormData({
+        ...INITIAL_FORM_DATA,
         ...duplicate,
         name: `${duplicate.name} (Copy)`,
         sku: '',
       });
+      setCustomFieldValues(duplicate.custom_fields || {});
     }
-  }, [id, isEdit, isDuplicate, getProductById, location.state]);
+  }, [id, isEdit, isDuplicate, products, location.state]);
+
+  // BUG FIX #1: Reset form for "Add Another"
+  const handleAddAnother = useCallback(() => {
+    setFormData({ ...INITIAL_FORM_DATA });
+    setCustomFieldValues({});
+    setCreatedProduct(null);
+    setShowSuccessModal(false);
+    setSaving(false);
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,6 +208,8 @@ export default function ProductForm() {
         product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
         // For mortgage, category is the loan type label
         category: isMortgage ? (LOAN_TYPES.find(t => t.value === cleanFormData.loan_type)?.label || cleanFormData.category) : cleanFormData.category,
+        // Include custom field values
+        custom_fields: customFieldValues,
       };
 
       if (isEdit && id) {
@@ -265,6 +298,12 @@ export default function ProductForm() {
 
       {/* Form */}
       <div className="flex-1 overflow-y-auto p-6">
+        {productLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-500 dark:text-gray-400">Loading product...</span>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
 
           {/* ====== MORTGAGE BROKER LOAN FORM ====== */}
@@ -733,8 +772,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.quantity_on_hand}
-                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: parseInt(e.target.value) || 0 })}
+                              value={formData.quantity_on_hand || ''}
+                              onChange={(e) => setFormData({ ...formData, quantity_on_hand: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -746,8 +785,8 @@ export default function ProductForm() {
                             <input
                               type="number"
                               min="0"
-                              value={formData.low_stock_threshold}
-                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: parseInt(e.target.value) || 0 })}
+                              value={formData.low_stock_threshold || ''}
+                              onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                             />
                           </div>
@@ -991,8 +1030,9 @@ export default function ProductForm() {
                           required
                           step="0.01"
                           min="0"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                          value={formData.price || ''}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.price === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
                       </div>
@@ -1009,7 +1049,8 @@ export default function ProductForm() {
                           step="0.01"
                           min="0"
                           value={formData.cost || ''}
-                          onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) => setFormData({ ...formData, cost: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.cost === 0) e.target.select(); }}
                           className={`${inputClasses} pl-8`}
                         />
                       </div>
@@ -1043,8 +1084,9 @@ export default function ProductForm() {
                           step="0.01"
                           min="0"
                           max="100"
-                          value={formData.tax_rate}
-                          onChange={(e) => setFormData({ ...formData, tax_rate: parseFloat(e.target.value) || 0 })}
+                          value={formData.tax_rate || ''}
+                          onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          onFocus={(e) => { if (formData.tax_rate === 0) e.target.select(); }}
                           className={inputClasses}
                         />
                       </div>
@@ -1080,9 +1122,19 @@ export default function ProductForm() {
                   </div>
                 </div>
               </div>
+
+              {/* Custom Fields */}
+              {productCustomFields.length > 0 && (
+                <CustomFieldsSection
+                  fields={productCustomFields}
+                  values={customFieldValues}
+                  onChange={(key, value) => setCustomFieldValues(prev => ({ ...prev, [key]: value }))}
+                />
+              )}
             </>
           )}
         </form>
+        )}
       </div>
       <CreationSuccessModal
         isOpen={showSuccessModal}
@@ -1099,7 +1151,7 @@ export default function ProductForm() {
           },
           {
             label: 'Add Another',
-            path: '/dashboard/products/new',
+            onClick: handleAddAnother,
             icon: <Plus className="w-4 h-4" />,
             variant: 'secondary'
           }
