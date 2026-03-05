@@ -23,6 +23,7 @@ function getAuthToken(): string | null {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [onboardingPath, setOnboardingPath] = useState<'choose' | 'new_business' | 'join_team'>('choose');
   const [formData, setFormData] = useState({
@@ -203,7 +204,7 @@ export default function ProfilePage() {
       }
     };
 
-    initProfile();
+    initProfile().finally(() => setInitializing(false));
   }, [navigate]);
 
   const sendOtpCode = async () => {
@@ -318,6 +319,21 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
+
+  // Show branded loading screen while checking if user is returning (prevents onboarding flash)
+  if (initializing) {
+    return (
+      <main className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+        <img src="/cxtrack-logo.png" alt="CxTrack" className="h-10 opacity-90" />
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-[#FFD700] animate-bounce [animation-delay:0ms]" />
+          <div className="w-2 h-2 rounded-full bg-[#FFD700] animate-bounce [animation-delay:150ms]" />
+          <div className="w-2 h-2 rounded-full bg-[#FFD700] animate-bounce [animation-delay:300ms]" />
+        </div>
+        <p className="text-white/30 text-sm">Getting things ready...</p>
+      </main>
+    );
+  }
 
   // Fork: "Choose your path" screen
   if (onboardingPath === 'choose') {

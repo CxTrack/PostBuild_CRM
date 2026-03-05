@@ -12,6 +12,21 @@ if (typeof window !== 'undefined') {
   (window as any).CXTRACK_BUILD = BUILD_VERSION;
 }
 
+// Auto-reload on stale chunk errors after a new deployment.
+// Vite fires this event when a preloaded module 404s because the old
+// chunk hash no longer exists on the server.
+window.addEventListener('vite:preloadError', (event) => {
+  const reloadKey = 'cxtrack-preload-reload';
+  const lastReload = sessionStorage.getItem(reloadKey);
+  const now = Date.now();
+  // Only auto-reload if we haven't reloaded in the last 10 seconds
+  if (!lastReload || now - parseInt(lastReload, 10) > 10_000) {
+    sessionStorage.setItem(reloadKey, String(now));
+    event.preventDefault();
+    window.location.reload();
+  }
+});
+
 // Suppress Supabase AbortError from unhandled rejection
 // These occur during auth state transitions when the Supabase client
 // cancels in-flight requests — they are harmless and expected.
