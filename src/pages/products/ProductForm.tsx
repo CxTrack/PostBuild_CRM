@@ -233,7 +233,9 @@ export default function ProductForm() {
       };
 
       if (isEdit && id) {
-        await updateProduct(id, productData);
+        // Don't send organization_id on updates (immutable, and avoids re-triggering unique constraints)
+        const { organization_id, ...updatePayload } = productData;
+        await updateProduct(id, updatePayload);
         toast.success(isMortgage ? 'Loan product updated' : 'Product updated successfully');
         navigate('/dashboard/products');
       } else {
