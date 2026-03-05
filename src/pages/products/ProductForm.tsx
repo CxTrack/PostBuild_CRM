@@ -220,8 +220,12 @@ export default function ProductForm() {
       // Strip fields that don't exist in the DB schema
       const { is_featured, reorder_quantity, ...cleanFormData } = formData;
 
+      // Auto-generate SKU if empty (unique constraint on org_id + sku)
+      const sku = cleanFormData.sku?.trim() || `SKU-${Date.now().toString(36).toUpperCase()}`;
+
       const productData = {
         ...cleanFormData,
+        sku,
         organization_id: currentOrganization?.id || '',
         // For mortgage, auto-set product_type to 'service' (loan products are services)
         product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
