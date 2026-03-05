@@ -316,7 +316,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
       onTouchMove={(e) => e.preventDefault()}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -393,7 +393,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
             </div>
           )}
 
-          <form id="customer-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Type
@@ -681,12 +681,8 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               You can add more details (address, notes, etc.) from the customer profile page
             </p>
           </div>
-          </form>
-        </div>
 
-        {/* Fixed footer — always visible, outside scroll area */}
-        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
               onClick={onClose}
@@ -697,7 +693,6 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
 
             <button
               type="submit"
-              form="customer-form"
               disabled={
                 saving ||
                 !formData.first_name ||
@@ -711,6 +706,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               {saving ? 'Saving...' : customer ? 'Update' : 'Create Customer'}
             </button>
           </div>
+          </form>
         </div>
       </div>
     </div>
