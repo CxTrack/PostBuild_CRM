@@ -229,27 +229,16 @@ export default function TaskModal({
     }
   };
 
-  // Lock body scroll when modal is open (prevents mobile scroll-chaining)
-  useEffect(() => {
-    if (isOpen) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl sm:max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
       >
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">

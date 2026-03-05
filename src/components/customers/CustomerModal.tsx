@@ -32,15 +32,6 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
 
   const canAssign = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
 
-  // Lock body scroll when modal is open (prevents mobile scroll-chaining)
-  useEffect(() => {
-    if (isOpen) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
-    }
-  }, [isOpen]);
-
   const [formData, setFormData] = useState({
     customer_type: customer?.customer_type || 'personal',
     first_name: customer?.first_name || '',
@@ -313,12 +304,10 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
