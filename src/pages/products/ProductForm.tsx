@@ -845,7 +845,7 @@ export default function ProductForm() {
                             type="number"
                             step="0.01"
                             value={formData.weight || ''}
-                            onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })}
+                            onChange={(e) => setFormData({ ...formData, weight: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                             className={inputClasses}
                             placeholder="0.00"
                           />
@@ -968,7 +968,7 @@ export default function ProductForm() {
                           type="number"
                           step="0.5"
                           value={formData.estimated_duration || ''}
-                          onChange={(e) => setFormData({ ...formData, estimated_duration: parseFloat(e.target.value) || undefined })}
+                          onChange={(e) => setFormData({ ...formData, estimated_duration: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                           className={inputClasses}
                           placeholder="e.g., 2.5"
                         />

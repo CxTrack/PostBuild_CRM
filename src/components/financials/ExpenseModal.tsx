@@ -209,7 +209,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
     }, [isOpen, expense, currentOrganization?.id]);
 
     useEffect(() => {
-        const total = (Number(formData.amount) || 0) + (Number(formData.tax_amount) || 0);
+        const total = (formData.amount === '' ? 0 : Number(formData.amount) || 0) + (formData.tax_amount === '' ? 0 : Number(formData.tax_amount) || 0);
         if (total !== formData.total_amount) {
             setFormData(prev => ({ ...prev, total_amount: total }));
         }
@@ -232,20 +232,35 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
 
         setIsSubmitting(true);
         try {
+            // Coerce empty-string numeric fields back to numbers for the DB
+            const cleanedForm = {
+                ...formData,
+                amount: Number(formData.amount) || 0,
+                tax_amount: Number(formData.tax_amount) || 0,
+                total_amount: (Number(formData.amount) || 0) + (Number(formData.tax_amount) || 0),
+            };
+            // Coerce line item numerics
+            const cleanedLineItems = lineItems.map(li => ({
+                ...li,
+                quantity: Number(li.quantity) || 0,
+                unit_price: Number(li.unit_price) || 0,
+                amount: (Number(li.quantity) || 0) * (Number(li.unit_price) || 0),
+            }));
+
             if (expense?.id) {
-                await updateExpense(expense.id, { ...formData, ai_processed: !!aiResult });
+                await updateExpense(expense.id, { ...cleanedForm, ai_processed: !!aiResult });
                 // Save line items (even if empty to handle deletions)
-                await saveLineItems(expense.id, lineItems);
+                await saveLineItems(expense.id, cleanedLineItems);
                 toast.success('Expense updated successfully');
             } else {
                 const newExpense = await createExpense({
-                    ...formData as any,
+                    ...cleanedForm as any,
                     organization_id: currentOrganization.id,
                     ai_processed: !!aiResult,
                 });
                 // Save line items if any
-                if (newExpense?.id && lineItems.length > 0) {
-                    await saveLineItems(newExpense.id, lineItems);
+                if (newExpense?.id && cleanedLineItems.length > 0) {
+                    await saveLineItems(newExpense.id, cleanedLineItems);
                 }
                 toast.success('Expense recorded successfully');
             }
@@ -372,8 +387,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                                     type="number"
                                                     step="0.01"
                                                     required
-                                                    value={formData.amount}
-                                                    onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value || '0') })}
+                                                    value={formData.amount === 0 || formData.amount === '' ? '' : formData.amount}
+                                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value === '' ? '' as any : parseFloat(e.target.value) })}
                                                     className="w-full pl-10 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all dark:text-white"
                                                 />
                                             </div>
@@ -388,8 +403,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                                 <input
                                                     type="number"
                                                     step="0.01"
-                                                    value={formData.tax_amount}
-                                                    onChange={(e) => setFormData({ ...formData, tax_amount: parseFloat(e.target.value || '0') })}
+                                                    value={formData.tax_amount === 0 || formData.tax_amount === '' ? '' : formData.tax_amount}
+                                                    onChange={(e) => setFormData({ ...formData, tax_amount: e.target.value === '' ? '' as any : parseFloat(e.target.value) })}
                                                     className="w-full pl-10 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all dark:text-white"
                                                 />
                                             </div>
@@ -576,8 +591,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                                             type="number"
                                                             step="1"
                                                             min="1"
-                                                            value={item.quantity}
-                                                            onChange={(e) => updateLineItem(idx, 'quantity', parseFloat(e.target.value || '1'))}
+                                                            value={item.quantity === 0 || item.quantity === '' ? '' : item.quantity}
+                                                            onChange={(e) => updateLineItem(idx, 'quantity', e.target.value === '' ? '' : parseFloat(e.target.value))}
                                                             className="w-full px-2 py-1 text-sm text-right rounded-lg bg-transparent border border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-rose-500 focus:border-transparent dark:text-white"
                                                         />
                                                     </div>
@@ -585,8 +600,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, expense })
                                                         <input
                                                             type="number"
                                                             step="0.01"
-                                                            value={item.unit_price}
-                                                            onChange={(e) => updateLineItem(idx, 'unit_price', parseFloat(e.target.value || '0'))}
+                                                            value={item.unit_price === 0 || item.unit_price === '' ? '' : item.unit_price}
+                                                            onChange={(e) => updateLineItem(idx, 'unit_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
                                                             className="w-full px-2 py-1 text-sm text-right rounded-lg bg-transparent border border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-rose-500 focus:border-transparent dark:text-white"
                                                         />
                                                     </div>
