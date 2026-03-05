@@ -38,7 +38,7 @@ interface ResizableTableProps<T = any> {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Cache version - increment this to force reset of saved column widths
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 export const ResizableTable = <T extends any>({
     columns,
@@ -156,7 +156,12 @@ export const ResizableTable = <T extends any>({
                     <div
                         key={col.id}
                         className={`relative flex items-center px-3 py-2 ${onSort ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''}`}
-                        style={{ width: columnWidths[col.id] || col.defaultWidth || 150 }}
+                        style={{
+                            flex: col.resizable === false
+                                ? `0 0 ${columnWidths[col.id] || col.defaultWidth || 150}px`
+                                : `${columnWidths[col.id] || col.defaultWidth || 150} 0 ${columnWidths[col.id] || col.defaultWidth || 150}px`,
+                            minWidth: col.minWidth || 50,
+                        }}
                         onClick={() => onSort && onSort(col.id)}
                     >
                         {col.headerRender ? (
@@ -211,7 +216,12 @@ export const ResizableTable = <T extends any>({
                                     key={col.id}
                                     className={`px-3 py-2 text-sm ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                                         }`}
-                                    style={{ width: columnWidths[col.id] || col.defaultWidth || 150 }}
+                                    style={{
+                                        flex: col.resizable === false
+                                            ? `0 0 ${columnWidths[col.id] || col.defaultWidth || 150}px`
+                                            : `${columnWidths[col.id] || col.defaultWidth || 150} 0 ${columnWidths[col.id] || col.defaultWidth || 150}px`,
+                                        minWidth: col.minWidth || 50,
+                                    }}
                                 >
                                     {col.render(row, rowIndex)}
                                 </div>
