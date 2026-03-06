@@ -33,8 +33,8 @@ import { Lock } from 'lucide-react';
 export const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [filterType, setFilterType] = useState<'all' | 'personal' | 'business'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'personal' | 'business'>('business');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('Active');
   const [filterDateRange, setFilterDateRange] = useState('all');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
@@ -44,7 +44,7 @@ export const Customers: React.FC = () => {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [ownershipFilter, setOwnershipFilter] = useState<string>('all'); // 'mine' | 'all' | userId | 'team:teamId'
+  const [ownershipFilter, setOwnershipFilter] = useState<string>('mine'); // 'mine' | 'all' | userId | 'team:teamId'
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [reassignTarget, setReassignTarget] = useState<string>('');
   const [showReassignDropdown, setShowReassignDropdown] = useState(false);
@@ -65,18 +65,6 @@ export const Customers: React.FC = () => {
       setCurrentUserId(user?.id || null);
     });
   }, []);
-
-  // Set default ownership filter based on role
-  useEffect(() => {
-    if (currentMembership && currentUserId) {
-      const role = currentMembership.role;
-      if (role === 'user') {
-        setOwnershipFilter('mine');
-      } else {
-        setOwnershipFilter('all');
-      }
-    }
-  }, [currentMembership?.role, currentUserId]);
 
   const isManagerOrAbove = currentMembership?.role === 'owner' || currentMembership?.role === 'admin' || currentMembership?.role === 'manager';
   const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin';
@@ -122,7 +110,7 @@ export const Customers: React.FC = () => {
       // Ownership filter
       let matchesOwnership = true;
       if (ownershipFilter === 'mine') {
-        matchesOwnership = customer.assigned_to === currentUserId;
+        matchesOwnership = customer.assigned_to === currentUserId || customer.created_by === currentUserId;
       } else if (ownershipFilter === 'all') {
         matchesOwnership = true;
       } else if (ownershipFilter.startsWith('team:')) {
@@ -588,8 +576,8 @@ export const Customers: React.FC = () => {
             },
           ]}
           onClearAll={() => {
-            setFilterType('all');
-            setFilterStatus('all');
+            setFilterType('business');
+            setFilterStatus('Active');
             setFilterDateRange('all');
           }}
         />
