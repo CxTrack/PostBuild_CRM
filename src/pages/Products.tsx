@@ -3,7 +3,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, Grid, List, Package,
-  MoreVertical,
+  MoreVertical, AlertTriangle,
   Trash2, Eye, Boxes,
   Zap, ArrowRight,
   ShoppingCart, BarChart2, PackageOpen,
@@ -663,15 +663,19 @@ export default function Products() {
                   defaultWidth: 60,
                   minWidth: 50,
                   align: 'center',
-                  render: (product) => (
-                    product.track_inventory ? (
-                      <span className={`text-sm font-medium ${(product.quantity_on_hand || 0) > 20 ? 'text-green-600' :
-                        (product.quantity_on_hand || 0) > 5 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                        {product.quantity_on_hand || 0}
+                  render: (product) => {
+                    if (!product.track_inventory) return <span className="text-gray-400">—</span>;
+                    const qty = product.quantity_on_hand ?? 0;
+                    const threshold = product.low_stock_threshold ?? 5;
+                    const isOut = qty <= 0;
+                    const isLow = qty <= threshold && qty > 0;
+                    return (
+                      <span className={`text-sm font-medium inline-flex items-center gap-1 ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-green-600'}`}>
+                        {(isOut || isLow) && <AlertTriangle className="w-3 h-3" />}
+                        {qty}
                       </span>
-                    ) : <span className="text-gray-400">—</span>
-                  ),
+                    );
+                  },
                 },
                 {
                   id: 'status',
@@ -808,11 +812,27 @@ export default function Products() {
                           </>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 text-sm">
                         {isMortgage ? (
-                          product.max_term_months ? `${product.max_term_months / 12} yr` : '—'
-                        ) : (
-                          product.track_inventory ? `${product.quantity_on_hand} units` : '-'
+                          <span className="text-gray-600 dark:text-gray-400">{product.max_term_months ? `${product.max_term_months / 12} yr` : '—'}</span>
+                        ) : product.track_inventory ? (() => {
+                          const qty = product.quantity_on_hand ?? 0;
+                          const threshold = product.low_stock_threshold ?? 5;
+                          const isOut = qty <= 0;
+                          const isLow = qty <= threshold && qty > 0;
+                          return isOut ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                              <AlertTriangle className="w-3 h-3" /> Out of Stock
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                              <AlertTriangle className="w-3 h-3" /> Low: {qty}
+                            </span>
+                          ) : (
+                            <span className="text-green-600 dark:text-green-400 font-medium">{qty} units</span>
+                          );
+                        })() : (
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -896,7 +916,20 @@ export default function Products() {
                         </div>
                         <div className="text-center flex-1">
                           <p className="text-[10px] text-gray-500 uppercase">Stock</p>
-                          <p className="font-bold text-gray-900 dark:text-white">{product.track_inventory ? product.quantity_on_hand : '—'}</p>
+                          {product.track_inventory ? (() => {
+                            const qty = product.quantity_on_hand ?? 0;
+                            const threshold = product.low_stock_threshold ?? 5;
+                            const isOut = qty <= 0;
+                            const isLow = qty <= threshold && qty > 0;
+                            return (
+                              <p className={`font-bold inline-flex items-center gap-1 ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`}>
+                                {(isOut || isLow) && <AlertTriangle className="w-3 h-3" />}
+                                {isOut ? '0' : qty}
+                              </p>
+                            );
+                          })() : (
+                            <p className="font-bold text-gray-900 dark:text-white">—</p>
+                          )}
                         </div>
                       </>
                     )}

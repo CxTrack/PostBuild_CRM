@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, ArrowDown, ArrowUp, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useInventoryStore } from '@/stores/inventoryStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import type { Product, MovementType } from '@/types/app.types';
 import toast from 'react-hot-toast';
@@ -13,10 +14,12 @@ interface StockMovementModalProps {
 
 const StockMovementModal: React.FC<StockMovementModalProps> = ({ isOpen, onClose, product }) => {
     const { addMovement } = useInventoryStore();
+    const { currentMembership } = useOrganizationStore();
 
     const [movementType, setMovementType] = useState<MovementType>('adjustment');
     const [quantity, setQuantity] = useState<number>(0);
     const [reason, setReason] = useState('');
+    const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
@@ -49,7 +52,8 @@ const StockMovementModal: React.FC<StockMovementModalProps> = ({ isOpen, onClose
                 previous_quantity: prevQty,
                 new_quantity: newQty,
                 reason,
-                performed_by: '00000000-0000-0000-0000-000000000000', // Placeholder
+                notes: notes || undefined,
+                performed_by: currentMembership?.user_id || '',
             });
 
             toast.success('Inventory updated successfully');
@@ -131,6 +135,19 @@ const StockMovementModal: React.FC<StockMovementModalProps> = ({ isOpen, onClose
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Notes (optional)
+                        </label>
+                        <textarea
+                            placeholder="Additional notes about this adjustment..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            rows={2}
+                            className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white resize-none"
                         />
                     </div>
 

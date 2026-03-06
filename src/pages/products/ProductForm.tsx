@@ -152,7 +152,7 @@ export default function ProductForm() {
           is_taxable: product.is_taxable,
           track_inventory: product.track_inventory,
           quantity_on_hand: product.quantity_on_hand,
-          low_stock_threshold: product.low_stock_threshold || 10,
+          low_stock_threshold: product.low_stock_threshold ?? 10,
           reorder_quantity: 50,
           weight: product.weight,
           dimensions: product.dimensions || '',
@@ -230,8 +230,8 @@ export default function ProductForm() {
         price: Number(cleanFormData.price) || 0,
         cost: Number(cleanFormData.cost) || 0,
         tax_rate: Number(cleanFormData.tax_rate) || 0,
-        quantity_on_hand: Number(cleanFormData.quantity_on_hand) || 0,
-        low_stock_threshold: Number(cleanFormData.low_stock_threshold) || 0,
+        quantity_on_hand: Number(cleanFormData.quantity_on_hand ?? 0),
+        low_stock_threshold: Number(cleanFormData.low_stock_threshold ?? 0),
         // For mortgage, auto-set product_type to 'service' (loan products are services)
         product_type: isMortgage ? 'service' as ProductType : cleanFormData.product_type,
         // For mortgage, category is the loan type label
