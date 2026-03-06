@@ -53,18 +53,27 @@ export default function ProfilePage() {
       const providerRefreshToken = urlParams.get('provider_refresh_token') || hashParams.get('provider_refresh_token');
 
       if (accessToken && refreshToken) {
-        await supabase.auth.setSession({
+        const { data: sessionData } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
 
-        // Capture Microsoft provider tokens for auto email connection via Graph API
+        // Capture provider tokens for auto email/calendar connection
+        // Detect actual OAuth provider so tokens go to the correct sessionStorage key
         if (providerToken) {
-          sessionStorage.setItem('microsoft_provider_tokens', JSON.stringify({
+          const authProvider = sessionData?.session?.user?.app_metadata?.provider;
+          const tokenPayload = JSON.stringify({
             provider_token: providerToken,
             provider_refresh_token: providerRefreshToken || '',
             timestamp: Date.now(),
-          }));
+          });
+
+          if (authProvider === 'google') {
+            sessionStorage.setItem('google_provider_tokens', tokenPayload);
+          } else {
+            // Microsoft/Azure or any other OAuth provider
+            sessionStorage.setItem('microsoft_provider_tokens', tokenPayload);
+          }
         }
 
         // Clean tokens from URL to prevent reprocessing on refresh

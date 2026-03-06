@@ -59,7 +59,7 @@ export async function fetchTodayOutlookEvents(): Promise<{
 
     if (!res.ok) {
       console.warn('[microsoftCalendar] Edge function error:', res.status);
-      return { events: [], needsReauth: false, noConnection: false };
+      return { events: [], needsReauth: false, noConnection: true };
     }
 
     const data: FetchCalendarResponse = await res.json();

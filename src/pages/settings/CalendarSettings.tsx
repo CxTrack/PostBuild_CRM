@@ -21,7 +21,7 @@ interface CalComState {
 export default function CalendarSettings() {
   const { currentOrganization } = useOrganizationStore();
   const {
-    outlookNeedsReauth, fetchOutlookTodayEvents, outlookEvents, outlookLoading,
+    outlookNeedsReauth, outlookNoConnection, fetchOutlookTodayEvents, outlookEvents, outlookLoading,
     googleNeedsReauth, fetchGoogleTodayEvents, googleEvents, googleLoading, googleNoConnection
   } = useCalendarStore();
   const [checking, setChecking] = useState(false);
@@ -201,7 +201,7 @@ export default function CalendarSettings() {
     }
   };
 
-  const isOutlookConnected = !outlookNeedsReauth && !outlookLoading;
+  const isOutlookConnected = !outlookNeedsReauth && !outlookNoConnection && !outlookLoading;
   const isGoogleConnected = !googleNeedsReauth && !googleNoConnection && !googleLoading;
 
   return (

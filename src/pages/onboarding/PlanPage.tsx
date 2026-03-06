@@ -197,12 +197,16 @@ export default function PlanPage() {
                     updatedLead.organizationId = existingMembers[0].organization_id;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
-                    // Auto-connect Microsoft email for existing org case
+                    // Auto-connect email for existing org case (Microsoft or Google)
                     try {
                         const msTokens = sessionStorage.getItem('microsoft_provider_tokens');
-                        if (msTokens) {
-                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(msTokens);
-                            sessionStorage.removeItem('microsoft_provider_tokens');
+                        const googleTokens = sessionStorage.getItem('google_provider_tokens');
+                        const storedTokens = msTokens || googleTokens;
+                        const provider = msTokens ? 'microsoft' : 'google';
+                        if (storedTokens) {
+                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(storedTokens);
+                            if (msTokens) sessionStorage.removeItem('microsoft_provider_tokens');
+                            if (googleTokens) sessionStorage.removeItem('google_provider_tokens');
                             if (Date.now() - timestamp < 5 * 60 * 1000) {
                                 fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
                                     method: 'POST',
@@ -211,12 +215,12 @@ export default function PlanPage() {
                                         'Content-Type': 'application/json',
                                     },
                                     body: JSON.stringify({
-                                        provider: 'microsoft',
+                                        provider,
                                         provider_token,
                                         provider_refresh_token,
                                         organization_id: existingMembers[0].organization_id,
                                     }),
-                                }).then(r => r.ok && r.json().then(d => console.log('[Onboarding] Auto-connected Microsoft email:', d.email_address)))
+                                }).then(r => r.ok && r.json().then(d => console.log(`[Onboarding] Auto-connected ${provider} email:`, d.email_address)))
                                   .catch(err => console.warn('[Onboarding] Auto-connect email failed:', err));
                             }
                         }
@@ -259,12 +263,16 @@ export default function PlanPage() {
                     updatedLead.organizationId = orgId;
                     sessionStorage.setItem('onboarding_lead', JSON.stringify(updatedLead));
 
-                    // Auto-connect Microsoft email if user signed up via Microsoft OAuth
+                    // Auto-connect email if user signed up via OAuth (Microsoft or Google)
                     try {
                         const msTokens = sessionStorage.getItem('microsoft_provider_tokens');
-                        if (msTokens) {
-                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(msTokens);
-                            sessionStorage.removeItem('microsoft_provider_tokens');
+                        const googleTokens = sessionStorage.getItem('google_provider_tokens');
+                        const storedTokens = msTokens || googleTokens;
+                        const provider = msTokens ? 'microsoft' : 'google';
+                        if (storedTokens) {
+                            const { provider_token, provider_refresh_token, timestamp } = JSON.parse(storedTokens);
+                            if (msTokens) sessionStorage.removeItem('microsoft_provider_tokens');
+                            if (googleTokens) sessionStorage.removeItem('google_provider_tokens');
                             if (Date.now() - timestamp < 5 * 60 * 1000) {
                                 fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
                                     method: 'POST',
@@ -273,12 +281,12 @@ export default function PlanPage() {
                                         'Content-Type': 'application/json',
                                     },
                                     body: JSON.stringify({
-                                        provider: 'microsoft',
+                                        provider,
                                         provider_token,
                                         provider_refresh_token,
                                         organization_id: orgId,
                                     }),
-                                }).then(r => r.ok && r.json().then(d => console.log('[Onboarding] Auto-connected Microsoft email:', d.email_address)))
+                                }).then(r => r.ok && r.json().then(d => console.log(`[Onboarding] Auto-connected ${provider} email:`, d.email_address)))
                                   .catch(err => console.warn('[Onboarding] Auto-connect email failed:', err));
                             }
                         }
