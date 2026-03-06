@@ -350,19 +350,29 @@ export const DashboardPage = () => {
     }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchDeals, fetchPipelineStats]);
 
     // Fetch Outlook calendar events (today + upcoming 30 days)
+    // SKIP if auto-connect is about to run -- the cxtrack:email-connected handler
+    // will fetch after tokens are cleanly stored in Vault, avoiding race condition
+    // where both fetch-outlook-calendar and auto-connect-email simultaneously
+    // read/write the same connection record and Vault secrets.
     useEffect(() => {
         let cancelled = false;
+
+        // If OAuth provider tokens are in sessionStorage, auto-connect will fire
+        // from DashboardLayout and dispatch cxtrack:email-connected when done.
+        // Fetching now would race with auto-connect and corrupt the connection state.
+        const hasAutoConnectPending = sessionStorage.getItem('microsoft_provider_tokens') ||
+            sessionStorage.getItem('google_provider_tokens');
+        if (hasAutoConnectPending) {
+            console.log('[Dashboard] Skipping initial Outlook calendar fetch -- auto-connect pending');
+            return () => { cancelled = true; };
+        }
+
         const loadOutlookEvents = async () => {
             try {
                 const result = await fetchTodayOutlookEvents();
                 if (cancelled) return;
                 setOutlookEvents(result.events);
-                // Don't flash "Reconnect" warning if auto-connect is still storing fresh tokens.
-                if (result.needsReauth && (window as any).__cxtrack_auto_connect_pending) {
-                    console.log('[Dashboard] Outlook Calendar needs reauth but auto-connect pending, deferring warning');
-                } else {
-                    setOutlookNeedsReauth(result.needsReauth);
-                }
+                setOutlookNeedsReauth(result.needsReauth);
                 setOutlookNoConnection(result.noConnection);
 
                 // Also fetch upcoming 30 days for the "Upcoming" toggle
@@ -382,20 +392,23 @@ export const DashboardPage = () => {
     }, [currentOrganization?.id]);
 
     // Fetch Google Calendar events (today + upcoming 30 days)
+    // Same race-condition guard as Outlook above.
     useEffect(() => {
         let cancelled = false;
+
+        const hasAutoConnectPending = sessionStorage.getItem('microsoft_provider_tokens') ||
+            sessionStorage.getItem('google_provider_tokens');
+        if (hasAutoConnectPending) {
+            console.log('[Dashboard] Skipping initial Google calendar fetch -- auto-connect pending');
+            return () => { cancelled = true; };
+        }
+
         const loadGoogleEvents = async () => {
             try {
                 const result = await fetchTodayGoogleEvents();
                 if (cancelled) return;
                 setGoogleEvents(result.events);
-                // Don't flash "Reconnect" warning if auto-connect is still storing fresh tokens.
-                // The cxtrack:email-connected event handler will re-fetch with correct state.
-                if (result.needsReauth && (window as any).__cxtrack_auto_connect_pending) {
-                    console.log('[Dashboard] Google Calendar needs reauth but auto-connect pending, deferring warning');
-                } else {
-                    setGoogleNeedsReauth(result.needsReauth);
-                }
+                setGoogleNeedsReauth(result.needsReauth);
 
                 // Also fetch upcoming 30 days for the "Upcoming" toggle
                 const now = new Date();
