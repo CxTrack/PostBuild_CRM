@@ -30,11 +30,13 @@ export default function CategoryCombobox({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [justSelected, setJustSelected] = useState(false);
   const [sessionCategories, setSessionCategories] = useState<string[]>([]);
+  const [dismissedCategories, setDismissedCategories] = useState<Set<string>>(new Set());
+  const [isSearching, setIsSearching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Derive unique categories from existing products + session-created categories
+  // Derive unique categories from existing products + session-created, minus dismissed
   const allCategories = useMemo(() => {
     const cats = new Set<string>();
     products.forEach((p) => {
@@ -43,15 +45,17 @@ export default function CategoryCombobox({
       }
     });
     sessionCategories.forEach((c) => cats.add(c));
-    return Array.from(cats).sort((a, b) => a.localeCompare(b));
-  }, [products, sessionCategories]);
+    return Array.from(cats)
+      .filter((c) => !dismissedCategories.has(c))
+      .sort((a, b) => a.localeCompare(b));
+  }, [products, sessionCategories, dismissedCategories]);
 
-  // Filter categories based on current input
+  // Only filter when user is actively typing; otherwise show all
   const filtered = useMemo(() => {
-    if (!value.trim()) return allCategories;
+    if (!isSearching || !value.trim()) return allCategories;
     const lower = value.toLowerCase().trim();
     return allCategories.filter((cat) => cat.toLowerCase().includes(lower));
-  }, [value, allCategories]);
+  }, [value, allCategories, isSearching]);
 
   // Check if current value exactly matches an existing category
   const exactMatch = allCategories.some(
@@ -69,6 +73,7 @@ export default function CategoryCombobox({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setHighlightedIndex(-1);
+        setIsSearching(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -92,6 +97,7 @@ export default function CategoryCombobox({
     onChange(cat);
     setIsOpen(false);
     setHighlightedIndex(-1);
+    setIsSearching(false);
     inputRef.current?.blur();
 
     // Visual feedback: green ring flash
@@ -102,6 +108,16 @@ export default function CategoryCombobox({
     if (isNew) {
       toast.success(`New category "${cat}" added`, { duration: 2000 });
     }
+  };
+
+  const dismissCategory = (cat: string) => {
+    setDismissedCategories((prev) => new Set(prev).add(cat));
+    setSessionCategories((prev) => prev.filter((c) => c !== cat));
+    // If the current value matches the dismissed category, clear it
+    if (value.trim().toLowerCase() === cat.toLowerCase()) {
+      onChange('');
+    }
+    toast.success(`"${cat}" removed from suggestions`, { duration: 2000 });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -142,10 +158,12 @@ export default function CategoryCombobox({
       case 'Escape':
         setIsOpen(false);
         setHighlightedIndex(-1);
+        setIsSearching(false);
         break;
       case 'Tab':
         setIsOpen(false);
         setHighlightedIndex(-1);
+        setIsSearching(false);
         break;
     }
   };
@@ -153,11 +171,13 @@ export default function CategoryCombobox({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
     setHighlightedIndex(-1);
+    setIsSearching(true);
     if (!isOpen) setIsOpen(true);
   };
 
   const handleFocus = () => {
-    if (allCategories.length > 0) {
+    setIsSearching(false);
+    if (allCategories.length > 0 || showCreateRow) {
       setIsOpen(true);
     }
   };
@@ -219,6 +239,7 @@ export default function CategoryCombobox({
             <button
               type="button"
               onClick={() => {
+                setIsSearching(false);
                 setIsOpen(!isOpen);
                 inputRef.current?.focus();
               }}
@@ -243,7 +264,7 @@ export default function CategoryCombobox({
               key={cat}
               role="option"
               aria-selected={highlightedIndex === idx}
-              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
                 highlightedIndex === idx
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600'
@@ -258,7 +279,20 @@ export default function CategoryCombobox({
               }}
               onMouseEnter={() => setHighlightedIndex(idx)}
             >
-              {cat}
+              <span>{cat}</span>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dismissCategory(cat);
+                }}
+                className="p-0.5 rounded text-gray-300 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                tabIndex={-1}
+                aria-label={`Remove ${cat}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
             </li>
           ))}
           {showCreateRow && (

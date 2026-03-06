@@ -48,6 +48,8 @@ function FieldCombobox({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [justSelected, setJustSelected] = useState(false);
   const [sessionValues, setSessionValues] = useState<string[]>([]);
+  const [dismissedValues, setDismissedValues] = useState<Set<string>>(new Set());
+  const [isSearching, setIsSearching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -55,18 +57,19 @@ function FieldCombobox({
   const displayValue = value === 0 && type === 'number' ? '' : (value ?? '');
   const strValue = String(displayValue);
 
-  // Merge prop suggestions with session-created values
+  // Merge prop suggestions with session-created values, minus dismissed
   const allSuggestions = useMemo(() => {
     const set = new Set(suggestions);
     sessionValues.forEach((v) => set.add(v));
-    return Array.from(set);
-  }, [suggestions, sessionValues]);
+    return Array.from(set).filter((v) => !dismissedValues.has(v));
+  }, [suggestions, sessionValues, dismissedValues]);
 
+  // Only filter when user is actively typing; otherwise show all
   const filtered = useMemo(() => {
-    if (!strValue.trim()) return allSuggestions;
+    if (!isSearching || !strValue.trim()) return allSuggestions;
     const lower = strValue.toLowerCase().trim();
     return allSuggestions.filter((s) => s.toLowerCase().includes(lower));
-  }, [strValue, allSuggestions]);
+  }, [strValue, allSuggestions, isSearching]);
 
   const exactMatch = allSuggestions.some(
     (s) => s.toLowerCase() === strValue.toLowerCase().trim()
@@ -80,6 +83,7 @@ function FieldCombobox({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setHighlightedIndex(-1);
+        setIsSearching(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -106,6 +110,7 @@ function FieldCombobox({
     }
     setIsOpen(false);
     setHighlightedIndex(-1);
+    setIsSearching(false);
 
     setJustSelected(true);
     setTimeout(() => setJustSelected(false), 800);
@@ -113,6 +118,15 @@ function FieldCombobox({
     if (isNew) {
       toast.success(`New value "${item}" added`, { duration: 2000 });
     }
+  };
+
+  const dismissItem = (item: string) => {
+    setDismissedValues((prev) => new Set(prev).add(item));
+    setSessionValues((prev) => prev.filter((v) => v !== item));
+    if (strValue.trim().toLowerCase() === item.toLowerCase()) {
+      onChange(type === 'number' ? '' : '');
+    }
+    toast.success(`"${item}" removed from suggestions`, { duration: 2000 });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -147,6 +161,7 @@ function FieldCombobox({
       case 'Tab':
         setIsOpen(false);
         setHighlightedIndex(-1);
+        setIsSearching(false);
         break;
     }
   };
@@ -159,7 +174,8 @@ function FieldCombobox({
       onChange(raw);
     }
     setHighlightedIndex(-1);
-    if (!isOpen && suggestions.length > 0) setIsOpen(true);
+    setIsSearching(true);
+    if (!isOpen && allSuggestions.length > 0) setIsOpen(true);
   };
 
   const handleClear = () => {
@@ -198,7 +214,7 @@ function FieldCombobox({
       type={type}
       value={displayValue}
       onChange={handleInputChange}
-      onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+      onFocus={() => { setIsSearching(false); if (allSuggestions.length > 0) setIsOpen(true); }}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
       required={required}
@@ -230,7 +246,7 @@ function FieldCombobox({
       )}
       <button
         type="button"
-        onClick={() => { setIsOpen(!isOpen); inputRef.current?.focus(); }}
+        onClick={() => { setIsSearching(false); setIsOpen(!isOpen); inputRef.current?.focus(); }}
         className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
         tabIndex={-1}
         aria-label="Show suggestions"
@@ -251,7 +267,7 @@ function FieldCombobox({
           key={item}
           role="option"
           aria-selected={highlightedIndex === idx}
-          className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+          className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
             highlightedIndex === idx
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600'
@@ -259,7 +275,20 @@ function FieldCombobox({
           onMouseDown={(e) => { e.preventDefault(); selectItem(item); }}
           onMouseEnter={() => setHighlightedIndex(idx)}
         >
-          {item}
+          <span>{item}</span>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dismissItem(item);
+            }}
+            className="p-0.5 rounded text-gray-300 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+            tabIndex={-1}
+            aria-label={`Remove ${item}`}
+          >
+            <X className="w-3 h-3" />
+          </button>
         </li>
       ))}
       {showCreateRow && (
