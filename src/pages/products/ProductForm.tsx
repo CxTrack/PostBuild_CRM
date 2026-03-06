@@ -120,10 +120,12 @@ export default function ProductForm() {
     fetchCustomFields('product');
   }, [fetchCustomFields]);
 
-  // Always fetch fresh products in edit mode to avoid stale cache
+  // Fetch products for category & custom field suggestions (both create and edit modes)
   useEffect(() => {
-    if (isEdit && id && currentOrganization?.id) {
-      setProductLoading(true);
+    if (currentOrganization?.id) {
+      if (isEdit && id) {
+        setProductLoading(true);
+      }
       fetchProducts(currentOrganization.id).finally(() => setProductLoading(false));
     }
   }, [id, isEdit, currentOrganization?.id]);
@@ -332,7 +334,7 @@ export default function ProductForm() {
             <span className="ml-3 text-gray-500 dark:text-gray-400">Loading product...</span>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6 pb-48">
 
           {/* ====== MORTGAGE BROKER LOAN FORM ====== */}
           {isMortgage ? (
