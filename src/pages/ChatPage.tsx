@@ -106,9 +106,11 @@ MessageBubble.displayName = 'MessageBubble';
 const ConversationItem = React.memo<{
     conv: Conversation;
     isActive: boolean;
+    unreadCount?: number;
     onClick: () => void;
-}>(({ conv, isActive, onClick }) => {
+}>(({ conv, isActive, unreadCount = 0, onClick }) => {
     const isSms = conv.channel_type === 'sms';
+    const hasUnread = unreadCount > 0 && !isActive;
     return (
         <button
             onClick={onClick}
@@ -119,11 +121,16 @@ const ConversationItem = React.memo<{
       ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
     `}
         >
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${isSms ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
-                {isSms ? <Phone size={20} /> : (conv.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
+            <div className="relative flex-shrink-0">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold ${isSms ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
+                    {isSms ? <Phone size={20} /> : (conv.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
+                </div>
+                {hasUnread && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full ring-2 ring-white dark:ring-gray-900" />
+                )}
             </div>
             <div className="flex-1 text-left overflow-hidden">
-                <p className="font-semibold text-gray-900 dark:text-white truncate">
+                <p className={`truncate ${hasUnread ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-900 dark:text-white'}`}>
                     {conv.channel_type === 'channel' ? `# ${conv.name || 'channel'}` :
                         conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
                 </p>
@@ -131,6 +138,11 @@ const ConversationItem = React.memo<{
                     {isSms ? `SMS - ${(conv as any).customer_phone || 'Customer'}` : 'Click to view message'}
                 </p>
             </div>
+            {hasUnread && (
+                <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-[10px] font-semibold rounded-full bg-blue-500 text-white flex-shrink-0">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+            )}
         </button>
     );
 });
@@ -139,7 +151,8 @@ ConversationItem.displayName = 'ConversationItem';
 export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const { user } = useAuthContext();
     const [conversations, setConversations] = useState<Conversation[]>([]);
-    const { teamMembers } = useOrganizationStore();
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+    const { teamMembers, currentOrganization } = useOrganizationStore();
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -169,6 +182,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     useEffect(() => {
         if (activeConversation && !activeConversation.id.startsWith('new-') && activeConversation.id !== 'ai-agent') {
             loadMessages(activeConversation.id);
+            markConversationRead(activeConversation.id);
 
             const channel = supabase.channel(`page-chat-${activeConversation.id}`)
                 .on('postgres_changes', {
@@ -180,6 +194,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     const newMsg = payload.new;
                     if (newMsg.sender_id !== user?.id) {
                         setMessages(prev => [...prev, newMsg as Message]);
+                        // Auto-mark read since user is actively viewing this conversation
+                        markConversationRead(activeConversation.id);
                         // Trigger SMS suggestions for inbound SMS
                         if (newMsg.message_type === 'sms' && (newMsg.metadata as any)?.direction === 'inbound') {
                             setLastInboundSmsText(newMsg.content);
@@ -244,6 +260,55 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             setConversations(processed);
         }
     };
+
+    // Fetch per-conversation unread counts
+    const fetchUnreadCounts = useCallback(async () => {
+        if (!user?.id || !currentOrganization?.id) return;
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_unread_message_counts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                },
+                body: JSON.stringify({ p_user_id: user.id, p_organization_id: currentOrganization.id }),
+            });
+            if (!res.ok) return;
+            const data: { conversation_id: string; unread_count: number }[] = await res.json();
+            const counts: Record<string, number> = {};
+            data.forEach(row => { counts[row.conversation_id] = row.unread_count || 0; });
+            setUnreadCounts(counts);
+        } catch { /* non-critical */ }
+    }, [user?.id, currentOrganization?.id]);
+
+    // Mark a conversation as read by updating last_read_at
+    const markConversationRead = useCallback(async (conversationId: string) => {
+        if (!user?.id || conversationId === 'ai-agent') return;
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            await fetch(`${supabaseUrl}/rest/v1/conversation_participants?conversation_id=eq.${conversationId}&user_id=eq.${user.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                    'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({ last_read_at: new Date().toISOString() }),
+            });
+            // Clear local unread count for this conversation
+            setUnreadCounts(prev => ({ ...prev, [conversationId]: 0 }));
+        } catch { /* non-critical */ }
+    }, [user?.id]);
+
+    // Fetch unread counts alongside conversations
+    useEffect(() => {
+        fetchUnreadCounts();
+    }, [fetchUnreadCounts, conversations.length]);
 
     const loadMessages = async (conversationId: string) => {
         if (conversationId === 'ai-agent') return;
@@ -835,7 +900,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {channels.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
@@ -856,7 +921,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {groups.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
@@ -873,7 +938,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             </button>
                                         </div>
                                         {directMessages.map(conv => (
-                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
                                         ))}
                                     </div>
 
@@ -887,7 +952,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </span>
                                             </div>
                                             {smsConversations.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
