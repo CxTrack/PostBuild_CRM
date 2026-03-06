@@ -171,7 +171,7 @@ export const DashboardPage = () => {
     const { quotes, fetchQuotes } = useQuoteStore();
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { tasks, fetchTasks } = useTaskStore();
-    const { fetchPipelineStats } = useDealStore();
+    const { deals, fetchDeals, pipelineStats, fetchPipelineStats } = useDealStore();
     const { preferences, saveQuickActionsOrder } = usePreferencesStore();
     const { isOpen: isCoPilotOpen } = useCoPilot();
 
@@ -340,12 +340,13 @@ export const DashboardPage = () => {
             fetchQuotes();
             fetchInvoices();
             fetchTasks();
+            fetchDeals();
             fetchPipelineStats();
         }
 
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
-    }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchPipelineStats]);
+    }, [currentOrganization?.id, fetchCustomers, fetchCalls, fetchEvents, fetchQuotes, fetchInvoices, fetchTasks, fetchDeals, fetchPipelineStats]);
 
     // Fetch Outlook calendar events (today + upcoming 30 days)
     useEffect(() => {
@@ -446,7 +447,13 @@ export const DashboardPage = () => {
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());
     const totalTodaysEvents = todaysEvents.length + outlookEvents.length + googleEvents.length;
     const pendingTasks = tasks.filter(t => t.status !== 'completed');
-    const pipelineValue = quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+    // Pipeline value: mirrors Pipeline.tsx logic (deals + qualifying quotes + qualifying invoices)
+    const pipelineItemCount = deals.length
+        + quotes.filter(q => ['sent', 'viewed', 'draft'].includes(q.status)).length
+        + invoices.filter(i => ['sent', 'viewed', 'draft', 'paid'].includes(i.status)).length;
+    const pipelineValue = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
+        + quotes.filter(q => ['sent', 'viewed', 'draft'].includes(q.status)).reduce((sum, q) => sum + (q.total_amount || 0), 0)
+        + invoices.filter(i => ['sent', 'viewed', 'draft', 'paid'].includes(i.status)).reduce((sum, i) => sum + (i.total_amount || 0), 0);
     const revenueValue = invoices
         .filter(i => i.status === 'paid')
         .reduce((sum, i) => sum + (i.total_amount || 0), 0);
@@ -535,7 +542,7 @@ export const DashboardPage = () => {
                 <CompactStatCard
                     label={pipelineLabels.title}
                     value={`$${(pipelineValue / 1000).toFixed(1)}k`}
-                    subValue={`${quotes.length} ${pipelineLabels.entityPlural}`}
+                    subValue={`${pipelineItemCount} ${pipelineLabels.entityPlural}`}
                     icon={TrendingUp}
                     color="purple"
                     onClick={() => navigate('/dashboard/pipeline')}
