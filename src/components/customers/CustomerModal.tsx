@@ -22,7 +22,7 @@ interface CustomerModalProps {
 
 export default function CustomerModal({ isOpen, onClose, customer, prefill, navigateToProfileAfterCreate = false }: CustomerModalProps) {
   const navigate = useNavigate();
-  const { createCustomer, updateCustomer } = useCustomerStore();
+  const { createCustomer, updateCustomer, createChildContact } = useCustomerStore();
   const { currentOrganization, currentMembership, teamMembers } = useOrganizationStore();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +41,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
     email: customer?.email || '',
     phone: customer?.phone || '',
     company: customer?.company || '',
+    title: customer?.title || '',
     status: customer?.status || 'Active',
     address: customer?.address || '',
     city: customer?.city || '',
@@ -65,6 +66,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
         email: source.email || '',
         phone: source.phone || '',
         company: source.company || '',
+        title: source.title || '',
         status: source.status || 'Active',
         address: source.address || '',
         city: source.city || '',
@@ -165,6 +167,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           email: c.email || prev.email,
           phone: c.phone || prev.phone,
           company: c.company || prev.company,
+          title: c.title || prev.title,
           customer_type: c.company ? 'business' : prev.customer_type,
           address: c.address || prev.address,
           city: c.city || prev.city,
@@ -249,7 +252,8 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
       if (customer) {
         await updateCustomer(customer.id, {
           ...formData,
-          phone: formatPhoneForStorage(formData.phone)
+          phone: formatPhoneForStorage(formData.phone),
+          title: formData.title || null,
         });
         toast.success('Customer updated successfully');
         onClose();
@@ -257,11 +261,28 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
         const newCustomer = await createCustomer({
           ...formData,
           phone: formatPhoneForStorage(formData.phone),
+          title: formData.title || null,
           assigned_to: assignedTo || undefined,
         });
 
         if (!newCustomer) {
           throw new Error('Failed to create customer');
+        }
+
+        // Auto-create a linked personal record for the primary contact on a new business
+        if (formData.customer_type === 'business') {
+          try {
+            await createChildContact(newCustomer.id, {
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              email: formData.email,
+              phone: formatPhoneForStorage(formData.phone),
+              title: formData.title || null,
+              is_primary: true,
+            });
+          } catch {
+            // Non-blocking: business was still created even if child creation fails
+          }
         }
 
         toast.success('Customer created successfully');
@@ -274,6 +295,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           email: '',
           phone: '',
           company: '',
+          title: '',
           status: 'Active',
           address: '',
           city: '',
@@ -493,19 +515,33 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           </div>
 
           {formData.customer_type === 'business' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Company Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Acme Corp"
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title / Role
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="e.g., President, Secretary, Manager"
+                />
+              </div>
+            </>
           )}
 
           <div>

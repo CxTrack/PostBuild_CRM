@@ -11,6 +11,7 @@ interface CustomerStore {
   notes: CustomerNote[];
   contacts: CustomerContact[];
   files: CustomerFile[];
+  childContacts: Customer[];
 
   // Reset store to initial state (for logout/org switch)
   reset: () => void;
@@ -23,6 +24,13 @@ interface CustomerStore {
   deleteCustomer: (id: string) => Promise<void>;
   deleteCustomers: (ids: string[]) => Promise<{ succeeded: number; failed: number }>;
   bulkReassignCustomers: (ids: string[], newAssignedTo: string) => Promise<{ succeeded: number; failed: number }>;
+
+  // Child contacts (linked personal records under a business)
+  fetchChildContacts: (parentId: string) => Promise<void>;
+  createChildContact: (parentId: string, data: Partial<Customer>) => Promise<Customer | null>;
+  updateChildContact: (id: string, updates: Partial<Customer>) => Promise<void>;
+  deleteChildContact: (id: string) => Promise<void>;
+  setChildPrimary: (childId: string, parentId: string) => Promise<void>;
 
   fetchNotes: (customerId: string) => Promise<void>;
   addNote: (note: Partial<CustomerNote>) => Promise<void>;
@@ -46,6 +54,7 @@ const initialCustomerState = {
   notes: [] as CustomerNote[],
   contacts: [] as CustomerContact[],
   files: [] as CustomerFile[],
+  childContacts: [] as Customer[],
 };
 
 export const useCustomerStore = create<CustomerStore>((set, get) => ({
@@ -203,27 +212,40 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     }
 
     try {
-      // Delete customer-owned tables (meaningless without customer)
-      await supabase.from('customer_notes').delete().eq('customer_id', id);
-      await supabase.from('customer_contacts').delete().eq('customer_id', id);
-      await supabase.from('customer_documents').delete().eq('customer_id', id);
-      await supabase.from('customer_files').delete().eq('customer_id', id);
-      await supabase.from('customer_subscriptions').delete().eq('customer_id', id);
-      await supabase.from('sms_consent').delete().eq('customer_id', id);
-      await supabase.from('tasks').delete().eq('customer_id', id);
-      await supabase.from('pipeline_items').delete().eq('customer_id', id);
-      await supabase.from('calendar_events').delete().eq('customer_id', id);
+      // Fetch child contact IDs (linked personal records under this business)
+      const { data: children } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('parent_customer_id', id);
 
-      // Unlink reference tables (preserve records, set customer_id to null)
-      await supabase.from('calls').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('conversations').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('email_log').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('invoices').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('payments').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('quotes').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('sms_log').update({ customer_id: null }).eq('customer_id', id);
-      await supabase.from('support_tickets').update({ customer_id: null }).eq('customer_id', id);
+      const childIds = (children || []).map((c) => c.id);
 
+      // Clean up related data for each child before CASCADE deletes them
+      const allIds = [id, ...childIds];
+      for (const cid of allIds) {
+        // Delete customer-owned tables (meaningless without customer)
+        await supabase.from('customer_notes').delete().eq('customer_id', cid);
+        await supabase.from('customer_contacts').delete().eq('customer_id', cid);
+        await supabase.from('customer_documents').delete().eq('customer_id', cid);
+        await supabase.from('customer_files').delete().eq('customer_id', cid);
+        await supabase.from('customer_subscriptions').delete().eq('customer_id', cid);
+        await supabase.from('sms_consent').delete().eq('customer_id', cid);
+        await supabase.from('tasks').delete().eq('customer_id', cid);
+        await supabase.from('pipeline_items').delete().eq('customer_id', cid);
+        await supabase.from('calendar_events').delete().eq('customer_id', cid);
+
+        // Unlink reference tables (preserve records, set customer_id to null)
+        await supabase.from('calls').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('conversations').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('email_log').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('invoices').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('payments').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('quotes').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('sms_log').update({ customer_id: null }).eq('customer_id', cid);
+        await supabase.from('support_tickets').update({ customer_id: null }).eq('customer_id', cid);
+      }
+
+      // Delete parent (CASCADE removes child customer rows automatically)
       const { error } = await supabase
         .from('customers')
         .delete()
@@ -232,8 +254,10 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
       if (error) throw error;
 
+      const removedIds = new Set(allIds);
       set((state) => ({
-        customers: state.customers.filter((c) => c.id !== id),
+        customers: state.customers.filter((c) => !removedIds.has(c.id)),
+        childContacts: [],
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete customer. It may have associated quotes or invoices.';
@@ -292,6 +316,204 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     }
 
     return result;
+  },
+
+  // --- Child contacts (linked personal records under a business) ---
+
+  fetchChildContacts: async (parentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
+        .eq('parent_customer_id', parentId)
+        .order('is_primary', { ascending: false })
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      set({ childContacts: data || [] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+    }
+  },
+
+  createChildContact: async (parentId: string, data: Partial<Customer>) => {
+    set({ error: null });
+
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected' });
+      return null;
+    }
+
+    try {
+      // Enforce max 3 child contacts per business
+      const { count, error: countError } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('parent_customer_id', parentId);
+
+      if (countError) throw countError;
+      if ((count || 0) >= 3) {
+        set({ error: 'Maximum of 3 contacts per business reached' });
+        return null;
+      }
+
+      // Fetch parent to inherit org_id, company, assigned_to
+      const parent = get().currentCustomer || get().customers.find((c) => c.id === parentId);
+
+      const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim() || 'New Contact';
+
+      const insertData = {
+        ...data,
+        name: fullName,
+        organization_id: organizationId,
+        parent_customer_id: parentId,
+        customer_type: 'personal' as const,
+        company: parent?.company || parent?.name || null,
+        assigned_to: data.assigned_to ?? parent?.assigned_to ?? null,
+        country: data.country || parent?.country || 'CA',
+        status: 'Active' as const,
+        type: 'Individual' as const,
+        priority: 'Medium' as const,
+      };
+
+      const { data: newChild, error } = await supabase
+        .from('customers')
+        .insert(insertData)
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
+        .single();
+
+      if (error) throw error;
+
+      set((state) => ({
+        childContacts: [...state.childContacts, newChild],
+        customers: [newChild, ...state.customers],
+      }));
+
+      return newChild;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+      return null;
+    }
+  },
+
+  updateChildContact: async (id: string, updates: Partial<Customer>) => {
+    set({ error: null });
+
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected' });
+      return;
+    }
+
+    try {
+      // Rebuild name if first/last changed
+      if (updates.first_name !== undefined || updates.last_name !== undefined) {
+        const existing = get().childContacts.find((c) => c.id === id);
+        const firstName = updates.first_name ?? existing?.first_name;
+        const lastName = updates.last_name ?? existing?.last_name;
+        updates.name = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Contact';
+      }
+
+      const { data, error } = await supabase
+        .from('customers')
+        .update(updates)
+        .eq('id', id)
+        .eq('organization_id', organizationId)
+        .select('*, assigned_user:assigned_to(id, full_name, email, avatar_url)')
+        .single();
+
+      if (error) throw error;
+
+      set((state) => ({
+        childContacts: state.childContacts.map((c) => (c.id === id ? data : c)),
+        customers: state.customers.map((c) => (c.id === id ? data : c)),
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+    }
+  },
+
+  deleteChildContact: async (id: string) => {
+    set({ error: null });
+
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected' });
+      return;
+    }
+
+    try {
+      // Clean up related data for the child record
+      await supabase.from('customer_notes').delete().eq('customer_id', id);
+      await supabase.from('customer_contacts').delete().eq('customer_id', id);
+      await supabase.from('customer_documents').delete().eq('customer_id', id);
+      await supabase.from('customer_files').delete().eq('customer_id', id);
+      await supabase.from('customer_subscriptions').delete().eq('customer_id', id);
+      await supabase.from('sms_consent').delete().eq('customer_id', id);
+      await supabase.from('tasks').delete().eq('customer_id', id);
+      await supabase.from('pipeline_items').delete().eq('customer_id', id);
+      await supabase.from('calendar_events').delete().eq('customer_id', id);
+      await supabase.from('calls').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('conversations').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('email_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('invoices').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('payments').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('quotes').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('sms_log').update({ customer_id: null }).eq('customer_id', id);
+      await supabase.from('support_tickets').update({ customer_id: null }).eq('customer_id', id);
+
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', id)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      set((state) => ({
+        childContacts: state.childContacts.filter((c) => c.id !== id),
+        customers: state.customers.filter((c) => c.id !== id),
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+    }
+  },
+
+  setChildPrimary: async (childId: string, parentId: string) => {
+    set({ error: null });
+
+    const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+    if (!organizationId) {
+      set({ error: 'No organization selected' });
+      return;
+    }
+
+    try {
+      // Clear is_primary on all children of this parent
+      await supabase
+        .from('customers')
+        .update({ is_primary: false })
+        .eq('parent_customer_id', parentId)
+        .eq('organization_id', organizationId);
+
+      // Set the target child as primary
+      await supabase
+        .from('customers')
+        .update({ is_primary: true })
+        .eq('id', childId)
+        .eq('organization_id', organizationId);
+
+      // Refresh child contacts
+      await get().fetchChildContacts(parentId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      set({ error: message });
+    }
   },
 
   fetchNotes: async (customerId: string) => {

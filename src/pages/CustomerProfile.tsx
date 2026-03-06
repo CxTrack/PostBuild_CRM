@@ -6,7 +6,8 @@ import {
   Plus, MoreVertical, Send, X, RefreshCw, Users, Trash2, Edit2,
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
   AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
-  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck, Bot, PhoneCall, Loader2
+  Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck, Bot, PhoneCall, Loader2,
+  Building2, Star, Check, User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -16,7 +17,9 @@ import { useCalendarStore } from '@/stores/calendarStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useDocumentStore, type CustomerDocument } from '@/stores/documentStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
-import { formatPhoneDisplay } from '@/utils/phone.utils';
+import { formatPhoneDisplay, formatPhoneForStorage } from '@/utils/phone.utils';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { validateEmail, validatePhone } from '@/utils/validation';
 import TimePickerButtons from '@/components/shared/TimePickerButtons';
 import DurationPicker from '@/components/shared/DurationPicker';
 import TaskModal from '@/components/tasks/TaskModal';
@@ -66,7 +69,13 @@ export const CustomerProfile: React.FC = () => {
     contacts,
     fetchContacts,
     addContact,
-    deleteContact
+    deleteContact,
+    childContacts,
+    fetchChildContacts,
+    createChildContact,
+    updateChildContact,
+    deleteChildContact,
+    setChildPrimary,
   } = useCustomerStore();
   const { quotes, fetchQuotes } = useQuoteStore();
   const { invoices, fetchInvoices } = useInvoiceStore();
@@ -97,6 +106,7 @@ export const CustomerProfile: React.FC = () => {
       fetchCustomerById(id);
       fetchNotes(id);
       fetchContacts(id);
+      fetchChildContacts(id);
       fetchQuotes();
       fetchInvoices();
       fetchTasks();
@@ -230,6 +240,20 @@ export const CustomerProfile: React.FC = () => {
                   <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                     {currentCustomer.name}
                   </h1>
+                  {currentCustomer.title && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {currentCustomer.title}
+                    </span>
+                  )}
+                  {currentCustomer.parent_customer_id && currentCustomer.company && (
+                    <Link
+                      to={`/dashboard/customers/${currentCustomer.parent_customer_id}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 rounded-full text-xs font-medium hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors"
+                    >
+                      <Building2 size={12} />
+                      {currentCustomer.company}
+                    </Link>
+                  )}
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${currentCustomer.status === 'Active'
                     ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -415,6 +439,11 @@ export const CustomerProfile: React.FC = () => {
             contacts={contacts}
             onAddContact={addContact}
             onDeleteContact={(contactId) => deleteContact(contactId, id || '')}
+            childContacts={childContacts}
+            onCreateChildContact={createChildContact}
+            onUpdateChildContact={updateChildContact}
+            onDeleteChildContact={deleteChildContact}
+            onSetChildPrimary={setChildPrimary}
             enabledModuleIds={enabledModuleIds}
             quotesLabels={quotesLabels}
             invoicesLabels={invoicesLabels}
@@ -623,6 +652,11 @@ function OverviewTab({
   contacts,
   onAddContact: _onAddContact,
   onDeleteContact,
+  childContacts,
+  onCreateChildContact,
+  onUpdateChildContact,
+  onDeleteChildContact,
+  onSetChildPrimary,
   enabledModuleIds,
   quotesLabels,
   invoicesLabels,
@@ -649,6 +683,11 @@ function OverviewTab({
   contacts: any[];
   onAddContact: (contact: any) => Promise<void>;
   onDeleteContact: (id: string, customerId: string) => Promise<void>;
+  childContacts: any[];
+  onCreateChildContact: (parentId: string, data: any) => Promise<any>;
+  onUpdateChildContact: (id: string, updates: any) => Promise<void>;
+  onDeleteChildContact: (id: string) => Promise<void>;
+  onSetChildPrimary: (childId: string, parentId: string) => Promise<void>;
   enabledModuleIds: string[];
   quotesLabels: any;
   invoicesLabels: any;
@@ -768,82 +807,16 @@ function OverviewTab({
           <RecentCallsSection customerId={customer.id} />
         )}
 
-        {/* Contacts Section - Only for Business Customers */}
+        {/* Team Contacts Section - Only for Business Customers */}
         {isBusinessCustomer && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Users size={20} className="text-primary-600 dark:text-primary-400" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Team Contacts ({contacts.length})
-                </h2>
-              </div>
-            </div>
-
-            {contacts.length === 0 ? (
-              <div className="text-center py-8">
-                <Users size={40} className="mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-600 dark:text-gray-400">No contacts added yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {contacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-primary-500/50 transition-all group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold flex-shrink-0">
-                        {contact.name?.charAt(0)?.toUpperCase() || 'C'}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900 dark:text-white truncate">{contact.name}</p>
-                          {contact.is_primary && (
-                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full flex-shrink-0">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-                        {contact.title && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{contact.title}</p>
-                        )}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                          {contact.email && (
-                            <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-primary-600 truncate">
-                              <Mail size={12} className="flex-shrink-0" /> <span className="truncate">{contact.email}</span>
-                            </a>
-                          )}
-                          {contact.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone size={12} className="flex-shrink-0" /> {formatPhoneDisplay(contact.phone)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const contactName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact';
-                        const confirmed = await confirm({
-                          title: 'Remove Contact',
-                          message: `Are you sure you want to remove "${contactName}"? This action cannot be undone.`,
-                          confirmText: 'Remove',
-                          confirmVariant: 'danger',
-                        });
-                        if (confirmed) {
-                          onDeleteContact(contact.id, customer.id);
-                        }
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <TeamContactsSection
+            customer={customer}
+            childContacts={childContacts}
+            onCreateChildContact={onCreateChildContact}
+            onUpdateChildContact={onUpdateChildContact}
+            onDeleteChildContact={onDeleteChildContact}
+            onSetChildPrimary={onSetChildPrimary}
+          />
         )}
 
         {enabledModuleIds.includes('quotes') && (
@@ -2100,6 +2073,361 @@ function ActivityTab({ customer }: { customer: Customer }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Team Contacts (linked personal records under a business) ─────────
+interface ChildContactForm {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  title: string;
+  is_primary: boolean;
+}
+
+const EMPTY_CHILD_FORM: ChildContactForm = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  title: '',
+  is_primary: false,
+};
+
+const childInputClass = 'w-full px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-white text-sm';
+
+function TeamContactsSection({
+  customer,
+  childContacts,
+  onCreateChildContact,
+  onUpdateChildContact,
+  onDeleteChildContact,
+  onSetChildPrimary,
+}: {
+  customer: any;
+  childContacts: any[];
+  onCreateChildContact: (parentId: string, data: any) => Promise<any>;
+  onUpdateChildContact: (id: string, updates: any) => Promise<void>;
+  onDeleteChildContact: (id: string) => Promise<void>;
+  onSetChildPrimary: (childId: string, parentId: string) => Promise<void>;
+}) {
+  const navigate = useNavigate();
+  const { confirm, DialogComponent } = useConfirmDialog();
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ChildContactForm>({ ...EMPTY_CHILD_FORM });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const MAX_CONTACTS = 3;
+  const canAdd = childContacts.length < MAX_CONTACTS;
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!form.first_name.trim()) newErrors.first_name = 'First name is required';
+    if (!form.last_name.trim()) newErrors.last_name = 'Last name is required';
+    if (form.email) {
+      const result = validateEmail(form.email);
+      if (!result.isValid) newErrors.email = result.error!;
+    }
+    if (form.phone) {
+      const result = validatePhone(form.phone);
+      if (!result.isValid) newErrors.phone = result.error!;
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAdd = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await onCreateChildContact(customer.id, {
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        email: form.email.trim() || null,
+        phone: formatPhoneForStorage(form.phone) || null,
+        title: form.title.trim() || null,
+        is_primary: form.is_primary || childContacts.length === 0,
+      });
+      toast.success('Contact added');
+      setForm({ ...EMPTY_CHILD_FORM });
+      setIsAdding(false);
+      setErrors({});
+    } catch {
+      toast.error('Failed to add contact');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await onUpdateChildContact(id, {
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        email: form.email.trim() || null,
+        phone: formatPhoneForStorage(form.phone) || null,
+        title: form.title.trim() || null,
+        is_primary: form.is_primary,
+      });
+      toast.success('Contact updated');
+      setEditingId(null);
+      setForm({ ...EMPTY_CHILD_FORM });
+      setErrors({});
+    } catch {
+      toast.error('Failed to update contact');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (child: any) => {
+    const contactName = `${child.first_name || ''} ${child.last_name || ''}`.trim() || 'this contact';
+    const confirmed = await confirm({
+      title: 'Remove Contact',
+      message: `Are you sure you want to remove "${contactName}"? This will also remove their personal profile and associated data.`,
+      confirmText: 'Remove',
+      confirmVariant: 'danger',
+    });
+    if (confirmed) {
+      await onDeleteChildContact(child.id);
+      toast.success('Contact removed');
+    }
+  };
+
+  const startEdit = (child: any) => {
+    setEditingId(child.id);
+    setIsAdding(false);
+    setForm({
+      first_name: child.first_name || '',
+      last_name: child.last_name || '',
+      email: child.email || '',
+      phone: child.phone || '',
+      title: child.title || '',
+      is_primary: child.is_primary || false,
+    });
+    setErrors({});
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setIsAdding(false);
+    setForm({ ...EMPTY_CHILD_FORM });
+    setErrors({});
+  };
+
+  const renderForm = (mode: 'add' | 'edit', contactId?: string) => (
+    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">First Name *</label>
+          <input
+            type="text"
+            value={form.first_name}
+            onChange={(e) => { setForm({ ...form, first_name: e.target.value }); if (errors.first_name) setErrors({ ...errors, first_name: '' }); }}
+            className={`${childInputClass} ${errors.first_name ? 'border-red-500' : ''}`}
+            placeholder="John"
+            autoFocus
+          />
+          {errors.first_name && <p className="text-red-500 text-xs mt-0.5">{errors.first_name}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Last Name *</label>
+          <input
+            type="text"
+            value={form.last_name}
+            onChange={(e) => { setForm({ ...form, last_name: e.target.value }); if (errors.last_name) setErrors({ ...errors, last_name: '' }); }}
+            className={`${childInputClass} ${errors.last_name ? 'border-red-500' : ''}`}
+            placeholder="Doe"
+          />
+          {errors.last_name && <p className="text-red-500 text-xs mt-0.5">{errors.last_name}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Title / Role</label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className={childInputClass}
+            placeholder="e.g., President, Secretary"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => { setForm({ ...form, email: e.target.value }); if (errors.email) setErrors({ ...errors, email: '' }); }}
+            className={`${childInputClass} ${errors.email ? 'border-red-500' : ''}`}
+            placeholder="john@example.com"
+          />
+          {errors.email && <p className="text-red-500 text-xs mt-0.5">{errors.email}</p>}
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Phone</label>
+          <PhoneInput
+            value={form.phone}
+            onChange={(e) => { setForm({ ...form, phone: e.target.value }); if (errors.phone) setErrors({ ...errors, phone: '' }); }}
+            className={`rounded-lg bg-gray-50 dark:bg-gray-900/50 text-sm ${errors.phone ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+          />
+          {errors.phone && <p className="text-red-500 text-xs mt-0.5">{errors.phone}</p>}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.is_primary}
+            onChange={(e) => setForm({ ...form, is_primary: e.target.checked })}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          Primary contact
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={cancelEdit}
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => mode === 'add' ? handleAdd() : handleUpdate(contactId!)}
+            disabled={saving}
+            className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+          >
+            <Check size={14} />
+            {saving ? 'Saving...' : mode === 'add' ? 'Add' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+      <DialogComponent />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Users size={20} className="text-primary-600 dark:text-primary-400" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Team Contacts ({childContacts.length}/{MAX_CONTACTS})
+          </h2>
+        </div>
+        {canAdd && !isAdding && !editingId && (
+          <button
+            type="button"
+            onClick={() => { setIsAdding(true); setEditingId(null); setForm({ ...EMPTY_CHILD_FORM }); setErrors({}); }}
+            className="flex items-center gap-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+          >
+            <Plus size={16} />
+            Add Contact
+          </button>
+        )}
+      </div>
+
+      {childContacts.length === 0 && !isAdding ? (
+        <div className="text-center py-8">
+          <Users size={40} className="mx-auto text-gray-400 mb-3" />
+          <p className="text-gray-600 dark:text-gray-400 mb-3">No contacts added yet</p>
+          <button
+            type="button"
+            onClick={() => { setIsAdding(true); setForm({ ...EMPTY_CHILD_FORM }); setErrors({}); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <Plus size={14} />
+            Add First Contact
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {childContacts.map((child) =>
+            editingId === child.id ? (
+              <div key={child.id}>{renderForm('edit', child.id)}</div>
+            ) : (
+              <div
+                key={child.id}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-primary-500/50 transition-all group cursor-pointer"
+                onClick={() => navigate(`/dashboard/customers/${child.id}`)}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-semibold flex-shrink-0">
+                    {(child.first_name || child.name || 'C').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900 dark:text-white truncate">
+                        {child.name || `${child.first_name || ''} ${child.last_name || ''}`.trim()}
+                      </p>
+                      {child.is_primary && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    {child.title && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{child.title}</p>
+                    )}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      {child.email && (
+                        <span
+                          className="flex items-center gap-1 hover:text-primary-600 truncate"
+                          onClick={(e) => { e.stopPropagation(); window.location.href = `mailto:${child.email}`; }}
+                        >
+                          <Mail size={12} className="flex-shrink-0" /> <span className="truncate">{child.email}</span>
+                        </span>
+                      )}
+                      {child.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone size={12} className="flex-shrink-0" /> {formatPhoneDisplay(child.phone)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {!child.is_primary && (
+                    <button
+                      type="button"
+                      onClick={() => onSetChildPrimary(child.id, customer.id)}
+                      className="p-1.5 text-gray-400 hover:text-yellow-500 rounded-md hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                      title="Set as primary"
+                    >
+                      <Star size={14} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => startEdit(child)}
+                    className="p-1.5 text-gray-400 hover:text-primary-600 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                    title="Edit"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(child)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    title="Remove"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {isAdding && renderForm('add')}
+        </div>
+      )}
     </div>
   );
 }

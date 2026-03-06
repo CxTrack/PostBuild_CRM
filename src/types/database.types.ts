@@ -110,6 +110,8 @@ export interface Customer {
   last_contact_date?: string | null;
   next_follow_up_date?: string | null;
   assigned_to: string | null;
+  parent_customer_id?: string | null;
+  is_primary?: boolean;
   // Joined from assigned_to FK
   assigned_user?: {
     id: string;

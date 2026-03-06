@@ -338,11 +338,15 @@ export const Customers: React.FC = () => {
             <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 truncate text-sm">
               {getCustomerFullName(customer)}
             </p>
-            {customer.company && (
+            {customer.parent_customer_id && customer.company ? (
+              <p className="text-[11px] text-purple-600 dark:text-purple-400 truncate flex items-center gap-1">
+                <Building2 size={10} /> {customer.company}
+              </p>
+            ) : customer.company ? (
               <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                 {customer.company}
               </p>
-            )}
+            ) : null}
           </div>
         </Link>
       ),
@@ -891,9 +895,13 @@ export const Customers: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {customer.company && (
+                      {customer.parent_customer_id && customer.company ? (
+                        <span className="truncate max-w-[90px] text-purple-600 dark:text-purple-400 flex items-center gap-0.5">
+                          <Building2 size={10} className="flex-shrink-0" /> {customer.company}
+                        </span>
+                      ) : customer.company ? (
                         <span className="truncate max-w-[90px]">{customer.company}</span>
-                      )}
+                      ) : null}
                       {customer.company && (customer.email || customer.phone) && (
                         <span className="text-gray-300 dark:text-gray-600">&#183;</span>
                       )}
