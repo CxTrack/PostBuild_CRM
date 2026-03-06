@@ -12,6 +12,7 @@ import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents'
 import { ResizableTable, type ColumnDef } from '@/components/compact/ResizableTable';
 import { PAYMENT_TERMS_OPTIONS } from '@/config/paymentTerms';
 import { usePageLabels } from '@/hooks/usePageLabels';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Supplier } from '@/types/app.types';
 import toast from 'react-hot-toast';
 
@@ -26,7 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export const Suppliers: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending' | 'blocked'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending' | 'blocked'>('active');
     const [showFilters, setShowFilters] = useState(false);
     const [showSupplierModal, setShowSupplierModal] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>(undefined);
@@ -39,6 +40,7 @@ export const Suppliers: React.FC = () => {
     const { suppliers, loading, fetchSuppliers, deleteSupplier } = useSupplierStore();
     const { theme } = useThemeStore();
     const labels = usePageLabels('suppliers');
+    const { confirm, DialogComponent } = useConfirmDialog();
 
     useEffect(() => {
         if (currentOrganization?.id) {
@@ -95,15 +97,22 @@ export const Suppliers: React.FC = () => {
     const handleDelete = async (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
         if (currentMembership?.role !== 'owner' && currentMembership?.role !== 'admin') {
-            toast.error('You do not have permission to delete suppliers');
+            toast.error(`You do not have permission to delete ${labels.entityPlural}`);
             return;
         }
-        if (confirm('Are you sure you want to delete this supplier?')) {
+        const entityName = labels.entitySingular.charAt(0).toUpperCase() + labels.entitySingular.slice(1);
+        const confirmed = await confirm({
+            title: `Delete ${entityName}`,
+            message: `Are you sure you want to delete this ${labels.entitySingular}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmVariant: 'danger',
+        });
+        if (confirmed) {
             try {
                 await deleteSupplier(id);
-                toast.success('Supplier deleted successfully');
+                toast.success(`${entityName} deleted successfully`);
             } catch (error) {
-                toast.error('Failed to delete supplier');
+                toast.error(`Failed to delete ${labels.entitySingular}`);
             }
         }
     };
@@ -527,6 +536,7 @@ export const Suppliers: React.FC = () => {
                 }}
                 supplier={selectedSupplier}
             />
+            <DialogComponent />
         </PageContainer>
     );
 };

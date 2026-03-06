@@ -270,7 +270,13 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
         }
 
         // Auto-create a linked personal record for the primary contact on a new business
-        if (formData.customer_type === 'business') {
+        // Only for industries where business accounts have team contacts
+        const TEAM_CONTACT_INDUSTRIES = [
+          'general_business', 'distribution_logistics', 'contractors_home_services',
+          'construction', 'agency', 'legal_services', 'real_estate', 'tax_accounting'
+        ];
+        const industryTemplate = currentOrganization?.industry_template || 'general_business';
+        if (formData.customer_type === 'business' && TEAM_CONTACT_INDUSTRIES.includes(industryTemplate)) {
           try {
             await createChildContact(newCustomer.id, {
               first_name: formData.first_name,

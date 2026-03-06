@@ -799,8 +799,14 @@ function OverviewTab({
           />
         )}
 
-        {/* Team Contacts Section - Only for Business Customers */}
-        {isBusinessCustomer && (
+        {/* Team Contacts Section - Only for Business Customers in industries that support team contacts */}
+        {isBusinessCustomer && (() => {
+          const TEAM_CONTACT_INDUSTRIES = [
+            'general_business', 'distribution_logistics', 'contractors_home_services',
+            'construction', 'agency', 'legal_services', 'real_estate', 'tax_accounting'
+          ];
+          return TEAM_CONTACT_INDUSTRIES.includes(currentOrganization?.industry_template || 'general_business');
+        })() && (
           <TeamContactsSection
             customer={customer}
             childContacts={childContacts}
