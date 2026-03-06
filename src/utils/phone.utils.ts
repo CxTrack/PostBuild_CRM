@@ -1,53 +1,90 @@
 
 /**
  * Phone number formatting utilities for consistent display across the app.
+ * Supports international E.164 format with per-country display formatting.
  */
 
-// Format phone for display (North American format with international support)
+import { parseE164Country } from '@/constants/countries';
+
+/** Format national digits for +1 (North American) display */
+function formatNorthAmericanDisplay(nationalDigits: string): string {
+  if (nationalDigits.length === 10) {
+    return `(${nationalDigits.slice(0, 3)}) ${nationalDigits.slice(3, 6)}-${nationalDigits.slice(6)}`;
+  }
+  // Partial or unusual length -- format what we have
+  if (nationalDigits.length <= 3) return `(${nationalDigits}`;
+  if (nationalDigits.length <= 6) return `(${nationalDigits.slice(0, 3)}) ${nationalDigits.slice(3)}`;
+  return `(${nationalDigits.slice(0, 3)}) ${nationalDigits.slice(3, 6)}-${nationalDigits.slice(6, 10)}`;
+}
+
+/** Format national digits with simple space grouping */
+function formatSpaceGrouped(nationalDigits: string): string {
+  const parts: string[] = [];
+  let i = 0;
+  while (i < nationalDigits.length) {
+    const remaining = nationalDigits.length - i;
+    const chunk = remaining > 4 ? 3 : remaining;
+    parts.push(nationalDigits.slice(i, i + chunk));
+    i += chunk;
+  }
+  return parts.join(' ');
+}
+
+// Format phone for display (international-aware)
 export function formatPhoneDisplay(phone: string | null | undefined): string {
   if (!phone) return '';
 
-  // Remove all non-digit characters except leading +
   const hasPlus = phone.startsWith('+');
   const digits = phone.replace(/\D/g, '');
 
   if (!digits) return '';
 
-  // North American format: (XXX) XXX-XXXX
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-
-  // With country code: +1 (XXX) XXX-XXXX
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-
-  // International format: +XX XXX XXX XXXX
+  // Try to parse as E.164
   if (hasPlus || digits.length > 10) {
-    const formatted = digits.replace(/(\d{2,3})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
-    return formatted.startsWith('+') ? formatted : `+${formatted}`;
+    const e164 = hasPlus ? phone : `+${digits}`;
+    const { country, nationalNumber } = parseE164Country(e164);
+
+    if (country) {
+      if (country.dialCode === '+1') {
+        return `+1 ${formatNorthAmericanDisplay(nationalNumber)}`;
+      }
+      return `${country.dialCode} ${formatSpaceGrouped(nationalNumber)}`;
+    }
+
+    // Unknown dial code -- basic formatting
+    return `+${formatSpaceGrouped(digits)}`;
+  }
+
+  // Bare 10-digit number -- assume North American
+  if (digits.length === 10) {
+    return formatNorthAmericanDisplay(digits);
   }
 
   // Fallback: return cleaned number
   return phone;
 }
 
-// Format phone for storage (digits only, with country code)
+// Format phone for storage (E.164 digits with +)
 export function formatPhoneForStorage(phone: string | null | undefined): string {
   if (!phone) return '';
 
-  // Remove all non-digit characters
+  // Strip all non-digit chars except leading +
+  const hasPlus = phone.startsWith('+');
   const digits = phone.replace(/\D/g, '');
 
   if (!digits) return '';
 
-  // Add country code if missing (assume +1 for 10-digit numbers)
+  // Already has + prefix -- return cleaned E.164
+  if (hasPlus) {
+    return `+${digits}`;
+  }
+
+  // Add +1 for bare 10-digit numbers (backward compat for North American default)
   if (digits.length === 10) {
     return `+1${digits}`;
   }
 
-  // Already has country code
+  // 11+ digits without + -- prepend +
   if (digits.length > 10) {
     return `+${digits}`;
   }
@@ -58,13 +95,31 @@ export function formatPhoneForStorage(phone: string | null | undefined): string 
 // Create tel: link for phone calls
 export function getPhoneLink(phone: string | null | undefined): string {
   if (!phone) return '';
+  const hasPlus = phone.startsWith('+');
   const digits = phone.replace(/\D/g, '');
-  return digits ? `tel:+${digits.startsWith('1') ? '' : '1'}${digits}` : '';
+  if (!digits) return '';
+
+  // If already E.164, use directly
+  if (hasPlus) {
+    return `tel:+${digits}`;
+  }
+
+  // Bare 10 digits -- assume +1
+  if (digits.length === 10) {
+    return `tel:+1${digits}`;
+  }
+
+  // 11 digits starting with 1 -- assume North American with country code
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `tel:+${digits}`;
+  }
+
+  return `tel:+${digits}`;
 }
 
 // Validate phone number (basic check)
 export function isValidPhone(phone: string | null | undefined): boolean {
   if (!phone) return true; // Empty is valid (use required separately)
   const digits = phone.replace(/\D/g, '');
-  return digits.length >= 10 && digits.length <= 15;
+  return digits.length >= 7 && digits.length <= 15;
 }

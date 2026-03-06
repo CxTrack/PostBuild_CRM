@@ -5,6 +5,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { CountrySelect } from '@/components/ui/CountrySelect';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePhone, validateRequired } from '@/utils/validation';
 import { formatPhoneForStorage } from '@/utils/phone.utils';
@@ -628,12 +629,9 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Country
                     </label>
-                    <input
-                      type="text"
+                    <CountrySelect
                       value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      placeholder="Country"
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                      onChange={(value) => setFormData({ ...formData, country: value })}
                     />
                   </div>
                 </div>

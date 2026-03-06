@@ -230,7 +230,7 @@ export const transformRowToCustomer = (
     // Set defaults
     customer.status = customer.status || 'Active';
     customer.priority = customer.priority || 'Medium';
-    customer.country = customer.country || 'USA';
+    customer.country = customer.country || 'United States';
     customer.customer_type = customer.customer_type || (customer.company ? 'business' : 'personal');
     customer.total_spent = 0;
     customer.custom_fields = {};

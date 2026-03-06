@@ -149,7 +149,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
             const request: any = {
                 input,
-                includedRegionCodes: ['ca', 'us'],
                 sessionToken: getSessionToken(),
             };
 

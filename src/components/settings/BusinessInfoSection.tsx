@@ -5,6 +5,7 @@ import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AddressAutocomplete, AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { BusinessSettings as BusinessSettingsType } from '@/services/settings.service';
 import { getStatesForCountry, getTaxConfigForLocation, isSupportedCountry } from '@/config/taxRates';
+import { COUNTRIES } from '@/constants/countries';
 
 interface BusinessInfoSectionProps {
   settings: BusinessSettingsType;
@@ -250,23 +251,12 @@ export default function BusinessInfoSection({
                   <option value="United States">United States</option>
                 </optgroup>
                 <optgroup label="Other countries">
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="Australia">Australia</option>
-                  <option value="New Zealand">New Zealand</option>
-                  <option value="Germany">Germany</option>
-                  <option value="France">France</option>
-                  <option value="Spain">Spain</option>
-                  <option value="Italy">Italy</option>
-                  <option value="Netherlands">Netherlands</option>
-                  <option value="Belgium">Belgium</option>
-                  <option value="Switzerland">Switzerland</option>
-                  <option value="Mexico">Mexico</option>
-                  <option value="Brazil">Brazil</option>
-                  <option value="Japan">Japan</option>
-                  <option value="South Korea">South Korea</option>
-                  <option value="Singapore">Singapore</option>
-                  <option value="India">India</option>
-                  <option value="Ireland">Ireland</option>
+                  {COUNTRIES
+                    .filter(c => c.iso !== 'CA' && c.iso !== 'US')
+                    .map(c => (
+                      <option key={c.iso} value={c.name}>{c.flag} {c.name}</option>
+                    ))
+                  }
                   <option value="Other">Other</option>
                 </optgroup>
               </select>
