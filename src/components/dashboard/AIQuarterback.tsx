@@ -21,6 +21,7 @@ import {
   Package,
   Mail,
   UserMinus,
+  ShieldAlert,
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
@@ -118,6 +119,14 @@ const INSIGHT_CONFIG: Record<string, {
     borderColor: 'border-red-200/60 dark:border-red-700/30',
     label: 'No-Show Pattern',
   },
+  customer_at_risk: {
+    icon: ShieldAlert,
+    accentColor: 'text-red-600 dark:text-red-400',
+    iconBg: 'bg-red-200 dark:bg-red-900/50',
+    rowBg: 'hover:bg-red-50/60 dark:hover:bg-red-900/25',
+    borderColor: 'border-red-300/70 dark:border-red-600/40',
+    label: 'At Risk',
+  },
 };
 
 /**
@@ -151,6 +160,16 @@ function buildQuarterbackPrompt(insight: QuarterbackInsight): string {
 
     case 'appointment_no_show':
       return prefix + `Patient/client ${insight.customer_name} has no-showed ${insight.no_show_count} times in the last 90 days (last no-show: ${insight.last_no_show_date ? format(new Date(insight.last_no_show_date), 'MMM d') : 'unknown'}). Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me re-engage this patient and reduce future no-shows.`;
+
+    case 'customer_at_risk': {
+      const signals: string[] = [];
+      if (insight.has_stale_deal) signals.push(`stale deal worth $${insight.stale_deal_value?.toLocaleString() || '0'}`);
+      if (insight.has_overdue_invoice) signals.push(`$${insight.overdue_invoice_amount?.toLocaleString() || '0'} in overdue invoices`);
+      if (insight.overdue_task_count && insight.overdue_task_count > 0) signals.push(`${insight.overdue_task_count} overdue task${insight.overdue_task_count > 1 ? 's' : ''}`);
+      if (insight.days_inactive) signals.push(`${insight.days_inactive} days since last contact`);
+      if (insight.no_recent_emails) signals.push('no outbound emails in 30 days');
+      return prefix + `COMPOUND RISK ALERT: ${insight.customer_name} ($${insight.total_spent?.toLocaleString() || '0'} lifetime value) is at risk with a risk score of ${insight.risk_score}. Signals: ${signals.join(', ')}. Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. This customer needs immediate attention across multiple fronts. Help me create a recovery plan.`;
+    }
 
     default:
       return prefix + insight.message;

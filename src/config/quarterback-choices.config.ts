@@ -187,6 +187,59 @@ export function buildQuarterbackChoices(
     ];
   }
 
+  // For compound risk alerts, offer multi-front action options
+  if (insight.type === 'customer_at_risk') {
+    const actions: ChoiceOption[] = [
+      {
+        id: 'draft_email',
+        label: 'Send a re-engagement email',
+        description: hasEmail
+          ? `Email ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+    ];
+
+    // Add "Address the invoice" if there's an overdue invoice
+    if (insight.has_overdue_invoice && insight.overdue_invoice_amount && insight.overdue_invoice_amount > 0) {
+      actions.push({
+        id: 'draft_invoice_followup',
+        label: 'Follow up on the overdue invoice',
+        description: `$${insight.overdue_invoice_amount.toLocaleString()} outstanding`,
+        icon: 'AlertCircle',
+      });
+    }
+
+    actions.push(
+      {
+        id: 'draft_call_script',
+        label: 'Script a recovery call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'recovery_plan',
+        label: 'Build a full recovery plan',
+        description: 'CoPilot drafts a multi-step plan to save this customer',
+        icon: 'Briefcase',
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    );
+
+    return actions;
+  }
+
   // For low stock alerts, offer reorder and inventory actions
   if (insight.type === 'low_stock') {
     return [
@@ -325,7 +378,18 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
     }
 
     case 'appointment_no_show':
-      return `**${insight.customer_name}** has missed **${insight.no_show_count} appointment${(insight.no_show_count || 0) > 1 ? 's' : ''}** in the last 90 days${insight.last_no_show_date ? ` (most recently on ${new Date(insight.last_no_show_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}. This is a pattern worth addressing before it leads to churn.\\n\\nHow would you like to handle this?`;
+      return `**${insight.customer_name}** has missed **${insight.no_show_count} appointment${(insight.no_show_count || 0) > 1 ? 's' : ''}** in the last 90 days${insight.last_no_show_date ? ` (most recently on ${new Date(insight.last_no_show_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}. This is a pattern worth addressing before it leads to churn.\n\nHow would you like to handle this?`;
+
+    case 'customer_at_risk': {
+      const signals: string[] = [];
+      if (insight.has_stale_deal) signals.push(`a stale deal ($${insight.stale_deal_value?.toLocaleString() || '0'})`);
+      if (insight.has_overdue_invoice) signals.push(`$${insight.overdue_invoice_amount?.toLocaleString() || '0'} in overdue invoices`);
+      if (insight.overdue_task_count && insight.overdue_task_count > 0) signals.push(`${insight.overdue_task_count} overdue task${insight.overdue_task_count > 1 ? 's' : ''}`);
+      if (insight.days_inactive) signals.push(`**${insight.days_inactive} days** since last contact`);
+      if (insight.no_recent_emails) signals.push('no outbound emails in the last 30 days');
+      const signalText = signals.length > 0 ? signals.join(', ') : 'multiple warning signals';
+      return `**${insight.customer_name}** ($${insight.total_spent?.toLocaleString() || '0'} lifetime value) is showing signs of churn risk: ${signalText}. Risk score: **${((insight.risk_score || 0) * 100).toFixed(0)}%**.\n\nThis customer needs a coordinated response. How would you like to start?`;
+    }
 
     case 'low_stock': {
       const stockStatus = insight.quantity_on_hand === 0

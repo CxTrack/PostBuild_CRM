@@ -15,7 +15,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock' | 'appointment_no_show';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock' | 'appointment_no_show' | 'customer_at_risk';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -67,6 +67,14 @@ export interface QuarterbackInsight {
   /** No-show specific fields for appointment_no_show insights */
   no_show_count?: number;
   last_no_show_date?: string;
+  /** Compound risk fields for customer_at_risk insights */
+  risk_score?: number;
+  has_stale_deal?: boolean;
+  stale_deal_value?: number;
+  has_overdue_invoice?: boolean;
+  overdue_invoice_amount?: number;
+  overdue_task_count?: number;
+  no_recent_emails?: boolean;
 }
 
 const MAX_VISIBLE_INSIGHTS = 5;
@@ -424,8 +432,24 @@ export function useQuarterbackInsights() {
 
       // Merge all insight sources, then sort by priority score (highest first)
       const combined = [...meetingInsights, ...emailInsights, ...insights];
-      combined.sort((a, b) => scoreInsight(b) - scoreInsight(a));
-      setAllInsights(combined);
+
+      // Deduplicate: if a customer appears in a customer_at_risk compound insight,
+      // suppress individual insights (stale_deal, inactive_customer, overdue_invoice, overdue_task)
+      // for that same customer to avoid redundant alerts
+      const atRiskCustomerIds = new Set(
+        combined
+          .filter(i => i.type === 'customer_at_risk' && i.customer_id)
+          .map(i => i.customer_id!)
+      );
+      const COMPOUND_SUPPRESSED_TYPES = new Set([
+        'stale_deal', 'inactive_customer', 'overdue_invoice', 'overdue_task', 'follow_up_reminder',
+      ]);
+      const deduped = combined.filter(i =>
+        !(atRiskCustomerIds.has(i.customer_id!) && COMPOUND_SUPPRESSED_TYPES.has(i.type))
+      );
+
+      deduped.sort((a, b) => scoreInsight(b) - scoreInsight(a));
+      setAllInsights(deduped);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('[QB] Error fetching insights:', err);

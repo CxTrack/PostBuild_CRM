@@ -122,6 +122,8 @@ export const INSIGHT_TYPE_WEIGHTS: Record<string, InsightTypeWeight> = {
   low_stock: { baseWeight: 40, valueMultiplier: 0, urgencyMultiplier: 0 },
   // Healthcare-specific
   appointment_no_show: { baseWeight: 65, valueMultiplier: 0.2, urgencyMultiplier: 0 },
+  // Compound risk — highest priority after meetings (combines multiple signals)
+  customer_at_risk: { baseWeight: 95, valueMultiplier: 0.4, urgencyMultiplier: 0.3 },
 };
 
 /**
@@ -140,6 +142,7 @@ export function scoreInsight(insight: {
   days_until_expiry?: number;
   days_past_followup?: number;
   priority?: string;
+  risk_score?: number;
 }): number {
   const weights = INSIGHT_TYPE_WEIGHTS[insight.type];
   if (!weights) return 0;
@@ -175,6 +178,11 @@ export function scoreInsight(insight: {
   // Priority boost for tasks
   if (insight.priority === 'urgent') score += 15;
   else if (insight.priority === 'high') score += 8;
+
+  // Compound risk score boost (0-1 scale, adds up to 10 points)
+  if (insight.type === 'customer_at_risk' && insight.risk_score) {
+    score += insight.risk_score * 10;
+  }
 
   return score;
 }
