@@ -488,7 +488,7 @@ export default function EmailPage() {
           paginatedThreads.map(thread => (
             <div
               key={thread.id}
-              className={`w-full text-left px-3 py-2 border-b border-gray-100 dark:border-gray-700/50 transition-colors flex items-start gap-2 ${
+              className={`group w-full text-left px-3 py-2 border-b border-gray-100 dark:border-gray-700/50 transition-colors flex items-start gap-2 ${
                 selectedThreadId === thread.id ? activeBg : hoverBg
               } ${selectedThreadIds.has(thread.id) ? (isMidnight ? 'bg-blue-900/20' : 'bg-blue-50/50 dark:bg-blue-900/10') : ''}`}
             >
@@ -544,6 +544,13 @@ export default function EmailPage() {
                     <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">
                       {formatEmailDate(thread.lastMessageAt)}
                     </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteThreads([thread.id]); }}
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -563,9 +570,18 @@ export default function EmailPage() {
                       }`}>
                         {thread.customerName || thread.participants.find(p => p !== user?.email) || thread.participants[0] || 'Unknown'}
                       </span>
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0">
-                        {formatEmailDate(thread.lastMessageAt)}
-                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                          {formatEmailDate(thread.lastMessageAt)}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteThreads([thread.id]); }}
+                          className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                     <div className={`text-sm truncate mt-0.5 ${
                       thread.unreadCount > 0 ? 'font-medium text-gray-800 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400'
