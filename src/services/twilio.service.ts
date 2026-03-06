@@ -33,7 +33,7 @@ export const twilioService = {
     async getSettings(organizationId: string): Promise<TwilioSettings | null> {
         const { data, error } = await supabase
             .from('sms_settings')
-            .select('*')
+            .select('id, organization_id, twilio_phone_number, is_configured, created_at, updated_at')
             .eq('organization_id', organizationId)
             .maybeSingle();
 
@@ -52,41 +52,20 @@ export const twilioService = {
             twilio_phone_number: string;
         }
     ): Promise<TwilioSettings> {
-        const existing = await this.getSettings(organizationId);
+        // Store credentials securely in Vault via RPC
+        const { error: rpcError } = await supabase.rpc('save_sms_credentials', {
+            p_organization_id: organizationId,
+            p_twilio_account_sid: settings.twilio_account_sid,
+            p_twilio_auth_token: settings.twilio_auth_token,
+            p_twilio_phone_number: settings.twilio_phone_number,
+        });
 
-        const settingsData = {
-            organization_id: organizationId,
-            twilio_account_sid: settings.twilio_account_sid,
-            twilio_auth_token: settings.twilio_auth_token,
-            twilio_phone_number: settings.twilio_phone_number,
-            is_configured: !!(
-                settings.twilio_account_sid &&
-                settings.twilio_auth_token &&
-                settings.twilio_phone_number
-            ),
-            updated_at: new Date().toISOString(),
-        };
+        if (rpcError) throw rpcError;
 
-        if (existing) {
-            const { data, error } = await supabase
-                .from('sms_settings')
-                .update(settingsData)
-                .eq('id', existing.id)
-                .select()
-                .single();
-
-            if (error) throw error;
-            return data;
-        } else {
-            const { data, error } = await supabase
-                .from('sms_settings')
-                .insert(settingsData)
-                .select()
-                .single();
-
-            if (error) throw error;
-            return data;
-        }
+        // Fetch updated settings (without secrets)
+        const updated = await this.getSettings(organizationId);
+        if (!updated) throw new Error('Failed to retrieve updated Twilio settings');
+        return updated;
     },
 
     /**

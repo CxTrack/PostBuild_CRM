@@ -1,11 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { logApiCall } from '../_shared/api-logger.ts'
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 interface CallRequest {
     to: string;
@@ -18,10 +13,7 @@ interface CallRequest {
 Deno.serve(async (req: Request) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
-        return new Response(null, {
-            status: 200,
-            headers: corsHeaders,
-        })
+        return corsPreflightResponse(req)
     }
 
     try {
@@ -150,7 +142,7 @@ Deno.serve(async (req: Request) => {
             }),
             {
                 headers: {
-                    ...corsHeaders,
+                    ...getCorsHeaders(req),
                     'Content-Type': 'application/json',
                 },
             }
@@ -165,7 +157,7 @@ Deno.serve(async (req: Request) => {
             {
                 status: 400,
                 headers: {
-                    ...corsHeaders,
+                    ...getCorsHeaders(req),
                     'Content-Type': 'application/json',
                 },
             }

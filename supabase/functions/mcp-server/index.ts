@@ -10,16 +10,11 @@
  */
 
 import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const MCP_PROTOCOL_VERSION = '2024-11-05'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
 
 // ─── Tool Definitions ───────────────────────────────────────────────────────
 
@@ -381,17 +376,17 @@ async function executeTool(
 
 // ─── JSON-RPC 2.0 Response Helpers ──────────────────────────────────────────
 
-function jsonRpcResponse(id: string | number | null, result: any): Response {
+function jsonRpcResponse(req: Request, id: string | number | null, result: any): Response {
   return new Response(
     JSON.stringify({ jsonrpc: '2.0', id, result }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
   )
 }
 
-function jsonRpcError(id: string | number | null, code: number, message: string, data?: any): Response {
+function jsonRpcError(req: Request, id: string | number | null, code: number, message: string, data?: any): Response {
   return new Response(
     JSON.stringify({ jsonrpc: '2.0', id, error: { code, message, data } }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
   )
 }
 
@@ -400,13 +395,13 @@ function jsonRpcError(id: string | number | null, code: number, message: string,
 Deno.serve(async (req: Request) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return corsPreflightResponse(req)
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders,
+      headers: getCorsHeaders(req),
     })
   }
 
@@ -417,18 +412,18 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json()
   } catch {
-    return jsonRpcError(null, -32700, 'Parse error: invalid JSON')
+    return jsonRpcError(req, null, -32700, 'Parse error: invalid JSON')
   }
 
   const { jsonrpc, method, params, id } = body
 
   if (jsonrpc !== '2.0') {
-    return jsonRpcError(id, -32600, 'Invalid request: must be JSON-RPC 2.0')
+    return jsonRpcError(req, id, -32600, 'Invalid request: must be JSON-RPC 2.0')
   }
 
   // Handle initialize (no auth required)
   if (method === 'initialize') {
-    return jsonRpcResponse(id, {
+    return jsonRpcResponse(req, id, {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {
         tools: { listChanged: false },
@@ -442,19 +437,19 @@ Deno.serve(async (req: Request) => {
 
   // Handle notifications (no response needed)
   if (method === 'notifications/initialized') {
-    return new Response('', { status: 204, headers: corsHeaders })
+    return new Response('', { status: 204, headers: getCorsHeaders(req) })
   }
 
   // All other methods require auth
   const { auth, error: authError, status: authStatus } = await authenticateRequest(req, supabase)
   if (authError || !auth) {
-    return jsonRpcError(id, -32000, authError || 'Unauthorized', { status: authStatus })
+    return jsonRpcError(req, id, -32000, authError || 'Unauthorized', { status: authStatus })
   }
 
   switch (method) {
 
     case 'tools/list': {
-      return jsonRpcResponse(id, { tools: TOOLS })
+      return jsonRpcResponse(req, id, { tools: TOOLS })
     }
 
     case 'tools/call': {
@@ -462,17 +457,17 @@ Deno.serve(async (req: Request) => {
       const toolArgs = params?.arguments || {}
 
       if (!toolName) {
-        return jsonRpcError(id, -32602, 'Missing tool name')
+        return jsonRpcError(req, id, -32602, 'Missing tool name')
       }
 
       const validToolNames = TOOLS.map(t => t.name)
       if (!validToolNames.includes(toolName)) {
-        return jsonRpcError(id, -32602, `Unknown tool: ${toolName}. Available: ${validToolNames.join(', ')}`)
+        return jsonRpcError(req, id, -32602, `Unknown tool: ${toolName}. Available: ${validToolNames.join(', ')}`)
       }
 
       try {
         const result = await executeTool(toolName, toolArgs, auth.orgId, supabase)
-        return jsonRpcResponse(id, {
+        return jsonRpcResponse(req, id, {
           content: [
             {
               type: 'text',
@@ -483,7 +478,7 @@ Deno.serve(async (req: Request) => {
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e)
         console.error(`[mcp-server] Tool ${toolName} error:`, errMsg)
-        return jsonRpcResponse(id, {
+        return jsonRpcResponse(req, id, {
           content: [
             {
               type: 'text',
@@ -496,6 +491,6 @@ Deno.serve(async (req: Request) => {
     }
 
     default:
-      return jsonRpcError(id, -32601, `Method not found: ${method}`)
+      return jsonRpcError(req, id, -32601, `Method not found: ${method}`)
   }
 })

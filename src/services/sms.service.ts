@@ -184,7 +184,7 @@ export const smsService = {
   async getSMSSettings(organizationId: string): Promise<SMSSettings | null> {
     const { data, error } = await supabase
       .from('sms_settings')
-      .select('*')
+      .select('id, organization_id, twilio_phone_number, is_configured, sms_enabled, pipeline_sms_enabled, pipeline_stages_to_notify, default_sender_name, signature, created_at, updated_at')
       .eq('organization_id', organizationId)
       .maybeSingle();
 
@@ -200,40 +200,20 @@ export const smsService = {
       twilio_phone_number: string;
     }
   ): Promise<SMSSettings> {
-    const existing = await this.getSMSSettings(organizationId);
+    // Store credentials in Vault via secure RPC
+    const { data: result, error: rpcError } = await supabase.rpc('save_sms_credentials', {
+      p_organization_id: organizationId,
+      p_twilio_account_sid: settings.twilio_account_sid,
+      p_twilio_auth_token: settings.twilio_auth_token,
+      p_twilio_phone_number: settings.twilio_phone_number,
+    });
 
-    const settingsData = {
-      organization_id: organizationId,
-      twilio_account_sid: settings.twilio_account_sid,
-      twilio_auth_token: settings.twilio_auth_token,
-      twilio_phone_number: settings.twilio_phone_number,
-      is_configured: !!(
-        settings.twilio_account_sid &&
-        settings.twilio_auth_token &&
-        settings.twilio_phone_number
-      ),
-    };
+    if (rpcError) throw rpcError;
 
-    if (existing) {
-      const { data, error } = await supabase
-        .from('sms_settings')
-        .update(settingsData)
-        .eq('id', existing.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('sms_settings')
-        .insert(settingsData)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    }
+    // Fetch updated settings (without secrets)
+    const updated = await this.getSMSSettings(organizationId);
+    if (!updated) throw new Error('Failed to retrieve updated SMS settings');
+    return updated;
   },
 
   async updateSMSPreferences(

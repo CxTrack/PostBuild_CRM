@@ -1,10 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 /**
  * Chat Cleanup - Tier-based message retention.
@@ -23,7 +18,7 @@ const corsHeaders = {
  */
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
+    return corsPreflightResponse(req)
   }
 
   try {
@@ -38,7 +33,7 @@ Deno.serve(async (req: Request) => {
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(
           JSON.stringify({ error: 'Authentication required' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       const authClient = createClient(
@@ -50,7 +45,7 @@ Deno.serve(async (req: Request) => {
       if (authErr || !user) {
         return new Response(
           JSON.stringify({ error: 'Invalid or expired token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       // Check if user is platform admin
@@ -63,7 +58,7 @@ Deno.serve(async (req: Request) => {
       if (!adminCheck) {
         return new Response(
           JSON.stringify({ error: 'Admin access required' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 403, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
     }
@@ -156,7 +151,7 @@ Deno.serve(async (req: Request) => {
         timestamp: new Date().toISOString(),
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   } catch (error) {
@@ -165,7 +160,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ success: false, error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }

@@ -6,12 +6,7 @@
  * POST body: { emails: [{ message_id: string, provider: 'google' | 'microsoft' }] }
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 // ── Token helpers (inlined -- MCP deploy can't resolve _shared imports) ──────
 
@@ -177,7 +172,7 @@ async function markReadOutlook(token: string, messageId: string): Promise<{ mark
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
+    return corsPreflightResponse(req)
   }
 
   try {
@@ -200,7 +195,7 @@ Deno.serve(async (req: Request) => {
 
     if (!emails?.length) {
       return new Response(JSON.stringify({ success: true, summary: { total: 0, marked: 0, failed: 0 }, results: [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       })
     }
 
@@ -262,13 +257,13 @@ Deno.serve(async (req: Request) => {
       summary: { total: emails.length, marked, failed },
       results,
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     })
   } catch (err) {
     console.error('[mark-provider-email-read]', err)
     return new Response(JSON.stringify({ success: false, error: String(err) }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     })
   }
 })

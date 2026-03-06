@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { logApiCall } from '../_shared/api-logger.ts'
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -33,13 +34,7 @@ interface OpenRouterEmbeddingResponse {
 Deno.serve(async (req: Request) => {
   // Only accept POST
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      },
-    })
+    return corsPreflightResponse(req)
   }
 
   if (req.method !== 'POST') {

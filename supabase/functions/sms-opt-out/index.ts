@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { validateOptOutSignature } from '../_shared/hmac.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { customer_id, organization_id, method } = await req.json()
+    const { customer_id, organization_id, method, ts, sig } = await req.json()
 
     if (!customer_id || !organization_id) {
       throw new Error('Missing required fields: customer_id, organization_id')
@@ -31,6 +32,31 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // --- HMAC Signature Validation ---
+    const hmacSecret = Deno.env.get('SMS_OPT_OUT_SECRET')
+    if (hmacSecret) {
+      // If the secret is configured, enforce HMAC validation
+      const validation = await validateOptOutSignature(
+        customer_id,
+        organization_id,
+        Number(ts),
+        sig,
+        hmacSecret
+      )
+
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: validation.reason || 'Invalid or expired opt-out link. Please request a new one.',
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+    // If SMS_OPT_OUT_SECRET is not set, allow unsigned requests for backwards compatibility.
+    // Once the secret is deployed, all requests must be signed.
 
     // Verify the customer actually belongs to this organization
     const { data: customer_check } = await supabase

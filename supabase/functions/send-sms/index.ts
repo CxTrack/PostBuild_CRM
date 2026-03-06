@@ -1,11 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { logApiCall } from '../_shared/api-logger.ts'
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { generateSignedOptOutUrl } from '../_shared/hmac.ts'
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 interface SMSRequest {
     to: string;
@@ -19,10 +15,7 @@ interface SMSRequest {
 Deno.serve(async (req: Request) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
-        return new Response(null, {
-            status: 200,
-            headers: corsHeaders,
-        })
+        return corsPreflightResponse(req)
     }
 
     try {
@@ -82,7 +75,7 @@ Deno.serve(async (req: Request) => {
                     }),
                     {
                         status: 403,
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
                     }
                 )
             }
@@ -111,22 +104,19 @@ Deno.serve(async (req: Request) => {
             }
         }
 
-        // Fetch Twilio credentials from sms_settings
-        const { data: settings, error: settingsError } = await supabaseClient
-            .from('sms_settings')
-            .select('twilio_account_sid, twilio_auth_token, twilio_phone_number, is_configured')
-            .eq('organization_id', organizationId)
-            .maybeSingle()
+        // Fetch Twilio credentials from Vault via secure RPC
+        const { data: creds, error: credsError } = await supabaseClient
+            .rpc('get_sms_credentials', { p_organization_id: organizationId })
 
-        if (settingsError) {
-            throw new Error(`Failed to fetch SMS settings: ${settingsError.message}`)
+        if (credsError) {
+            throw new Error(`Failed to fetch SMS credentials: ${credsError.message}`)
         }
 
-        if (!settings || !settings.is_configured) {
+        if (!creds || creds.error || !creds.is_configured) {
             throw new Error('Twilio is not configured. Please add your Twilio credentials in Settings.')
         }
 
-        const { twilio_account_sid, twilio_auth_token, twilio_phone_number } = settings
+        const { twilio_account_sid, twilio_auth_token, twilio_phone_number } = creds
 
         if (!twilio_account_sid || !twilio_auth_token || !twilio_phone_number) {
             throw new Error('Incomplete Twilio configuration. Please verify your credentials.')
@@ -141,7 +131,13 @@ Deno.serve(async (req: Request) => {
         }
 
         // Append opt-out message to every SMS
-        const optOutSuffix = '\n\nReply STOP to opt out of SMS messages.'
+        let optOutSuffix = '\n\nReply STOP to opt out of SMS messages.'
+        const hmacSecret = Deno.env.get('SMS_OPT_OUT_SECRET')
+        if (hmacSecret && customerId) {
+            const appUrl = Deno.env.get('APP_URL') || 'https://crm.cxtrack.com'
+            const signedUrl = await generateSignedOptOutUrl(appUrl, customerId, organizationId, hmacSecret)
+            optOutSuffix = `\n\nReply STOP or visit ${signedUrl} to opt out.`
+        }
         const fullBody = body.includes('STOP') ? body : body + optOutSuffix
 
         // Call Twilio API
@@ -198,7 +194,7 @@ Deno.serve(async (req: Request) => {
             }),
             {
                 headers: {
-                    ...corsHeaders,
+                    ...getCorsHeaders(req),
                     'Content-Type': 'application/json',
                 },
             }
@@ -213,7 +209,7 @@ Deno.serve(async (req: Request) => {
             {
                 status: 400,
                 headers: {
-                    ...corsHeaders,
+                    ...getCorsHeaders(req),
                     'Content-Type': 'application/json',
                 },
             }

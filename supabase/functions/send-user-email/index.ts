@@ -15,12 +15,7 @@
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import nodemailer from 'npm:nodemailer@6'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 /** Fire-and-forget API usage logger (inlined to avoid _shared import issues on deploy). */
 function logApiCall(supabase: ReturnType<typeof createClient>, params: Record<string, unknown>): void {
@@ -396,7 +391,7 @@ async function refreshMicrosoftToken(
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
+    return corsPreflightResponse(req)
   }
 
   try {
@@ -475,7 +470,7 @@ Deno.serve(async (req: Request) => {
     if (!result) {
       return new Response(
         JSON.stringify({ error: 'no_email_connected' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -483,7 +478,7 @@ Deno.serve(async (req: Request) => {
     if (!result.success) {
       return new Response(
         JSON.stringify({ error: result.error || 'Email sending failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -526,13 +521,13 @@ Deno.serve(async (req: Request) => {
         provider: result.provider,
         sender_email: senderEmail,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('send-user-email error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

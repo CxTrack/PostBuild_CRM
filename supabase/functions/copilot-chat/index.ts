@@ -1,15 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -484,7 +479,7 @@ function estimateTokens(text: string): number {
 // =====================================================
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return corsPreflightResponse(req);
   }
 
   try {
@@ -492,7 +487,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -504,7 +499,7 @@ Deno.serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -512,7 +507,7 @@ Deno.serve(async (req: Request) => {
     if (!body.message || typeof body.message !== "string") {
       return new Response(
         JSON.stringify({ error: "Message is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -555,7 +550,7 @@ Deno.serve(async (req: Request) => {
     if (!membership) {
       return new Response(
         JSON.stringify({ error: "No organization found" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -587,7 +582,7 @@ Deno.serve(async (req: Request) => {
     if (tokenError) {
       return new Response(
         JSON.stringify({ error: "Failed to check token balance", debug: String(tokenError) }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -600,7 +595,7 @@ Deno.serve(async (req: Request) => {
           tokensAllocated: tokenRecord.tokens_allocated,
           tokensUsed: tokenRecord.tokens_used,
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -835,7 +830,7 @@ Base your options on the business context provided. Be specific -- avoid generic
             tokensRemaining: Math.max(0, tokensRemaining - totalTokenCost),
             tokensAllocated: tokenRecord.tokens_allocated,
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
         );
       } catch (ackErr) {
         // AI call failed -- return fallback, still deduct firecrawl tokens if applicable
@@ -857,7 +852,7 @@ Base your options on the business context provided. Be specific -- avoid generic
             tokensRemaining: Math.max(0, tokensRemaining - firecrawlTokenCost),
             tokensAllocated: tokenRecord.tokens_allocated,
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
         );
       }
     }
@@ -871,7 +866,7 @@ Base your options on the business context provided. Be specific -- avoid generic
           tokensAllocated: tokenRecord.tokens_allocated,
           provider: "none",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1194,7 +1189,7 @@ Base your options on the business context provided. Be specific -- avoid generic
           provider: "error",
           debug: `Fetch error: ${fetchErr}`,
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1215,7 +1210,7 @@ Base your options on the business context provided. Be specific -- avoid generic
             model,
           },
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1232,7 +1227,7 @@ Base your options on the business context provided. Be specific -- avoid generic
           provider: "error",
           debug: { rawText: rawText.substring(0, 500) },
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1247,7 +1242,7 @@ Base your options on the business context provided. Be specific -- avoid generic
           provider: "error",
           debug: { aiResult: JSON.stringify(aiResult).substring(0, 500) },
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1290,13 +1285,13 @@ Base your options on the business context provided. Be specific -- avoid generic
         isContextSummary: isContextSummaryMode || undefined,
         isImpersonated: (effectiveUserId !== user.id) || undefined,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     return new Response(
       JSON.stringify({ error: "Internal server error", debug: String(error) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

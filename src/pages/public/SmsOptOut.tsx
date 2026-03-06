@@ -9,6 +9,8 @@ export const SmsOptOut: React.FC = () => {
   const [searchParams] = useSearchParams();
   const customerId = searchParams.get('customer_id');
   const organizationId = searchParams.get('organization_id');
+  const ts = searchParams.get('ts');
+  const sig = searchParams.get('sig');
 
   const [state, setState] = useState<PageState>('confirm');
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +64,8 @@ export const SmsOptOut: React.FC = () => {
           customer_id: customerId,
           organization_id: organizationId,
           method: 'link',
+          ts: ts ? Number(ts) : undefined,
+          sig: sig || undefined,
         }),
       });
 

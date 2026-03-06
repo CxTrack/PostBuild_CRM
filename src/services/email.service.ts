@@ -30,9 +30,11 @@ export interface EmailData {
 
 export const emailService = {
   async getEmailSettings(organizationId: string): Promise<EmailSettings | null> {
+    // Note: email_settings table uses user_id, not organization_id.
+    // This query may return null; newer SMTP settings use user_email_smtp_settings table.
     const { data, error } = await supabase
       .from('email_settings')
-      .select('*')
+      .select('id, smtp_host, smtp_port, smtp_username, from_email, from_name, created_at, updated_at')
       .eq('organization_id', organizationId)
       .maybeSingle();
 

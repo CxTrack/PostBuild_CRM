@@ -1,14 +1,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { logApiCall } from '../_shared/api-logger.ts'
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
 
 interface OutboundCallRequest {
   organizationId: string;
@@ -179,7 +174,7 @@ Additional context: {{customer_context}}
 // ============================================================
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return corsPreflightResponse(req);
   }
 
   try {
@@ -223,7 +218,7 @@ Deno.serve(async (req: Request) => {
     if (!RETELL_API_KEY) {
       return new Response(
         JSON.stringify({ success: false, error: 'Voice AI is not configured.', notConfigured: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -341,13 +336,13 @@ Deno.serve(async (req: Request) => {
         agentName: config.agent_name,
         status: retellData.call_status || 'initiated',
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Make Outbound Call Error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

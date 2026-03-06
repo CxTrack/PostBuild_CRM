@@ -1,10 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-}
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 const CODE_LENGTH = 6
 const CODE_EXPIRY_MINUTES = 10
@@ -19,7 +14,7 @@ function generateCode(): string {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
+    return corsPreflightResponse(req)
   }
 
   try {
@@ -33,7 +28,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -44,7 +39,7 @@ Deno.serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -53,7 +48,7 @@ Deno.serve(async (req: Request) => {
     if (!action || !phone) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required fields: action, phone' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -87,7 +82,7 @@ Deno.serve(async (req: Request) => {
         if (waitSeconds > 0) {
           return new Response(
             JSON.stringify({ success: false, error: `Please wait ${waitSeconds} seconds before requesting a new code.` }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 429, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
           )
         }
       }
@@ -120,7 +115,7 @@ Deno.serve(async (req: Request) => {
         console.error('Failed to store verification code:', insertError)
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to generate verification code' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -147,7 +142,7 @@ Deno.serve(async (req: Request) => {
         console.error('Missing Twilio credentials for verification SMS')
         return new Response(
           JSON.stringify({ success: false, error: 'SMS service not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -183,7 +178,7 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to send verification SMS. Please try again.' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -191,7 +186,7 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -200,7 +195,7 @@ Deno.serve(async (req: Request) => {
       if (!code) {
         return new Response(
           JSON.stringify({ success: false, error: 'Missing verification code' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -221,14 +216,14 @@ Deno.serve(async (req: Request) => {
         console.error('Verification lookup error:', lookupError)
         return new Response(
           JSON.stringify({ success: false, error: 'Verification check failed' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
       if (!verification) {
         return new Response(
           JSON.stringify({ success: false, verified: false, error: 'No active verification code found. Please request a new code.' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -242,7 +237,7 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({ success: false, verified: false, error: 'Too many attempts. Please request a new code.' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -263,7 +258,7 @@ Deno.serve(async (req: Request) => {
               ? `Invalid code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
               : 'Too many attempts. Please request a new code.',
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -283,20 +278,20 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ success: true, verified: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
       JSON.stringify({ success: false, error: `Unknown action: ${action}` }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     console.error('[verify-phone] Error:', error)
     return new Response(
       JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

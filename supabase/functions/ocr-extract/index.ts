@@ -2,11 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "jsr:@std/encoding/base64";
 import { logApiCall } from "../_shared/api-logger.ts";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, corsPreflightResponse } from '../_shared/cors.ts'
 
 interface ExtractedContact {
     first_name: string;
@@ -52,7 +48,7 @@ Rules:
 
 Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+        return corsPreflightResponse(req);
     }
 
     try {
@@ -60,7 +56,7 @@ Deno.serve(async (req: Request) => {
         if (!authHeader?.startsWith('Bearer ')) {
             return new Response(
                 JSON.stringify({ error: 'Missing authorization header' }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -74,7 +70,7 @@ Deno.serve(async (req: Request) => {
         if (authError || !user) {
             return new Response(
                 JSON.stringify({ error: 'Invalid or expired token' }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -83,7 +79,7 @@ Deno.serve(async (req: Request) => {
         if (!file_path || !bucket) {
             return new Response(
                 JSON.stringify({ error: 'file_path and bucket are required' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -95,7 +91,7 @@ Deno.serve(async (req: Request) => {
                     error: 'AI service not configured. OPENROUTER_API_KEY secret is missing.',
                     contact: createEmptyContact(),
                 }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -108,7 +104,7 @@ Deno.serve(async (req: Request) => {
         if (downloadError || !fileData) {
             return new Response(
                 JSON.stringify({ error: 'Failed to download image: ' + (downloadError?.message || 'Unknown error') }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -169,7 +165,7 @@ Deno.serve(async (req: Request) => {
             });
             return new Response(
                 JSON.stringify({ error: 'OCR service error: ' + errorText }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
             );
         }
 
@@ -187,12 +183,12 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
             JSON.stringify({ success: true, contact, raw_text: contact.raw_text, tokensUsed }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         );
     } catch (error: any) {
         return new Response(
             JSON.stringify({ error: error.message || 'Internal server error' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         );
     }
 });
