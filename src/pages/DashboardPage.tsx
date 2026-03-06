@@ -44,13 +44,14 @@ import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsCo
 import { useCoPilot } from '@/contexts/CoPilotContext';
 
 // Compact Stat Card Component
-const CompactStatCard = ({ label, value, subValue, icon: Icon, color, onClick }: any) => {
+const CompactStatCard = ({ label, value, subValue, tooltip, icon: Icon, color, onClick }: any) => {
     const { theme } = useThemeStore();
     const isSoft = theme === 'soft-modern';
 
     return (
         <div
             onClick={onClick}
+            title={tooltip}
             className={`relative overflow-hidden rounded-xl p-3 cursor-pointer transition-all hover:shadow-md border ${isSoft
                 ? 'bg-white/60 border-white/50 hover:bg-white/80'
                 : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500/30'
@@ -527,6 +528,7 @@ export const DashboardPage = () => {
                     label={crmLabels.entityPlural}
                     value={customers.length}
                     subValue={`+${activeCustomers} Active`}
+                    tooltip={`Total ${crmLabels.entityPlural.toLowerCase()} in your workspace, including both active and inactive records.`}
                     icon={Users}
                     color="blue"
                     onClick={() => navigate('/dashboard/customers')}
@@ -535,6 +537,7 @@ export const DashboardPage = () => {
                     label={calendarLabels.entityPlural}
                     value={totalTodaysEvents}
                     subValue="Today"
+                    tooltip="Combined count of today's events from your CRM calendar, Outlook, and Google Calendar."
                     icon={Calendar}
                     color="green"
                     onClick={() => navigate('/dashboard/calendar')}
@@ -543,6 +546,7 @@ export const DashboardPage = () => {
                     label={pipelineLabels.title}
                     value={`$${(pipelineValue / 1000).toFixed(1)}k`}
                     subValue={`${pipelineItemCount} ${pipelineLabels.entityPlural}`}
+                    tooltip={`Total value of all active ${pipelineLabels.entityPlural.toLowerCase()}: deals, quotes, and invoices in your pipeline.`}
                     icon={TrendingUp}
                     color="purple"
                     onClick={() => navigate('/dashboard/pipeline')}
@@ -551,6 +555,7 @@ export const DashboardPage = () => {
                     label={invoicesLabels.stats?.totalRevenue || 'Revenue'}
                     value={`$${(revenueValue / 1000).toFixed(1)}k`}
                     subValue="Paid"
+                    tooltip={`Sum of all ${(invoicesLabels.entityPlural || 'invoices').toLowerCase()} marked as paid. Reflects actual collected revenue.`}
                     icon={DollarSign}
                     color="orange"
                     onClick={() => navigate('/dashboard/invoices')}
@@ -559,6 +564,7 @@ export const DashboardPage = () => {
                     label={tasksLabels.entityPlural}
                     value={pendingTasks.length}
                     subValue="Pending"
+                    tooltip={`Number of ${tasksLabels.entityPlural.toLowerCase()} that are not yet completed.`}
                     icon={CheckCircle}
                     color="pink"
                     onClick={() => navigate('/dashboard/tasks')}
@@ -567,6 +573,7 @@ export const DashboardPage = () => {
                     label={callsLabels.entityPlural}
                     value={todaysCalls.length}
                     subValue="Today"
+                    tooltip={`${callsLabels.entityPlural} made or received since midnight today.`}
                     icon={Phone}
                     color="gray"
                     onClick={() => navigate('/dashboard/calls')}
