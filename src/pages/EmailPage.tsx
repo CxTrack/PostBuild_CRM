@@ -665,6 +665,10 @@ export default function EmailPage() {
     thread: selectedThread!,
     onBack: handleBack,
     onToggleStar: (emailId: string, starred: boolean) => toggleStar(emailId, starred),
+    onDeleteThread: async (threadId: string) => {
+      await deleteThreads([threadId]);
+      toast.success('Conversation moved to trash');
+    },
     onSendReply: sendReply,
     onRefresh: () => orgId && userId && fetchThreads(orgId, userId),
     isDark,
@@ -741,6 +745,7 @@ function ThreadDetail({
   thread,
   onBack,
   onToggleStar,
+  onDeleteThread,
   onSendReply,
   onRefresh,
   isDark,
@@ -752,6 +757,7 @@ function ThreadDetail({
   thread: EmailThread;
   onBack: () => void;
   onToggleStar: (emailId: string, starred: boolean) => void;
+  onDeleteThread: (threadId: string) => void;
   onSendReply: (params: any) => Promise<boolean>;
   onRefresh: () => void;
   isDark: boolean;
@@ -844,6 +850,14 @@ function ThreadDetail({
           title={thread.starred ? 'Unstar' : 'Star'}
         >
           <Star size={15} className={thread.starred ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+        </button>
+
+        <button
+          onClick={() => onDeleteThread(thread.id)}
+          className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          title="Delete conversation"
+        >
+          <Trash2 size={15} />
         </button>
       </div>
 
