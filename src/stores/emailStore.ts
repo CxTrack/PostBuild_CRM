@@ -239,6 +239,15 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
   markAsRead: async (emailIds: string[]) => {
     if (emailIds.length === 0) return;
 
+    // Collect provider-linked emails for remote read sync (skip SMTP + null message_id)
+    const state = get();
+    const targetMessages = state.threads
+      .flatMap(t => t.messages)
+      .filter(m => emailIds.includes(m.id) && !m.is_read);
+    const providerEmails = targetMessages
+      .filter(m => m.message_id && m.provider && m.provider !== 'smtp')
+      .map(m => ({ message_id: m.message_id!, provider: m.provider }));
+
     // Optimistic update
     set(state => {
       const threads = state.threads.map(t => ({
@@ -249,6 +258,30 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0);
       return { threads, unreadCount };
     });
+
+    // Fire-and-forget: mark as read in provider (Gmail / Outlook)
+    if (providerEmails.length > 0) {
+      const token = getAuthToken();
+      if (token) {
+        fetch(`${supabaseUrl}/functions/v1/mark-provider-email-read`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ emails: providerEmails }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.summary?.failed > 0) {
+              console.warn('[emailStore] Some provider mark-read failed:', data.results?.filter((r: any) => !r.marked));
+            }
+          })
+          .catch(err => {
+            console.error('[emailStore] Provider mark-read error (non-blocking):', err);
+          });
+      }
+    }
 
     try {
       for (const id of emailIds) {
