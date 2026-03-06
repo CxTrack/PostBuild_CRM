@@ -120,9 +120,14 @@ describe('phone.utils', () => {
       expect(isValidPhone('+1 (613) 555-1234')).toBe(true);
     });
 
-    it('rejects numbers shorter than 10 digits', () => {
+    it('rejects numbers shorter than 7 digits', () => {
       expect(isValidPhone('12345')).toBe(false);
-      expect(isValidPhone('123456789')).toBe(false);
+      expect(isValidPhone('123456')).toBe(false);
+    });
+
+    it('accepts international numbers with 7+ digits', () => {
+      expect(isValidPhone('1234567')).toBe(true);
+      expect(isValidPhone('123456789')).toBe(true);
     });
 
     it('rejects numbers longer than 15 digits', () => {
