@@ -124,6 +124,11 @@ export const INSIGHT_TYPE_WEIGHTS: Record<string, InsightTypeWeight> = {
   appointment_no_show: { baseWeight: 65, valueMultiplier: 0.2, urgencyMultiplier: 0 },
   // Compound risk — highest priority after meetings (combines multiple signals)
   customer_at_risk: { baseWeight: 95, valueMultiplier: 0.4, urgencyMultiplier: 0.3 },
+  // Industry-specific insights
+  rate_lock_expiring: { baseWeight: 90, valueMultiplier: 0.3, urgencyMultiplier: 0.8 },
+  membership_expiring: { baseWeight: 60, valueMultiplier: 0.2, urgencyMultiplier: 0.6 },
+  days_on_market: { baseWeight: 65, valueMultiplier: 0.3, urgencyMultiplier: 0.3 },
+  filing_deadline: { baseWeight: 85, valueMultiplier: 0, urgencyMultiplier: 0.8 },
 };
 
 /**
@@ -141,6 +146,8 @@ export function scoreInsight(insight: {
   days_overdue?: number;
   days_until_expiry?: number;
   days_past_followup?: number;
+  days_on_market?: number;
+  days_until_deadline?: number;
   priority?: string;
   risk_score?: number;
 }): number {
@@ -166,10 +173,16 @@ export function scoreInsight(insight: {
     || insight.days_inactive
     || insight.days_past_followup
     || 0;
-  // For expiring quotes, invert: fewer days = more urgent
-  const urgencyDays = insight.type === 'expiring_quote'
-    ? Math.max(0, 7 - (insight.days_until_expiry || 0))
-    : daysMetric;
+  // For expiry-based insights, invert: fewer days = more urgent
+  const isExpiryType = insight.type === 'expiring_quote'
+    || insight.type === 'rate_lock_expiring'
+    || insight.type === 'membership_expiring'
+    || insight.type === 'filing_deadline';
+  const urgencyDays = isExpiryType
+    ? Math.max(0, 14 - (insight.days_until_expiry || insight.days_until_deadline || 0))
+    : insight.type === 'days_on_market'
+      ? Math.max(0, (insight.days_on_market || 0) - 45) // urgency grows past 45 DOM
+      : daysMetric;
   if (weights.urgencyMultiplier > 0 && urgencyDays > 0) {
     const normalizedUrgency = Math.min(urgencyDays / 60, 1);
     score += normalizedUrgency * 20 * weights.urgencyMultiplier;

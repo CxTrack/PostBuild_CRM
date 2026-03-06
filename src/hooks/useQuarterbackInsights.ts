@@ -9,13 +9,14 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { getAuthToken } from '@/utils/auth.utils';
 import { getQBThresholds, scoreInsight } from '@/config/quarterback.config';
+import { logQBEvent, logQBImpressions } from '@/utils/qbActionLog';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock' | 'appointment_no_show' | 'customer_at_risk';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock' | 'appointment_no_show' | 'customer_at_risk' | 'rate_lock_expiring' | 'membership_expiring' | 'days_on_market' | 'filing_deadline';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -75,6 +76,17 @@ export interface QuarterbackInsight {
   overdue_invoice_amount?: number;
   overdue_task_count?: number;
   no_recent_emails?: boolean;
+  /** Rate lock fields for rate_lock_expiring insights (mortgage) */
+  rate_lock_expiry?: string;
+  /** Membership fields for membership_expiring insights (gyms) */
+  membership_end?: string;
+  /** Days on market fields for days_on_market insights (real estate) */
+  days_on_market?: number;
+  listing_date?: string;
+  /** Filing deadline fields for filing_deadline insights (tax) */
+  filing_deadline?: string;
+  tax_year?: number;
+  days_until_deadline?: number;
 }
 
 const MAX_VISIBLE_INSIGHTS = 5;
@@ -451,6 +463,11 @@ export function useQuarterbackInsights() {
       deduped.sort((a, b) => scoreInsight(b) - scoreInsight(a));
       setAllInsights(deduped);
       setLastUpdated(new Date());
+
+      // Log impressions for visible insights (session-deduped in utility)
+      if (orgId && userId) {
+        logQBImpressions(deduped.slice(0, MAX_VISIBLE_INSIGHTS), orgId, userId);
+      }
     } catch (err) {
       console.error('[QB] Error fetching insights:', err);
     } finally {
@@ -460,6 +477,19 @@ export function useQuarterbackInsights() {
 
   // Dismiss an insight and persist to user_preferences
   const dismissInsight = useCallback(async (insightId: string) => {
+    // Log the dismiss event
+    const insight = allInsights.find(i => i.id === insightId);
+    if (insight) {
+      logQBEvent({
+        insightId,
+        insightType: insight.type,
+        eventType: 'dismiss',
+        customerId: insight.customer_id,
+        customerName: insight.customer_name,
+        dealValue: insight.value || insight.total_amount || insight.amount_outstanding,
+      });
+    }
+
     // Optimistic update
     setDismissedIds(prev => {
       const updated = [...prev, insightId];
@@ -467,7 +497,7 @@ export function useQuarterbackInsights() {
       persistDismissed(updated);
       return updated;
     });
-  }, [orgId, userId]);
+  }, [orgId, userId, allInsights]);
 
   const persistDismissed = async (ids: string[]) => {
     try {

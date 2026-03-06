@@ -17,6 +17,7 @@ import {
 import { useTaskStore, TaskType, TaskPriority, Task } from '@/stores/taskStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useCalendarStore } from '@/stores/calendarStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import QuickAddCustomerModal from '@/components/shared/QuickAddCustomerModal';
 import TimePicker from '@/components/shared/TimePicker';
 import DurationPicker from '@/components/shared/DurationPicker';
@@ -47,6 +48,8 @@ export default function TaskModal({
   const { createTask, updateTask, completeTask, tasks } = useTaskStore();
   const { customers } = useCustomerStore();
   const { events } = useCalendarStore();
+  const { currentOrganization } = useOrganizationStore();
+  const industry = currentOrganization?.industry_template || null;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -62,6 +65,8 @@ export default function TaskModal({
     customer_id: customerId || '',
     customer_name: customerName || '',
     outcome: '',
+    filing_deadline: '',
+    tax_year: '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -107,6 +112,8 @@ export default function TaskModal({
         customer_id: task.customer_id,
         customer_name: task.customer_name,
         outcome: task.outcome || '',
+        filing_deadline: (task as any).filing_deadline || '',
+        tax_year: (task as any).tax_year ? String((task as any).tax_year) : '',
       });
     } else {
       setFormData(prev => ({
@@ -185,7 +192,7 @@ export default function TaskModal({
           await completeTask(task.id, formData.outcome);
           toast.success('Task completed');
         } else {
-          await updateTask(task.id, {
+          const updateData: any = {
             title: formData.title,
             description: formData.description,
             type: formData.type,
@@ -196,11 +203,24 @@ export default function TaskModal({
             start_time: formData.show_on_calendar ? formData.start_time : undefined,
             end_time: formData.show_on_calendar ? formData.end_time : undefined,
             duration: formData.show_on_calendar ? formData.duration : undefined,
-          });
+          };
+          if (industry === 'tax_accounting') {
+            updateData.filing_deadline = formData.filing_deadline || null;
+            updateData.tax_year = formData.tax_year ? parseInt(formData.tax_year, 10) : null;
+          }
+          await updateTask(task.id, updateData);
           toast.success('Task updated');
         }
       } else {
-        await createTask(formData);
+        const createData: any = { ...formData };
+        if (industry === 'tax_accounting') {
+          createData.filing_deadline = formData.filing_deadline || null;
+          createData.tax_year = formData.tax_year ? parseInt(formData.tax_year, 10) : null;
+        } else {
+          delete createData.filing_deadline;
+          delete createData.tax_year;
+        }
+        await createTask(createData);
         toast.success('Task created');
       }
 
@@ -220,6 +240,8 @@ export default function TaskModal({
         customer_id: customerId || '',
         customer_name: customerName || '',
         outcome: '',
+        filing_deadline: '',
+        tax_year: '',
       });
     } catch (error: any) {
       setError(error.message);
@@ -425,6 +447,36 @@ export default function TaskModal({
               </div>
             )}
           </div>
+
+          {industry === 'tax_accounting' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Filing Deadline
+                </label>
+                <input
+                  type="date"
+                  value={formData.filing_deadline}
+                  onChange={(e) => setFormData({ ...formData, filing_deadline: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Tax Year
+                </label>
+                <input
+                  type="number"
+                  value={formData.tax_year}
+                  onChange={(e) => setFormData({ ...formData, tax_year: e.target.value })}
+                  placeholder={String(new Date().getFullYear())}
+                  min="2000"
+                  max="2099"
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">

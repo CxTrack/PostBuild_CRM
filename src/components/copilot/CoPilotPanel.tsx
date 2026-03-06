@@ -6,6 +6,7 @@ import ChoiceCard from '@/components/copilot/ChoiceCard';
 import FeedbackButtons from '@/components/copilot/FeedbackButtons';
 import { useAuthStore } from '@/stores/authStore';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { logQBEvent } from '@/utils/qbActionLog';
 import {
   X,
   ChevronLeft,
@@ -112,6 +113,17 @@ const CoPilotPanel: React.FC = () => {
     const insightType = currentContext?.data?.insightType;
     if (!insightData) return;
 
+    // Log QB choice selection
+    logQBEvent({
+      insightId: insightData.id || '',
+      insightType: insightType || '',
+      eventType: 'choice',
+      choiceId,
+      customerId: insightData.customer_id,
+      customerName: insightData.customer_name,
+      dealValue: insightData.value || insightData.total_amount || insightData.amount_outstanding,
+    });
+
     // Meeting prep flow -- route to MEETING_PREP_MODE instead of QUARTERBACK_MODE
     if (insightType === 'upcoming_meeting') {
       const attendeeList = (insightData.meeting_attendees || [])
@@ -160,7 +172,34 @@ const CoPilotPanel: React.FC = () => {
       return;
     }
 
-    // Standard quarterback flow (email/SMS/call script for non-meeting insights)
+    // Compound risk: invoice follow-up
+    if (choiceId === 'draft_invoice_followup') {
+      const prompt = `[QUARTERBACK_MODE] The user chose to follow up on an overdue invoice. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Overdue invoice amount: $${insightData.overdue_invoice_amount?.toLocaleString() || '0'}. Risk score: ${insightData.risk_score || 'N/A'}. Draft a professional payment reminder email referencing the relationship and outstanding amount, and include the ACTION_PROPOSAL block.`;
+      await sendMessage(prompt);
+      return;
+    }
+
+    // Compound risk: full recovery plan
+    if (choiceId === 'recovery_plan') {
+      const signals: string[] = [];
+      if (insightData.has_stale_deal) signals.push(`stale deal worth $${insightData.stale_deal_value?.toLocaleString() || '0'}`);
+      if (insightData.has_overdue_invoice) signals.push(`$${insightData.overdue_invoice_amount?.toLocaleString() || '0'} overdue invoice`);
+      if (insightData.overdue_task_count > 0) signals.push(`${insightData.overdue_task_count} overdue tasks`);
+      if (insightData.days_inactive) signals.push(`${insightData.days_inactive} days since last contact`);
+      if (insightData.no_recent_emails) signals.push('no outbound emails in 30 days');
+      const prompt = `[QUARTERBACK_MODE] The user wants a full recovery plan. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Risk score: ${((insightData.risk_score || 0) * 100).toFixed(0)}%. Risk signals: ${signals.join(', ')}. Build a structured multi-step recovery plan with specific actions, timelines, and talking points. Address each risk signal. End with a CHOICE_PROPOSAL offering to execute the first step.`;
+      await sendMessage(prompt);
+      return;
+    }
+
+    // Low stock: reorder / inventory / threshold choices
+    if (choiceId === 'reorder_email') {
+      const prompt = `[QUARTERBACK_MODE] The user chose to draft a reorder email to the supplier. Insight type: ${insightType}. Product: ${insightData.product_name}. SKU: ${insightData.sku || 'N/A'}. Quantity on hand: ${insightData.quantity_on_hand}. Reorder threshold: ${insightData.low_stock_threshold}. Suggested reorder qty: ${insightData.reorder_quantity || 'not set'}. Supplier: ${insightData.supplier_name || 'unknown'}. Email: ${insightData.email || 'not on file'}. Draft a professional reorder email and include the ACTION_PROPOSAL block.`;
+      await sendMessage(prompt);
+      return;
+    }
+
+    // Standard quarterback flow (email/SMS/call script)
     const choiceLabel: Record<string, string> = {
       draft_email: 'email',
       draft_sms: 'text message',

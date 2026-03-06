@@ -240,6 +240,158 @@ export function buildQuarterbackChoices(
     return actions;
   }
 
+  // For rate lock expiring (mortgage), offer urgent deal-closing actions
+  if (insight.type === 'rate_lock_expiring') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Email client about the lock',
+        description: hasEmail
+          ? `Send to ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script an urgent call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'draft_sms',
+        label: 'Send a quick reminder text',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
+  // For membership expiring (gyms), offer renewal outreach
+  if (insight.type === 'membership_expiring') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Send a renewal email',
+        description: hasEmail
+          ? `Email ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_sms',
+        label: 'Text a renewal reminder',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script a retention call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
+  // For days on market (real estate), offer strategy actions
+  if (insight.type === 'days_on_market') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Email the seller with an update',
+        description: hasEmail
+          ? `Send to ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script a strategy call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
+  // For filing deadlines (tax), offer client communication and task management
+  if (insight.type === 'filing_deadline') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Email client about the deadline',
+        description: hasEmail
+          ? `Send to ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_sms',
+        label: 'Text a deadline reminder',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script a follow-up call',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
   // For low stock alerts, offer reorder and inventory actions
   if (insight.type === 'low_stock') {
     return [
@@ -390,6 +542,20 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
       const signalText = signals.length > 0 ? signals.join(', ') : 'multiple warning signals';
       return `**${insight.customer_name}** ($${insight.total_spent?.toLocaleString() || '0'} lifetime value) is showing signs of churn risk: ${signalText}. Risk score: **${((insight.risk_score || 0) * 100).toFixed(0)}%**.\n\nThis customer needs a coordinated response. How would you like to start?`;
     }
+
+    case 'rate_lock_expiring':
+      return `**${insight.customer_name}**'s rate lock on deal **"${insight.title?.replace('Rate lock expiring - ', '')}"** ($${insight.value?.toLocaleString() || '0'}) expires in **${insight.days_until_expiry} day${insight.days_until_expiry === 1 ? '' : 's'}**. If the lock lapses, the rate could increase and delay closing.\n\nHow would you like to handle this?`;
+
+    case 'membership_expiring':
+      return `**${insight.customer_name}**'s membership expires in **${insight.days_until_expiry} day${insight.days_until_expiry === 1 ? '' : 's'}** (${insight.membership_end ? new Date(insight.membership_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}). Lifetime value: **$${insight.total_spent?.toLocaleString() || '0'}**. Reach out now to secure a renewal.\n\nHow would you like to reach out?`;
+
+    case 'days_on_market': {
+      const dom = insight.days_on_market || 0;
+      return `**"${insight.title?.replace(/ - \d+ days on market/, '')}"** ($${insight.value?.toLocaleString() || '0'}) has been on the market for **${dom} days**${insight.customer_name ? ` for **${insight.customer_name}**` : ''}. Listings over 45 days often need a strategy refresh -- consider a price adjustment, enhanced marketing, or a seller update.\n\nHow would you like to take action?`;
+    }
+
+    case 'filing_deadline':
+      return `**${insight.customer_name}**'s filing deadline${insight.tax_year ? ` (TY ${insight.tax_year})` : ''} is in **${insight.days_until_deadline} day${insight.days_until_deadline === 1 ? '' : 's'}** (${insight.filing_deadline ? new Date(insight.filing_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}). Make sure all documents are collected and the return is ready to file.\n\nHow would you like to follow up?`;
 
     case 'low_stock': {
       const stockStatus = insight.quantity_on_hand === 0

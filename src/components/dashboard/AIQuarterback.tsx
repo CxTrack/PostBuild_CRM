@@ -22,12 +22,17 @@ import {
   Mail,
   UserMinus,
   ShieldAlert,
+  Lock,
+  CreditCard,
+  Home,
+  FileCheck,
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
 import { useQuarterbackInsights, QuarterbackInsight } from '@/hooks/useQuarterbackInsights';
 import { useVisibleModules } from '@/hooks/useVisibleModules';
 import { buildQuarterbackChoices, buildQuarterbackIntro } from '@/config/quarterback-choices.config';
+import { logQBEvent } from '@/utils/qbActionLog';
 import { format } from 'date-fns';
 
 // Type-based visual config for each insight category
@@ -127,6 +132,38 @@ const INSIGHT_CONFIG: Record<string, {
     borderColor: 'border-red-300/70 dark:border-red-600/40',
     label: 'At Risk',
   },
+  rate_lock_expiring: {
+    icon: Lock,
+    accentColor: 'text-orange-600 dark:text-orange-400',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+    rowBg: 'hover:bg-orange-50/50 dark:hover:bg-orange-900/20',
+    borderColor: 'border-orange-200/60 dark:border-orange-700/30',
+    label: 'Rate Lock Expiring',
+  },
+  membership_expiring: {
+    icon: CreditCard,
+    accentColor: 'text-violet-500 dark:text-violet-400',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/40',
+    rowBg: 'hover:bg-violet-50/50 dark:hover:bg-violet-900/20',
+    borderColor: 'border-violet-200/60 dark:border-violet-700/30',
+    label: 'Membership Expiring',
+  },
+  days_on_market: {
+    icon: Home,
+    accentColor: 'text-amber-600 dark:text-amber-400',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+    rowBg: 'hover:bg-amber-50/50 dark:hover:bg-amber-900/20',
+    borderColor: 'border-amber-200/60 dark:border-amber-700/30',
+    label: 'Days on Market',
+  },
+  filing_deadline: {
+    icon: FileCheck,
+    accentColor: 'text-emerald-600 dark:text-emerald-400',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    rowBg: 'hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20',
+    borderColor: 'border-emerald-200/60 dark:border-emerald-700/30',
+    label: 'Filing Deadline',
+  },
 };
 
 /**
@@ -171,6 +208,18 @@ function buildQuarterbackPrompt(insight: QuarterbackInsight): string {
       return prefix + `COMPOUND RISK ALERT: ${insight.customer_name} ($${insight.total_spent?.toLocaleString() || '0'} lifetime value) is at risk with a risk score of ${insight.risk_score}. Signals: ${signals.join(', ')}. Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. This customer needs immediate attention across multiple fronts. Help me create a recovery plan.`;
     }
 
+    case 'rate_lock_expiring':
+      return prefix + `Rate lock for ${insight.customer_name}'s deal "${insight.title?.replace('Rate lock expiring - ', '')}" ($${insight.value?.toLocaleString() || '0'}) expires in ${insight.days_until_expiry} days (${insight.rate_lock_expiry || 'unknown date'}). Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me contact them urgently about extending the lock or closing the deal.`;
+
+    case 'membership_expiring':
+      return prefix + `${insight.customer_name}'s membership expires in ${insight.days_until_expiry} days (${insight.membership_end || 'unknown date'}). Lifetime value: $${insight.total_spent?.toLocaleString() || '0'}. Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me reach out to secure a renewal.`;
+
+    case 'days_on_market':
+      return prefix + `Listing "${insight.title?.replace(/ - \d+ days on market/, '')}" ($${insight.value?.toLocaleString() || '0'}) for ${insight.customer_name || 'unknown seller'} has been on the market for ${insight.days_on_market} days (listed ${insight.listing_date || 'unknown'}). Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me communicate options like a price reduction or marketing refresh.`;
+
+    case 'filing_deadline':
+      return prefix + `${insight.customer_name}'s filing deadline${insight.tax_year ? ` (TY ${insight.tax_year})` : ''} is in ${insight.days_until_deadline} days (${insight.filing_deadline || 'unknown date'}). Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me follow up to ensure all documents are collected and the return is filed on time.`;
+
     default:
       return prefix + insight.message;
   }
@@ -187,6 +236,16 @@ const AIQuarterback: React.FC<AIQuarterbackProps> = ({ compact = false }) => {
   const { planTier } = useVisibleModules();
 
   const handleInsightClick = useCallback((insight: QuarterbackInsight) => {
+    // Log click event
+    logQBEvent({
+      insightId: insight.id,
+      insightType: insight.type,
+      eventType: 'click',
+      customerId: insight.customer_id,
+      customerName: insight.customer_name,
+      dealValue: insight.value || insight.total_amount || insight.amount_outstanding,
+    });
+
     // Clear previous conversation, set quarterback context, open panel
     clearMessages();
     setContext({

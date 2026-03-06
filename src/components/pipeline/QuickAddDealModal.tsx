@@ -3,6 +3,7 @@ import { X, Save, Plus, Zap, Repeat, DollarSign, CalendarDays } from 'lucide-rea
 import { useDealStore } from '@/stores/dealStore';
 import { useCustomerStore } from '@/stores/customerStore';
 import { usePipelineConfigStore } from '@/stores/pipelineConfigStore';
+import { useOrganizationStore } from '@/stores/organizationStore';
 import { usePageLabels } from '@/hooks/usePageLabels';
 import { Card, Button } from '@/components/theme/ThemeComponents';
 import toast from 'react-hot-toast';
@@ -17,6 +18,8 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
   const { createDeal } = useDealStore();
   const { customers } = useCustomerStore();
   const { stages } = usePipelineConfigStore();
+  const { currentOrganization } = useOrganizationStore();
+  const industry = currentOrganization?.industry_template || null;
   const labels = usePageLabels('pipeline');
 
   const [formData, setFormData] = useState({
@@ -30,6 +33,9 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
     recurring_interval: 'monthly' as 'monthly' | 'quarterly' | 'annual',
     setup_fee: '',
     recurring_amount: '',
+    rate_lock_date: '',
+    rate_lock_expiry: '',
+    listing_date: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -117,6 +123,11 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
         dealData.recurring_amount = parseFloat(formData.recurring_amount);
       }
 
+      // Industry-specific fields
+      if (formData.rate_lock_date) dealData.rate_lock_date = formData.rate_lock_date;
+      if (formData.rate_lock_expiry) dealData.rate_lock_expiry = formData.rate_lock_expiry;
+      if (formData.listing_date) dealData.listing_date = formData.listing_date;
+
       await createDeal(dealData);
 
       // Reset form
@@ -131,6 +142,9 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
         recurring_interval: 'monthly',
         setup_fee: '',
         recurring_amount: '',
+        rate_lock_date: '',
+        rate_lock_expiry: '',
+        listing_date: '',
       });
       onClose();
     } catch {
@@ -414,6 +428,47 @@ const QuickAddDealModal: React.FC<QuickAddDealModalProps> = ({ isOpen, onClose, 
               className={inputClasses}
             />
           </div>
+
+          {/* Industry-specific fields */}
+          {industry === 'mortgage_broker' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Rate Lock Date <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.rate_lock_date}
+                  onChange={(e) => setFormData({ ...formData, rate_lock_date: e.target.value })}
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Rate Lock Expiry <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.rate_lock_expiry}
+                  onChange={(e) => setFormData({ ...formData, rate_lock_expiry: e.target.value })}
+                  className={inputClasses}
+                />
+              </div>
+            </div>
+          )}
+          {industry === 'real_estate' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Listing Date <span className="text-gray-400 text-xs">(Optional)</span>
+              </label>
+              <input
+                type="date"
+                value={formData.listing_date}
+                onChange={(e) => setFormData({ ...formData, listing_date: e.target.value })}
+                className={inputClasses}
+              />
+            </div>
+          )}
 
           {/* Notes */}
           <div>

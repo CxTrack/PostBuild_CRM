@@ -10,6 +10,7 @@ import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import { getAuthToken } from '@/utils/auth.utils';
 import { useImpersonationStore } from '@/stores/impersonationStore';
 import { buildPersonalizationQuestions, buildPersonalizationSummaryMessage, type PersonalizationQuestion } from '@/config/personalization-questions.config';
+import { logQBEvent } from '@/utils/qbActionLog';
 
 export interface Message {
   id: string;
@@ -182,12 +183,27 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         : m
     ));
 
+    // Log QB action result if in quarterback mode
+    if (currentContext?.data?.quarterbackMode) {
+      const insightData = currentContext.data.insightData;
+      logQBEvent({
+        insightId: insightData?.id || '',
+        insightType: currentContext.data.insightType || '',
+        eventType: result.success ? 'action_completed' : 'action_failed',
+        actionType: message.action.actionType,
+        actionResult: result.success ? 'completed' : 'failed',
+        customerId: insightData?.customer_id,
+        customerName: insightData?.customer_name,
+        dealValue: insightData?.value || insightData?.total_amount || insightData?.amount_outstanding,
+      });
+    }
+
     if (result.success) {
       toast.success(result.message);
     } else {
       toast.error(result.message);
     }
-  }, [messages]);
+  }, [messages, currentContext]);
 
   // Cancel an action proposed by the AI
   const cancelAction = useCallback((messageId: string) => {

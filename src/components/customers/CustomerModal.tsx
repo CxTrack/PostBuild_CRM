@@ -49,7 +49,11 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
     postal_code: customer?.postal_code || '',
     country: customer?.country || '',
     card_image_url: customer?.card_image_url || '',
+    membership_start: customer?.membership_start || '',
+    membership_end: customer?.membership_end || '',
   });
+
+  const industry = currentOrganization?.industry_template || null;
 
   const [showAddress, setShowAddress] = useState(
     Boolean(customer?.address || customer?.city || customer?.state || customer?.postal_code)
@@ -74,6 +78,8 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
         postal_code: source.postal_code || '',
         country: source.country || '',
         card_image_url: source.card_image_url || '',
+        membership_start: source.membership_start || '',
+        membership_end: source.membership_end || '',
       });
       setShowAddress(Boolean(source.address || source.city || source.state || source.postal_code));
     }
@@ -680,6 +686,34 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               </div>
             )}
           </div>
+
+          {/* Membership dates — only for gyms/fitness industry */}
+          {industry === 'gyms_fitness' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Membership Start
+                </label>
+                <input
+                  type="date"
+                  value={formData.membership_start}
+                  onChange={(e) => setFormData({ ...formData, membership_start: e.target.value })}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Membership End
+                </label>
+                <input
+                  type="date"
+                  value={formData.membership_end}
+                  onChange={(e) => setFormData({ ...formData, membership_end: e.target.value })}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Assign To — only visible for owner/admin/manager, only on create */}
           {canAssign && !customer && (
