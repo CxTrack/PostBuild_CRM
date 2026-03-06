@@ -29,11 +29,12 @@ export default function CategoryCombobox({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [justSelected, setJustSelected] = useState(false);
+  const [sessionCategories, setSessionCategories] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Derive unique categories from existing products
+  // Derive unique categories from existing products + session-created categories
   const allCategories = useMemo(() => {
     const cats = new Set<string>();
     products.forEach((p) => {
@@ -41,8 +42,9 @@ export default function CategoryCombobox({
         cats.add(p.category.trim());
       }
     });
+    sessionCategories.forEach((c) => cats.add(c));
     return Array.from(cats).sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  }, [products, sessionCategories]);
 
   // Filter categories based on current input
   const filtered = useMemo(() => {
@@ -83,6 +85,10 @@ export default function CategoryCombobox({
 
   const selectCategory = (cat: string) => {
     const isNew = !allCategories.some(c => c.toLowerCase() === cat.toLowerCase().trim());
+    // Persist new categories locally so they appear in future dropdown opens
+    if (isNew) {
+      setSessionCategories((prev) => [...prev, cat.trim()]);
+    }
     onChange(cat);
     setIsOpen(false);
     setHighlightedIndex(-1);
