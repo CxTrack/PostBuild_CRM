@@ -8,13 +8,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { getAuthToken } from '@/utils/auth.utils';
+import { getQBThresholds, scoreInsight } from '@/config/quarterback.config';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock' | 'appointment_no_show';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -63,6 +64,9 @@ export interface QuarterbackInsight {
   meeting_source?: 'local' | 'outlook';
   meeting_event_id?: string;
   meeting_web_link?: string;
+  /** No-show specific fields for appointment_no_show insights */
+  no_show_count?: number;
+  last_no_show_date?: string;
 }
 
 const MAX_VISIBLE_INSIGHTS = 5;
@@ -78,6 +82,7 @@ export function useQuarterbackInsights() {
   const orgId = currentOrganization?.id;
   const userId = currentMembership?.user_id;
   const userRole = currentMembership?.role || 'user';
+  const industry = currentOrganization?.industry_template || null;
 
   // Load dismissed insight IDs from user_preferences
   const loadDismissed = useCallback(async () => {
@@ -379,6 +384,9 @@ export function useQuarterbackInsights() {
         return;
       }
 
+      // Get industry-specific thresholds
+      const thresholds = getQBThresholds(industry);
+
       // Fetch RPC insights, email insights, and meeting insights in parallel
       const [rpcResponse, emailInsights, meetingInsights] = await Promise.all([
         fetch(
@@ -394,6 +402,10 @@ export function useQuarterbackInsights() {
               p_user_id: userId,
               p_organization_id: orgId,
               p_role: userRole,
+              p_stale_deal_days: thresholds.stale_deal_days,
+              p_inactive_customer_days: thresholds.inactive_customer_days,
+              p_expiring_quote_days: thresholds.expiring_quote_window_days,
+              p_industry: industry,
             }),
           }
         ),
@@ -410,8 +422,9 @@ export function useQuarterbackInsights() {
         console.error('[QB] Failed to fetch RPC insights:', rpcResponse.status);
       }
 
-      // Merge: meetings first (time-sensitive), then emails, then RPC insights
+      // Merge all insight sources, then sort by priority score (highest first)
       const combined = [...meetingInsights, ...emailInsights, ...insights];
+      combined.sort((a, b) => scoreInsight(b) - scoreInsight(a));
       setAllInsights(combined);
       setLastUpdated(new Date());
     } catch (err) {
@@ -419,7 +432,7 @@ export function useQuarterbackInsights() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, userId, userRole, fetchEmailInsights]);
+  }, [orgId, userId, userRole, industry, fetchEmailInsights, fetchMeetingInsights]);
 
   // Dismiss an insight and persist to user_preferences
   const dismissInsight = useCallback(async (insightId: string) => {

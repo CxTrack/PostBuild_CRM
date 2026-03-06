@@ -12,7 +12,7 @@ export interface Organization {
     end: string;
   };
   enabled_modules: string[];
-  industry_template: 'tax_accounting' | 'distribution_logistics' | 'gyms_fitness' | 'contractors_home_services' | 'healthcare' | 'real_estate' | 'legal_services' | 'general_business' | 'custom' | null;
+  industry_template: 'tax_accounting' | 'distribution_logistics' | 'gyms_fitness' | 'contractors_home_services' | 'healthcare' | 'real_estate' | 'legal_services' | 'general_business' | 'agency' | 'mortgage_broker' | 'construction' | 'custom' | null;
   subscription_tier: 'free' | 'business' | 'elite_premium' | 'enterprise';
   max_users: number;
   metadata: Record<string, any>;
@@ -329,7 +329,7 @@ export interface Product {
   category: string | null;
   price: number;
   cost: number | null;
-  quantity: number;
+  quantity_on_hand: number;
   low_stock_threshold: number;
   status: ProductStatus;
   image_url: string | null;

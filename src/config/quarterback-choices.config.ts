@@ -147,6 +147,46 @@ export function buildQuarterbackChoices(
     ];
   }
 
+  // For no-show patterns (healthcare), offer re-engagement and policy actions
+  if (insight.type === 'appointment_no_show') {
+    return [
+      {
+        id: 'draft_email',
+        label: 'Send a re-engagement message',
+        description: hasEmail
+          ? `Email ${insight.email}`
+          : 'No email on file -- you can add one after drafting',
+        icon: 'Mail',
+      },
+      {
+        id: 'draft_sms',
+        label: 'Send a reminder text',
+        description: hasPhone
+          ? `Text ${insight.phone}`
+          : 'No phone on file -- you can add one after drafting',
+        icon: 'MessageSquare',
+      },
+      {
+        id: 'draft_call_script',
+        label: 'Script a call to reschedule',
+        description: isCallTierEligible
+          ? (hasPhone ? `Call ${insight.phone}` : 'No phone on file')
+          : 'Upgrade to Elite Premium for outbound calling',
+        icon: 'Phone',
+        disabled: !isCallTierEligible,
+        disabledReason: !isCallTierEligible
+          ? 'Available on Elite Premium and Enterprise plans'
+          : undefined,
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
   // For low stock alerts, offer reorder and inventory actions
   if (insight.type === 'low_stock') {
     return [
@@ -283,6 +323,9 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
       intro += '\n\nHow would you like to prepare?';
       return intro;
     }
+
+    case 'appointment_no_show':
+      return `**${insight.customer_name}** has missed **${insight.no_show_count} appointment${(insight.no_show_count || 0) > 1 ? 's' : ''}** in the last 90 days${insight.last_no_show_date ? ` (most recently on ${new Date(insight.last_no_show_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}. This is a pattern worth addressing before it leads to churn.\\n\\nHow would you like to handle this?`;
 
     case 'low_stock': {
       const stockStatus = insight.quantity_on_hand === 0

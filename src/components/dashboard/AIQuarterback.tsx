@@ -19,6 +19,8 @@ import {
   Zap,
   Calendar,
   Package,
+  Mail,
+  UserMinus,
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
@@ -100,6 +102,22 @@ const INSIGHT_CONFIG: Record<string, {
     borderColor: 'border-rose-200/60 dark:border-rose-700/30',
     label: 'Low Stock',
   },
+  new_email_received: {
+    icon: Mail,
+    accentColor: 'text-sky-500 dark:text-sky-400',
+    iconBg: 'bg-sky-100 dark:bg-sky-900/40',
+    rowBg: 'hover:bg-sky-50/50 dark:hover:bg-sky-900/20',
+    borderColor: 'border-sky-200/60 dark:border-sky-700/30',
+    label: 'New Email',
+  },
+  appointment_no_show: {
+    icon: UserMinus,
+    accentColor: 'text-red-500 dark:text-red-400',
+    iconBg: 'bg-red-100 dark:bg-red-900/40',
+    rowBg: 'hover:bg-red-50/50 dark:hover:bg-red-900/20',
+    borderColor: 'border-red-200/60 dark:border-red-700/30',
+    label: 'No-Show Pattern',
+  },
 };
 
 /**
@@ -130,6 +148,9 @@ function buildQuarterbackPrompt(insight: QuarterbackInsight): string {
 
     case 'low_stock':
       return prefix + `Product "${insight.product_name}" (SKU: ${insight.sku || 'N/A'}) has ${insight.quantity_on_hand} unit${insight.quantity_on_hand === 1 ? '' : 's'} on hand, below the threshold of ${insight.low_stock_threshold}. Preferred supplier: ${insight.supplier_name || 'none assigned'}. Supplier email: ${insight.email || 'not on file'}. Help me handle this low stock situation.`;
+
+    case 'appointment_no_show':
+      return prefix + `Patient/client ${insight.customer_name} has no-showed ${insight.no_show_count} times in the last 90 days (last no-show: ${insight.last_no_show_date ? format(new Date(insight.last_no_show_date), 'MMM d') : 'unknown'}). Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me re-engage this patient and reduce future no-shows.`;
 
     default:
       return prefix + insight.message;
