@@ -799,14 +799,6 @@ function OverviewTab({
           />
         )}
 
-        {/* AI Customer Summary */}
-        <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
-
-        {/* Recent Calls */}
-        {enabledModuleIds.includes('calls') && (
-          <RecentCallsSection customerId={customer.id} />
-        )}
-
         {/* Team Contacts Section - Only for Business Customers */}
         {isBusinessCustomer && (
           <TeamContactsSection
@@ -817,6 +809,14 @@ function OverviewTab({
             onDeleteChildContact={onDeleteChildContact}
             onSetChildPrimary={onSetChildPrimary}
           />
+        )}
+
+        {/* AI Customer Summary */}
+        <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
+
+        {/* Recent Calls */}
+        {enabledModuleIds.includes('calls') && (
+          <RecentCallsSection customerId={customer.id} />
         )}
 
         {enabledModuleIds.includes('quotes') && (
