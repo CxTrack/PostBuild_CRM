@@ -14,7 +14,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export interface QuarterbackInsight {
   id: string;
-  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting';
+  type: 'stale_deal' | 'inactive_customer' | 'overdue_task' | 'expiring_quote' | 'overdue_invoice' | 'follow_up_reminder' | 'new_email_received' | 'upcoming_meeting' | 'low_stock';
   title: string;
   customer_name?: string;
   customer_id?: string;
@@ -42,6 +42,15 @@ export interface QuarterbackInsight {
   email_received_at?: string;
   email_log_id?: string;
   conversation_id?: string;
+  /** Low stock specific fields */
+  product_name?: string;
+  product_id?: string;
+  sku?: string;
+  quantity_on_hand?: number;
+  low_stock_threshold?: number;
+  reorder_quantity?: number;
+  supplier_name?: string;
+  supplier_id?: string;
   /** Meeting-specific fields for upcoming_meeting insights */
   meeting_title?: string;
   meeting_start_time?: string;

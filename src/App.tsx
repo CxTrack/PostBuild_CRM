@@ -42,6 +42,7 @@ const AdminPage = lazyRetry(() => import('./pages/admin/AdminPage').then(m => ({
 const CallDetail = lazyRetry(() => import('./pages/calls/CallDetail').then(m => ({ default: m.CallDetail })));
 const ChatPage = lazyRetry(() => import('./pages/ChatPage').then(m => ({ default: m.ChatPage })));
 const Suppliers = lazyRetry(() => import('./pages/Suppliers').then(m => ({ default: m.Suppliers })));
+const SupplierProfile = lazyRetry(() => import('./pages/SupplierProfile').then(m => ({ default: m.SupplierProfile })));
 const Inventory = lazyRetry(() => import('./pages/Inventory').then(m => ({ default: m.Inventory })));
 const Financials = lazyRetry(() => import('./pages/Financials').then(m => ({ default: m.Financials })));
 const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
@@ -226,6 +227,7 @@ export default function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route element={<ProtectedRoute moduleId="suppliers" />}>
                 <Route path="suppliers" element={<Suppliers />} />
+                <Route path="suppliers/:id" element={<SupplierProfile />} />
               </Route>
               <Route element={<ProtectedRoute moduleId="inventory" />}>
                 <Route path="inventory" element={<Inventory />} />

@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Zap,
   Calendar,
+  Package,
 } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
@@ -91,6 +92,14 @@ const INSIGHT_CONFIG: Record<string, {
     borderColor: 'border-indigo-200/60 dark:border-indigo-700/30',
     label: 'Meeting Prep',
   },
+  low_stock: {
+    icon: Package,
+    accentColor: 'text-rose-500 dark:text-rose-400',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/40',
+    rowBg: 'hover:bg-rose-50/50 dark:hover:bg-rose-900/20',
+    borderColor: 'border-rose-200/60 dark:border-rose-700/30',
+    label: 'Low Stock',
+  },
 };
 
 /**
@@ -118,6 +127,9 @@ function buildQuarterbackPrompt(insight: QuarterbackInsight): string {
 
     case 'follow_up_reminder':
       return prefix + `Follow-up with ${insight.customer_name} was due ${insight.days_past_followup === 0 ? 'today' : `${insight.days_past_followup} days ago`}. Their email is ${insight.email || 'not on file'} and phone is ${insight.phone || 'not on file'}. Help me reach out.`;
+
+    case 'low_stock':
+      return prefix + `Product "${insight.product_name}" (SKU: ${insight.sku || 'N/A'}) has ${insight.quantity_on_hand} unit${insight.quantity_on_hand === 1 ? '' : 's'} on hand, below the threshold of ${insight.low_stock_threshold}. Preferred supplier: ${insight.supplier_name || 'none assigned'}. Supplier email: ${insight.email || 'not on file'}. Help me handle this low stock situation.`;
 
     default:
       return prefix + insight.message;

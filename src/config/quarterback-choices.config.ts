@@ -147,6 +147,38 @@ export function buildQuarterbackChoices(
     ];
   }
 
+  // For low stock alerts, offer reorder and inventory actions
+  if (insight.type === 'low_stock') {
+    return [
+      {
+        id: 'reorder_email',
+        label: 'Draft a reorder email',
+        description: hasEmail
+          ? `Email ${insight.supplier_name || 'supplier'}`
+          : 'No supplier email on file',
+        icon: 'Mail',
+      },
+      {
+        id: 'check_inventory',
+        label: 'Review inventory levels',
+        description: `${insight.product_name} has ${insight.quantity_on_hand} unit${insight.quantity_on_hand === 1 ? '' : 's'}`,
+        icon: 'Package',
+      },
+      {
+        id: 'update_threshold',
+        label: 'Adjust reorder threshold',
+        description: `Current threshold: ${insight.low_stock_threshold} units`,
+        icon: 'Settings',
+      },
+      {
+        id: 'other',
+        label: 'Something else',
+        description: 'Tell me what you need',
+        icon: 'Pencil',
+      },
+    ];
+  }
+
   return [
     {
       id: 'draft_email',
@@ -249,6 +281,21 @@ export function buildQuarterbackIntro(insight: QuarterbackInsight): string {
       }
 
       intro += '\n\nHow would you like to prepare?';
+      return intro;
+    }
+
+    case 'low_stock': {
+      const stockStatus = insight.quantity_on_hand === 0
+        ? 'completely out of stock'
+        : `below the reorder threshold of **${insight.low_stock_threshold}**`;
+      let intro = `**${insight.product_name}** ${insight.sku ? `(${insight.sku})` : ''} has only **${insight.quantity_on_hand} unit${insight.quantity_on_hand === 1 ? '' : 's'}** remaining, which is ${stockStatus}.`;
+      if (insight.supplier_name) {
+        intro += ` Your preferred supplier is **${insight.supplier_name}**.`;
+      }
+      if (insight.reorder_quantity && insight.reorder_quantity > 0) {
+        intro += ` Suggested reorder quantity: **${insight.reorder_quantity} units**.`;
+      }
+      intro += '\n\nHow would you like to handle this?';
       return intro;
     }
 

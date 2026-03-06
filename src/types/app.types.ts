@@ -390,10 +390,13 @@ export interface Supplier {
   phone?: string;
   website?: string;
   address_line1?: string;
+  address_line2?: string;
   city?: string;
   state?: string;
   postal_code?: string;
   country?: string;
+  region?: string;
+  address_format?: 'domestic' | 'international';
   tax_id?: string;
   payment_terms?: string;
   currency?: string;
@@ -404,6 +407,19 @@ export interface Supplier {
   created_at: string;
   updated_at: string;
   created_by?: string;
+}
+
+export interface SupplierContact {
+  id: string;
+  supplier_id: string;
+  organization_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  title?: string;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProductSupplier {
