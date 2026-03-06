@@ -289,6 +289,10 @@ export const DashboardLayout = () => {
 
       if (!msStored && !googleStored) return;
 
+      // Signal to DashboardPage that auto-connect is in progress
+      // (prevents "Reconnect" flash before fresh tokens are stored in Vault)
+      (window as any).__cxtrack_auto_connect_pending = true;
+
       // Remove immediately to prevent double-fire
       if (msStored) sessionStorage.removeItem('microsoft_provider_tokens');
       if (googleStored) sessionStorage.removeItem('google_provider_tokens');
@@ -348,11 +352,14 @@ export const DashboardLayout = () => {
           }
 
           // Dispatch event so DashboardPage re-fetches calendar events
+          (window as any).__cxtrack_auto_connect_pending = false;
           window.dispatchEvent(new CustomEvent('cxtrack:email-connected', { detail: { provider } }));
         } else {
+          (window as any).__cxtrack_auto_connect_pending = false;
           console.warn('[AutoConnect] Failed:', await res.text());
         }
       } catch (err) {
+        (window as any).__cxtrack_auto_connect_pending = false;
         console.warn('[AutoConnect] Error:', err);
       }
     };

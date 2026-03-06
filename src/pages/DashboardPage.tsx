@@ -357,7 +357,12 @@ export const DashboardPage = () => {
                 const result = await fetchTodayOutlookEvents();
                 if (cancelled) return;
                 setOutlookEvents(result.events);
-                setOutlookNeedsReauth(result.needsReauth);
+                // Don't flash "Reconnect" warning if auto-connect is still storing fresh tokens.
+                if (result.needsReauth && (window as any).__cxtrack_auto_connect_pending) {
+                    console.log('[Dashboard] Outlook Calendar needs reauth but auto-connect pending, deferring warning');
+                } else {
+                    setOutlookNeedsReauth(result.needsReauth);
+                }
                 setOutlookNoConnection(result.noConnection);
 
                 // Also fetch upcoming 30 days for the "Upcoming" toggle
@@ -384,7 +389,13 @@ export const DashboardPage = () => {
                 const result = await fetchTodayGoogleEvents();
                 if (cancelled) return;
                 setGoogleEvents(result.events);
-                setGoogleNeedsReauth(result.needsReauth);
+                // Don't flash "Reconnect" warning if auto-connect is still storing fresh tokens.
+                // The cxtrack:email-connected event handler will re-fetch with correct state.
+                if (result.needsReauth && (window as any).__cxtrack_auto_connect_pending) {
+                    console.log('[Dashboard] Google Calendar needs reauth but auto-connect pending, deferring warning');
+                } else {
+                    setGoogleNeedsReauth(result.needsReauth);
+                }
 
                 // Also fetch upcoming 30 days for the "Upcoming" toggle
                 const now = new Date();
