@@ -62,10 +62,16 @@ export const useAuthStore = create<AuthState>()(
           if (!error && data.session) {
             const profile = await getUserProfile(data.session.user.id);
 
-            // Capture Microsoft provider tokens for auto email connection
+            // Capture provider tokens for auto email connection
             const authProvider = data.session.user.app_metadata?.provider;
             if ((authProvider === 'azure' || authProvider === 'microsoft') && providerToken) {
               sessionStorage.setItem('microsoft_provider_tokens', JSON.stringify({
+                provider_token: providerToken,
+                provider_refresh_token: providerRefreshToken || '',
+                timestamp: Date.now(),
+              }));
+            } else if (authProvider === 'google' && providerToken) {
+              sessionStorage.setItem('google_provider_tokens', JSON.stringify({
                 provider_token: providerToken,
                 provider_refresh_token: providerRefreshToken || '',
                 timestamp: Date.now(),
@@ -132,6 +138,8 @@ export const useAuthStore = create<AuthState>()(
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}/onboarding/profile`,
+            scopes: 'email profile openid https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+            queryParams: { access_type: 'offline', prompt: 'consent' },
           },
         });
         if (error) throw error;

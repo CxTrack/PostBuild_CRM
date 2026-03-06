@@ -101,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Session ended, clearing all data stores');
         clearAllDataStores();
         useOrganizationStore.getState().clearCache();
+        // Clear email sync throttle so next login gets a fresh sync
+        try { localStorage.removeItem('cxtrack_last_email_sync'); } catch {}
         setUser(null);
       }
 
@@ -123,7 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 2. Clear persisted organization data
     useOrganizationStore.getState().clearCache();
 
-    // 3. Sign out from Supabase (triggers onAuthStateChange with SIGNED_OUT)
+    // 3. Clear email sync throttle so next login gets a fresh sync
+    try { localStorage.removeItem('cxtrack_last_email_sync'); } catch {}
+
+    // 4. Sign out from Supabase (triggers onAuthStateChange with SIGNED_OUT)
     await supabase.auth.signOut();
 
     setUser(null);

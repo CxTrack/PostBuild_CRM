@@ -400,6 +400,48 @@ export const DashboardPage = () => {
         return () => { cancelled = true; };
     }, [currentOrganization?.id]);
 
+    // Re-fetch calendar events when email auto-connect completes (resolves race condition)
+    useEffect(() => {
+        const handleEmailConnected = () => {
+            if (!currentOrganization?.id) return;
+            console.log('[Dashboard] Email connected event received, re-fetching calendar events');
+
+            // Re-fetch Outlook calendar
+            (async () => {
+                try {
+                    const result = await fetchTodayOutlookEvents();
+                    setOutlookEvents(result.events);
+                    setOutlookNeedsReauth(result.needsReauth);
+                    setOutlookNoConnection(result.noConnection);
+
+                    const now = new Date();
+                    const thirtyDaysOut = new Date(now);
+                    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                    const upcoming = await fetchOutlookEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                    setUpcomingOutlookEvents(upcoming);
+                } catch { /* optional integration */ }
+            })();
+
+            // Re-fetch Google calendar
+            (async () => {
+                try {
+                    const result = await fetchTodayGoogleEvents();
+                    setGoogleEvents(result.events);
+                    setGoogleNeedsReauth(result.needsReauth);
+
+                    const now = new Date();
+                    const thirtyDaysOut = new Date(now);
+                    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                    const upcoming = await fetchGoogleEvents(now.toISOString(), thirtyDaysOut.toISOString());
+                    setUpcomingGoogleEvents(upcoming);
+                } catch { /* optional integration */ }
+            })();
+        };
+
+        window.addEventListener('cxtrack:email-connected', handleEmailConnected);
+        return () => window.removeEventListener('cxtrack:email-connected', handleEmailConnected);
+    }, [currentOrganization?.id]);
+
     const activeCustomers = customers.filter(c => c.status === 'Active').length;
     const todaysEvents = events.filter(e => new Date(e.start_time).toDateString() === new Date().toDateString());
     const totalTodaysEvents = todaysEvents.length + outlookEvents.length + googleEvents.length;

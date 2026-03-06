@@ -275,23 +275,33 @@ export const DashboardLayout = () => {
     }
   }, [currentOrganization, fetchPipelineStages]);
 
-  // Auto-connect Microsoft email when user logged in via Microsoft OAuth
+  // Auto-connect email when user logged in via OAuth (Microsoft or Google)
   useEffect(() => {
-    const autoConnectMicrosoftEmail = async () => {
-      const stored = sessionStorage.getItem('microsoft_provider_tokens');
-      if (!stored || !currentOrganization?.id) return;
+    const autoConnectEmail = async () => {
+      if (!currentOrganization?.id) return;
+
+      // Check for Microsoft provider tokens
+      const msStored = sessionStorage.getItem('microsoft_provider_tokens');
+      // Check for Google provider tokens
+      const googleStored = sessionStorage.getItem('google_provider_tokens');
+
+      if (!msStored && !googleStored) return;
 
       // Remove immediately to prevent double-fire
-      sessionStorage.removeItem('microsoft_provider_tokens');
+      if (msStored) sessionStorage.removeItem('microsoft_provider_tokens');
+      if (googleStored) sessionStorage.removeItem('google_provider_tokens');
 
       try {
-        const { provider_token, provider_refresh_token, timestamp } = JSON.parse(stored);
+        const token = await getAuthToken();
+        if (!token) return;
+
+        // Determine which provider to auto-connect
+        const stored = msStored || googleStored;
+        const provider = msStored ? 'microsoft' : 'google';
+        const { provider_token, provider_refresh_token, timestamp } = JSON.parse(stored!);
 
         // Expire after 5 minutes (tokens may be stale)
         if (Date.now() - timestamp > 5 * 60 * 1000) return;
-
-        const token = await getAuthToken();
-        if (!token) return;
 
         const res = await fetch(`${supabaseUrl}/functions/v1/auto-connect-email`, {
           method: 'POST',
@@ -300,7 +310,7 @@ export const DashboardLayout = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            provider: 'microsoft',
+            provider,
             provider_token,
             provider_refresh_token,
             organization_id: currentOrganization.id,
@@ -309,11 +319,34 @@ export const DashboardLayout = () => {
 
         if (res.ok) {
           const data = await res.json();
-          console.log('[AutoConnect] Microsoft email connected:', data.email_address);
+          const providerLabel = provider === 'microsoft' ? 'Outlook' : 'Gmail';
+          console.log(`[AutoConnect] ${providerLabel} email connected:`, data.email_address);
           if (data.email_address) {
             const { default: toast } = await import('react-hot-toast');
-            toast.success(`Your Outlook email (${data.email_address}) is connected and ready to send from CxTrack.`, { duration: 5000 });
+            toast.success(`Your ${providerLabel} email (${data.email_address}) is connected and ready to send from CxTrack.`, { duration: 5000 });
           }
+
+          // Trigger immediate email sync after connection is established
+          try {
+            const syncRes = await fetch(`${supabaseUrl}/functions/v1/sync-inbox-emails`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({}),
+            });
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              console.log(`[AutoConnect] Immediate sync after connect:`, syncData);
+              localStorage.setItem('cxtrack_last_email_sync', Date.now().toString());
+            }
+          } catch {
+            // Non-fatal: background sync will catch up
+          }
+
+          // Dispatch event so DashboardPage re-fetches calendar events
+          window.dispatchEvent(new CustomEvent('cxtrack:email-connected', { detail: { provider } }));
         } else {
           console.warn('[AutoConnect] Failed:', await res.text());
         }
@@ -322,18 +355,21 @@ export const DashboardLayout = () => {
       }
     };
 
-    autoConnectMicrosoftEmail();
+    autoConnectEmail();
   }, [currentOrganization?.id]);
 
-  // Background inbox sync - runs every 15 minutes if user has an active email connection
+  // Background inbox sync - always syncs on login, then every 15 minutes
   useEffect(() => {
     if (!currentOrganization?.id) return;
 
-    const syncInbox = async () => {
-      const lastSync = localStorage.getItem('cxtrack_last_email_sync');
-      const fifteenMinAgo = Date.now() - 15 * 60 * 1000;
-
-      if (lastSync && parseInt(lastSync) > fifteenMinAgo) return;
+    const syncInbox = async (isInitial: boolean) => {
+      // On initial mount (login), always sync regardless of throttle.
+      // On subsequent intervals, respect the 15-minute throttle.
+      if (!isInitial) {
+        const lastSync = localStorage.getItem('cxtrack_last_email_sync');
+        const fifteenMinAgo = Date.now() - 15 * 60 * 1000;
+        if (lastSync && parseInt(lastSync) > fifteenMinAgo) return;
+      }
 
       try {
         const token = await getAuthToken();
@@ -361,9 +397,16 @@ export const DashboardLayout = () => {
       }
     };
 
-    // Run after a short delay to not block initial load
-    const timer = setTimeout(syncInbox, 5000);
-    return () => clearTimeout(timer);
+    // Run initial sync after short delay to not block render, but always force it
+    const initialTimer = setTimeout(() => syncInbox(true), 3000);
+
+    // Set up recurring sync every 15 minutes
+    const intervalTimer = setInterval(() => syncInbox(false), 15 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
   }, [currentOrganization?.id]);
 
   useEffect(() => {
