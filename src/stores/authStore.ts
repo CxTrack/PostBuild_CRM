@@ -138,7 +138,7 @@ export const useAuthStore = create<AuthState>()(
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}/onboarding/profile`,
-            scopes: 'email profile openid https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+            scopes: 'email profile openid https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
             queryParams: { access_type: 'offline', prompt: 'consent' },
           },
         });

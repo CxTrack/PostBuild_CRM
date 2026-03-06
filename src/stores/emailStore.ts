@@ -275,11 +275,17 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
 
   deleteThreads: async (threadIds: string[]) => {
     const state = get();
-    const emailIds = state.threads
+    const allMessages = state.threads
       .filter(t => threadIds.includes(t.id))
-      .flatMap(t => t.messages.map(m => m.id));
+      .flatMap(t => t.messages);
 
+    const emailIds = allMessages.map(m => m.id);
     if (emailIds.length === 0) return;
+
+    // Collect provider-linked emails for remote trash (skip SMTP + null message_id)
+    const providerEmails = allMessages
+      .filter(m => m.message_id && m.provider && m.provider !== 'smtp')
+      .map(m => ({ message_id: m.message_id!, provider: m.provider }));
 
     // Optimistic update
     set(s => {
@@ -290,8 +296,32 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       return { threads, unreadCount, selectedThreadId, selectedThreadIds: new Set<string>() };
     });
 
+    // Fire-and-forget: trash in provider (Gmail / Outlook)
+    if (providerEmails.length > 0) {
+      const token = getAuthToken();
+      if (token) {
+        fetch(`${supabaseUrl}/functions/v1/delete-provider-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ emails: providerEmails }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.summary?.failed > 0) {
+              console.warn('[emailStore] Some provider deletions failed:', data.results?.filter((r: any) => !r.trashed));
+            }
+          })
+          .catch(err => {
+            console.error('[emailStore] Provider deletion error (non-blocking):', err);
+          });
+      }
+    }
+
+    // Local DB deletion (batches of 20)
     try {
-      // Delete in batches of 20 to avoid URL length limits
       for (let i = 0; i < emailIds.length; i += 20) {
         const batch = emailIds.slice(i, i + 20);
         const ids = batch.map(id => `"${id}"`).join(',');
