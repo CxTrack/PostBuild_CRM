@@ -47,6 +47,7 @@ function FieldCombobox({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [justSelected, setJustSelected] = useState(false);
+  const [sessionValues, setSessionValues] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -54,13 +55,20 @@ function FieldCombobox({
   const displayValue = value === 0 && type === 'number' ? '' : (value ?? '');
   const strValue = String(displayValue);
 
-  const filtered = useMemo(() => {
-    if (!strValue.trim()) return suggestions;
-    const lower = strValue.toLowerCase().trim();
-    return suggestions.filter((s) => s.toLowerCase().includes(lower));
-  }, [strValue, suggestions]);
+  // Merge prop suggestions with session-created values
+  const allSuggestions = useMemo(() => {
+    const set = new Set(suggestions);
+    sessionValues.forEach((v) => set.add(v));
+    return Array.from(set);
+  }, [suggestions, sessionValues]);
 
-  const exactMatch = suggestions.some(
+  const filtered = useMemo(() => {
+    if (!strValue.trim()) return allSuggestions;
+    const lower = strValue.toLowerCase().trim();
+    return allSuggestions.filter((s) => s.toLowerCase().includes(lower));
+  }, [strValue, allSuggestions]);
+
+  const exactMatch = allSuggestions.some(
     (s) => s.toLowerCase() === strValue.toLowerCase().trim()
   );
 
@@ -86,7 +94,10 @@ function FieldCombobox({
   }, [highlightedIndex]);
 
   const selectItem = (item: string) => {
-    const isNew = !suggestions.some(s => s.toLowerCase() === item.toLowerCase().trim());
+    const isNew = !allSuggestions.some(s => s.toLowerCase() === item.toLowerCase().trim());
+    if (isNew) {
+      setSessionValues((prev) => [...prev, item.trim()]);
+    }
     if (type === 'number') {
       const num = parseFloat(item);
       onChange(isNaN(num) ? item : num);
