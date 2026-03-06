@@ -8,6 +8,7 @@ import { useSupplierStore } from '@/stores/supplierStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import SupplierModal from '@/components/suppliers/SupplierModal';
 import SupplierContactsList from '@/components/suppliers/SupplierContactsList';
+import SupplierProductLinker from '@/components/suppliers/SupplierProductLinker';
 import { Card, Button, PageContainer } from '@/components/theme/ThemeComponents';
 import { PAYMENT_TERMS_OPTIONS } from '@/config/paymentTerms';
 import { COUNTRIES } from '@/config/countries';
@@ -355,60 +356,12 @@ export const SupplierProfile: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'products' && (
-                <Card>
-                    {relatedProducts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <Package size={40} className="text-gray-400 mb-3" />
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">No linked products</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Link products to this supplier from the Products page.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase">Product</th>
-                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase">SKU</th>
-                                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-400 uppercase">Unit Cost</th>
-                                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-400 uppercase">Price</th>
-                                        <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase">Min Order</th>
-                                        <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase">Preferred</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {relatedProducts.map(rp => (
-                                        <tr key={rp.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                            <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
-                                                {rp.product_name || '--'}
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-500 dark:text-gray-400 font-mono text-xs">
-                                                {rp.product_sku || rp.supplier_sku || '--'}
-                                            </td>
-                                            <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">
-                                                ${rp.unit_cost?.toFixed(2) || '0.00'}
-                                            </td>
-                                            <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">
-                                                {rp.product_price ? `$${rp.product_price.toFixed(2)}` : '--'}
-                                            </td>
-                                            <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-400">
-                                                {rp.minimum_order_quantity || 1}
-                                            </td>
-                                            <td className="py-3 px-4 text-center">
-                                                {rp.is_preferred ? (
-                                                    <Star size={14} className="text-yellow-400 fill-yellow-400 mx-auto" />
-                                                ) : (
-                                                    <span className="text-gray-300 dark:text-gray-600">--</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+            {activeTab === 'products' && id && (
+                <Card className="overflow-hidden">
+                    <SupplierProductLinker
+                        supplierId={id}
+                        organizationId={currentOrganization?.id || ''}
+                    />
                 </Card>
             )}
 

@@ -12,6 +12,7 @@ import type { ProductType, PricingModel, RecurringInterval } from '@/types/app.t
 import CreationSuccessModal from '@/components/shared/CreationSuccessModal';
 import CustomFieldsSection from '@/components/products/CustomFieldsSection';
 import CategoryCombobox from '@/components/products/CategoryCombobox';
+import ProductSupplierManager from '@/components/products/ProductSupplierManager';
 import { Plus } from 'lucide-react';
 
 const LOAN_TYPES = [
@@ -885,6 +886,22 @@ export default function ProductForm() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Supplier Linking -- only for existing products */}
+              {isEdit && id ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                  <ProductSupplierManager
+                    productId={id}
+                    organizationId={currentOrganization?.id || ''}
+                  />
+                </div>
+              ) : !isEdit && (
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Save this product first to link suppliers.
+                  </p>
                 </div>
               )}
 

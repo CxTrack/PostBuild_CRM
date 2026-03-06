@@ -1,12 +1,43 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { Supplier, SupplierContact, ProductSupplier } from '../types/app.types';
+
+/**
+ * Read auth token from localStorage to avoid Supabase AbortController issue.
+ * Same pattern used in productStore.ts / inventoryStore.ts.
+ */
+const getAuthToken = (): string | null => {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '');
+        if (stored?.access_token) return stored.access_token;
+      } catch { /* skip */ }
+    }
+  }
+  return null;
+};
+
+const buildHeaders = (token: string) => ({
+  'Authorization': `Bearer ${token}`,
+  'apikey': supabaseAnonKey,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
+});
+
+export type ProductSupplierWithDetails = ProductSupplier & {
+    product_name?: string;
+    product_sku?: string;
+    product_price?: number;
+    supplier_name?: string;
+};
 
 interface SupplierState {
     suppliers: Supplier[];
     currentSupplier: Supplier | null;
     contacts: SupplierContact[];
-    relatedProducts: (ProductSupplier & { product_name?: string; product_sku?: string; product_price?: number })[];
+    relatedProducts: ProductSupplierWithDetails[];
+    productSuppliers: ProductSupplierWithDetails[];
     loading: boolean;
     error: string | null;
     fetchSuppliers: (organizationId?: string) => Promise<void>;
@@ -22,6 +53,11 @@ interface SupplierState {
     deleteSupplierContact: (id: string) => Promise<void>;
     // Related products
     fetchRelatedProducts: (supplierId: string) => Promise<void>;
+    // Product-supplier linking CRUD (direct fetch)
+    fetchProductSuppliers: (productId: string) => Promise<void>;
+    linkProduct: (data: Omit<ProductSupplier, 'id' | 'created_at'>) => Promise<ProductSupplier | null>;
+    updateProductLink: (id: string, updates: Partial<ProductSupplier>) => Promise<void>;
+    unlinkProduct: (id: string) => Promise<void>;
     // All contact titles for autocomplete
     fetchAllContactTitles: (organizationId: string) => Promise<string[]>;
 }
@@ -31,6 +67,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     currentSupplier: null,
     contacts: [],
     relatedProducts: [],
+    productSuppliers: [],
     loading: false,
     error: null,
 
@@ -234,6 +271,92 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
                 product_price: ps.products?.price,
             }));
             set({ relatedProducts: mapped });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
+        }
+    },
+
+    // ── Product-Supplier Linking CRUD (direct fetch) ─────────────────
+
+    fetchProductSuppliers: async (productId: string) => {
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+            const url = `${supabaseUrl}/rest/v1/product_suppliers?product_id=eq.${productId}&select=*,suppliers(name)&order=is_preferred.desc`;
+            const res = await fetch(url, { headers: buildHeaders(token) });
+            if (!res.ok) throw new Error(`Failed to fetch product suppliers: ${res.status}`);
+            const data = await res.json();
+            const mapped = (data || []).map((ps: any) => ({
+                ...ps,
+                supplier_name: ps.suppliers?.name,
+            }));
+            set({ productSuppliers: mapped });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
+        }
+    },
+
+    linkProduct: async (data) => {
+        const token = getAuthToken();
+        if (!token) return null;
+        try {
+            const url = `${supabaseUrl}/rest/v1/product_suppliers`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: buildHeaders(token),
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) {
+                const errBody = await res.text();
+                throw new Error(`Failed to link product: ${res.status} ${errBody}`);
+            }
+            const [result] = await res.json();
+            return result;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
+            return null;
+        }
+    },
+
+    updateProductLink: async (id, updates) => {
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+            const url = `${supabaseUrl}/rest/v1/product_suppliers?id=eq.${id}`;
+            const res = await fetch(url, {
+                method: 'PATCH',
+                headers: buildHeaders(token),
+                body: JSON.stringify(updates),
+            });
+            if (!res.ok) throw new Error(`Failed to update product link: ${res.status}`);
+            // Update both state arrays
+            set((state) => ({
+                relatedProducts: state.relatedProducts.map(rp => rp.id === id ? { ...rp, ...updates } : rp),
+                productSuppliers: state.productSuppliers.map(ps => ps.id === id ? { ...ps, ...updates } : ps),
+            }));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
+        }
+    },
+
+    unlinkProduct: async (id) => {
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+            const url = `${supabaseUrl}/rest/v1/product_suppliers?id=eq.${id}`;
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { ...buildHeaders(token), 'Prefer': '' },
+            });
+            if (!res.ok) throw new Error(`Failed to unlink product: ${res.status}`);
+            set((state) => ({
+                relatedProducts: state.relatedProducts.filter(rp => rp.id !== id),
+                productSuppliers: state.productSuppliers.filter(ps => ps.id !== id),
+            }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'An error occurred';
             set({ error: message });
