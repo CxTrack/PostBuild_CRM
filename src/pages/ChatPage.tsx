@@ -99,7 +99,9 @@ const MessageBubble = React.memo<{
     compact: boolean;
     onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
     onCancelAction?: (messageId: string) => void;
-}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact, onConfirmAction, onCancelAction }) => {
+    isRead?: boolean;
+    showReadReceipts?: boolean;
+}>(({ msg, isOwn, currentUserId, onAddReaction, onRemoveReaction, compact, onConfirmAction, onCancelAction, isRead, showReadReceipts }) => {
     // For SMS messages, check metadata.direction to determine side
     const isSms = msg.message_type === 'sms';
     const isInboundSms = isSms && (msg.metadata as any)?.direction === 'inbound';
@@ -127,8 +129,14 @@ const MessageBubble = React.memo<{
                     : (isInboundSms ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm')}
     `}>
                 <p className={`${compact ? 'text-sm' : 'text-[15px]'} leading-relaxed whitespace-pre-wrap`}>{msg.content}</p>
-                <p className={`text-[10px] mt-1 ${displayOwn ? (isSms ? 'text-green-100' : 'text-blue-100') : 'text-gray-500 dark:text-gray-400'}`}>
+                <p className={`text-[10px] mt-1 flex items-center gap-1 ${displayOwn ? (isSms ? 'text-green-100' : 'text-blue-100') : 'text-gray-500 dark:text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {/* Read receipt checkmarks for own messages */}
+                    {displayOwn && showReadReceipts && (
+                        <span className={`ml-0.5 ${isRead ? (isSms ? 'text-green-200' : 'text-blue-200') : (isSms ? 'text-green-300/50' : 'text-blue-300/50')}`}>
+                            {isRead ? '✓✓' : '✓'}
+                        </span>
+                    )}
                 </p>
             </div>
             {/* Reactions always rendered so + button appears on hover */}
@@ -216,8 +224,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [attachedFile, setAttachedFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-    const [isTyping, setIsTyping] = useState(false);
+    const [isTyping, setIsTyping] = useState(false); // Sparky AI typing indicator
+    const [typingUsers, setTypingUsers] = useState<{ userId: string; name: string }[]>([]);
     const [createType, setCreateType] = useState<'group' | 'channel'>('group');
+    const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    const lastTypingBroadcastRef = useRef<number>(0);
+    const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+    // Read receipts: track other participants' last_read_at
+    const [participantReadTimes, setParticipantReadTimes] = useState<Record<string, string>>({});
     const [chatSettings, setChatSettings] = useState<ChatSettings>(() => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
         return saved ? JSON.parse(saved) : DEFAULT_CHAT_SETTINGS;
@@ -322,6 +336,25 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             loadMessages(activeConversation.id);
             markConversationRead(activeConversation.id);
 
+            // Load other participants' last_read_at for read receipts
+            (async () => {
+                try {
+                    const token = getAuthToken();
+                    if (!token || !user?.id) return;
+                    const res = await fetch(
+                        `${supabaseUrl}/rest/v1/conversation_participants?conversation_id=eq.${activeConversation.id}&user_id=neq.${user.id}&select=user_id,last_read_at`,
+                        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                    );
+                    if (res.ok) {
+                        const rows: { user_id: string; last_read_at: string | null }[] = await res.json();
+                        const times: Record<string, string> = {};
+                        rows.forEach(r => { if (r.last_read_at) times[r.user_id] = r.last_read_at; });
+                        setParticipantReadTimes(times);
+                    }
+                } catch { /* non-critical */ }
+            })();
+
+            // Real-time channel for new messages (postgres_changes)
             const channel = supabase.channel(`page-chat-${activeConversation.id}`)
                 .on('postgres_changes', {
                     event: 'INSERT',
@@ -349,7 +382,41 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 })
                 .subscribe();
 
-            return () => { supabase.removeChannel(channel); };
+            // Broadcast channel for typing indicators + read receipts (ephemeral, no DB)
+            const broadcastCh = supabase.channel(`chat-presence-${activeConversation.id}`)
+                .on('broadcast', { event: 'typing' }, ({ payload }: { payload: any }) => {
+                    if (payload.userId === user?.id) return;
+                    setTypingUsers(prev => {
+                        const exists = prev.some(u => u.userId === payload.userId);
+                        if (!exists) return [...prev, { userId: payload.userId, name: payload.name }];
+                        return prev;
+                    });
+                    // Auto-clear after 3 seconds of no typing
+                    if (typingTimeoutRef.current[payload.userId]) clearTimeout(typingTimeoutRef.current[payload.userId]);
+                    typingTimeoutRef.current[payload.userId] = setTimeout(() => {
+                        setTypingUsers(prev => prev.filter(u => u.userId !== payload.userId));
+                        delete typingTimeoutRef.current[payload.userId];
+                    }, 3000);
+                })
+                .on('broadcast', { event: 'read-receipt' }, ({ payload }: { payload: any }) => {
+                    if (payload.userId === user?.id) return;
+                    setParticipantReadTimes(prev => ({
+                        ...prev,
+                        [payload.userId]: payload.readAt,
+                    }));
+                })
+                .subscribe();
+            broadcastChannelRef.current = broadcastCh;
+
+            return () => {
+                supabase.removeChannel(channel);
+                supabase.removeChannel(broadcastCh);
+                broadcastChannelRef.current = null;
+                setTypingUsers([]);
+                setParticipantReadTimes({});
+                Object.values(typingTimeoutRef.current).forEach(t => clearTimeout(t));
+                typingTimeoutRef.current = {};
+            };
         }
     }, [activeConversation?.id]);
 
@@ -447,6 +514,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             setUnreadCounts(prev => ({ ...prev, [conversationId]: 0 }));
             // Signal sidebar hook to refresh badge count
             window.dispatchEvent(new CustomEvent('chat-mark-read'));
+            // Broadcast read-receipt to other participants in real-time
+            if (broadcastChannelRef.current) {
+                broadcastChannelRef.current.send({
+                    type: 'broadcast',
+                    event: 'read-receipt',
+                    payload: { userId: user.id, readAt: new Date().toISOString() },
+                });
+            }
         } catch { /* non-critical */ }
     }, [user?.id]);
 
@@ -1600,8 +1675,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                         compact={chatSettings.compact_mode}
                                         onConfirmAction={handleConfirmAction}
                                         onCancelAction={handleCancelAction}
+                                        isRead={Object.values(participantReadTimes).some(readAt => readAt >= msg.created_at)}
+                                        showReadReceipts={chatSettings.show_read_receipts}
                                     />
                                 ))}
+                                {/* Sparky AI typing indicator */}
                                 {isTyping && (
                                     <div className="flex justify-start">
                                         <div className="bg-gray-100 dark:bg-gray-800 px-5 py-3 rounded-2xl rounded-bl-sm">
@@ -1611,6 +1689,19 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                             </div>
                                         </div>
+                                    </div>
+                                )}
+                                {/* Team member typing indicators */}
+                                {typingUsers.length > 0 && (
+                                    <div className="flex items-center gap-2 px-2 py-1">
+                                        <div className="flex gap-1">
+                                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {typingUsers.map(u => u.name).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+                                        </span>
                                     </div>
                                 )}
                                 <div ref={messagesEndRef} />
@@ -1818,7 +1909,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             : "Type your message..."
                                             : "Type your message..."}
                                         value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        onChange={(e) => {
+                                            setNewMessage(e.target.value);
+                                            // Broadcast typing indicator (debounced to every 2 seconds)
+                                            if (e.target.value && chatSettings.show_typing_indicators && broadcastChannelRef.current && activeConversation?.id !== 'ai-agent') {
+                                                const now = Date.now();
+                                                if (now - lastTypingBroadcastRef.current > 2000) {
+                                                    lastTypingBroadcastRef.current = now;
+                                                    broadcastChannelRef.current.send({
+                                                        type: 'broadcast',
+                                                        event: 'typing',
+                                                        payload: { userId: user?.id, name: user?.user_metadata?.full_name || 'Someone' },
+                                                    });
+                                                }
+                                            }
+                                        }}
                                         onKeyPress={handleKeyPress}
                                     />
 
