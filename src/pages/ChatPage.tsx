@@ -78,6 +78,18 @@ const TICKET_INTENT_PATTERNS = [
     /\b(billing|payment)\s+(issue|problem|question)/i,
 ];
 
+// Patterns that indicate CRM actions -- redirect to CoPilot instead of AI processing
+const COPILOT_REDIRECT_PATTERNS = [
+    /\b(create|add|make|new)\s+(a\s+)?(customer|client|contact|borrower|patient|member)/i,
+    /\b(create|add|make|new)\s+(a\s+)?(deal|pipeline|application|project|case|job|order)/i,
+    /\b(create|add|make|new)\s+(a\s+)?(task|to-?do|follow-?up|reminder)/i,
+    /\b(create|add|make|new)\s+(a\s+)?(invoice|quote|estimate|proposal|bid)/i,
+    /\b(create|add|make|new)\s+(a\s+)?(note|comment)\s+(for|to|on|about)/i,
+    /\b(send|draft|compose)\s+(a\s+)?(email|sms|text|message)\s+(to)/i,
+    /\b(update|change|modify|edit)\s+(a\s+)?(customer|client|deal|task|invoice)/i,
+    /\b(log|record)\s+(a\s+)?(call|meeting|activity)/i,
+];
+
 const CATEGORY_OPTIONS: { value: TicketCategory; label: string; icon: React.ReactNode; desc: string }[] = [
     { value: 'bug_report', label: 'Bug Report', icon: <Bug size={16} />, desc: 'Something is broken' },
     { value: 'feature_request', label: 'Feature Request', icon: <Sparkles size={16} />, desc: 'Suggest an improvement' },
@@ -128,7 +140,8 @@ const MessageBubble = React.memo<{
     // For SMS messages, check metadata.direction to determine side
     const isSms = msg.message_type === 'sms';
     const isInboundSms = isSms && (msg.metadata as any)?.direction === 'inbound';
-    const displayOwn = isSms ? !isInboundSms : isOwn;
+    const isLiveAgent = msg.sender_id === 'live-agent';
+    const displayOwn = isSms ? !isInboundSms : (isOwn && !isLiveAgent);
     const customerName = isInboundSms ? ((msg.metadata as any)?.customer_name || 'Customer') : null;
 
     return (
@@ -145,11 +158,19 @@ const MessageBubble = React.memo<{
                     SMS <Phone size={8} />
                 </span>
             )}
+            {/* Live agent name label */}
+            {isLiveAgent && (
+                <span className="text-[10px] text-green-600 dark:text-green-400 font-semibold ml-1 mb-0.5 flex items-center gap-1">
+                    <Shield size={8} /> {msg.sender?.full_name || 'Admin'}
+                </span>
+            )}
             <div className={`
       max-w-[70%] ${compact ? 'px-3 py-2' : 'px-5 py-3'} rounded-2xl
       ${displayOwn
                     ? (isSms ? 'bg-green-600 text-white rounded-br-sm' : 'bg-blue-600 text-white rounded-br-sm')
-                    : (isInboundSms ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm')}
+                    : isLiveAgent
+                        ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200/50 dark:border-green-800/50'
+                        : (isInboundSms ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm')}
     `}>
                 {/* Text content - hide generic "Sent X file(s)" if attachments present */}
                 {msg.content && !(msg.content.match(/^Sent \d+ file\(s\)$/) && (msg.metadata as any)?.attachments?.length > 0) && (
@@ -378,6 +399,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [ticketDraft, setTicketDraft] = useState<TicketDraft>({ ...INITIAL_TICKET_DRAFT });
     const [ticketDescriptionExchanges, setTicketDescriptionExchanges] = useState(0);
     const [ticketDraftId] = useState(() => `draft_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`);
+
+    // Live Chat state (post-ticket submission)
+    const [activeTicketId, setActiveTicketId] = useState<string | null>(() => {
+        try { return sessionStorage.getItem('sparky_active_ticket_id'); } catch { return null; }
+    });
+    const [liveAgentName, setLiveAgentName] = useState<string | null>(null);
+    const liveChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -924,6 +952,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     }
 
                     // =====================================================
+                    // LIVE CHAT MODE (route messages to ticket thread)
+                    // =====================================================
+                    if (activeTicketId && !ticketIntakeActive) {
+                        try {
+                            await useTicketStore.getState().userReplyToTicket(activeTicketId, messageContent);
+                        } catch (err) {
+                            console.error('Failed to send live chat message:', err);
+                            addSparkyMessage("Failed to send your message. Please try again.");
+                        }
+                        setIsTyping(false);
+                        return;
+                    }
+
+                    // =====================================================
                     // TICKET INTAKE FLOW (handled before normal AI chat)
                     // =====================================================
                     if (ticketIntakeActive) {
@@ -934,6 +976,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     // Check for ticket intent BEFORE sending to normal AI
                     if (TICKET_INTENT_PATTERNS.some(p => p.test(messageContent))) {
                         activateTicketIntake(messageContent);
+                        return;
+                    }
+
+                    // Check for CRM action requests -- redirect to CoPilot
+                    if (COPILOT_REDIRECT_PATTERNS.some(p => p.test(messageContent))) {
+                        addSparkyMessage(
+                            "That sounds like a CRM action! I'm focused on support and tickets here.\n\n" +
+                            "To create or manage records (customers, deals, tasks, invoices), use the **CoPilot** -- you'll find it on any page by clicking the AI assistant icon.\n\n" +
+                            "Is there anything else I can help you with here? I'm great at:\n" +
+                            "\u2022 Submitting support tickets\n" +
+                            "\u2022 Reporting bugs\n" +
+                            "\u2022 Answering questions about CxTrack"
+                        );
+                        setIsTyping(false);
                         return;
                     }
 
@@ -959,7 +1015,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             message: messageContent,
                             conversationHistory: recentMessages,
                             context: {
-                                page: 'Messages',
+                                page: 'Sparky',
                                 industry: org?.industry_template || 'general_business',
                                 orgName: org?.name || 'Your Organization',
                                 userRole: membership?.role || 'user',
@@ -1322,16 +1378,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             });
 
             setTicketIntakeStep('submitted');
+
+            // Enter live chat mode -- admin can respond directly
+            setActiveTicketId(ticket.id);
+            try { sessionStorage.setItem('sparky_active_ticket_id', ticket.id); } catch { /* ignore */ }
+
             addSparkyMessage(
                 `Your ticket has been submitted successfully!\n\n` +
                 `**Ticket ID:** ${ticket.id.substring(0, 8)}...\n` +
                 `**Subject:** ${ticket.subject}\n` +
                 `**Status:** Open\n\n` +
-                `You can track it and reply to admin responses in **Settings > Help Center > My Tickets**.\n\n` +
-                `Is there anything else I can help with?`
+                `An admin may respond here directly. You'll see their name when they join.\n` +
+                `You can also continue chatting here -- your messages will be added to the ticket thread.\n\n` +
+                `Type anything to add a follow-up, or start a **new conversation** from the sidebar.`
             );
 
-            // Reset intake state
+            // Reset intake state but keep activeTicketId
             setTimeout(() => {
                 setTicketIntakeActive(false);
                 setTicketIntakeStep('idle');
@@ -1353,6 +1415,87 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         setTicketDraft({ ...INITIAL_TICKET_DRAFT });
         setTicketDescriptionExchanges(0);
     }, []);
+
+    /** End live chat mode */
+    const endLiveChat = useCallback(() => {
+        setActiveTicketId(null);
+        setLiveAgentName(null);
+        try { sessionStorage.removeItem('sparky_active_ticket_id'); } catch { /* ignore */ }
+        if (liveChannelRef.current) {
+            supabase.removeChannel(liveChannelRef.current);
+            liveChannelRef.current = null;
+        }
+    }, []);
+
+    // Realtime subscription for live chat -- listen for admin replies to the active ticket
+    useEffect(() => {
+        if (!activeTicketId || !user?.id) return;
+
+        // Clean up previous subscription
+        if (liveChannelRef.current) {
+            supabase.removeChannel(liveChannelRef.current);
+        }
+
+        const channel = supabase
+            .channel(`sparky-live-${activeTicketId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'ticket_messages',
+                    filter: `ticket_id=eq.${activeTicketId}`,
+                },
+                (payload) => {
+                    const newMsg = payload.new as Record<string, any>;
+                    // Only show messages from other users (admin replies)
+                    if (newMsg.user_id === user.id) return;
+                    // Skip internal notes
+                    if (newMsg.is_internal) return;
+
+                    const agentName = newMsg.user_name || 'Admin';
+                    setLiveAgentName(agentName);
+
+                    // Add admin message to Sparky chat with special styling
+                    const adminMsg: Message = {
+                        id: `live-${newMsg.id || Date.now()}`,
+                        content: newMsg.message,
+                        sender_id: 'live-agent',
+                        created_at: newMsg.created_at || new Date().toISOString(),
+                        sender: { full_name: agentName },
+                        reactions: [],
+                    };
+                    setMessages(prev => [...prev, adminMsg]);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'support_tickets',
+                    filter: `id=eq.${activeTicketId}`,
+                },
+                (payload) => {
+                    const updated = payload.new as Record<string, any>;
+                    if (updated.status === 'resolved' || updated.status === 'closed') {
+                        addSparkyMessage(
+                            `This ticket has been marked as **${updated.status}** by the admin.\n\n` +
+                            `If you need further help, feel free to start a new conversation.`
+                        );
+                        endLiveChat();
+                    }
+                }
+            )
+            .subscribe();
+
+        liveChannelRef.current = channel;
+
+        return () => {
+            supabase.removeChannel(channel);
+            liveChannelRef.current = null;
+        };
+    }, [activeTicketId, user?.id, addSparkyMessage, endLiveChat]);
 
     // Confirm an action proposed by Sparky AI
     const handleConfirmAction = useCallback(async (messageId: string, editedFields: Record<string, any>) => {
@@ -1875,10 +2018,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 setTicketIntakeStep('idle');
                                                 setTicketDraft({ ...INITIAL_TICKET_DRAFT });
                                                 setTicketDescriptionExchanges(0);
+                                                endLiveChat();
                                                 setMessages([
                                                     {
                                                         id: 'ai-welcome',
-                                                        content: "Hey! I'm Sparky, your AI assistant. I can help you with:\n\n\u2022 Submit a support ticket (with screenshots)\n\u2022 Report a bug or issue\n\u2022 Ask questions about CxTrack features\n\u2022 Create records (customers, deals, tasks)\n\nWhat can I help with?",
+                                                        content: "Hey! I'm Sparky, your support assistant. Here's what I can do:\n\n\u2022 **Submit a support ticket** with screenshots and details\n\u2022 **Report a bug** or technical issue\n\u2022 **Get help** with CxTrack features and how-tos\n\u2022 **Live chat** with an admin after submitting a ticket\n\nFor CRM actions like creating customers, deals, or tasks, use the **CoPilot** available on any page.\n\nWhat can I help you with?",
                                                         sender_id: 'sparky-ai',
                                                         created_at: new Date().toISOString(),
                                                         sender: { full_name: 'Sparky AI' },
@@ -2374,6 +2518,32 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             ))}
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Live Chat Banner */}
+                            {activeTicketId && activeConversation?.id === 'ai-agent' && (
+                                <div className="px-4 py-2.5 border-t border-green-200/50 dark:border-green-800/30 bg-green-50/80 dark:bg-green-900/20 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="relative flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                                        </span>
+                                        <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                                            {liveAgentName
+                                                ? `You are now talking to ${liveAgentName}`
+                                                : 'Live ticket chat active -- waiting for admin response'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            endLiveChat();
+                                            addSparkyMessage("Live chat ended. Is there anything else I can help with?");
+                                        }}
+                                        className="text-[10px] font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 px-2 py-0.5 rounded hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                    >
+                                        End chat
+                                    </button>
                                 </div>
                             )}
 

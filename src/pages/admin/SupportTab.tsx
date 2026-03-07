@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Search, Clock, User, Tag, MessageSquare, X, Send,
     AlertTriangle, AlertCircle, CheckCircle, Circle, MoreVertical,
@@ -7,7 +7,7 @@ import {
     Eye, EyeOff, ArrowRight, UserPlus, Sparkles, Paperclip, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAdminStore, AdminTicket, DeletionRequest, TicketMessage, TicketActivity } from '@/stores/adminStore';
-import { supabaseUrl } from '@/lib/supabase';
+import { supabase, supabaseUrl } from '@/lib/supabase';
 import TicketAttachmentViewer from '@/components/tickets/TicketAttachmentViewer';
 import TicketAttachmentUploader from '@/components/tickets/TicketAttachmentUploader';
 import type { AttachmentMeta } from '@/utils/ticketAttachments';
@@ -390,6 +390,47 @@ const TicketDetailModal = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [currentTicketMessages]);
 
+    // Realtime subscription for customer replies (live chat)
+    useEffect(() => {
+        const channel = supabase
+            .channel(`admin-ticket-live-${ticket.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'ticket_messages',
+                    filter: `ticket_id=eq.${ticket.id}`,
+                },
+                (payload) => {
+                    const newMsg = payload.new as Record<string, any>;
+                    // Check if this message is already in our list (we may have just added it ourselves)
+                    const existingIds = useAdminStore.getState().currentTicketMessages.map(m => m.id);
+                    if (existingIds.includes(newMsg.id)) return;
+
+                    // Add the new message to the store
+                    const msg: TicketMessage = {
+                        id: newMsg.id,
+                        ticket_id: newMsg.ticket_id,
+                        user_id: newMsg.user_id,
+                        message: newMsg.message,
+                        is_internal: newMsg.is_internal || false,
+                        attachments: newMsg.attachments || [],
+                        created_at: newMsg.created_at,
+                        user_name: newMsg.user_name || 'User',
+                    };
+                    useAdminStore.setState((s) => ({
+                        currentTicketMessages: [...s.currentTicketMessages, msg],
+                    }));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [ticket.id]);
+
     const handleFieldChange = async (field: string, value: string | null, comment: string) => {
         setUpdating(field);
         try {
@@ -497,6 +538,15 @@ const TicketDetailModal = ({
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span className="font-mono text-sm text-gray-500">#{ticket.id.slice(-8)}</span>
                             {getSourceBadge(ticket.source)}
+                            {(localTicket.status === 'open' || localTicket.status === 'in_progress') && ticket.source === 'sparky_ai' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                    <span className="relative flex h-1.5 w-1.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                                    </span>
+                                    Live Chat
+                                </span>
+                            )}
                         </div>
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{ticket.subject}</h2>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -789,6 +839,12 @@ const TicketDetailModal = ({
                                 </button>
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">Ctrl+Enter to send</p>
+                            {!isInternal && ticket.source === 'sparky_ai' && (localTicket.status === 'open' || localTicket.status === 'in_progress') && (
+                                <p className="text-[10px] text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                                    Customer will see your reply in Sparky AI chat with your name
+                                </p>
+                            )}
                         </div>
                     </div>
 

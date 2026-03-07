@@ -467,7 +467,12 @@ function buildSystemPrompt(
       prompt += `\n\nINDUSTRY TERMINOLOGY: ${terms}`;
     }
 
-    prompt += ACTION_SYSTEM_PROMPT;
+    // Sparky AI is support-only -- skip CRM action capabilities
+    if (context?.page === 'Sparky') {
+      prompt += `\n\nSPARKY SUPPORT MODE:\nYou are Sparky, the CxTrack support assistant. You help users with:\n- Answering questions about CxTrack features and how to use them\n- Troubleshooting issues and providing guidance\n- General help and support\n\nIMPORTANT: You do NOT create or modify CRM records (customers, deals, tasks, invoices, etc.). If the user asks to create, add, or modify any CRM record, politely redirect them to the CoPilot which is available on every page via the AI assistant icon. Do NOT include ACTION_PROPOSAL blocks in your responses.\n\nKeep responses helpful, concise, and focused on support and product guidance.`;
+    } else {
+      prompt += ACTION_SYSTEM_PROMPT;
+    }
   }
 
   return prompt;
