@@ -72,6 +72,7 @@ const InvoiceBuilder = lazyRetry(() => import('./pages/invoices/InvoiceBuilder')
 const NewDealPage = lazyRetry(() => import('./pages/pipeline/NewDealPage'));
 const EmailPage = lazyRetry(() => import('./pages/EmailPage'));
 const CoPilotPage = lazyRetry(() => import('./pages/CoPilotPage'));
+const CoPilotWindow = lazyRetry(() => import('./pages/CoPilotWindow'));
 
 // Lazy-loaded — Onboarding
 const ProfilePage = lazyRetry(() => import('./pages/onboarding/ProfilePage'));
@@ -251,6 +252,9 @@ export default function App() {
 
             {/* Pop-out Chat Window - standalone, no sidebar */}
             <Route path="/chat-window" element={<RequireAuth><ChatPage isPopup={true} /></RequireAuth>} />
+
+            {/* Pop-out CoPilot Window - standalone, no sidebar */}
+            <Route path="/copilot-window" element={<RequireAuth><CoPilotWindow /></RequireAuth>} />
 
             {/* Admin Routes - Require Authentication + Admin Check */}
             <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />

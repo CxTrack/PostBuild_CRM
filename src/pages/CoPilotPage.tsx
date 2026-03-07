@@ -19,7 +19,18 @@ import {
   Link2,
   X,
   Search,
+  ExternalLink,
+  TrendingUp,
+  FileText,
+  Phone,
+  Mail,
+  Calendar,
+  BarChart3,
+  CheckSquare,
+  Package,
 } from 'lucide-react';
+import { useQuickActions } from '@/hooks/useQuickActions';
+import type { QuickAction } from '@/hooks/useQuickActions';
 
 const CoPilotPage: React.FC = () => {
   const {
@@ -52,7 +63,15 @@ const CoPilotPage: React.FC = () => {
   const [customerSearch, setCustomerSearch] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { updateConversationTitle, updateConversationCustomer } = useCopilotChatStore();
-  const { customers } = useCustomerStore();
+  const { customers, fetchCustomers } = useCustomerStore();
+  const quickActions = useQuickActions();
+
+  // Ensure customers are loaded (fixes "No customers found" when navigating directly to CoPilot)
+  useEffect(() => {
+    if (customers.length === 0) {
+      fetchCustomers();
+    }
+  }, [customers.length, fetchCustomers]);
 
   // Auto-load conversation from URL query param (?conversation=uuid)
   const loadedFromParamRef = useRef<string | null>(null);
@@ -350,6 +369,15 @@ const CoPilotPage: React.FC = () => {
               )}
             </div>
 
+            {/* Pop-out to separate window */}
+            <button
+              onClick={() => window.open('/copilot-window', 'CxTrackCoPilot', 'width=500,height=700,menubar=no,toolbar=no,location=no,status=no')}
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+              title="Open in separate window"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+
             {/* Back to dashboard */}
             <button
               onClick={() => navigate('/dashboard')}
@@ -378,21 +406,14 @@ const CoPilotPage: React.FC = () => {
         {/* Quick Actions */}
         <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <QuickActionChip
-              icon={<MessageSquare className="w-3.5 h-3.5" />}
-              label="Analyze data"
-              onClick={() => setInput('Analyze my customer data and give me insights')}
-            />
-            <QuickActionChip
-              icon={<Zap className="w-3.5 h-3.5" />}
-              label="Generate report"
-              onClick={() => setInput('Generate a summary report of this page')}
-            />
-            <QuickActionChip
-              icon={<Info className="w-3.5 h-3.5" />}
-              label="Help"
-              onClick={() => setInput('What can you help me with?')}
-            />
+            {quickActions.map((qa, i) => (
+              <QuickActionChip
+                key={`${qa.label}-${i}`}
+                icon={<QuickActionIcon name={qa.icon} />}
+                label={qa.label}
+                onClick={() => setInput(qa.prompt)}
+              />
+            ))}
           </div>
         </div>
 
@@ -413,6 +434,25 @@ const CoPilotPage: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const QuickActionIcon: React.FC<{ name: QuickAction['icon'] }> = ({ name }) => {
+  const cls = "w-3.5 h-3.5";
+  switch (name) {
+    case 'MessageSquare': return <MessageSquare className={cls} />;
+    case 'Zap': return <Zap className={cls} />;
+    case 'Info': return <Info className={cls} />;
+    case 'User': return <User className={cls} />;
+    case 'TrendingUp': return <TrendingUp className={cls} />;
+    case 'FileText': return <FileText className={cls} />;
+    case 'Phone': return <Phone className={cls} />;
+    case 'Mail': return <Mail className={cls} />;
+    case 'Calendar': return <Calendar className={cls} />;
+    case 'BarChart3': return <BarChart3 className={cls} />;
+    case 'CheckSquare': return <CheckSquare className={cls} />;
+    case 'Package': return <Package className={cls} />;
+    default: return <Zap className={cls} />;
+  }
 };
 
 const QuickActionChip: React.FC<{

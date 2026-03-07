@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useCopilotChatStore } from '@/stores/copilotChatStore';
 import type { CopilotConversation } from '@/utils/copilotMessageMapper';
 import {
@@ -13,6 +13,7 @@ import {
   Zap,
   Target,
   Palette,
+  Pencil,
 } from 'lucide-react';
 
 export interface ConversationListProps {
@@ -74,11 +75,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
     loadConversations,
     archiveConversation,
     unarchiveConversation,
+    updateConversationTitle,
   } = useCopilotChatStore();
 
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Load conversations on mount and filter change
   useEffect(() => {
@@ -94,6 +97,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
     await unarchiveConversation(id);
     setMenuOpenId(null);
   }, [unarchiveConversation]);
+
+  const handleStartRename = useCallback((id: string) => {
+    setMenuOpenId(null);
+    setEditingId(id);
+  }, []);
+
+  const handleRename = useCallback(async (id: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (trimmed) {
+      await updateConversationTitle(id, trimmed);
+    }
+    setEditingId(null);
+  }, [updateConversationTitle]);
 
   // Filter conversations by search query (client-side)
   const filtered = searchQuery.trim()
@@ -186,10 +202,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
               compact={compact}
               filter={filter}
               menuOpen={menuOpenId === conv.id}
+              isEditing={editingId === conv.id}
               onSelect={() => onSelectConversation(conv.id)}
               onToggleMenu={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
               onArchive={() => handleArchive(conv.id)}
               onUnarchive={() => handleUnarchive(conv.id)}
+              onStartRename={() => handleStartRename(conv.id)}
+              onRename={(newTitle) => handleRename(conv.id, newTitle)}
+              onCancelRename={() => setEditingId(null)}
             />
           ))
         )}
@@ -204,10 +224,14 @@ interface ConversationItemProps {
   compact: boolean;
   filter: 'active' | 'archived';
   menuOpen: boolean;
+  isEditing: boolean;
   onSelect: () => void;
   onToggleMenu: () => void;
   onArchive: () => void;
   onUnarchive: () => void;
+  onStartRename: () => void;
+  onRename: (newTitle: string) => void;
+  onCancelRename: () => void;
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
@@ -216,11 +240,34 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   compact,
   filter,
   menuOpen,
+  isEditing,
   onSelect,
   onToggleMenu,
   onArchive,
   onUnarchive,
+  onStartRename,
+  onRename,
+  onCancelRename,
 }) => {
+  const [editTitle, setEditTitle] = useState(conversation.title);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditTitle(conversation.title);
+      setTimeout(() => editInputRef.current?.select(), 50);
+    }
+  }, [isEditing, conversation.title]);
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onRename(editTitle);
+    } else if (e.key === 'Escape') {
+      onCancelRename();
+    }
+  };
+
   return (
     <div
       className={`
@@ -230,7 +277,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-2 border-l-transparent'
         }
       `}
-      onClick={onSelect}
+      onClick={isEditing ? undefined : onSelect}
     >
       {/* Context icon */}
       <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${
@@ -243,11 +290,24 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${
-          isActive ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'
-        }`}>
-          {conversation.title}
-        </p>
+        {isEditing ? (
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={() => onRename(editTitle)}
+            className="w-full text-sm font-medium px-1.5 py-0.5 rounded border bg-white dark:bg-gray-700 border-purple-400 dark:border-purple-500 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <p className={`text-sm font-medium truncate ${
+            isActive ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'
+          }`}>
+            {conversation.title}
+          </p>
+        )}
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-gray-400 dark:text-gray-500">
             {relativeTime(conversation.updated_at)}
@@ -262,40 +322,50 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       </div>
 
       {/* Three-dot menu */}
-      <div className="relative flex-shrink-0">
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleMenu(); }}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600"
-        >
-          <MoreVertical className="w-4 h-4 text-gray-400" />
-        </button>
+      {!isEditing && (
+        <div className="relative flex-shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleMenu(); }}
+            className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600"
+          >
+            <MoreVertical className="w-4 h-4 text-gray-400" />
+          </button>
 
-        {menuOpen && (
-          <>
-            {/* Click-away backdrop */}
-            <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); onToggleMenu(); }} />
-            <div className="absolute right-0 top-full mt-1 z-20 w-36 rounded-lg shadow-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 py-1">
-              {filter === 'active' ? (
+          {menuOpen && (
+            <>
+              {/* Click-away backdrop */}
+              <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); onToggleMenu(); }} />
+              <div className="absolute right-0 top-full mt-1 z-20 w-36 rounded-lg shadow-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 py-1">
+                {/* Rename */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                  onClick={(e) => { e.stopPropagation(); onStartRename(); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  <Archive className="w-3.5 h-3.5" />
-                  Archive
+                  <Pencil className="w-3.5 h-3.5" />
+                  Rename
                 </button>
-              ) : (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onUnarchive(); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <ArchiveRestore className="w-3.5 h-3.5" />
-                  Unarchive
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+                {filter === 'active' ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    Archive
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUnarchive(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <ArchiveRestore className="w-3.5 h-3.5" />
+                    Unarchive
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

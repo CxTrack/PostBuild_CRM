@@ -47,7 +47,7 @@ import type { Task } from '@/stores/taskStore';
 import { SmsConsentBadge } from '@/components/customer/SmsConsentBadge';
 import { useSmsConsentStore } from '@/stores/smsConsentStore';
 
-type TabType = 'overview' | 'communications' | 'documents' | 'tasks' | 'activity';
+type TabType = 'overview' | 'communications' | 'documents' | 'tasks' | 'activity' | 'copilot';
 
 export const CustomerProfile: React.FC = () => {
   const { id } = useParams();
@@ -386,19 +386,35 @@ export const CustomerProfile: React.FC = () => {
               { id: 'documents', label: 'Documents', icon: FileText },
               { id: 'tasks', label: 'Tasks', icon: CheckSquare },
               { id: 'activity', label: 'Activity', icon: Activity },
+              { id: 'copilot', label: 'CoPilot', icon: Sparkles },
             ].map((tab) => {
               const Icon = tab.icon;
+              const isCoPilotTab = tab.id === 'copilot';
+              const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center py-3 sm:py-4 px-2 sm:px-0 border-b-2 transition-colors whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${activeTab === tab.id
-                    ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
+                  className={`flex items-center py-3 sm:py-4 px-2 sm:px-0 border-b-2 transition-colors whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${
+                    isCoPilotTab
+                      ? isActive
+                        ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                        : 'border-transparent text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300'
+                      : isActive
+                        ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                        : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                  style={isCoPilotTab ? {
+                    textShadow: isActive ? '0 0 12px rgba(168,85,247,0.5)' : '0 0 8px rgba(168,85,247,0.3)',
+                  } : undefined}
                 >
-                  <Icon size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+                  <Icon size={16} className={`mr-1 sm:mr-2 flex-shrink-0 ${isCoPilotTab ? 'text-purple-500 dark:text-purple-400' : ''}`} />
                   {tab.label}
+                  {isCoPilotTab && (
+                    <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                      AI
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -470,6 +486,11 @@ export const CustomerProfile: React.FC = () => {
         {activeTab === 'documents' && <DocumentsTab customer={currentCustomer} />}
         {activeTab === 'tasks' && <TasksTab customer={currentCustomer} onAddTask={handleAddTask} />}
         {activeTab === 'activity' && <ActivityTab customer={currentCustomer} />}
+        {activeTab === 'copilot' && currentCustomer && (
+          <div className="space-y-6">
+            <CustomerCoPilotHistory customerId={currentCustomer.id} customerName={currentCustomer.name} />
+          </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -820,9 +841,6 @@ function OverviewTab({
 
         {/* AI Customer Summary */}
         <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
-
-        {/* CoPilot Conversation History */}
-        <CustomerCoPilotHistory customerId={customer.id} customerName={customer.name} />
 
         {/* Recent Calls */}
         {enabledModuleIds.includes('calls') && (

@@ -8,6 +8,7 @@ import { useOrganizationStore } from '@/stores/organizationStore';
 import { useCoPilot } from '@/contexts/CoPilotContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zkpfzrbbupgiqkzqydji.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 interface ConversationSummary {
   id: string;
@@ -33,10 +34,10 @@ const CustomerCoPilotHistory: React.FC<CustomerCoPilotHistoryProps> = ({ custome
 
   const { getEffectiveUserId, getEffectiveOrgId } = useImpersonationStore();
   const { user } = useAuthStore();
-  const { organization } = useOrganizationStore();
+  const { currentOrganization } = useOrganizationStore();
 
   const effectiveUserId = getEffectiveUserId(user?.id || '');
-  const effectiveOrgId = getEffectiveOrgId(organization?.id || '');
+  const effectiveOrgId = getEffectiveOrgId(currentOrganization?.id || '');
 
   const fetchConversations = useCallback(async () => {
     if (!effectiveUserId || !effectiveOrgId) return;
@@ -51,7 +52,7 @@ const CustomerCoPilotHistory: React.FC<CustomerCoPilotHistoryProps> = ({ custome
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'apikey': token,
+            'apikey': SUPABASE_ANON_KEY,
             'Content-Type': 'application/json',
           },
         }
@@ -73,7 +74,7 @@ const CustomerCoPilotHistory: React.FC<CustomerCoPilotHistoryProps> = ({ custome
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,
-                  'apikey': token,
+                  'apikey': SUPABASE_ANON_KEY,
                   'Content-Type': 'application/json',
                   'Prefer': 'count=exact',
                   'Range': '0-0',

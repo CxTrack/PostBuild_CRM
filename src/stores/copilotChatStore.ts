@@ -38,6 +38,7 @@ interface CopilotChatStore {
 
   // Utilities
   generateTitle: (firstMessage: string) => string;
+  generateAITitle: (conversationId: string, messages: Array<{ role: string; content: string }>) => Promise<void>;
 }
 
 /** Build auth + apikey headers for Supabase REST calls */
@@ -319,5 +320,47 @@ export const useCopilotChatStore = create<CopilotChatStore>((set, get) => ({
     const cleaned = firstMessage.replace(/\s+/g, ' ').trim();
     if (cleaned.length <= 60) return cleaned;
     return cleaned.substring(0, 57) + '...';
+  },
+
+  generateAITitle: async (conversationId, messages) => {
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      // Send first few messages as context for title generation
+      const context = messages.slice(0, 4).map(m => ({
+        role: m.role,
+        content: m.content.substring(0, 300),
+      }));
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/copilot-chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          titleGeneration: true,
+          titleContext: context,
+        }),
+      });
+
+      clearTimeout(timeout);
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const title = data.title?.trim();
+      if (title && title.length > 0 && title.length <= 80) {
+        // Persist to DB and update local state
+        await get().updateConversationTitle(conversationId, title);
+      }
+    } catch {
+      // Non-critical -- silently fall back to truncated title
+    }
   },
 }));

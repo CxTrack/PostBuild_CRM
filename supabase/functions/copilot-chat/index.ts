@@ -56,6 +56,9 @@ interface RequestBody {
     nextQuestionText?: string | null;
     cachedSiteContext?: string | null;
   };
+  // Title generation mode
+  titleGeneration?: boolean;
+  titleContext?: Array<{ role: string; content: string }>;
 }
 
 interface DataIntent {
@@ -853,6 +856,86 @@ Base your options on the business context provided. Be specific -- avoid generic
             tokensRemaining: Math.max(0, tokensRemaining - firecrawlTokenCost),
             tokensAllocated: tokenRecord.tokens_allocated,
           }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // === TITLE GENERATION MODE: lightweight AI title for conversation ===
+    if (body.titleGeneration && body.titleContext) {
+      if (!OPENROUTER_API_KEY) {
+        return new Response(
+          JSON.stringify({ title: null }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+
+      try {
+        const titleMessages: ChatMessage[] = [
+          {
+            role: "system",
+            content: "Generate a concise 3-8 word title for this conversation. Return ONLY the title text, nothing else. No quotes, no punctuation at the end. Examples: 'Pipeline review for Q2', 'Follow up with Sarah Chen', 'Monthly revenue analysis'.",
+          },
+          {
+            role: "user",
+            content: body.titleContext.map((m: any) => `${m.role}: ${m.content}`).join('\n'),
+          },
+        ];
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+
+        const titleRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://crm.cxtrack.com",
+            "X-Title": "CxTrack CoPilot",
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: "google/gemini-2.0-flash-001",
+            messages: titleMessages,
+            max_tokens: 30,
+            temperature: 0.3,
+          }),
+        });
+
+        clearTimeout(timeout);
+
+        if (!titleRes.ok) {
+          return new Response(
+            JSON.stringify({ title: null }),
+            { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+
+        const titleData = await titleRes.json();
+        const generatedTitle = titleData.choices?.[0]?.message?.content?.trim() || null;
+        const titleTokens = titleData.usage?.total_tokens || 20;
+
+        // Deduct minimal tokens
+        await supabaseAdmin
+          .from("ai_token_usage")
+          .update({
+            tokens_used: tokenRecord.tokens_used + titleTokens,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", tokenRecord.id);
+
+        return new Response(
+          JSON.stringify({
+            title: generatedTitle,
+            tokensUsed: tokenRecord.tokens_used + titleTokens,
+            tokensRemaining: Math.max(0, tokensRemaining - titleTokens),
+            tokensAllocated: tokenRecord.tokens_allocated,
+          }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      } catch {
+        return new Response(
+          JSON.stringify({ title: null }),
           { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
         );
       }

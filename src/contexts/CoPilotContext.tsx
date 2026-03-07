@@ -821,6 +821,7 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Auto-persist messages to database (fire-and-forget)
   const prevMessagesLengthRef = useRef(0);
+  const titleGeneratedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     // Skip during personalization interviews (ephemeral by design)
     if (isPersonalizationInterview) {
@@ -867,6 +868,20 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         savedMessageIdsRef.current.add(msg.id);
         const row = messageToRow(msg, convId);
         await store.saveMessage(row);
+      }
+
+      // Generate AI title after first AI response (non-blocking)
+      const hasFirstAssistantReply = newMessages.some(m => m.role === 'assistant' && !m.isAcknowledgment);
+      const allMessages = messages;
+      const hasUserAndAssistant = allMessages.some(m => m.role === 'user') && allMessages.some(m => m.role === 'assistant');
+      if (hasFirstAssistantReply && hasUserAndAssistant && !titleGeneratedRef.current.has(convId)) {
+        titleGeneratedRef.current.add(convId);
+        // Fire and forget -- don't await
+        const titleMessages = allMessages
+          .filter(m => !m.isAcknowledgment)
+          .slice(0, 4)
+          .map(m => ({ role: m.role, content: m.content }));
+        store.generateAITitle(convId, titleMessages);
       }
     })();
   }, [messages.length, activeConversationId, isPersonalizationInterview, conversationCustomerId, currentContext]);
