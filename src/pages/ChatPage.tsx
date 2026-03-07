@@ -251,6 +251,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
     const MAX_CHAT_ATTACHMENTS = 5;
+    const messageDraftsRef = useRef<Record<string, { text: string; files: File[] }>>({}); // Per-conversation drafts
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
     const [isTyping, setIsTyping] = useState(false); // Sparky AI typing indicator
@@ -559,6 +560,29 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         fetchUnreadCounts();
     }, [fetchUnreadCounts, conversations.length]);
 
+    // Switch conversation with per-conversation draft save/restore
+    const switchConversation = useCallback((conv: Conversation | null) => {
+        // Save current draft
+        if (activeConversation) {
+            const hasDraft = newMessage.trim() || attachedFiles.length > 0;
+            if (hasDraft) {
+                messageDraftsRef.current[activeConversation.id] = { text: newMessage, files: attachedFiles };
+            } else {
+                delete messageDraftsRef.current[activeConversation.id];
+            }
+        }
+        // Load new conversation's draft (or clear)
+        if (conv) {
+            const draft = messageDraftsRef.current[conv.id];
+            setNewMessage(draft?.text || '');
+            setAttachedFiles(draft?.files || []);
+        } else {
+            setNewMessage('');
+            setAttachedFiles([]);
+        }
+        setActiveConversation(conv);
+    }, [activeConversation, newMessage, attachedFiles]);
+
     const loadMessages = async (conversationId: string) => {
         if (conversationId === 'ai-agent') return;
         try {
@@ -640,6 +664,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const filesToSend = [...attachedFiles]; // capture before clearing
         setNewMessage('');
         setAttachedFiles([]);
+        // Clear per-conversation draft since we're sending
+        if (activeConversation) delete messageDraftsRef.current[activeConversation.id];
         setShowSmsSuggestions(false);
 
         const newMsg: Message = {
@@ -1307,7 +1333,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         );
 
         if (existing) {
-            setActiveConversation(existing);
+            switchConversation(existing);
             setShowNewMessageModal(false);
             return;
         }
@@ -1387,7 +1413,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             };
 
             setConversations(prev => [newConv, ...prev]);
-            setActiveConversation(newConv);
+            switchConversation(newConv);
             setShowNewMessageModal(false);
             setMessages([]);
         } catch (error) {
@@ -1551,7 +1577,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                     channel_type: 'direct',
                                                     participants: [{ user: { full_name: 'Sparky AI' } }]
                                                 };
-                                                setActiveConversation(aiConv);
+                                                switchConversation(aiConv);
                                                 // Reset ticket intake state
                                                 setTicketIntakeActive(false);
                                                 setTicketIntakeStep('idle');
@@ -1600,7 +1626,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {channels.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
@@ -1621,7 +1647,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {groups.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
@@ -1638,7 +1664,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             </button>
                                         </div>
                                         {directMessages.map(conv => (
-                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
+                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
                                         ))}
                                     </div>
 
@@ -1652,7 +1678,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </span>
                                             </div>
                                             {smsConversations.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => setActiveConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
                                             ))}
                                         </div>
                                     )}
@@ -1699,7 +1725,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             <div className="h-16 px-6 border-b border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between backdrop-blur-sm">
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => setActiveConversation(null)}
+                                        onClick={() => switchConversation(null)}
                                         className="md:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
                                     >
                                         <ArrowLeft size={20} />
@@ -2107,7 +2133,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         type={createType}
                         onCreated={(conv) => {
                             setConversations(prev => [conv, ...prev]);
-                            setActiveConversation(conv);
+                            switchConversation(conv);
                             setShowCreateGroupModal(false);
                         }}
                     />
