@@ -125,6 +125,11 @@ interface ImpersonationState {
   targetProfile: TargetProfile | null;
   loading: boolean;
 
+  /** Resolve effective user ID: returns impersonated target or the fallback (real user). */
+  getEffectiveUserId: (fallbackUserId: string) => string;
+  /** Resolve effective org ID: returns impersonated target or the fallback (real org). */
+  getEffectiveOrgId: (fallbackOrgId: string) => string;
+
   startImpersonation: (params: {
     targetUserId: string;
     targetUserName: string;
@@ -156,6 +161,18 @@ const initialState = {
 
 export const useImpersonationStore = create<ImpersonationState>()((set, get) => ({
   ...initialState,
+
+  getEffectiveUserId: (fallbackUserId: string): string => {
+    const { isImpersonating, targetUserId } = get();
+    if (isImpersonating && targetUserId) return targetUserId;
+    return fallbackUserId;
+  },
+
+  getEffectiveOrgId: (fallbackOrgId: string): string => {
+    const { isImpersonating, targetOrgId } = get();
+    if (isImpersonating && targetOrgId) return targetOrgId;
+    return fallbackOrgId;
+  },
 
   startImpersonation: async ({ targetUserId, targetUserName, targetUserEmail, targetOrgId, targetOrgName }) => {
     set({ loading: true });
