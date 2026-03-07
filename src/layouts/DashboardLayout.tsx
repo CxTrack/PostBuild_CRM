@@ -102,6 +102,7 @@ const MODULE_TOUR_IDS: Record<string, string> = {
 const HOME_ITEM: NavItem = { path: '/dashboard', icon: LayoutGrid, label: 'Home' };
 const SETTINGS_ITEM: NavItem = { path: '/dashboard/settings', icon: Settings, label: 'Settings' };
 const CHAT_ITEM: NavItem = { path: '/dashboard/chat', icon: MessageCircle, label: 'Chat' };
+const COPILOT_ITEM: NavItem = { path: '/dashboard/copilot', icon: Sparkles, label: 'CoPilot' };
 
 // Extract module ID from path for DnD sorting
 const getModuleIdFromPath = (path: string): string => {
@@ -722,6 +723,23 @@ export const DashboardLayout = () => {
             <BarChart3 size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
             {!sidebarCollapsed && <span className="font-medium">Reports</span>}
           </Link>
+
+          {/* CoPilot Link */}
+          <Link
+            to={COPILOT_ITEM.path}
+            className={
+              theme === 'soft-modern'
+                ? `nav-item flex items-center px-4 py-3 mt-1 ${isActive(COPILOT_ITEM.path) ? 'active' : ''}`
+                : `flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} mt-1 rounded-lg transition-colors ${isActive(COPILOT_ITEM.path)
+                  ? 'bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+            }
+            title={sidebarCollapsed ? 'CoPilot' : undefined}
+          >
+            <Sparkles size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
+            {!sidebarCollapsed && <span className="font-medium">CoPilot</span>}
+          </Link>
         </div>
 
         {/* User Profile */}
@@ -896,14 +914,14 @@ export const DashboardLayout = () => {
         </div>
       )}
 
-      {/* CoPilot Panel - slides in from side */}
-      <CoPilotPanel />
-
-      {/* CoPilot Button - fixed on right side when panel is closed */}
-      <CoPilotButton />
-
-      {/* Subtle CoPilot Introduction */}
-      <CoPilotIntro />
+      {/* CoPilot Panel + Button + Intro -- hidden on full-page CoPilot route */}
+      {location.pathname !== '/dashboard/copilot' && (
+        <>
+          <CoPilotPanel />
+          <CoPilotButton />
+          <CoPilotIntro />
+        </>
+      )}
     </div>
   );
 };

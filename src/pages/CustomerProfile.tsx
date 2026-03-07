@@ -7,7 +7,7 @@ import {
   TrendingUp, Upload, Download, File, Image, FileSpreadsheet,
   AlertTriangle, TicketPlus, PhoneIncoming, PhoneOutgoing, Clock, ShieldAlert,
   Reply, MailOpen, ArrowDownLeft, ArrowUpRight, UserCheck, Bot, PhoneCall, Loader2,
-  Building2, Star, Check, User
+  Building2, Star, Check, User, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -28,6 +28,7 @@ import CustomerModal from '@/components/customers/CustomerModal';
 import SendSMSModal from '@/components/sms/SendSMSModal';
 import SendEmailModal from '@/components/email/SendEmailModal';
 import AICustomerSummary from '@/components/customers/AICustomerSummary';
+import CustomerCoPilotHistory from '@/components/customers/CustomerCoPilotHistory';
 import RecentCallsSection from '@/components/customers/RecentCallsSection';
 import LogCallModal from '@/components/calls/LogCallModal';
 import { useCallStore } from '@/stores/callStore';
@@ -819,6 +820,9 @@ function OverviewTab({
 
         {/* AI Customer Summary */}
         <AICustomerSummary customerId={customer.id} customerName={customer.name} refreshTrigger={summaryRefreshTrigger} />
+
+        {/* CoPilot Conversation History */}
+        <CustomerCoPilotHistory customerId={customer.id} customerName={customer.name} />
 
         {/* Recent Calls */}
         {enabledModuleIds.includes('calls') && (
@@ -1866,8 +1870,9 @@ function ActivityTab({ customer }: { customer: Customer }) {
   const { notes } = useCustomerStore();
   const [smsLogs, setSmsLogs] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [copilotConversations, setCopilotConversations] = useState<any[]>([]);
 
-  // Fetch SMS + Email logs for this customer via direct REST API (AbortController-safe)
+  // Fetch SMS + Email + CoPilot logs for this customer via direct REST API (AbortController-safe)
   useEffect(() => {
     const fetchLogs = async () => {
       try {
@@ -1883,14 +1888,18 @@ function ActivityTab({ customer }: { customer: Customer }) {
           'apikey': SUPABASE_ANON_KEY,
         };
 
-        // Fetch both in parallel
-        const [smsRes, emailRes] = await Promise.all([
+        // Fetch all in parallel
+        const [smsRes, emailRes, copilotRes] = await Promise.all([
           fetch(
             `${SUPABASE_URL}/rest/v1/sms_log?customer_id=eq.${customer.id}&select=id,recipient_phone,message_body,status,template_key,sent_at,created_at&order=created_at.desc&limit=50`,
             { headers }
           ),
           fetch(
             `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,status,sent_at,created_at&order=sent_at.desc&limit=50`,
+            { headers }
+          ),
+          fetch(
+            `${SUPABASE_URL}/rest/v1/copilot_conversations?customer_id=eq.${customer.id}&select=id,title,context_type,status,created_at,updated_at&order=updated_at.desc&limit=20`,
             { headers }
           ),
         ]);
@@ -1902,6 +1911,10 @@ function ActivityTab({ customer }: { customer: Customer }) {
         if (emailRes.ok) {
           const data = await emailRes.json();
           setEmailLogs(data || []);
+        }
+        if (copilotRes.ok) {
+          const data = await copilotRes.json();
+          setCopilotConversations(data || []);
         }
       } catch {
         // Silent -- logs are supplementary
@@ -1989,6 +2002,14 @@ function ActivityTab({ customer }: { customer: Customer }) {
         date: new Date(note.created_at),
         status: note.is_pinned ? 'pinned' : null,
       })),
+    ...copilotConversations.map(conv => ({
+      type: 'copilot',
+      title: `CoPilot: ${conv.title}`,
+      description: conv.context_type === 'quarterback' ? 'AI Quarterback session' : 'AI assistant conversation',
+      date: new Date(conv.updated_at || conv.created_at),
+      status: conv.status,
+      conversationId: conv.id,
+    })),
     {
       type: 'created',
       title: 'Customer created',
@@ -2025,6 +2046,8 @@ function ActivityTab({ customer }: { customer: Customer }) {
                   return { icon: Mail, bg: 'bg-indigo-100 dark:bg-indigo-900/20', color: 'text-indigo-600 dark:text-indigo-400' };
                 case 'note':
                   return { icon: Edit2, bg: 'bg-amber-100 dark:bg-amber-900/20', color: 'text-amber-600 dark:text-amber-400' };
+                case 'copilot':
+                  return { icon: Sparkles, bg: 'bg-purple-100 dark:bg-purple-900/20', color: 'text-purple-600 dark:text-purple-400' };
                 default:
                   return { icon: Activity, bg: 'bg-primary-100 dark:bg-primary-900/20', color: 'text-primary-600 dark:text-primary-400' };
               }

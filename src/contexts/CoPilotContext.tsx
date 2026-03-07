@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useOrganizationStore } from '@/stores/organizationStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -11,6 +12,8 @@ import { getAuthToken } from '@/utils/auth.utils';
 import { useImpersonationStore } from '@/stores/impersonationStore';
 import { buildPersonalizationQuestions, buildPersonalizationSummaryMessage, type PersonalizationQuestion } from '@/config/personalization-questions.config';
 import { logQBEvent } from '@/utils/qbActionLog';
+import { useCopilotChatStore } from '@/stores/copilotChatStore';
+import { messageToRow, rowToMessage } from '@/utils/copilotMessageMapper';
 
 export interface Message {
   id: string;
@@ -78,6 +81,12 @@ interface CoPilotContextType {
   advancePersonalization: (answerText: string, hasOtherText?: boolean) => void;
   isPersonalizationInterview: boolean;
   pAcknowledgmentLoading: boolean;
+  // Persistent conversation management
+  activeConversationId: string | null;
+  conversationCustomerId: string | null;
+  startNewConversation: () => void;
+  loadConversation: (conversationId: string) => Promise<void>;
+  setConversationCustomerId: (customerId: string | null) => void;
 }
 
 const CoPilotContext = createContext<CoPilotContextType | undefined>(undefined);
@@ -95,6 +104,37 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     provider: 'internal',
     model: 'internal-assistant',
   });
+
+  // Location for auto-linking customer context
+  const location = useLocation();
+
+  // Persistent conversation state
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversationCustomerId, setConversationCustomerIdState] = useState<string | null>(null);
+  const savedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  // Auto-link customer context from URL when on a customer profile page
+  // This runs on route change so new conversations auto-inherit the customer ID
+  const prevAutoLinkedCustomerRef = useRef<string | null>(null);
+  useEffect(() => {
+    const match = location.pathname.match(/^\/dashboard\/customers\/([a-f0-9-]{36})$/i);
+    const urlCustomerId = match ? match[1] : null;
+
+    if (urlCustomerId && urlCustomerId !== prevAutoLinkedCustomerRef.current) {
+      // Navigated to a customer page -- auto-link if not already linked to a different customer
+      if (!conversationCustomerId || !activeConversationId) {
+        setConversationCustomerIdState(urlCustomerId);
+      }
+      prevAutoLinkedCustomerRef.current = urlCustomerId;
+    } else if (!urlCustomerId && prevAutoLinkedCustomerRef.current) {
+      // Navigated away from customer page -- only clear auto-link if no active conversation
+      // (to avoid clearing a manually linked customer)
+      if (!activeConversationId) {
+        setConversationCustomerIdState(null);
+      }
+      prevAutoLinkedCustomerRef.current = null;
+    }
+  }, [location.pathname, activeConversationId, conversationCustomerId]);
 
   // Personalization interview state
   const [pQuestions, setPQuestions] = useState<PersonalizationQuestion[]>([]);
@@ -115,6 +155,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (prevTargetRef.current !== null && prevTargetRef.current !== key) {
       setMessages([]);
       setTokenUsage(null);
+      setActiveConversationId(null);
+      savedMessageIdsRef.current.clear();
     }
     prevTargetRef.current = key;
   }, [isImpersonating, targetUserId]);
@@ -129,6 +171,8 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setActiveConversationId(null);
+    savedMessageIdsRef.current.clear();
   }, []);
 
   const addAssistantMessage = useCallback((msg: Omit<Message, 'id' | 'timestamp'>) => {
@@ -748,6 +792,95 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [pQuestions, pIndex, pAnswers, pIndustry, pSiteContext, injectPersonalizationQuestion, sendMessage, generateAIAcknowledgment, injectAcknowledgmentMessage]);
 
+  // --- Persistent Conversation Methods ---
+
+  const setConversationCustomerId = useCallback((customerId: string | null) => {
+    setConversationCustomerIdState(customerId);
+  }, []);
+
+  const startNewConversation = useCallback(() => {
+    setMessages([]);
+    setActiveConversationId(null);
+    savedMessageIdsRef.current.clear();
+  }, []);
+
+  const loadConversation = useCallback(async (conversationId: string) => {
+    const store = useCopilotChatStore.getState();
+    const rows = await store.loadMessages(conversationId);
+    const loaded = rows.map(rowToMessage);
+    setMessages(loaded);
+    setActiveConversationId(conversationId);
+    savedMessageIdsRef.current = new Set(loaded.map(m => m.id));
+
+    // Set customer link from loaded conversation
+    const conv = store.conversations.find(c => c.id === conversationId);
+    if (conv?.customer_id) {
+      setConversationCustomerIdState(conv.customer_id);
+    }
+  }, []);
+
+  // Auto-persist messages to database (fire-and-forget)
+  const prevMessagesLengthRef = useRef(0);
+  useEffect(() => {
+    // Skip during personalization interviews (ephemeral by design)
+    if (isPersonalizationInterview) {
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
+
+    if (messages.length <= prevMessagesLengthRef.current) {
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
+
+    const newMessages = messages.slice(prevMessagesLengthRef.current);
+    prevMessagesLengthRef.current = messages.length;
+
+    // Fire-and-forget persistence
+    (async () => {
+      const store = useCopilotChatStore.getState();
+      let convId = activeConversationId;
+
+      // Auto-create conversation on first message
+      if (!convId && newMessages.length > 0) {
+        const firstUserMsg = newMessages.find(m => m.role === 'user');
+        const contextType = currentContext?.data?.quarterbackMode ? 'quarterback' as const
+          : conversationCustomerId ? 'customer' as const
+          : 'general' as const;
+
+        convId = await store.createConversation({
+          customerId: conversationCustomerId,
+          contextType,
+          title: firstUserMsg ? store.generateTitle(firstUserMsg.content) : 'New Conversation',
+        });
+
+        if (convId) {
+          setActiveConversationId(convId);
+        }
+      }
+
+      if (!convId) return;
+
+      // Save each new message that hasn't been saved yet
+      for (const msg of newMessages) {
+        if (savedMessageIdsRef.current.has(msg.id)) continue;
+        savedMessageIdsRef.current.add(msg.id);
+        const row = messageToRow(msg, convId);
+        await store.saveMessage(row);
+      }
+    })();
+  }, [messages.length, activeConversationId, isPersonalizationInterview, conversationCustomerId, currentContext]);
+
+  // Persist feedback and action status updates
+  const persistMessageUpdate = useCallback(async (messageId: string, updates: Record<string, any>) => {
+    if (!activeConversationId || !savedMessageIdsRef.current.has(messageId)) return;
+    // Find the DB message ID -- our in-memory IDs are Date.now() strings, but saved ones use UUID
+    // Since we save in order, we can find by matching content
+    // For simplicity, do a fire-and-forget update by the in-memory ID stored in metadata
+    const store = useCopilotChatStore.getState();
+    await store.updateMessage(messageId, updates);
+  }, [activeConversationId]);
+
   return (
     <CoPilotContext.Provider
       value={{
@@ -775,6 +908,11 @@ export const CoPilotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         advancePersonalization,
         isPersonalizationInterview,
         pAcknowledgmentLoading,
+        activeConversationId,
+        conversationCustomerId,
+        startNewConversation,
+        loadConversation,
+        setConversationCustomerId,
       }}
     >
       {children}

@@ -49,6 +49,44 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
         // Silent -- email context is supplementary
       }
 
+      // Fetch recent CoPilot conversation context for this customer
+      let copilotContext = '';
+      try {
+        const supabaseUrl = getSupabaseUrl();
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const convRes = await fetch(
+          `${supabaseUrl}/rest/v1/copilot_conversations?customer_id=eq.${customerId}&status=eq.active&order=updated_at.desc&limit=3&select=id,title,context_type,updated_at`,
+          { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+        );
+        if (convRes.ok) {
+          const convs = await convRes.json();
+          if (convs.length > 0) {
+            // Fetch last 2 messages from each conversation as preview
+            const previews = await Promise.all(
+              convs.map(async (conv: any) => {
+                try {
+                  const msgRes = await fetch(
+                    `${supabaseUrl}/rest/v1/copilot_messages?conversation_id=eq.${conv.id}&order=created_at.desc&limit=2&select=role,content`,
+                    { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+                  );
+                  if (msgRes.ok) {
+                    const msgs = await msgRes.json();
+                    const preview = msgs.reverse().map((m: any) =>
+                      `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.substring(0, 150)}${m.content.length > 150 ? '...' : ''}`
+                    ).join(' | ');
+                    return `- "${conv.title}" (${conv.context_type}): ${preview}`;
+                  }
+                } catch { /* silent */ }
+                return `- "${conv.title}" (${conv.context_type})`;
+              })
+            );
+            copilotContext = `\n\nRECENT COPILOT CONVERSATIONS (${convs.length}): These are AI assistant chats linked to this customer:\n${previews.join('\n')}`;
+          }
+        }
+      } catch {
+        // Silent -- copilot context is supplementary
+      }
+
       const response = await fetch(`${getSupabaseUrl()}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: {
@@ -56,7 +94,7 @@ const AICustomerSummary: React.FC<AICustomerSummaryProps> = ({ customerId, custo
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: `[CONTEXT_SUMMARY_MODE] Summarize the CRM data for customer "${customerName}" (ID: ${customerId}). ONLY report what appears in the retrieved data — do NOT invent or assume any information. For each category (calls, tasks, pipeline deals, invoices, emails, notes), state what exists or say "none" if the data array is empty. Keep it concise — 3-5 sentences maximum. IMPORTANT: This is a read-only information panel. Do NOT include any interactive options, multiple choice (A/B/C/D), follow-up questions, or "What would you like to do next?" prompts. Just provide the summary.${emailContext}`,
+          message: `[CONTEXT_SUMMARY_MODE] Summarize the CRM data for customer "${customerName}" (ID: ${customerId}). ONLY report what appears in the retrieved data — do NOT invent or assume any information. For each category (calls, tasks, pipeline deals, invoices, emails, notes), state what exists or say "none" if the data array is empty. Keep it concise — 3-5 sentences maximum. IMPORTANT: This is a read-only information panel. Do NOT include any interactive options, multiple choice (A/B/C/D), follow-up questions, or "What would you like to do next?" prompts. Just provide the summary.${emailContext}${copilotContext}`,
           conversationHistory: [],
           context: {
             page: 'Customers',

@@ -71,6 +71,7 @@ const QuoteBuilder = lazyRetry(() => import('./pages/quotes/QuoteBuilder'));
 const InvoiceBuilder = lazyRetry(() => import('./pages/invoices/InvoiceBuilder'));
 const NewDealPage = lazyRetry(() => import('./pages/pipeline/NewDealPage'));
 const EmailPage = lazyRetry(() => import('./pages/EmailPage'));
+const CoPilotPage = lazyRetry(() => import('./pages/CoPilotPage'));
 
 // Lazy-loaded — Onboarding
 const ProfilePage = lazyRetry(() => import('./pages/onboarding/ProfilePage'));
@@ -224,6 +225,7 @@ export default function App() {
               <Route path="settings/stripe-callback" element={<StripeCallback />} />
               <Route path="settings/calcom-callback" element={<CalComCallback />} />
               <Route path="chat" element={<ChatPage />} />
+              <Route path="copilot" element={<CoPilotPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route element={<ProtectedRoute moduleId="suppliers" />}>
                 <Route path="suppliers" element={<Suppliers />} />
