@@ -47,8 +47,17 @@ const ConversationDocuments: React.FC<ConversationDocumentsProps> = ({ conversat
     const [uploading, setUploading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { currentOrganization } = useOrganizationStore();
+    const { currentOrganization, teamMembers } = useOrganizationStore();
     const { user } = useAuthContext();
+
+    // Build a name lookup from team members
+    const memberNameMap = useCallback(() => {
+        const map = new Map<string, string>();
+        teamMembers.forEach(m => {
+            if (m.id && m.full_name) map.set(m.id, m.full_name);
+        });
+        return map;
+    }, [teamMembers]);
 
     const fetchDocuments = useCallback(async () => {
         const token = getAuthToken();
@@ -57,18 +66,24 @@ const ConversationDocuments: React.FC<ConversationDocumentsProps> = ({ conversat
         setLoading(true);
         try {
             const res = await fetch(
-                `${supabaseUrl}/rest/v1/conversation_documents?conversation_id=eq.${conversationId}&select=*,uploader:user_profiles(full_name)&order=created_at.desc`,
+                `${supabaseUrl}/rest/v1/conversation_documents?conversation_id=eq.${conversationId}&select=*&order=created_at.desc`,
                 { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
             );
             if (res.ok) {
-                setDocuments(await res.json());
+                const docs: ConversationDocument[] = await res.json();
+                // Resolve uploader names from team members
+                const names = memberNameMap();
+                docs.forEach(doc => {
+                    doc.uploader = { full_name: names.get(doc.uploaded_by) || 'Unknown' };
+                });
+                setDocuments(docs);
             }
         } catch (err) {
             console.error('[ConversationDocuments] fetch error:', err);
         } finally {
             setLoading(false);
         }
-    }, [conversationId]);
+    }, [conversationId, memberNameMap]);
 
     useEffect(() => {
         fetchDocuments();
@@ -122,6 +137,26 @@ const ConversationDocuments: React.FC<ConversationDocumentsProps> = ({ conversat
                 doc.uploader = { full_name: user.user_metadata?.full_name || 'You' };
                 setDocuments(prev => [doc, ...prev]);
                 toast.success(`"${file.name}" uploaded`);
+
+                // Post system message to chat so it's visible in the conversation
+                try {
+                    await fetch(`${supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'apikey': supabaseAnonKey,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            conversation_id: conversationId,
+                            sender_id: user.id,
+                            content: `shared a file: ${file.name}`,
+                            message_type: 'system',
+                        }),
+                    });
+                } catch {
+                    // Non-critical: file uploaded but system message failed
+                }
             } else {
                 throw new Error('Failed to save document record');
             }
