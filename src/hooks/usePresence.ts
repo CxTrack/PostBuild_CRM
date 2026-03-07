@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import type { PresenceStatus, UserPresence } from '@/types/chat.types';
+import type { PresenceStatus, UserPresence, OrganizationChatPolicy } from '@/types/chat.types';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useOrganizationStore } from '@/stores/organizationStore';
 
@@ -19,21 +19,74 @@ function getAuthToken(): string | null {
     return null;
 }
 
+const DEFAULT_POLICY: OrganizationChatPolicy = {
+    organization_id: '',
+    enforce_honest_presence: false,
+    enforce_read_receipts: false,
+    allow_status_dnd: true,
+    allow_status_away: true,
+};
+
 export function usePresence() {
     const { user } = useAuthContext();
     const { currentOrganization } = useOrganizationStore();
     const [presenceMap, setPresenceMap] = useState<Map<string, UserPresence>>(new Map());
     const [manualStatus, setManualStatusState] = useState<{ status: PresenceStatus; message?: string } | null>(null);
+    const [chatPolicy, setChatPolicy] = useState<OrganizationChatPolicy>(DEFAULT_POLICY);
+    const [autoReply, setAutoReplyState] = useState<{ enabled: boolean; message: string }>({ enabled: false, message: '' });
     const lastActivityRef = useRef<number>(Date.now());
     const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const idleCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isIdleRef = useRef(false);
     const manualStatusRef = useRef(manualStatus);
+    const chatPolicyRef = useRef(chatPolicy);
 
-    // Keep ref in sync with state
+    // Keep refs in sync with state
+    useEffect(() => { manualStatusRef.current = manualStatus; }, [manualStatus]);
+    useEffect(() => { chatPolicyRef.current = chatPolicy; }, [chatPolicy]);
+
+    // Fetch org chat policies
     useEffect(() => {
-        manualStatusRef.current = manualStatus;
-    }, [manualStatus]);
+        if (!currentOrganization?.id) return;
+
+        const fetchPolicy = async () => {
+            const token = getAuthToken();
+            if (!token) return;
+            try {
+                const res = await fetch(
+                    `${supabaseUrl}/rest/v1/organization_chat_policies?organization_id=eq.${currentOrganization.id}&select=*`,
+                    { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.length > 0) {
+                        setChatPolicy(data[0]);
+                    }
+                }
+            } catch { /* silent */ }
+        };
+
+        fetchPolicy();
+
+        // Subscribe to policy changes in real-time
+        const channel = supabase
+            .channel('chat-policy-changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'organization_chat_policies',
+                filter: `organization_id=eq.${currentOrganization.id}`,
+            }, (payload) => {
+                if (payload.eventType === 'DELETE') {
+                    setChatPolicy(DEFAULT_POLICY);
+                } else {
+                    setChatPolicy(payload.new as OrganizationChatPolicy);
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [currentOrganization?.id]);
 
     // Upsert presence to DB
     const upsertPresence = useCallback(async (status: PresenceStatus, customMessage?: string) => {
@@ -110,19 +163,35 @@ export function usePresence() {
         };
     }, [user?.id, upsertPresence]);
 
-    // Idle check interval
+    // Idle check interval - now policy-aware
     useEffect(() => {
         if (!user?.id) return;
 
         idleCheckRef.current = setInterval(() => {
-            if (manualStatusRef.current) return; // Don't override manual status
+            const policy = chatPolicyRef.current;
+            const manual = manualStatusRef.current;
 
-            const elapsed = Date.now() - lastActivityRef.current;
-            if (elapsed >= IDLE_THRESHOLD && !isIdleRef.current) {
-                isIdleRef.current = true;
-                upsertPresence('idle');
+            // If enforce_honest_presence is ON:
+            // - Always mark idle after threshold regardless of manual status
+            // - Only DND overrides idle if policy allows it
+            if (policy.enforce_honest_presence) {
+                const elapsed = Date.now() - lastActivityRef.current;
+                if (elapsed >= IDLE_THRESHOLD && !isIdleRef.current) {
+                    // If manual DND is set and policy allows DND, keep DND
+                    if (manual?.status === 'dnd' && policy.allow_status_dnd) return;
+                    isIdleRef.current = true;
+                    upsertPresence('idle');
+                }
+            } else {
+                // Standard behavior: don't override manual status
+                if (manual) return;
+                const elapsed = Date.now() - lastActivityRef.current;
+                if (elapsed >= IDLE_THRESHOLD && !isIdleRef.current) {
+                    isIdleRef.current = true;
+                    upsertPresence('idle');
+                }
             }
-        }, 30_000); // Check every 30s
+        }, 30_000);
 
         return () => {
             if (idleCheckRef.current) clearInterval(idleCheckRef.current);
@@ -136,6 +205,28 @@ export function usePresence() {
         // Set online on mount
         upsertPresence('online');
 
+        // Also fetch my auto-reply settings
+        const fetchMyPresence = async () => {
+            const token = getAuthToken();
+            if (!token) return;
+            try {
+                const res = await fetch(
+                    `${supabaseUrl}/rest/v1/user_presence?user_id=eq.${user.id}&select=auto_reply_enabled,auto_reply_message`,
+                    { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.length > 0) {
+                        setAutoReplyState({
+                            enabled: data[0].auto_reply_enabled || false,
+                            message: data[0].auto_reply_message || '',
+                        });
+                    }
+                }
+            } catch { /* silent */ }
+        };
+        fetchMyPresence();
+
         // Start heartbeat
         heartbeatRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
@@ -143,7 +234,6 @@ export function usePresence() {
         const handleBeforeUnload = () => {
             const token = getAuthToken();
             if (!token || !user?.id) return;
-            // Use sendBeacon for reliable delivery on page close
             const body = JSON.stringify({
                 user_id: user.id,
                 status: 'offline',
@@ -162,7 +252,6 @@ export function usePresence() {
         return () => {
             if (heartbeatRef.current) clearInterval(heartbeatRef.current);
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            // Set offline on unmount
             upsertPresence('offline');
         };
     }, [user?.id, currentOrganization?.id, upsertPresence, sendHeartbeat]);
@@ -171,7 +260,6 @@ export function usePresence() {
     useEffect(() => {
         if (!currentOrganization?.id) return;
 
-        // Initial fetch of all org presence
         const fetchAllPresence = async () => {
             const token = getAuthToken();
             if (!token) return;
@@ -191,7 +279,6 @@ export function usePresence() {
 
         fetchAllPresence();
 
-        // Realtime subscription for changes
         const channel = supabase
             .channel('presence-changes')
             .on('postgres_changes', {
@@ -228,6 +315,14 @@ export function usePresence() {
     }, [presenceMap]);
 
     const setMyStatus = useCallback(async (status: PresenceStatus, customMessage?: string) => {
+        // Policy enforcement: block certain statuses
+        if (chatPolicyRef.current.enforce_honest_presence && status === 'online' && isIdleRef.current) {
+            // Can't fake "online" when actually idle under honest presence
+            return;
+        }
+        if (!chatPolicyRef.current.allow_status_dnd && status === 'dnd') return;
+        if (!chatPolicyRef.current.allow_status_away && status === 'away') return;
+
         setManualStatusState({ status, message: customMessage });
         await upsertPresence(status, customMessage);
     }, [upsertPresence]);
@@ -239,5 +334,69 @@ export function usePresence() {
         await upsertPresence('online');
     }, [upsertPresence]);
 
-    return { presenceMap, getPresenceStatus, setMyStatus, clearManualStatus, manualStatus };
+    // Auto-reply management
+    const setAutoReply = useCallback(async (enabled: boolean, message: string) => {
+        const token = getAuthToken();
+        if (!token || !user?.id) return;
+
+        setAutoReplyState({ enabled, message });
+
+        try {
+            await fetch(`${supabaseUrl}/rest/v1/user_presence?user_id=eq.${user.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({
+                    auto_reply_enabled: enabled,
+                    auto_reply_message: message || null,
+                    updated_at: new Date().toISOString(),
+                }),
+            });
+        } catch (err) {
+            console.error('[Presence] auto-reply update failed:', err);
+        }
+    }, [user?.id]);
+
+    // Save/update org chat policy (admin only)
+    const saveChatPolicy = useCallback(async (policy: Partial<OrganizationChatPolicy>) => {
+        const token = getAuthToken();
+        const orgId = currentOrganization?.id;
+        if (!token || !orgId || !user?.id) return;
+
+        try {
+            await fetch(`${supabaseUrl}/rest/v1/organization_chat_policies`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates',
+                },
+                body: JSON.stringify({
+                    organization_id: orgId,
+                    ...policy,
+                    updated_by: user.id,
+                    updated_at: new Date().toISOString(),
+                }),
+            });
+        } catch (err) {
+            console.error('[Presence] policy save failed:', err);
+        }
+    }, [user?.id, currentOrganization?.id]);
+
+    return {
+        presenceMap,
+        getPresenceStatus,
+        setMyStatus,
+        clearManualStatus,
+        manualStatus,
+        chatPolicy,
+        saveChatPolicy,
+        autoReply,
+        setAutoReply,
+    };
 }

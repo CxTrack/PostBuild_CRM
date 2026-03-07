@@ -14,6 +14,21 @@ export interface UserPresence {
     last_seen_at: string;
     last_heartbeat_at: string;
     updated_at?: string;
+    auto_reply_enabled?: boolean;
+    auto_reply_message?: string;
+}
+
+// =====================================================
+// ORGANIZATION CHAT POLICIES
+// =====================================================
+export interface OrganizationChatPolicy {
+    organization_id: string;
+    enforce_honest_presence: boolean;
+    enforce_read_receipts: boolean;
+    allow_status_dnd: boolean;
+    allow_status_away: boolean;
+    updated_by?: string;
+    updated_at?: string;
 }
 
 // =====================================================

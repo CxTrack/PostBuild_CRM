@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle, Pin, PinOff, Tag, FileText, ChevronDown, Crown, Shield, User, UserMinus, LogOut, UserPlus, MessageSquare, FolderOpen } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle, Pin, PinOff, Tag, FileText, ChevronDown, Crown, Shield, User, UserMinus, LogOut, UserPlus, MessageSquare, FolderOpen, Mail } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS, ConversationLabel, LABEL_COLORS } from '@/types/chat.types';
 import type { PresenceStatus } from '@/types/chat.types';
@@ -315,7 +315,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     // Phase 1: Advanced Chat features
-    const { getPresenceStatus, setMyStatus, clearManualStatus, manualStatus } = usePresence();
+    const { getPresenceStatus, setMyStatus, clearManualStatus, manualStatus, chatPolicy, saveChatPolicy, autoReply, setAutoReply } = usePresence();
+    const autoReplySentRef = useRef<Record<string, number>>({}); // conversationId -> timestamp of last auto-reply
     const [showMembersPanel, setShowMembersPanel] = useState(false);
     const [showAddMembersModal, setShowAddMembersModal] = useState(false);
     const [showLabelManager, setShowLabelManager] = useState(false);
@@ -855,6 +856,33 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     if (!msgRes.ok) {
                         console.error('Message send failed:', msgRes.status);
                         toast.error('Failed to save message.');
+                    }
+
+                    // Auto-reply: if recipient in a DM has auto_reply_enabled, insert a system message (throttled to 1hr per conversation)
+                    if (msgRes.ok && activeConversation.channel_type === 'direct') {
+                        const otherUserId = activeConversation.participants?.[0]?.user?.id;
+                        if (otherUserId) {
+                            const otherPresence = getPresenceStatus(otherUserId);
+                            if (otherPresence?.auto_reply_enabled && otherPresence?.auto_reply_message) {
+                                const lastSent = autoReplySentRef.current[activeConversation.id] || 0;
+                                const hourAgo = Date.now() - 60 * 60 * 1000;
+                                if (lastSent < hourAgo) {
+                                    autoReplySentRef.current[activeConversation.id] = Date.now();
+                                    const otherName = activeConversation.participants?.[0]?.user?.full_name || 'User';
+                                    // Show as a local system message (not saved to DB to avoid noise)
+                                    const autoReplyMsg: Message = {
+                                        id: `auto-reply-${Date.now()}`,
+                                        content: `${otherName} is away: "${otherPresence.auto_reply_message}"`,
+                                        sender_id: 'system',
+                                        message_type: 'system',
+                                        created_at: new Date().toISOString(),
+                                        sender: { full_name: 'System' },
+                                        reactions: [],
+                                    };
+                                    setMessages(prev => [...prev, autoReplyMsg]);
+                                }
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error('Error sending message:', err);
@@ -1700,31 +1728,48 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 >
                                     <span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${statusColors[manualStatus || 'online']}`} />
                                     <User size={18} />
+                                    {autoReply.enabled && <span className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-amber-500 rounded-full" title="Auto-reply active" />}
                                 </button>
                                 {showStatusSelector && (
                                     <>
                                         <div className="fixed inset-0 z-40" onClick={() => setShowStatusSelector(false)} />
-                                        <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                                             <div className="p-1">
-                                                {(['online', 'away', 'dnd', 'offline'] as PresenceStatus[]).map(s => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => {
-                                                            if (s === 'online') { clearManualStatus(); }
-                                                            else { setMyStatus(s); }
-                                                            setShowStatusSelector(false);
-                                                        }}
-                                                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
-                                                            (manualStatus || 'online') === s
-                                                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                                                        }`}
-                                                    >
-                                                        <span className={`w-2.5 h-2.5 rounded-full ${statusColors[s]}`} />
-                                                        {statusLabels[s]}
-                                                    </button>
-                                                ))}
+                                                {(['online', 'away', 'dnd', 'offline'] as PresenceStatus[]).map(s => {
+                                                    // Policy restrictions
+                                                    const disabled = (s === 'dnd' && !chatPolicy.allow_status_dnd)
+                                                        || (s === 'away' && !chatPolicy.allow_status_away);
+                                                    return (
+                                                        <button
+                                                            key={s}
+                                                            onClick={() => {
+                                                                if (disabled) return;
+                                                                if (s === 'online') { clearManualStatus(); }
+                                                                else { setMyStatus(s); }
+                                                                setShowStatusSelector(false);
+                                                            }}
+                                                            disabled={disabled}
+                                                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
+                                                                disabled ? 'opacity-40 cursor-not-allowed' :
+                                                                (manualStatus || 'online') === s
+                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                                            }`}
+                                                        >
+                                                            <span className={`w-2.5 h-2.5 rounded-full ${statusColors[s]}`} />
+                                                            <span className="flex-1 text-left">{statusLabels[s]}</span>
+                                                            {disabled && <Shield size={10} className="text-amber-500" title="Blocked by org policy" />}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
+                                            {chatPolicy.enforce_honest_presence && (
+                                                <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                                        <Shield size={10} /> Honest presence enforced
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 )}
@@ -2067,6 +2112,27 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* OOO Auto-Reply Banner */}
+                            {activeConversation.channel_type === 'direct' && activeConversation.id !== 'ai-agent' && (() => {
+                                const otherUserId = activeConversation.participants?.[0]?.user?.id;
+                                if (!otherUserId) return null;
+                                const otherPresence = getPresenceStatus(otherUserId);
+                                if (!otherPresence?.auto_reply_enabled || !otherPresence?.auto_reply_message) return null;
+                                return (
+                                    <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/15 border-b border-amber-200/50 dark:border-amber-800/30 flex items-start gap-2">
+                                        <Mail size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                                                {activeConversation.participants?.[0]?.user?.full_name || 'This person'} has auto-reply on
+                                            </p>
+                                            <p className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-0.5 italic">
+                                                "{otherPresence.auto_reply_message}"
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Tab bar: Chat | Files (hidden for Sparky AI and SMS) */}
                             {activeConversation.id !== 'ai-agent' && activeConversation.channel_type !== 'sms' && (
@@ -2509,6 +2575,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                 onClose={() => setShowSettings(false)}
                 settings={chatSettings}
                 onSave={handleSaveSettings}
+                chatPolicy={chatPolicy}
+                onSavePolicy={saveChatPolicy}
+                autoReply={autoReply}
+                onSaveAutoReply={setAutoReply}
             />
         </div>
     );
