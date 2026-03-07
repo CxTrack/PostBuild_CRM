@@ -49,12 +49,33 @@ type Connection = Record<string, unknown>
 async function getValidToken(
   supabase: SupabaseAdmin,
   connection: Connection,
-): Promise<{ token: string | null; error?: string }> {
+): Promise<{ token: string | null; error?: string; reconnect?: boolean }> {
+  // Check if vault entries even exist (they may have been deleted)
   const { data: accessToken, error: vaultErr } = await supabase.rpc('vault_read_secret', {
     p_id: connection.access_token_vault_id,
   })
+
   if (vaultErr || !accessToken) {
-    return { token: null, error: `Token not found for ${connection.provider}` }
+    // Check if refresh token also missing -- if both are gone, user must reconnect
+    const { data: refreshToken } = await supabase.rpc('vault_read_secret', {
+      p_id: connection.refresh_token_vault_id,
+    })
+    if (!refreshToken) {
+      // Both tokens missing from vault -- mark connection as disconnected
+      await supabase.from('email_oauth_connections')
+        .update({ status: 'disconnected', updated_at: new Date().toISOString() })
+        .eq('id', connection.id)
+      return {
+        token: null,
+        reconnect: true,
+        error: `Your ${connection.provider === 'microsoft' ? 'Outlook' : 'Gmail'} connection has expired. Please reconnect in Settings.`,
+      }
+    }
+    // Access token missing but refresh exists -- try refresh
+    if (connection.provider === 'google') {
+      return refreshGoogleToken(supabase, connection)
+    }
+    return refreshMicrosoftToken(supabase, connection)
   }
 
   const expiresAt = new Date(connection.access_token_expires_at as string)
@@ -739,11 +760,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get valid token
-    const { token, error: tokenError } = await getValidToken(supabase, connection)
+    const { token, error: tokenError, reconnect } = await getValidToken(supabase, connection)
     if (!token) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'token_error',
+        error: reconnect ? 'reconnect_required' : 'token_error',
         message: tokenError || 'Could not get a valid access token',
         synced: 0,
       }), { status: 401, headers })

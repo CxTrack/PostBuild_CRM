@@ -233,7 +233,9 @@ export default function EmailPage() {
   const handleSync = async () => {
     if (!orgId || syncing) return;
     const result = await syncNow(orgId);
-    if (result.synced > 0) {
+    if (result.error_code === 'reconnect_required') {
+      toast.error(result.message || 'Email connection expired. Please reconnect in Settings.', { duration: 6000 });
+    } else if (result.synced > 0) {
       toast.success(`Synced ${result.synced} new email${result.synced > 1 ? 's' : ''}`);
       if (userId) fetchThreads(orgId, userId);
     } else if (result.graph_error) {

@@ -420,17 +420,31 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
 
       const data = await res.json();
       console.log('[emailStore] syncNow response:', data);
+
+      // If reconnect required, update connection status so UI reflects it
+      if (data.error === 'reconnect_required') {
+        set({ syncing: false, connectionStatus: 'disconnected' });
+        return {
+          synced: 0,
+          message: data.message || '',
+          graph_error: '',
+          error_code: 'reconnect_required',
+          steps: [],
+        };
+      }
+
       set({ syncing: false, lastSyncAt: data.success ? new Date().toISOString() : get().lastSyncAt });
       return {
         synced: data.synced || 0,
         message: data.message || '',
         graph_error: data.graph_error || '',
+        error_code: data.error || '',
         steps: data.steps || [],
       };
     } catch (err) {
       console.error('[emailStore] syncNow error:', err);
       set({ syncing: false });
-      return { synced: 0, message: '', graph_error: '', steps: [] };
+      return { synced: 0, message: '', graph_error: '', error_code: '', steps: [] };
     }
   },
 
