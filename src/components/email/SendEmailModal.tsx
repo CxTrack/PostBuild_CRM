@@ -192,7 +192,7 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({
         to_email: toEmail.trim(),
         subject: subject.trim(),
         body_text: body.trim(),
-        body_html: `<div style="font-family: sans-serif; line-height: 1.6;">${body.trim().replace(/\n/g, '<br>')}</div>`,
+        body_html: `<div style="font-family: sans-serif; line-height: 1.6; color: #000000;">${body.trim().replace(/\n/g, '<br>')}</div>`,
         customer_id: customerId || null,
         organization_id: orgId || null,
         template_key: selectedTemplateKey || null,

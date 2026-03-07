@@ -594,9 +594,9 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="Lead">Lead</option>
+              <option value="Active" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Active</option>
+              <option value="Inactive" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Inactive</option>
+              <option value="Lead" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Lead</option>
             </select>
           </div>
 
@@ -726,9 +726,9 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
                 onChange={(e) => setAssignedTo(e.target.value)}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
-                <option value="">Auto-assign to me</option>
+                <option value="" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Auto-assign to me</option>
                 {teamMembers.map((member) => (
-                  <option key={member.id} value={member.id}>
+                  <option key={member.id} value={member.id} className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                     {member.full_name || member.email}{member.full_name ? ` (${member.email})` : ''}
                   </option>
                 ))}

@@ -361,8 +361,8 @@ export default function CustomerForm() {
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Active" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Active</option>
+                    <option value="Inactive" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Inactive</option>
                   </select>
                 </div>
                 <div>
@@ -374,9 +374,9 @@ export default function CustomerForm() {
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
+                    <option value="Low" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Low</option>
+                    <option value="Medium" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Medium</option>
+                    <option value="High" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">High</option>
                   </select>
                 </div>
                 <div>
@@ -388,10 +388,10 @@ export default function CustomerForm() {
                     onChange={(e) => setFormData({ ...formData, preferred_contact_method: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="email">Email</option>
-                    <option value="phone">Phone</option>
-                    <option value="sms">SMS</option>
-                    <option value="any">Any</option>
+                    <option value="email" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Email</option>
+                    <option value="phone" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Phone</option>
+                    <option value="sms" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">SMS</option>
+                    <option value="any" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white">Any</option>
                   </select>
                 </div>
               </div>
