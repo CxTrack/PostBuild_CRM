@@ -691,14 +691,14 @@ export const DashboardLayout = () => {
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`
             }
-            title={sidebarCollapsed ? `Team Chat${chatUnreadCount > 0 ? ` (${chatUnreadCount} unread)` : ''}` : undefined}
+            title={sidebarCollapsed ? `Messages${chatUnreadCount > 0 ? ` (${chatUnreadCount} unread)` : ''}` : undefined}
           >
             <div className="flex items-center relative">
               <MessageCircle size={20} className={sidebarCollapsed ? '' : 'mr-3'} />
               {sidebarCollapsed && chatUnreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white dark:ring-gray-900" />
               )}
-              {!sidebarCollapsed && <span className="font-medium">Team Chat</span>}
+              {!sidebarCollapsed && <span className="font-medium">Messages</span>}
             </div>
             {!sidebarCollapsed && chatUnreadCount > 0 && (
               <span className="ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center text-[10px] font-semibold rounded-full bg-blue-500 text-white">

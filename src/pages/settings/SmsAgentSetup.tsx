@@ -150,7 +150,7 @@ export default function SmsAgentSetup() {
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white">SMS Agent</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isActive ? 'Active - AI suggestions enabled in Team Chat' : 'Configure your SMS AI assistant'}
+                {isActive ? 'Active - AI suggestions enabled in Messages' : 'Configure your SMS AI assistant'}
               </p>
             </div>
           </div>
@@ -333,7 +333,7 @@ export default function SmsAgentSetup() {
 
           <ToggleRow
             label="AI Response Suggestions"
-            description="Show AI-generated response options when customers text you in Team Chat"
+            description="Show AI-generated response options when customers text you in Messages"
             icon={<MessageCircle className="w-4 h-4 text-green-500" />}
             checked={formData.suggestions_enabled}
             onChange={(v) => updateField('suggestions_enabled', v)}

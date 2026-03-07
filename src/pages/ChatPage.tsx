@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -128,7 +129,33 @@ const MessageBubble = React.memo<{
                     ? (isSms ? 'bg-green-600 text-white rounded-br-sm' : 'bg-blue-600 text-white rounded-br-sm')
                     : (isInboundSms ? 'bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-white rounded-bl-sm border border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm')}
     `}>
-                <p className={`${compact ? 'text-sm' : 'text-[15px]'} leading-relaxed whitespace-pre-wrap`}>{msg.content}</p>
+                {/* Text content - hide generic "Sent X file(s)" if attachments present */}
+                {msg.content && !(msg.content.match(/^Sent \d+ file\(s\)$/) && (msg.metadata as any)?.attachments?.length > 0) && (
+                    <p className={`${compact ? 'text-sm' : 'text-[15px]'} leading-relaxed whitespace-pre-wrap`}>{msg.content}</p>
+                )}
+                {/* Attachment rendering */}
+                {(msg.metadata as any)?.attachments?.map((att: any, i: number) => (
+                    att.file_type?.startsWith('image/') ? (
+                        <img
+                            key={i}
+                            src={att.file_url}
+                            alt={att.file_name}
+                            className="mt-2 max-w-full rounded-lg max-h-64 object-contain cursor-pointer"
+                            onClick={() => window.open(att.file_url, '_blank')}
+                            loading="lazy"
+                        />
+                    ) : (
+                        <a
+                            key={i}
+                            href={att.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`mt-2 flex items-center gap-2 text-sm ${displayOwn ? 'text-blue-100 hover:text-white' : 'text-blue-600 dark:text-blue-400 hover:underline'}`}
+                        >
+                            <Paperclip size={14} /> {att.file_name}
+                        </a>
+                    )
+                ))}
                 <p className={`text-[10px] mt-1 flex items-center gap-1 ${displayOwn ? (isSms ? 'text-green-100' : 'text-blue-100') : 'text-gray-500 dark:text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     {/* Read receipt checkmarks for own messages */}
@@ -211,6 +238,7 @@ const ConversationItem = React.memo<{
 ConversationItem.displayName = 'ConversationItem';
 
 export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
+    const navigate = useNavigate();
     const { user } = useAuthContext();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -221,7 +249,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [showNewMessageModal, setShowNewMessageModal] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [attachedFile, setAttachedFile] = useState<File | null>(null);
+    const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+    const MAX_CHAT_ATTACHMENTS = 5;
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
     const [isTyping, setIsTyping] = useState(false); // Sparky AI typing indicator
@@ -567,17 +596,55 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
     };
 
+    // Upload a file to chat-attachments bucket and return metadata
+    const uploadChatAttachment = async (file: File, conversationId: string): Promise<{ file_name: string; file_type: string; file_size: number; file_url: string } | null> => {
+        const token = getAuthToken();
+        const orgId = currentOrganization?.id;
+        if (!token || !orgId) return null;
+        try {
+            const fileExt = file.name.split('.').pop() || 'bin';
+            const filePath = `${orgId}/${conversationId}/${crypto.randomUUID()}.${fileExt}`;
+            // Upload via direct fetch (AbortController workaround)
+            const formData = new FormData();
+            formData.append('', file);
+            const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/chat-attachments/${filePath}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey },
+                body: formData,
+            });
+            if (!uploadRes.ok) {
+                console.error('Chat attachment upload failed:', uploadRes.status);
+                return null;
+            }
+            // Get signed URL (1 hour expiry)
+            const signRes = await fetch(`${supabaseUrl}/storage/v1/object/sign/chat-attachments/${filePath}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expiresIn: 3600 }),
+            });
+            const signData = await signRes.json();
+            const signedUrl = signData?.signedURL
+                ? `${supabaseUrl}/storage/v1${signData.signedURL}`
+                : `${supabaseUrl}/storage/v1/object/chat-attachments/${filePath}`;
+            return { file_name: file.name, file_type: file.type, file_size: file.size, file_url: signedUrl };
+        } catch (err) {
+            console.error('Chat attachment upload error:', err);
+            return null;
+        }
+    };
+
     const sendMessage = async () => {
-        if ((!newMessage.trim() && !attachedFile) || !activeConversation) return;
+        if ((!newMessage.trim() && attachedFiles.length === 0) || !activeConversation) return;
 
         const messageContent = newMessage;
+        const filesToSend = [...attachedFiles]; // capture before clearing
         setNewMessage('');
-        setAttachedFile(null);
+        setAttachedFiles([]);
         setShowSmsSuggestions(false);
 
         const newMsg: Message = {
             id: `temp-${Date.now()}`,
-            content: messageContent,
+            content: messageContent || (filesToSend.length > 0 ? `Sent ${filesToSend.length} file(s)` : ''),
             sender_id: user?.id || 'user-me',
             created_at: new Date().toISOString(),
             sender: { full_name: 'Me' },
@@ -591,6 +658,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             const token = getAuthToken();
             if (token) {
                 try {
+                    // Upload all attached files in parallel
+                    let attachmentsMeta: { file_name: string; file_type: string; file_size: number; file_url: string }[] = [];
+                    if (filesToSend.length > 0) {
+                        const results = await Promise.all(filesToSend.map(f => uploadChatAttachment(f, activeConversation.id)));
+                        attachmentsMeta = results.filter((r): r is NonNullable<typeof r> => r !== null);
+                        if (attachmentsMeta.length < filesToSend.length) {
+                            toast.error(`${filesToSend.length - attachmentsMeta.length} file(s) failed to upload.`);
+                        }
+                    }
+                    const hasImages = attachmentsMeta.some(a => a.file_type.startsWith('image/'));
+
                     // For SMS conversations, send the message as an SMS too
                     if (activeConversation.channel_type === 'sms' && (activeConversation as any).customer_phone) {
                         const chatOrgId = useOrganizationStore.getState().currentOrganization?.id;
@@ -625,8 +703,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         body: JSON.stringify({
                             conversation_id: activeConversation.id,
                             sender_id: user.id,
-                            content: messageContent,
-                            message_type: activeConversation.channel_type === 'sms' ? 'sms' : 'text',
+                            content: messageContent || (attachmentsMeta.length > 0 ? `Sent ${attachmentsMeta.length} file(s)` : ''),
+                            message_type: hasImages ? 'image' : (attachmentsMeta.length > 0 ? 'file' : (activeConversation.channel_type === 'sms' ? 'sms' : 'text')),
+                            ...(attachmentsMeta.length > 0 ? { metadata: { attachments: attachmentsMeta } } : {}),
                         }),
                     });
                     if (!msgRes.ok) {
@@ -708,7 +787,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             message: messageContent,
                             conversationHistory: recentMessages,
                             context: {
-                                page: 'Team Chat',
+                                page: 'Messages',
                                 industry: org?.industry_template || 'general_business',
                                 orgName: org?.name || 'Your Organization',
                                 userRole: membership?.role || 'user',
@@ -1650,16 +1729,26 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                         </div>
                                     </div>
                                 </div>
-                                {/* Clear Chat Button */}
-                                {activeConversation.id !== 'ai-agent' && (
+                                <div className="flex items-center gap-1">
+                                    {/* Clear Chat Button */}
+                                    {activeConversation.id !== 'ai-agent' && (
+                                        <button
+                                            onClick={handleClearChat}
+                                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                                            title="Clear chat history"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                    {/* Close/Exit Chat Button */}
                                     <button
-                                        onClick={handleClearChat}
-                                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-gray-400 hover:text-red-500 transition-colors"
-                                        title="Clear chat history"
+                                        onClick={() => navigate('/dashboard')}
+                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                        title="Close chat"
                                     >
-                                        <Trash2 size={16} />
+                                        <X size={18} />
                                     </button>
-                                )}
+                                </div>
                             </div>
 
                             {/* Messages Area */}
@@ -1707,10 +1796,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Attached File Preview */}
-                            {attachedFile && (
+                            {/* Attached Files Preview */}
+                            {attachedFiles.length > 0 && (
                                 <div className="px-4 py-2 border-t border-gray-200/50 dark:border-gray-700/50">
-                                    <FilePreview file={attachedFile} onRemove={() => setAttachedFile(null)} />
+                                    <div className="flex flex-wrap gap-2">
+                                        {attachedFiles.map((file, i) => (
+                                            <FilePreview key={i} file={file} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">{attachedFiles.length}/{MAX_CHAT_ATTACHMENTS} files</p>
                                 </div>
                             )}
 
@@ -1893,8 +1987,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                         />
                                     ) : (
                                         <FileAttachmentButton
-                                            onFileSelect={setAttachedFile}
-                                            disabled={!!attachedFile}
+                                            onFileSelect={(file) => {
+                                                if (attachedFiles.length < MAX_CHAT_ATTACHMENTS) {
+                                                    setAttachedFiles(prev => [...prev, file]);
+                                                } else {
+                                                    toast.error(`Maximum ${MAX_CHAT_ATTACHMENTS} files per message`);
+                                                }
+                                            }}
+                                            disabled={attachedFiles.length >= MAX_CHAT_ATTACHMENTS}
                                         />
                                     )}
 
@@ -1924,13 +2024,34 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 }
                                             }
                                         }}
+                                        onPaste={(e) => {
+                                            const items = e.clipboardData?.items;
+                                            if (!items) return;
+                                            const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+                                            if (imageItems.length === 0) return; // allow normal text paste
+                                            e.preventDefault();
+                                            const remaining = MAX_CHAT_ATTACHMENTS - attachedFiles.length;
+                                            if (remaining <= 0) {
+                                                toast.error(`Maximum ${MAX_CHAT_ATTACHMENTS} files per message`);
+                                                return;
+                                            }
+                                            const newFiles: File[] = [];
+                                            for (const item of imageItems.slice(0, remaining)) {
+                                                const file = item.getAsFile();
+                                                if (file) {
+                                                    const ext = file.type.split('/')[1] || 'png';
+                                                    newFiles.push(new File([file], `pasted-image-${Date.now()}-${newFiles.length}.${ext}`, { type: file.type }));
+                                                }
+                                            }
+                                            if (newFiles.length > 0) setAttachedFiles(prev => [...prev, ...newFiles]);
+                                        }}
                                         onKeyPress={handleKeyPress}
                                     />
 
                                     {/* Send Button */}
                                     <button
                                         onClick={sendMessage}
-                                        disabled={!newMessage.trim() && !attachedFile}
+                                        disabled={!newMessage.trim() && attachedFiles.length === 0}
                                         className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 text-white rounded-full transition-all"
                                     >
                                         <Send size={18} />
