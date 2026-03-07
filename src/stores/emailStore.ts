@@ -120,6 +120,7 @@ interface EmailStore {
   syncing: boolean;
   unreadCount: number;
   connectionStatus: 'connected' | 'disconnected' | 'unknown';
+  lastSyncAt: string | null;
 
   fetchThreads: (orgId: string, userId: string) => Promise<void>;
   markAsRead: (emailIds: string[]) => Promise<void>;
@@ -156,6 +157,7 @@ const initialState = {
   syncing: false,
   unreadCount: 0,
   connectionStatus: 'unknown' as const,
+  lastSyncAt: null as string | null,
 };
 
 function groupIntoThreads(emails: EmailMessage[]): EmailThread[] {
@@ -214,7 +216,7 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
     try {
       const emails = await supabaseGet<EmailMessage[]>(
         'email_log',
-        `organization_id=eq.${orgId}&user_id=eq.${userId}&select=*,customers(first_name,last_name,name,company)&order=sent_at.desc.nullslast,created_at.desc&limit=200`
+        `organization_id=eq.${orgId}&user_id=eq.${userId}&is_deleted=eq.false&select=*,customers(first_name,last_name,name,company)&order=sent_at.desc.nullslast,created_at.desc&limit=200`
       );
 
       // Flatten joined customer data
@@ -418,7 +420,7 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
 
       const data = await res.json();
       console.log('[emailStore] syncNow response:', data);
-      set({ syncing: false });
+      set({ syncing: false, lastSyncAt: data.success ? new Date().toISOString() : get().lastSyncAt });
       return {
         synced: data.synced || 0,
         message: data.message || '',

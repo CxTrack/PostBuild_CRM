@@ -120,7 +120,7 @@ export default function EmailPage() {
 
   const {
     threads, selectedThreadId, selectedThreadIds, filter, searchQuery,
-    loading, syncing, unreadCount, connectionStatus,
+    loading, syncing, unreadCount, connectionStatus, lastSyncAt,
     fetchThreads, markAsRead, markThreadsAsRead, markAllAsRead, deleteThreads,
     toggleStar, syncNow,
     checkConnection, setFilter, setSelectedThread, setSearchQuery,
@@ -160,6 +160,26 @@ export default function EmailPage() {
       checkConnection(orgId, userId);
     }
   }, [orgId, userId]);
+
+  // Auto-sync on mount (1s debounce) + poll every 5 minutes
+  useEffect(() => {
+    if (!orgId || !userId || connectionStatus !== 'connected') return;
+
+    const initialTimer = setTimeout(async () => {
+      const result = await syncNow(orgId);
+      if (result.synced > 0) fetchThreads(orgId, userId);
+    }, 1000);
+
+    const interval = setInterval(async () => {
+      const result = await syncNow(orgId);
+      if (result.synced > 0) fetchThreads(orgId, userId);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [orgId, userId, connectionStatus]);
 
   // Filter threads
   const filteredThreads = useMemo(() => {
@@ -356,12 +376,22 @@ export default function EmailPage() {
                 <WifiOff size={14} className="text-gray-400" />
               )}
             </div>
-            {/* Sync button */}
+            {/* Last synced + Sync button */}
+            {lastSyncAt && !syncing && (
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 hidden sm:inline mr-0.5" title={`Last synced ${new Date(lastSyncAt).toLocaleString()}`}>
+                {(() => {
+                  const mins = Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 60000);
+                  if (mins < 1) return 'Just now';
+                  if (mins < 60) return `${mins}m ago`;
+                  return `${Math.floor(mins / 60)}h ago`;
+                })()}
+              </span>
+            )}
             <button
               onClick={handleSync}
               disabled={syncing}
               className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              title="Sync now"
+              title={lastSyncAt ? `Last synced ${new Date(lastSyncAt).toLocaleString()}` : 'Sync now'}
             >
               <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
             </button>

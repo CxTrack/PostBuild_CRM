@@ -1255,7 +1255,7 @@ function CommunicationsTab({ customer, onReplyEmail }: { customer: Customer; onR
         if (!token) return;
 
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at,message_id,conversation_id&order=sent_at.desc&limit=50`,
+          `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&is_deleted=eq.false&select=id,direction,sender_email,recipient_email,subject,body_text,body_html,status,read_at,sent_at,created_at,message_id,conversation_id&order=sent_at.desc&limit=50`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -1913,7 +1913,7 @@ function ActivityTab({ customer }: { customer: Customer }) {
             { headers }
           ),
           fetch(
-            `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&select=id,direction,sender_email,recipient_email,subject,body_text,status,sent_at,created_at&order=sent_at.desc&limit=50`,
+            `${SUPABASE_URL}/rest/v1/email_log?customer_id=eq.${customer.id}&is_deleted=eq.false&select=id,direction,sender_email,recipient_email,subject,body_text,status,sent_at,created_at&order=sent_at.desc&limit=50`,
             { headers }
           ),
           fetch(
