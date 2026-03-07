@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, MessageSquare, X, RefreshCw } from 'lucide-react';
+import {
+  Bell, CheckCheck, MessageSquare, RefreshCw,
+  Megaphone, CreditCard, Zap, Info, Shield, Settings,
+} from 'lucide-react';
 import { useNotificationStore, SystemNotification } from '@/stores/notificationStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,6 +10,21 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   sms_opt_out: <MessageSquare className="w-4 h-4 text-red-500" />,
   sms_reopt_confirmed: <RefreshCw className="w-4 h-4 text-green-500" />,
   sms_reopt_request: <RefreshCw className="w-4 h-4 text-amber-500" />,
+  admin_message: <Megaphone className="w-4 h-4 text-purple-500" />,
+  admin_notification: <Megaphone className="w-4 h-4 text-purple-500" />,
+  billing_alert: <CreditCard className="w-4 h-4 text-red-500" />,
+  token_warning: <Zap className="w-4 h-4 text-amber-500" />,
+  token_exhausted: <Zap className="w-4 h-4 text-red-500" />,
+  token_exhausted_owner: <Zap className="w-4 h-4 text-red-500" />,
+  system_update: <Info className="w-4 h-4 text-blue-500" />,
+  security_alert: <Shield className="w-4 h-4 text-red-500" />,
+  maintenance: <Settings className="w-4 h-4 text-gray-500" />,
+};
+
+const getPriorityBorder = (priority?: string): string => {
+  if (priority === 'urgent') return 'border-l-2 border-l-red-500';
+  if (priority === 'high') return 'border-l-2 border-l-orange-500';
+  return '';
 };
 
 export const NotificationBell: React.FC = () => {
@@ -33,9 +51,11 @@ export const NotificationBell: React.FC = () => {
 
   const handleNotificationClick = (n: SystemNotification) => {
     markAsRead(n.id);
-    if (n.metadata?.customer_id) {
+    setOpen(false);
+    if (n.action_url) {
+      navigate(n.action_url);
+    } else if (n.metadata?.customer_id) {
       navigate(`/dashboard/customers/${n.metadata.customer_id}`);
-      setOpen(false);
     }
   };
 
@@ -92,7 +112,7 @@ export const NotificationBell: React.FC = () => {
                   onClick={() => handleNotificationClick(n)}
                   className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors border-b border-gray-100 dark:border-gray-700/30 last:border-0 ${
                     !n.is_read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                  }`}
+                  } ${getPriorityBorder(n.priority)}`}
                 >
                   <div className="mt-0.5 shrink-0">
                     {NOTIFICATION_ICONS[n.type] || <Bell className="w-4 h-4 text-gray-400" />}

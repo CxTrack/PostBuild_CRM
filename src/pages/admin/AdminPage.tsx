@@ -5,7 +5,7 @@ import {
   ArrowLeft, Send, DollarSign, Phone,
   Brain, TrendingUp, Activity, Layers,
   RefreshCw, Menu, X, ChevronDown,
-  FileBarChart, Plug, Mail, Building2, GitMerge, Code2, Handshake
+  FileBarChart, Plug, Mail, Building2, GitMerge, Code2, Handshake, Bell
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -27,7 +27,7 @@ import { APIMonitoringTab } from './APIMonitoringTab';
 import { AuditLogsTab } from './AuditLogsTab';
 import { SecurityHealthTab } from './SecurityHealthTab';
 import { SettingsTab } from './SettingsTab';
-import { BroadcastPanel } from '../../components/admin/BroadcastPanel';
+import { NotificationsAndBroadcastsPanel } from '../../components/admin/NotificationsAndBroadcastsPanel';
 import { ReportingEngine } from '../../components/admin/ReportingEngine';
 import { MCPConnectionPanel } from '../../components/admin/MCPConnectionPanel';
 import { PhoneLifecycleTab } from './PhoneLifecycleTab';
@@ -88,7 +88,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'api-monitoring', label: 'API Monitoring', icon: Activity, component: APIMonitoringTab },
       { id: 'code-quality', label: 'Code Quality', icon: Code2, component: CodeQualityTab },
       { id: 'audit', label: 'Audit Logs', icon: Shield, component: AuditLogsTab },
-      { id: 'broadcasts', label: 'Broadcasts', icon: Send, component: BroadcastPanel },
+      { id: 'notifications', label: 'Notifications', icon: Bell, component: NotificationsAndBroadcastsPanel },
       { id: 'mcp', label: 'MCP / AI Ops', icon: Plug, component: MCPConnectionPanel },
       { id: 'settings', label: 'Settings', icon: Settings, component: SettingsTab },
     ],

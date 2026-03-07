@@ -11,6 +11,11 @@ export interface SystemNotification {
   metadata: Record<string, any>;
   is_read: boolean;
   created_at: string;
+  sender_id: string | null;
+  source: string;
+  priority: string;
+  expires_at: string | null;
+  action_url: string | null;
 }
 
 const getAuthToken = (): string | null => {
@@ -49,8 +54,9 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
     set({ loading: true });
     try {
+      const now = new Date().toISOString();
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/system_notifications?select=*&order=created_at.desc&limit=50`,
+        `${supabaseUrl}/rest/v1/system_notifications?select=*&or=(expires_at.is.null,expires_at.gt.${now})&order=created_at.desc&limit=50`,
         {
           headers: {
             'apikey': supabaseAnonKey,

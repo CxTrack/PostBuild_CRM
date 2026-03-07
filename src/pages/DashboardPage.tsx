@@ -42,6 +42,7 @@ import SendSMSModal from '@/components/sms/SendSMSModal';
 import AIQuarterback from '@/components/dashboard/AIQuarterback';
 import { QuickActionsConfigPopover } from '@/components/dashboard/QuickActionsConfigPopover';
 import { useCoPilot } from '@/contexts/CoPilotContext';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 // Compact Stat Card Component
 const CompactStatCard = ({ label, value, subValue, tooltip, icon: Icon, color, onClick }: any) => {
@@ -542,7 +543,7 @@ export const DashboardPage = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Add global actions if needed */}
+                    <NotificationBell />
                 </div>
             </div>
 
