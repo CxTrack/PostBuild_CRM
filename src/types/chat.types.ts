@@ -1,6 +1,73 @@
 // Chat System Types
 import type { ActionProposal, ActionStatus, ActionResult } from '@/types/copilot-actions.types';
 
+// =====================================================
+// PRESENCE
+// =====================================================
+export type PresenceStatus = 'online' | 'idle' | 'away' | 'dnd' | 'offline';
+
+export interface UserPresence {
+    user_id: string;
+    organization_id: string;
+    status: PresenceStatus;
+    custom_message?: string;
+    last_seen_at: string;
+    last_heartbeat_at: string;
+    updated_at?: string;
+}
+
+// =====================================================
+// LABELS
+// =====================================================
+export interface ConversationLabel {
+    id: string;
+    organization_id: string;
+    name: string;
+    color: string;
+    created_by?: string;
+    created_at: string;
+}
+
+export interface ConversationLabelAssignment {
+    id: string;
+    conversation_id: string;
+    label_id: string;
+    assigned_by?: string;
+    assigned_at: string;
+    label?: ConversationLabel;
+}
+
+// =====================================================
+// DOCUMENTS
+// =====================================================
+export interface ConversationDocument {
+    id: string;
+    conversation_id: string;
+    uploaded_by: string;
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    storage_path: string;
+    description?: string;
+    created_at: string;
+    uploader?: { full_name: string };
+}
+
+// =====================================================
+// LABEL PRESET COLORS
+// =====================================================
+export const LABEL_COLORS = [
+    '#EF4444', // red
+    '#F59E0B', // amber
+    '#10B981', // emerald
+    '#3B82F6', // blue
+    '#8B5CF6', // violet
+    '#EC4899', // pink
+];
+
+// =====================================================
+// MESSAGES
+// =====================================================
 export interface Message {
     id: string;
     conversation_id?: string;
@@ -57,19 +124,28 @@ export interface Conversation {
     participants?: ConversationParticipant[];
     last_message?: Message;
     unread_count?: number;
+    // Phase 1 additions
+    is_pinned?: boolean;
+    pinned_at?: string;
+    labels?: ConversationLabel[];
 }
 
 export interface ConversationParticipant {
     id?: string;
     conversation_id?: string;
     user_id?: string;
+    role?: 'admin' | 'member';
     joined_at?: string;
     last_read_at?: string;
     is_muted?: boolean;
+    is_pinned?: boolean;
+    pinned_at?: string;
+    visible_from?: string;
     user: {
+        id?: string;
         full_name: string;
         avatar_url?: string;
-        status?: 'online' | 'offline' | 'away';
+        status?: PresenceStatus;
     };
 }
 

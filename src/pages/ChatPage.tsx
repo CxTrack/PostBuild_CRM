@@ -1,15 +1,21 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle, Pin, PinOff, Tag, FileText, ChevronDown, Crown, Shield, User, UserMinus, LogOut, UserPlus, MessageSquare, FolderOpen } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
+import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS, ConversationLabel, LABEL_COLORS } from '@/types/chat.types';
+import type { PresenceStatus } from '@/types/chat.types';
 import { useOrganizationStore } from '@/stores/organizationStore';
+import { usePresence } from '@/hooks/usePresence';
 import { EmojiPicker } from '@/components/chat/EmojiPicker';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ChatSettingsModal } from '@/components/chat/ChatSettingsModal';
 import { FileAttachmentButton, FilePreview } from '@/components/chat/FileAttachment';
 import { CreateGroupModal } from '@/components/chat/CreateGroupModal';
+import ChatMembersPanel from '@/components/chat/ChatMembersPanel';
+import { AddMembersModal } from '@/components/chat/AddMembersModal';
+import { LabelManager } from '@/components/chat/LabelManager';
+import ConversationDocuments from '@/components/chat/ConversationDocuments';
 import ActionCard from '@/components/copilot/ActionCard';
 import SmsAgentSuggestions from '@/components/chat/SmsAgentSuggestions';
 import { parseActionProposal } from '@/utils/parseActionProposal';
@@ -20,6 +26,22 @@ import { uploadTicketAttachment, type AttachmentMeta } from '@/utils/ticketAttac
 import TicketAttachmentUploader from '@/components/tickets/TicketAttachmentUploader';
 import toast from 'react-hot-toast';
 import { NotificationBell } from '@/components/ui/NotificationBell';
+
+// Presence status colors
+const statusColors: Record<PresenceStatus, string> = {
+    online: 'bg-green-500',
+    idle: 'bg-amber-500',
+    away: 'bg-amber-500',
+    dnd: 'bg-red-500',
+    offline: 'bg-gray-400',
+};
+const statusLabels: Record<PresenceStatus, string> = {
+    online: 'Online',
+    idle: 'Idle',
+    away: 'Away',
+    dnd: 'Do Not Disturb',
+    offline: 'Offline',
+};
 
 // =====================================================
 // TICKET INTAKE TYPES & CONSTANTS
@@ -191,44 +213,75 @@ const MessageBubble = React.memo<{
 });
 MessageBubble.displayName = 'MessageBubble';
 
-// Memoized conversation item
+// Memoized conversation item (compact)
 const ConversationItem = React.memo<{
     conv: Conversation;
     isActive: boolean;
     unreadCount?: number;
     onClick: () => void;
-}>(({ conv, isActive, unreadCount = 0, onClick }) => {
+    onContextMenu?: (e: React.MouseEvent) => void;
+}>(({ conv, isActive, unreadCount = 0, onClick, onContextMenu }) => {
     const isSms = conv.channel_type === 'sms';
+    const isChannel = conv.channel_type === 'channel';
+    const isGroup = conv.channel_type === 'group';
     const hasUnread = unreadCount > 0 && !isActive;
+
+    // Type-specific icon for compact view
+    const TypeIcon = () => {
+        if (isSms) return <Phone size={14} className="text-green-500" />;
+        if (isChannel) return <Hash size={14} className="text-blue-500" />;
+        if (isGroup) return <UsersIcon size={14} className="text-purple-500" />;
+        return <MessageSquare size={14} className="text-gray-400" />;
+    };
+
     return (
         <button
             onClick={onClick}
+            onContextMenu={onContextMenu}
             className={`
-      w-full p-3 rounded-2xl mb-1
-      flex items-center gap-3
-      transition-all duration-200
+      w-full px-3 py-2 rounded-xl mb-0.5
+      flex items-center gap-2.5
+      transition-all duration-150
       ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
     `}
         >
+            {/* Compact type icon */}
             <div className="relative flex-shrink-0">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold ${isSms ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
-                    {isSms ? <Phone size={20} /> : (conv.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    isActive ? 'bg-blue-100 dark:bg-blue-800/40' : 'bg-gray-100 dark:bg-gray-800'
+                }`}>
+                    <TypeIcon />
                 </div>
                 {hasUnread && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full ring-2 ring-white dark:ring-gray-900" />
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white dark:ring-gray-900" />
                 )}
             </div>
-            <div className="flex-1 text-left overflow-hidden">
-                <p className={`truncate ${hasUnread ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-900 dark:text-white'}`}>
-                    {conv.channel_type === 'channel' ? `# ${conv.name || 'channel'}` :
-                        conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                    {isSms ? `SMS - ${(conv as any).customer_phone || 'Customer'}` : 'Click to view message'}
-                </p>
+            <div className="flex-1 text-left overflow-hidden min-w-0">
+                <div className="flex items-center gap-1.5">
+                    {conv.is_pinned && <Pin size={10} className="text-amber-500 flex-shrink-0" />}
+                    <p className={`truncate text-sm ${hasUnread ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-900 dark:text-white'}`}>
+                        {isChannel ? `# ${conv.name || 'channel'}` :
+                            conv.name || conv.participants?.[0]?.user?.full_name || 'User'}
+                    </p>
+                    {/* Label color dots (max 3) */}
+                    {conv.labels && conv.labels.length > 0 && (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                            {conv.labels.slice(0, 3).map(l => (
+                                <span key={l.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: l.color }} />
+                            ))}
+                            {conv.labels.length > 3 && (
+                                <span className="text-[8px] text-gray-400">+{conv.labels.length - 3}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {/* SMS keeps phone number subtitle (useful info) */}
+                {isSms && (
+                    <p className="text-[10px] text-gray-500 truncate">{(conv as any).customer_phone || 'Customer'}</p>
+                )}
             </div>
             {hasUnread && (
-                <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-[10px] font-semibold rounded-full bg-blue-500 text-white flex-shrink-0">
+                <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[9px] font-bold rounded-full bg-blue-500 text-white flex-shrink-0">
                     {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
             )}
@@ -260,6 +313,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const lastTypingBroadcastRef = useRef<number>(0);
     const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    // Phase 1: Advanced Chat features
+    const { getPresenceStatus, setMyStatus, clearManualStatus, manualStatus } = usePresence();
+    const [showMembersPanel, setShowMembersPanel] = useState(false);
+    const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+    const [showLabelManager, setShowLabelManager] = useState(false);
+    const [labelManagerConvId, setLabelManagerConvId] = useState<string>('');
+    const [labelManagerAssignedIds, setLabelManagerAssignedIds] = useState<string[]>([]);
+    const [chatTab, setChatTab] = useState<'chat' | 'files'>('chat');
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; conv: Conversation } | null>(null);
+    const [showStatusSelector, setShowStatusSelector] = useState(false);
+    const [orgLabels, setOrgLabels] = useState<ConversationLabel[]>([]);
+    const [activeLabelFilter, setActiveLabelFilter] = useState<string | null>(null);
+    const [participantPinData, setParticipantPinData] = useState<Record<string, { is_pinned: boolean; pinned_at: string | null }>>({});
     // Read receipts: track other participants' last_read_at
     const [participantReadTimes, setParticipantReadTimes] = useState<Record<string, string>>({});
     const [chatSettings, setChatSettings] = useState<ChatSettings>(() => {
@@ -462,6 +529,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         if (!user) return;
 
         const orgId = useOrganizationStore.getState().currentOrganization?.id;
+        const token = getAuthToken();
 
         let query = supabase
             .from('conversations')
@@ -486,16 +554,66 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
 
         if (data) {
+            // Fetch pin data for current user's participant rows
+            let pinMap: Record<string, { is_pinned: boolean; pinned_at: string | null }> = {};
+            if (token && orgId) {
+                try {
+                    const pinRes = await fetch(
+                        `${supabaseUrl}/rest/v1/conversation_participants?user_id=eq.${user.id}&select=conversation_id,is_pinned,pinned_at`,
+                        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                    );
+                    if (pinRes.ok) {
+                        const pinRows: { conversation_id: string; is_pinned: boolean; pinned_at: string | null }[] = await pinRes.json();
+                        pinRows.forEach(r => { pinMap[r.conversation_id] = { is_pinned: r.is_pinned, pinned_at: r.pinned_at }; });
+                        setParticipantPinData(pinMap);
+                    }
+                } catch { /* non-critical */ }
+            }
+
+            // Fetch label assignments
+            let labelAssignments: Record<string, ConversationLabel[]> = {};
+            if (token && orgId) {
+                try {
+                    const labelsRes = await fetch(
+                        `${supabaseUrl}/rest/v1/conversation_label_assignments?select=conversation_id,label:conversation_labels(id,name,color)&conversation_labels.organization_id=eq.${orgId}`,
+                        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                    );
+                    if (labelsRes.ok) {
+                        const rows: { conversation_id: string; label: ConversationLabel | null }[] = await labelsRes.json();
+                        rows.forEach(r => {
+                            if (r.label) {
+                                if (!labelAssignments[r.conversation_id]) labelAssignments[r.conversation_id] = [];
+                                labelAssignments[r.conversation_id].push(r.label);
+                            }
+                        });
+                    }
+                } catch { /* non-critical */ }
+            }
+
+            // Fetch org labels for filter chips
+            if (token && orgId) {
+                try {
+                    const olRes = await fetch(
+                        `${supabaseUrl}/rest/v1/conversation_labels?organization_id=eq.${orgId}&order=name.asc`,
+                        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                    );
+                    if (olRes.ok) setOrgLabels(await olRes.json());
+                } catch { /* non-critical */ }
+            }
+
             // For direct/group convos, filter out current user from participants
             // so the display shows the other person's name (not your own)
             const processed = data.map(conv => {
+                const pin = pinMap[conv.id];
+                const labels = labelAssignments[conv.id] || [];
+                let processedConv = { ...conv, is_pinned: pin?.is_pinned || false, pinned_at: pin?.pinned_at, labels };
                 if (conv.channel_type !== 'channel' && conv.participants) {
                     const others = conv.participants.filter(
                         (p: any) => p.user?.id !== user.id
                     );
-                    return { ...conv, participants: others.length > 0 ? others : conv.participants };
+                    processedConv = { ...processedConv, participants: others.length > 0 ? others : conv.participants };
                 }
-                return conv;
+                return processedConv;
             });
             setConversations(processed);
         }
@@ -1476,6 +1594,66 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         } catch { /* localStorage fallback is fine */ }
     };
 
+    // Toggle pin for a conversation
+    const handleTogglePin = useCallback(async (conv: Conversation) => {
+        const token = getAuthToken();
+        if (!token || !user?.id) return;
+
+        const isPinned = conv.is_pinned;
+        const newPinned = !isPinned;
+
+        try {
+            const res = await fetch(
+                `${supabaseUrl}/rest/v1/conversation_participants?conversation_id=eq.${conv.id}&user_id=eq.${user.id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'apikey': supabaseAnonKey,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal',
+                    },
+                    body: JSON.stringify({
+                        is_pinned: newPinned,
+                        pinned_at: newPinned ? new Date().toISOString() : null,
+                    }),
+                }
+            );
+            if (res.ok) {
+                setConversations(prev => prev.map(c =>
+                    c.id === conv.id ? { ...c, is_pinned: newPinned, pinned_at: newPinned ? new Date().toISOString() : null } : c
+                ));
+                setParticipantPinData(prev => ({
+                    ...prev,
+                    [conv.id]: { is_pinned: newPinned, pinned_at: newPinned ? new Date().toISOString() : null },
+                }));
+                toast.success(newPinned ? 'Chat pinned' : 'Chat unpinned');
+            }
+        } catch { toast.error('Failed to update pin'); }
+        setContextMenu(null);
+    }, [user?.id]);
+
+    // Open label manager for a conversation via context menu
+    const handleOpenLabels = useCallback((conv: Conversation) => {
+        setLabelManagerConvId(conv.id);
+        setLabelManagerAssignedIds((conv.labels || []).map(l => l.id));
+        setShowLabelManager(true);
+        setContextMenu(null);
+    }, []);
+
+    // Reset chat tab on conversation switch
+    useEffect(() => {
+        setChatTab('chat');
+    }, [activeConversation?.id]);
+
+    // Close context menu on click outside
+    useEffect(() => {
+        if (!contextMenu) return;
+        const handler = () => setContextMenu(null);
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [contextMenu]);
+
     const handleOpenPopup = () => {
         window.open('/chat-window', 'CxTrackChat', 'width=450,height=700,menubar=no,toolbar=no,location=no,status=no');
     };
@@ -1513,6 +1691,44 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50 flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Messages</h2>
                         <div className="flex items-center gap-1">
+                            {/* Status selector */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowStatusSelector(!showStatusSelector)}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-500 relative"
+                                    title="Set status"
+                                >
+                                    <span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${statusColors[manualStatus || 'online']}`} />
+                                    <User size={18} />
+                                </button>
+                                {showStatusSelector && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowStatusSelector(false)} />
+                                        <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                            <div className="p-1">
+                                                {(['online', 'away', 'dnd', 'offline'] as PresenceStatus[]).map(s => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => {
+                                                            if (s === 'online') { clearManualStatus(); }
+                                                            else { setMyStatus(s); }
+                                                            setShowStatusSelector(false);
+                                                        }}
+                                                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
+                                                            (manualStatus || 'online') === s
+                                                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                                        }`}
+                                                    >
+                                                        <span className={`w-2.5 h-2.5 rounded-full ${statusColors[s]}`} />
+                                                        {statusLabels[s]}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                             <NotificationBell />
                             <button
                                 onClick={() => setShowSettings(true)}
@@ -1534,9 +1750,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     </div>
 
                     {/* Search */}
-                    <div className="p-4">
-                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl px-4 py-3 flex items-center">
-                            <Search size={18} className="text-gray-400 mr-2" />
+                    <div className="px-4 pt-4 pb-2">
+                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl px-4 py-2.5 flex items-center">
+                            <Search size={16} className="text-gray-400 mr-2" />
                             <input
                                 className="bg-transparent w-full outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500"
                                 placeholder="Search conversations..."
@@ -1546,28 +1762,60 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         </div>
                     </div>
 
+                    {/* Label filter chips */}
+                    {orgLabels.length > 0 && (
+                        <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                            {orgLabels.map(label => (
+                                <button
+                                    key={label.id}
+                                    onClick={() => setActiveLabelFilter(prev => prev === label.id ? null : label.id)}
+                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all border ${
+                                        activeLabelFilter === label.id
+                                            ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
+                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                                    {label.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {/* List */}
                     <div className="flex-1 overflow-y-auto px-2">
                         {(() => {
+                            // Sort: pinned first (by pinned_at desc), then by updated_at desc
+                            const sortByPin = (a: Conversation, b: Conversation) => {
+                                if (a.is_pinned && !b.is_pinned) return -1;
+                                if (!a.is_pinned && b.is_pinned) return 1;
+                                if (a.is_pinned && b.is_pinned) {
+                                    return new Date(b.pinned_at || 0).getTime() - new Date(a.pinned_at || 0).getTime();
+                                }
+                                return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+                            };
+
                             const filteredConversations = conversations.filter(conv => {
+                                // Label filter
+                                if (activeLabelFilter && !(conv.labels || []).some(l => l.id === activeLabelFilter)) return false;
+                                // Text search
                                 if (!searchQuery.trim()) return true;
                                 const query = searchQuery.toLowerCase();
                                 const name = (conv.name || conv.participants?.[0]?.user?.full_name || '').toLowerCase();
                                 return name.includes(query);
                             });
 
-                            const channels = filteredConversations.filter(c => c.channel_type === 'channel');
-                            const groups = filteredConversations.filter(c => c.channel_type === 'group');
-                            const smsConversations = filteredConversations.filter(c => c.channel_type === 'sms');
-                            const directMessages = filteredConversations.filter(c => !c.channel_type || c.channel_type === 'direct');
+                            const channels = filteredConversations.filter(c => c.channel_type === 'channel').sort(sortByPin);
+                            const groups = filteredConversations.filter(c => c.channel_type === 'group').sort(sortByPin);
+                            const smsConversations = filteredConversations.filter(c => c.channel_type === 'sms').sort(sortByPin);
+                            const directMessages = filteredConversations.filter(c => !c.channel_type || c.channel_type === 'direct').sort(sortByPin);
 
                             return (
                                 <>
-                                    {/* Channels Section */}
                                     {/* AI Assistant Section */}
-                                    <div className="mb-6">
-                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 block flex items-center gap-2">
-                                            <Sparkles size={12} className="text-blue-500" /> AI Assistant
+                                    <div className="mb-4">
+                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest px-3 mb-1.5 block flex items-center gap-2">
+                                            <Sparkles size={10} className="text-blue-500" /> AI Assistant
                                         </span>
                                         <button
                                             onClick={() => {
@@ -1578,7 +1826,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                     participants: [{ user: { full_name: 'Sparky AI' } }]
                                                 };
                                                 switchConversation(aiConv);
-                                                // Reset ticket intake state
                                                 setTicketIntakeActive(false);
                                                 setTicketIntakeStep('idle');
                                                 setTicketDraft({ ...INITIAL_TICKET_DRAFT });
@@ -1595,19 +1842,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 ]);
                                             }}
                                             className={`
-                          w-full p-3 rounded-2xl mb-1
-                          flex items-center gap-3
-                          transition-all duration-200
-                          ${activeConversation?.id === 'ai-agent' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border border-blue-100 dark:border-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800'}
+                          w-full px-3 py-2 rounded-xl mb-0.5
+                          flex items-center gap-2.5
+                          transition-all duration-150
+                          ${activeConversation?.id === 'ai-agent' ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
                         `}
                                         >
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 animate-pulse ${activeConversation?.id === 'ai-agent' ? 'bg-white/20' : 'bg-gradient-to-br from-blue-600 to-purple-600'}`}>
-                                                <Sparkles size={24} />
+                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${activeConversation?.id === 'ai-agent' ? 'bg-blue-100 dark:bg-blue-800/40' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
+                                                <Sparkles size={14} className={activeConversation?.id === 'ai-agent' ? 'text-blue-600 dark:text-blue-400' : 'text-white'} />
                                             </div>
-                                            <div className="flex-1 text-left overflow-hidden">
-                                                <p className={`font-bold truncate ${activeConversation?.id === 'ai-agent' ? 'text-white' : 'text-gray-900 dark:text-white'}`}>Sparky AI</p>
-                                                <p className={`text-[10px] truncate ${activeConversation?.id === 'ai-agent' ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400 font-medium'}`}>Online • AI Assistant</p>
-                                            </div>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 text-left">Sparky AI</p>
+                                            <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 animate-pulse" />
                                         </button>
                                     </div>
 
@@ -1626,7 +1871,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {channels.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, conv }); }} />
                                             ))}
                                         </div>
                                     )}
@@ -1647,7 +1892,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </button>
                                             </div>
                                             {groups.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, conv }); }} />
                                             ))}
                                         </div>
                                     )}
@@ -1664,7 +1909,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                             </button>
                                         </div>
                                         {directMessages.map(conv => (
-                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
+                                            <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, conv }); }} />
                                         ))}
                                     </div>
 
@@ -1678,7 +1923,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                 </span>
                                             </div>
                                             {smsConversations.map(conv => (
-                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} />
+                                                <ConversationItem key={conv.id} conv={conv} isActive={activeConversation?.id === conv.id} unreadCount={unreadCounts[conv.id] || 0} onClick={() => switchConversation(conv)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, conv }); }} />
                                             ))}
                                         </div>
                                     )}
@@ -1693,6 +1938,30 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                             );
                         })()}
                     </div>
+
+                    {/* Right-click context menu */}
+                    {contextMenu && (
+                        <div
+                            className="fixed z-[70] w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden py-1"
+                            style={{ top: contextMenu.y, left: contextMenu.x }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => handleTogglePin(contextMenu.conv)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                                {contextMenu.conv.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                                {contextMenu.conv.is_pinned ? 'Unpin' : 'Pin conversation'}
+                            </button>
+                            <button
+                                onClick={() => handleOpenLabels(contextMenu.conv)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                                <Tag size={14} />
+                                Labels...
+                            </button>
+                        </div>
+                    )}
 
                     {/* New Msg Btn */}
                     <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
@@ -1733,6 +2002,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${activeConversation.channel_type === 'sms' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-purple-500'}`}>
                                         {activeConversation.channel_type === 'sms'
                                             ? <Phone size={18} />
+                                            : activeConversation.id === 'ai-agent' ? <Sparkles size={18} />
                                             : (activeConversation.name?.charAt(0) || activeConversation.participants?.[0]?.user?.full_name?.charAt(0) || 'U')}
                                     </div>
                                     <div>
@@ -1746,16 +2016,37 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                     <Phone size={10} className="text-green-500" />
                                                     <span className="text-xs text-gray-500">SMS - {(activeConversation as any).customer_phone || 'Customer'}</span>
                                                 </>
-                                            ) : (
+                                            ) : activeConversation.id === 'ai-agent' ? (
                                                 <>
-                                                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                                    <span className="text-xs text-gray-500">Online</span>
+                                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                                    <span className="text-xs text-gray-500">Always Online</span>
                                                 </>
-                                            )}
+                                            ) : (() => {
+                                                // Show presence for DM conversations
+                                                const otherUserId = activeConversation.participants?.[0]?.user?.id;
+                                                const presence = otherUserId ? getPresenceStatus(otherUserId) : null;
+                                                const presenceStatus: PresenceStatus = presence?.status || 'offline';
+                                                return (
+                                                    <>
+                                                        <span className={`w-2 h-2 rounded-full ${statusColors[presenceStatus]}`} />
+                                                        <span className="text-xs text-gray-500">{statusLabels[presenceStatus]}</span>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
+                                    {/* Members Button (group/channel only) */}
+                                    {activeConversation.id !== 'ai-agent' && (activeConversation.channel_type === 'group' || activeConversation.channel_type === 'channel') && (
+                                        <button
+                                            onClick={() => setShowMembersPanel(true)}
+                                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                            title="Members"
+                                        >
+                                            <UsersIcon size={16} />
+                                        </button>
+                                    )}
                                     {/* Clear Chat Button */}
                                     {activeConversation.id !== 'ai-agent' && (
                                         <button
@@ -1777,8 +2068,42 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 </div>
                             </div>
 
-                            {/* Messages Area */}
-                            <div className={`flex-1 overflow-y-auto p-6 ${chatSettings.compact_mode ? 'space-y-2' : 'space-y-4'}`}>
+                            {/* Tab bar: Chat | Files (hidden for Sparky AI and SMS) */}
+                            {activeConversation.id !== 'ai-agent' && activeConversation.channel_type !== 'sms' && (
+                                <div className="flex border-b border-gray-200/50 dark:border-gray-700/50">
+                                    <button
+                                        onClick={() => setChatTab('chat')}
+                                        className={`flex-1 py-2 text-xs font-semibold text-center transition-colors relative ${
+                                            chatTab === 'chat'
+                                                ? 'text-blue-600 dark:text-blue-400'
+                                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        Chat
+                                        {chatTab === 'chat' && <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
+                                    </button>
+                                    <button
+                                        onClick={() => setChatTab('files')}
+                                        className={`flex-1 py-2 text-xs font-semibold text-center transition-colors relative flex items-center justify-center gap-1 ${
+                                            chatTab === 'files'
+                                                ? 'text-blue-600 dark:text-blue-400'
+                                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        <FolderOpen size={12} />
+                                        Files
+                                        {chatTab === 'files' && <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Files tab: ConversationDocuments */}
+                            {chatTab === 'files' && activeConversation.id !== 'ai-agent' && activeConversation.channel_type !== 'sms' && (
+                                <ConversationDocuments conversationId={activeConversation.id} />
+                            )}
+
+                            {/* Messages Area (hidden when files tab active) */}
+                            {chatTab === 'chat' && <div className={`flex-1 overflow-y-auto p-6 ${chatSettings.compact_mode ? 'space-y-2' : 'space-y-4'}`}>
                                 {messages.map((msg) => (
                                     <MessageBubble
                                         key={msg.id}
@@ -1820,8 +2145,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     </div>
                                 )}
                                 <div ref={messagesEndRef} />
-                            </div>
+                            </div>}
 
+                            {chatTab === 'chat' && (<>
                             {/* Attached Files Preview */}
                             {attachedFiles.length > 0 && (
                                 <div className="px-4 py-2 border-t border-gray-200/50 dark:border-gray-700/50">
@@ -2084,6 +2410,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                     </button>
                                 </div>
                             </div>
+                            </>)}
                         </>
                     )}
                 </div>
@@ -2139,6 +2466,42 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     />
                 )}
             </div>
+
+            {/* Chat Members Panel */}
+            {activeConversation && activeConversation.id !== 'ai-agent' && (
+                <ChatMembersPanel
+                    isOpen={showMembersPanel}
+                    onClose={() => setShowMembersPanel(false)}
+                    conversation={activeConversation}
+                    currentUserId={user?.id || ''}
+                    getPresenceStatus={getPresenceStatus}
+                    onMembersChanged={() => fetchConversations()}
+                    onAddMembers={() => { setShowMembersPanel(false); setShowAddMembersModal(true); }}
+                />
+            )}
+
+            {/* Add Members Modal */}
+            {activeConversation && activeConversation.id !== 'ai-agent' && (
+                <AddMembersModal
+                    isOpen={showAddMembersModal}
+                    onClose={() => setShowAddMembersModal(false)}
+                    conversation={activeConversation}
+                    existingMemberIds={[
+                        ...(activeConversation.participants?.map(p => p.user?.id).filter(Boolean) as string[] || []),
+                        user?.id || '',
+                    ]}
+                    onMembersAdded={() => fetchConversations()}
+                />
+            )}
+
+            {/* Label Manager */}
+            <LabelManager
+                isOpen={showLabelManager}
+                onClose={() => setShowLabelManager(false)}
+                conversationId={labelManagerConvId}
+                assignedLabelIds={labelManagerAssignedIds}
+                onLabelsChanged={() => fetchConversations()}
+            />
 
             {/* Settings Modal */}
             <ChatSettingsModal
