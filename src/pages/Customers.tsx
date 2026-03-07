@@ -584,7 +584,7 @@ export const Customers: React.FC = () => {
       </Card>
 
       {/* Ownership Filter Pills */}
-      <Card className="mb-4 p-3">
+      <Card className="mb-4 p-3 relative z-10">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-1 flex items-center">
             <UserCheck size={14} className="mr-1" />
