@@ -45,10 +45,14 @@ const CoPilotChatArea: React.FC<CoPilotChatAreaProps> = ({
           const prevUserMsg = message.role === 'assistant'
             ? messages.slice(0, idx).reverse().find(m => m.role === 'user')?.content
             : undefined;
+          // System-generated messages show thinking animation only on the last one while loading
+          const isLastMessage = idx === messages.length - 1;
+          const isThinking = isLastMessage && !!message.isSystemGenerated && isLoading;
           return (
             <MessageBubble
               key={message.id}
               message={message}
+              isLoading={isThinking}
               previousUserMessage={prevUserMsg}
               contextPage={contextPage}
               onConfirmAction={onConfirmAction}
@@ -61,14 +65,20 @@ const CoPilotChatArea: React.FC<CoPilotChatAreaProps> = ({
         })
       )}
 
-      {(isLoading || pAcknowledgmentLoading) && (
-        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
-          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-          <span className="text-sm ml-2">{pAcknowledgmentLoading ? 'Processing...' : 'CoPilot is thinking...'}</span>
-        </div>
-      )}
+      {/* Standalone thinking dots: suppress when ThinkingBubble already shows animated dots */}
+      {(() => {
+        const lastMsg = messages[messages.length - 1];
+        const showStandalone = (isLoading && !lastMsg?.isSystemGenerated) || pAcknowledgmentLoading;
+        if (!showStandalone) return null;
+        return (
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+            <span className="text-sm ml-2">{pAcknowledgmentLoading ? 'Processing...' : 'CoPilot is thinking...'}</span>
+          </div>
+        );
+      })()}
 
       <div ref={messagesEndRef} />
     </div>

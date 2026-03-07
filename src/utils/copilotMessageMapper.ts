@@ -98,6 +98,7 @@ export function messageToRow(msg: Message, conversationId: string): CopilotMessa
     metadata: {
       ...(msg.otherText ? { otherText: msg.otherText } : {}),
       ...(msg.isAIGeneratedChoices ? { isAIGeneratedChoices: true } : {}),
+      ...(msg.isSystemGenerated ? { isSystemGenerated: true } : {}),
       ...(msg.pendingAction ? { pendingAction: serializeAction(msg.pendingAction) } : {}),
     },
   };
@@ -136,6 +137,7 @@ export function rowToMessage(row: CopilotMessageRow): Message {
     pendingAction: metadata.pendingAction ? deserializeAction(metadata.pendingAction) : undefined,
     isAcknowledgment: row.is_acknowledgment || undefined,
     isAIGeneratedChoices: metadata.isAIGeneratedChoices || undefined,
+    isSystemGenerated: metadata.isSystemGenerated || undefined,
   };
 }
 

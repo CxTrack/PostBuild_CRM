@@ -167,17 +167,17 @@ const CoPilotPage: React.FC = () => {
         meeting_prep_notes: `[MEETING_PREP_MODE] Action: Draft prep notes. ${meetingContext}Create concise meeting preparation notes.`,
         meeting_ask_questions: `[MEETING_PREP_MODE] Action: Interactive preparation. ${meetingContext}Ask me 3-4 focused questions to help prepare.`,
       };
-      await sendMessage(promptMap[choiceId] || `[MEETING_PREP_MODE] ${meetingContext}Help me prepare.`);
+      await sendMessage(promptMap[choiceId] || `[MEETING_PREP_MODE] ${meetingContext}Help me prepare.`, { isSystemGenerated: true });
       return;
     }
 
     if (choiceId === 'update_task') {
-      await sendMessage(`[QUARTERBACK_MODE] The user chose to reschedule/update this task. Task ID: ${insightData.id}. Task title: "${insightData.title}". Customer: ${insightData.customer_name || 'unassigned'}. Due date: ${insightData.due_date || 'unknown'}. Priority: ${insightData.priority || 'medium'}. Days overdue: ${insightData.days_overdue || 'N/A'}. Propose an update_task ACTION_PROPOSAL.`);
+      await sendMessage(`[QUARTERBACK_MODE] The user chose to reschedule/update this task. Task ID: ${insightData.id}. Task title: "${insightData.title}". Customer: ${insightData.customer_name || 'unassigned'}. Due date: ${insightData.due_date || 'unknown'}. Priority: ${insightData.priority || 'medium'}. Days overdue: ${insightData.days_overdue || 'N/A'}. Propose an update_task ACTION_PROPOSAL.`, { isSystemGenerated: true });
       return;
     }
 
     if (choiceId === 'draft_invoice_followup') {
-      await sendMessage(`[QUARTERBACK_MODE] Follow up overdue invoice. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'N/A'}. Overdue: $${insightData.overdue_invoice_amount?.toLocaleString() || '0'}. Draft payment reminder with ACTION_PROPOSAL.`);
+      await sendMessage(`[QUARTERBACK_MODE] Follow up overdue invoice. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'N/A'}. Overdue: $${insightData.overdue_invoice_amount?.toLocaleString() || '0'}. Draft payment reminder with ACTION_PROPOSAL.`, { isSystemGenerated: true });
       return;
     }
 
@@ -187,19 +187,19 @@ const CoPilotPage: React.FC = () => {
       if (insightData.has_overdue_invoice) signals.push(`$${insightData.overdue_invoice_amount?.toLocaleString() || '0'} overdue`);
       if (insightData.overdue_task_count > 0) signals.push(`${insightData.overdue_task_count} overdue tasks`);
       if (insightData.days_inactive) signals.push(`${insightData.days_inactive}d inactive`);
-      await sendMessage(`[QUARTERBACK_MODE] Full recovery plan. Customer: ${insightData.customer_name}. Risk: ${((insightData.risk_score || 0) * 100).toFixed(0)}%. Signals: ${signals.join(', ')}. Build multi-step plan with CHOICE_PROPOSAL.`);
+      await sendMessage(`[QUARTERBACK_MODE] Full recovery plan. Customer: ${insightData.customer_name}. Risk: ${((insightData.risk_score || 0) * 100).toFixed(0)}%. Signals: ${signals.join(', ')}. Build multi-step plan with CHOICE_PROPOSAL.`, { isSystemGenerated: true });
       return;
     }
 
     if (choiceId === 'reorder_email') {
-      await sendMessage(`[QUARTERBACK_MODE] Draft reorder email. Product: ${insightData.product_name}. SKU: ${insightData.sku || 'N/A'}. Qty on hand: ${insightData.quantity_on_hand}. Supplier: ${insightData.supplier_name || 'unknown'}. Include ACTION_PROPOSAL.`);
+      await sendMessage(`[QUARTERBACK_MODE] Draft reorder email. Product: ${insightData.product_name}. SKU: ${insightData.sku || 'N/A'}. Qty on hand: ${insightData.quantity_on_hand}. Supplier: ${insightData.supplier_name || 'unknown'}. Include ACTION_PROPOSAL.`, { isSystemGenerated: true });
       return;
     }
 
     // Standard quarterback flow
     const choiceLabel: Record<string, string> = { draft_email: 'email', draft_sms: 'text message', draft_call_script: 'call script' };
     const label = choiceLabel[choiceId] || choiceId;
-    await sendMessage(`[QUARTERBACK_MODE] Draft ${label}. Insight: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'N/A'}. Phone: ${insightData.phone || 'N/A'}. Value: $${insightData.total_spent?.toLocaleString() || '0'}. Include ACTION_PROPOSAL.`);
+    await sendMessage(`[QUARTERBACK_MODE] Draft ${label}. Insight: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'N/A'}. Phone: ${insightData.phone || 'N/A'}. Value: $${insightData.total_spent?.toLocaleString() || '0'}. Include ACTION_PROPOSAL.`, { isSystemGenerated: true });
   }, [currentContext, sendMessage, markChoiceSelected, messages, addAssistantMessage, customers]);
 
   // Personalization answer handler

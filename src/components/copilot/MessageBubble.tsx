@@ -3,9 +3,12 @@ import type { Message } from '@/contexts/CoPilotContext';
 import ActionCard from '@/components/copilot/ActionCard';
 import ChoiceCard from '@/components/copilot/ChoiceCard';
 import FeedbackButtons from '@/components/copilot/FeedbackButtons';
+import ThinkingBubble from '@/components/copilot/ThinkingBubble';
 
 export interface MessageBubbleProps {
   message: Message;
+  /** True when this system-generated message is the active thinking message (shows animated dots) */
+  isLoading?: boolean;
   previousUserMessage?: string;
   contextPage?: string;
   onConfirmAction?: (messageId: string, editedFields: Record<string, any>) => void;
@@ -17,6 +20,7 @@ export interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
+  isLoading = false,
   previousUserMessage,
   contextPage,
   onConfirmAction,
@@ -26,6 +30,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onFeedbackGiven,
 }) => {
   const isUser = message.role === 'user';
+
+  // System-generated user messages render as collapsible thinking bubble
+  if (isUser && message.isSystemGenerated) {
+    return <ThinkingBubble content={message.content} isLoading={isLoading} timestamp={message.timestamp} />;
+  }
 
   // Render markdown-like bold text (**text**) in assistant messages
   // For user messages, strip structured prefixes before display

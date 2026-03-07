@@ -172,21 +172,21 @@ const CoPilotPanel: React.FC = () => {
         default:
           prompt = `[MEETING_PREP_MODE] ${meetingContext}Help me prepare for this meeting.`;
       }
-      await sendMessage(prompt);
+      await sendMessage(prompt, { isSystemGenerated: true });
       return;
     }
 
     // Handle update_task choice
     if (choiceId === 'update_task') {
       const prompt = `[QUARTERBACK_MODE] The user chose to reschedule/update this task. Insight type: ${insightType}. Task ID: ${insightData.id}. Task title: "${insightData.title}". Customer: ${insightData.customer_name || 'unassigned'}. Current due date: ${insightData.due_date || 'unknown'}. Current priority: ${insightData.priority || 'medium'}. Days overdue: ${insightData.days_overdue || 'N/A'}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Propose an update_task ACTION_PROPOSAL so the user can reschedule the task. Pre-fill the task_id and suggest a reasonable new due date (the next business day from today). After the user confirms the task update, offer to also draft a follow-up message to the customer about the new timeline.`;
-      await sendMessage(prompt);
+      await sendMessage(prompt, { isSystemGenerated: true });
       return;
     }
 
     // Compound risk: invoice follow-up
     if (choiceId === 'draft_invoice_followup') {
       const prompt = `[QUARTERBACK_MODE] The user chose to follow up on an overdue invoice. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Overdue invoice amount: $${insightData.overdue_invoice_amount?.toLocaleString() || '0'}. Risk score: ${insightData.risk_score || 'N/A'}. Draft a professional payment reminder email referencing the relationship and outstanding amount, and include the ACTION_PROPOSAL block.`;
-      await sendMessage(prompt);
+      await sendMessage(prompt, { isSystemGenerated: true });
       return;
     }
 
@@ -199,14 +199,14 @@ const CoPilotPanel: React.FC = () => {
       if (insightData.days_inactive) signals.push(`${insightData.days_inactive} days since last contact`);
       if (insightData.no_recent_emails) signals.push('no outbound emails in 30 days');
       const prompt = `[QUARTERBACK_MODE] The user wants a full recovery plan. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Risk score: ${((insightData.risk_score || 0) * 100).toFixed(0)}%. Risk signals: ${signals.join(', ')}. Build a structured multi-step recovery plan with specific actions, timelines, and talking points. Address each risk signal. End with a CHOICE_PROPOSAL offering to execute the first step.`;
-      await sendMessage(prompt);
+      await sendMessage(prompt, { isSystemGenerated: true });
       return;
     }
 
     // Low stock: reorder email
     if (choiceId === 'reorder_email') {
       const prompt = `[QUARTERBACK_MODE] The user chose to draft a reorder email to the supplier. Insight type: ${insightType}. Product: ${insightData.product_name}. SKU: ${insightData.sku || 'N/A'}. Quantity on hand: ${insightData.quantity_on_hand}. Reorder threshold: ${insightData.low_stock_threshold}. Suggested reorder qty: ${insightData.reorder_quantity || 'not set'}. Supplier: ${insightData.supplier_name || 'unknown'}. Email: ${insightData.email || 'not on file'}. Draft a professional reorder email and include the ACTION_PROPOSAL block.`;
-      await sendMessage(prompt);
+      await sendMessage(prompt, { isSystemGenerated: true });
       return;
     }
 
@@ -220,7 +220,7 @@ const CoPilotPanel: React.FC = () => {
 
     const prompt = `[QUARTERBACK_MODE] The user chose to draft a ${label}. Insight type: ${insightType}. Customer: ${insightData.customer_name}. Email: ${insightData.email || 'not on file'}. Phone: ${insightData.phone || 'not on file'}. Lifetime value: $${insightData.total_spent?.toLocaleString() || '0'}. Days inactive: ${insightData.days_inactive || insightData.days_stale || insightData.days_overdue || insightData.days_past_followup || 'N/A'}. Draft the ${label} now and include the ACTION_PROPOSAL block so the user can review and send it.`;
 
-    await sendMessage(prompt);
+    await sendMessage(prompt, { isSystemGenerated: true });
   }, [currentContext, sendMessage, markChoiceSelected, messages, addAssistantMessage]);
 
   // Handle personalization interview multi-select answers
