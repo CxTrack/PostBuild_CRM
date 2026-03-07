@@ -18,6 +18,7 @@ import { useTicketStore, type TicketCategory, type TicketPriority } from '@/stor
 import { uploadTicketAttachment, type AttachmentMeta } from '@/utils/ticketAttachments';
 import TicketAttachmentUploader from '@/components/tickets/TicketAttachmentUploader';
 import toast from 'react-hot-toast';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 // =====================================================
 // TICKET INTAKE TYPES & CONSTANTS
@@ -1186,6 +1187,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50 flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Messages</h2>
                         <div className="flex items-center gap-1">
+                            <NotificationBell />
                             <button
                                 onClick={() => setShowSettings(true)}
                                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-500"

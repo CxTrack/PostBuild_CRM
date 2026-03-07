@@ -22,7 +22,7 @@ export function useChatUnreadCount() {
     if (!user?.id || !currentOrganization?.id) return;
 
     try {
-      const token = getAuthToken();
+      const token = await getAuthToken();
       if (!token) return;
 
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_unread_message_counts`, {
