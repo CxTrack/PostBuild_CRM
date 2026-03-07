@@ -513,6 +513,7 @@ Deno.serve(async (req: Request) => {
 
     const isContextSummaryMode = body.message.startsWith('[CONTEXT_SUMMARY_MODE]');
     const isMeetingPrepMode = body.message.startsWith('[MEETING_PREP_MODE]');
+    const isTicketIntakeSummarize = body.message.startsWith('[TICKET_INTAKE_SUMMARIZE]');
     const isPersonalizationMode = !!body.context?.personalizationMode;
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -851,6 +852,101 @@ Base your options on the business context provided. Be specific -- avoid generic
             tokensUsed: tokenRecord.tokens_used + firecrawlTokenCost,
             tokensRemaining: Math.max(0, tokensRemaining - firecrawlTokenCost),
             tokensAllocated: tokenRecord.tokens_allocated,
+          }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // === TICKET INTAKE SUMMARIZE MODE ===
+    if (isTicketIntakeSummarize) {
+      if (!OPENROUTER_API_KEY) {
+        return new Response(
+          JSON.stringify({ response: '{"subject":"Support Request","description":"User reported an issue.","suggestedCategory":"general","suggestedPriority":"normal"}' }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+
+      const ticketSummarizePrompt = `You are a support ticket intake assistant. Analyze the following conversation between a user and an AI assistant. Generate a structured ticket summary in JSON format.
+
+Your response MUST be a single valid JSON object with these fields:
+- "subject": A clear, concise ticket subject line (max 80 characters)
+- "description": A well-structured description of the issue (1-3 paragraphs)
+- "suggestedCategory": One of: bug_report, feature_request, general, billing, account_issue, technical
+- "suggestedPriority": One of: low, normal, high, urgent
+
+Choose the category based on the issue type:
+- bug_report: Something is broken, errors, crashes, not working
+- feature_request: User wants new functionality or improvements
+- billing: Payment, subscription, pricing issues
+- account_issue: Login, access, permissions problems
+- technical: Integration, API, configuration help
+- general: Everything else
+
+Choose priority based on severity:
+- urgent: System down, data loss, security issue
+- high: Major feature broken, blocking work
+- normal: Standard issue, workaround available
+- low: Minor inconvenience, cosmetic issue
+
+Return ONLY the JSON object, no markdown fences, no explanation.`;
+
+      try {
+        const ticketAiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://crm.cxtrack.com",
+            "X-Title": "CxTrack CRM",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.0-flash-001",
+            messages: [
+              { role: "system", content: ticketSummarizePrompt },
+              { role: "user", content: body.message },
+            ],
+            max_tokens: 500,
+            temperature: 0.2,
+          }),
+        });
+
+        if (!ticketAiResponse.ok) {
+          throw new Error(`OpenRouter ticket summarize returned ${ticketAiResponse.status}`);
+        }
+
+        const ticketAiResult = await ticketAiResponse.json();
+        const ticketContent = ticketAiResult.choices?.[0]?.message?.content || '{}';
+        const ticketTokensUsed = ticketAiResult.usage?.total_tokens || 100;
+
+        // Deduct tokens
+        await supabaseAdmin
+          .from("ai_token_usage")
+          .update({
+            tokens_used: tokenRecord.tokens_used + ticketTokensUsed,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", tokenRecord.id);
+
+        return new Response(
+          JSON.stringify({
+            response: ticketContent,
+            tokensUsed: ticketTokensUsed,
+            tokensRemaining: Math.max(0, tokensRemaining - ticketTokensUsed),
+            tokensAllocated: tokenRecord.tokens_allocated,
+            isTicketSummary: true,
+          }),
+          { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      } catch (ticketErr) {
+        console.error('[copilot-chat] Ticket summarize error:', ticketErr);
+        return new Response(
+          JSON.stringify({
+            response: '{"subject":"Support Request","description":"User reported an issue.","suggestedCategory":"general","suggestedPriority":"normal"}',
+            tokensUsed: 0,
+            tokensRemaining,
+            tokensAllocated: tokenRecord.tokens_allocated,
+            isTicketSummary: true,
           }),
           { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
         );

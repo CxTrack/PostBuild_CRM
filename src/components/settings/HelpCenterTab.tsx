@@ -11,6 +11,7 @@ import {
     BarChart3, Phone, Settings, Bug, TicketPlus
 } from 'lucide-react';
 import { SubmitTicketModal } from '@/components/ui/SubmitTicketModal';
+import { MyTicketsTab } from '@/components/settings/MyTicketsTab';
 
 // ═══════════════════════════════════════════════════════════════════════
 // HELP ARTICLES DATA
@@ -304,6 +305,19 @@ export const HelpCenterTab: React.FC = () => {
                 onClose={() => setShowTicketModal(false)}
                 source={ticketSource}
             />
+
+            {/* My Tickets Section */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                    <MessageCircle className="w-5 h-5 text-purple-600" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        My Support Tickets
+                    </h3>
+                </div>
+                <div className="p-4">
+                    <MyTicketsTab />
+                </div>
+            </div>
 
             {/* Articles by Category */}
             {filteredCategories.map((category) => {

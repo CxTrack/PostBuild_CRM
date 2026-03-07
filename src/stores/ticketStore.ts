@@ -1,10 +1,19 @@
-import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
-import { useOrganizationStore } from './organizationStore';
+/**
+ * Ticket Store
+ * Zustand store for user-side support ticket operations.
+ * Uses direct fetch() to Supabase REST API to avoid AbortController issues.
+ */
 
-export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+import { create } from 'zustand';
+import { getAuthToken } from '@/utils/auth.utils';
+import { useOrganizationStore } from './organizationStore';
+import type { AttachmentMeta } from '@/utils/ticketAttachments';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+
+export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-export type TicketCategory = 'billing' | 'technical' | 'feature_request' | 'bug' | 'general' | 'copilot_feedback';
+export type TicketCategory = 'billing' | 'technical' | 'feature_request' | 'bug' | 'bug_report' | 'general' | 'copilot_feedback' | 'data_request' | 'account_issue' | 'sms_reenable';
 
 export interface Ticket {
     id: string;
@@ -27,16 +36,20 @@ export interface Ticket {
     updated_at: string;
     organization_id: string;
     user_id?: string;
+    metadata?: Record<string, any>;
+    ai_intake_log?: Array<{ role: string; content: string; timestamp: string }>;
+    submission_method?: 'form' | 'sparky_ai' | 'api';
 }
 
 export interface TicketMessage {
     id: string;
     ticket_id: string;
     user_id: string;
-    user_name: string;
+    user_name?: string;
     user_avatar?: string;
     message: string;
     is_internal: boolean;
+    attachments: AttachmentMeta[];
     created_at: string;
 }
 
@@ -59,6 +72,18 @@ interface TicketFilters {
     search: string;
 }
 
+export interface CreateTicketFromSparkyData {
+    subject: string;
+    description: string;
+    category: string;
+    priority: string;
+    attachments: AttachmentMeta[];
+    aiIntakeLog: Array<{ role: string; content: string; timestamp: string }>;
+    customer_id?: string;
+    customer_name?: string;
+    customer_email?: string;
+}
+
 interface TicketStore {
     tickets: Ticket[];
     messages: Record<string, TicketMessage[]>;
@@ -70,6 +95,7 @@ interface TicketStore {
     // Actions
     fetchTickets: () => Promise<void>;
     createTicket: (data: Partial<Ticket>) => Promise<Ticket>;
+    createTicketFromSparky: (data: CreateTicketFromSparkyData) => Promise<Ticket>;
     updateTicket: (id: string, data: Partial<Ticket>) => Promise<Ticket>;
     deleteTicket: (id: string) => Promise<void>;
     updateStatus: (id: string, status: TicketStatus) => Promise<Ticket>;
@@ -77,7 +103,8 @@ interface TicketStore {
 
     // Messages
     fetchMessages: (ticketId: string) => Promise<TicketMessage[]>;
-    addMessage: (ticketId: string, message: string, isInternal?: boolean) => Promise<TicketMessage>;
+    addMessage: (ticketId: string, message: string, isInternal?: boolean, attachments?: AttachmentMeta[]) => Promise<TicketMessage>;
+    userReplyToTicket: (ticketId: string, message: string, attachments?: AttachmentMeta[]) => Promise<TicketMessage>;
 
     // Filters
     setFilter: (key: keyof TicketFilters, value: string) => void;
@@ -97,6 +124,18 @@ const DEFAULT_FILTERS: TicketFilters = {
     search: '',
 };
 
+// Helper: build headers for Supabase REST API
+async function buildHeaders(): Promise<Record<string, string>> {
+    const token = await getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return {
+        'Authorization': `Bearer ${token}`,
+        'apikey': token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+    };
+}
+
 export const useTicketStore = create<TicketStore>((set, get) => ({
     tickets: [],
     messages: {},
@@ -107,25 +146,20 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     fetchTickets: async () => {
         set({ loading: true, error: null });
-
         try {
             const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            if (!organizationId) {
-                set({ loading: false });
-                return;
-            }
+            if (!organizationId) { set({ loading: false }); return; }
 
-            const { data, error } = await supabase
-                .from('support_tickets')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
+            const headers = await buildHeaders();
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/support_tickets?organization_id=eq.${organizationId}&order=created_at.desc`,
+                { headers }
+            );
+            if (!res.ok) throw new Error('Failed to fetch tickets');
+            const data = await res.json();
             set({ tickets: data || [] });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+            const message = error instanceof Error ? error.message : 'An error occurred';
             set({ error: message });
         } finally {
             set({ loading: false });
@@ -134,28 +168,87 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     createTicket: async (data) => {
         set({ loading: true, error: null });
-
         try {
             const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            const { data: ticketData, error } = await supabase
-                .from('support_tickets')
-                .insert({
+            const headers = await buildHeaders();
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
                     ...data,
                     organization_id: organizationId,
                     status: 'open',
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            set((state) => ({
-                tickets: [ticketData, ...state.tickets],
-            }));
-
+                }),
+            });
+            if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                throw new Error(errText || 'Failed to create ticket');
+            }
+            const [ticketData] = await res.json();
+            set((state) => ({ tickets: [ticketData, ...state.tickets] }));
             return ticketData;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            set({ error: message });
+            throw error;
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    createTicketFromSparky: async (data) => {
+        set({ loading: true, error: null });
+        try {
+            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
+            const orgName = useOrganizationStore.getState().currentOrganization?.name;
+            const headers = await buildHeaders();
+
+            // 1. Create the ticket
+            const ticketPayload: Record<string, any> = {
+                subject: data.subject,
+                description: data.description,
+                category: data.category,
+                priority: data.priority,
+                organization_id: organizationId,
+                organization_name: orgName,
+                status: 'open',
+                source: 'sparky_ai',
+                submission_method: 'sparky_ai',
+                ai_intake_log: data.aiIntakeLog,
+            };
+            if (data.customer_id) ticketPayload.customer_id = data.customer_id;
+            if (data.customer_name) ticketPayload.customer_name = data.customer_name;
+            if (data.customer_email) ticketPayload.customer_email = data.customer_email;
+
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(ticketPayload),
+            });
+            if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                throw new Error(errText || 'Failed to create ticket');
+            }
+            const [ticket] = await res.json();
+
+            // 2. Create the initial message with attachments
+            if (data.description.trim()) {
+                await fetch(`${SUPABASE_URL}/rest/v1/ticket_messages`, {
+                    method: 'POST',
+                    headers: { ...headers, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({
+                        ticket_id: ticket.id,
+                        message: data.description,
+                        is_internal: false,
+                        attachments: data.attachments.length > 0 ? data.attachments : [],
+                    }),
+                });
+            }
+
+            set((state) => ({ tickets: [ticket, ...state.tickets] }));
+            return ticket;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An error occurred';
             set({ error: message });
             throw error;
         } finally {
@@ -166,27 +259,24 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     updateTicket: async (id, data) => {
         try {
             const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            if (!organizationId) {
-                throw new Error('No organization selected');
-            }
+            if (!organizationId) throw new Error('No organization selected');
 
-            const { data: ticketData, error } = await supabase
-                .from('support_tickets')
-                .update({ ...data, updated_at: new Date().toISOString() })
-                .eq('id', id)
-                .eq('organization_id', organizationId)
-                .select()
-                .single();
-
-            if (error) throw error;
-
+            const headers = await buildHeaders();
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/support_tickets?id=eq.${id}&organization_id=eq.${organizationId}`,
+                {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+                }
+            );
+            if (!res.ok) throw new Error('Failed to update ticket');
+            const [ticketData] = await res.json();
             set((state) => ({
                 tickets: state.tickets.map(t => t.id === id ? ticketData : t),
             }));
-
             return ticketData;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -194,23 +284,18 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     deleteTicket: async (id) => {
         try {
             const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            if (!organizationId) {
-                throw new Error('No organization selected');
-            }
+            if (!organizationId) throw new Error('No organization selected');
 
-            const { error } = await supabase
-                .from('support_tickets')
-                .delete()
-                .eq('id', id)
-                .eq('organization_id', organizationId);
-
-            if (error) throw error;
-
+            const headers = await buildHeaders();
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/support_tickets?id=eq.${id}&organization_id=eq.${organizationId}`,
+                { method: 'DELETE', headers }
+            );
+            if (!res.ok) throw new Error('Failed to delete ticket');
             set((state) => ({
                 tickets: state.tickets.filter(t => t.id !== id),
             }));
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
             throw error;
         }
     },
@@ -232,83 +317,70 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     fetchMessages: async (ticketId) => {
         try {
-            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            if (!organizationId) {
-                return [];
-            }
-
-            // First verify ticket belongs to this organization
-            const { data: ticket } = await supabase
-                .from('support_tickets')
-                .select('id')
-                .eq('id', ticketId)
-                .eq('organization_id', organizationId)
-                .single();
-
-            if (!ticket) {
-                return [];
-            }
-
-            const { data, error } = await supabase
-                .from('ticket_messages')
-                .select('*')
-                .eq('ticket_id', ticketId)
-                .order('created_at', { ascending: true });
-
-            if (error) throw error;
-
+            const headers = await buildHeaders();
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/ticket_messages?ticket_id=eq.${ticketId}&order=created_at.asc`,
+                { headers }
+            );
+            if (!res.ok) return [];
+            const data = await res.json();
             set((state) => ({
                 messages: { ...state.messages, [ticketId]: data || [] },
             }));
-
             return data || [];
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+        } catch {
             return [];
         }
     },
 
-    addMessage: async (ticketId, message, isInternal = false) => {
+    addMessage: async (ticketId, message, isInternal = false, attachments) => {
         try {
-            const organizationId = useOrganizationStore.getState().currentOrganization?.id;
-            if (!organizationId) {
-                throw new Error('No organization selected');
-            }
-
-            // Verify ticket belongs to this organization before adding message
-            const { data: ticket } = await supabase
-                .from('support_tickets')
-                .select('id')
-                .eq('id', ticketId)
-                .eq('organization_id', organizationId)
-                .single();
-
-            if (!ticket) {
-                throw new Error('Ticket not found or access denied');
-            }
-
-            const { data, error } = await supabase
-                .from('ticket_messages')
-                .insert({
+            const headers = await buildHeaders();
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/ticket_messages`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
                     ticket_id: ticketId,
                     message,
                     is_internal: isInternal,
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
+                    attachments: attachments || [],
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to add message');
+            const [data] = await res.json();
             set((state) => ({
                 messages: {
                     ...state.messages,
                     [ticketId]: [...(state.messages[ticketId] || []), data],
                 },
             }));
-
             return data;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'An error occurred';
+            throw error;
+        }
+    },
+
+    userReplyToTicket: async (ticketId, message, attachments) => {
+        try {
+            const headers = await buildHeaders();
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/user_reply_ticket`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    p_ticket_id: ticketId,
+                    p_message: message,
+                    p_attachments: attachments || [],
+                }),
+            });
+            if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                throw new Error(errText || 'Failed to reply to ticket');
+            }
+            const data = await res.json();
+            // Refresh messages for this ticket
+            get().fetchMessages(ticketId);
+            return data;
+        } catch (error) {
             throw error;
         }
     },
@@ -325,7 +397,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
     getFilteredTickets: () => {
         const { tickets, filters } = get();
-
         return tickets.filter(ticket => {
             if (filters.status !== 'all' && ticket.status !== filters.status) return false;
             if (filters.priority !== 'all' && ticket.priority !== filters.priority) return false;
@@ -352,10 +423,7 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
         const open = tickets.filter(t => t.status === 'open').length;
         const inProgress = tickets.filter(t => t.status === 'in_progress').length;
         const urgent = tickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed').length;
-
-        // Calculate average response time (simplified)
         const avgResponseTime = '0h';
-
         return { open, inProgress, urgent, avgResponseTime };
     },
 }));

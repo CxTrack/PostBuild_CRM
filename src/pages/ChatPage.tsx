@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2 } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, ExternalLink, X, Search, Smile, Settings, Hash, Users as UsersIcon, Sparkles, Phone, Trash2, TicketCheck, Paperclip, Bug, HelpCircle, CreditCard, UserCog, AlertTriangle, CheckCircle2, Edit3, XCircle } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Conversation, ChatSettings, DEFAULT_CHAT_SETTINGS } from '@/types/chat.types';
 import { useOrganizationStore } from '@/stores/organizationStore';
@@ -14,7 +14,61 @@ import SmsAgentSuggestions from '@/components/chat/SmsAgentSuggestions';
 import { parseActionProposal } from '@/utils/parseActionProposal';
 import { executeAction, checkActionPermission } from '@/utils/executeAction';
 import type { ActionStatus } from '@/types/copilot-actions.types';
+import { useTicketStore, type TicketCategory, type TicketPriority } from '@/stores/ticketStore';
+import { uploadTicketAttachment, type AttachmentMeta } from '@/utils/ticketAttachments';
+import TicketAttachmentUploader from '@/components/tickets/TicketAttachmentUploader';
 import toast from 'react-hot-toast';
+
+// =====================================================
+// TICKET INTAKE TYPES & CONSTANTS
+// =====================================================
+type TicketIntakeStep = 'idle' | 'describing' | 'uploading' | 'categorizing' | 'confirming' | 'submitted';
+
+interface TicketDraft {
+    subject: string;
+    description: string;
+    category: TicketCategory;
+    priority: TicketPriority;
+    attachments: AttachmentMeta[];
+    aiIntakeLog: Array<{ role: string; content: string; timestamp: string }>;
+}
+
+const INITIAL_TICKET_DRAFT: TicketDraft = {
+    subject: '',
+    description: '',
+    category: 'general',
+    priority: 'normal',
+    attachments: [],
+    aiIntakeLog: [],
+};
+
+// Patterns that indicate user wants to submit a ticket
+const TICKET_INTENT_PATTERNS = [
+    /\b(submit|create|open|file|raise)\s+(a\s+)?(ticket|issue|bug|report|request|support)/i,
+    /\b(report|found)\s+(a\s+)?(bug|issue|problem|error|glitch)/i,
+    /\b(something.*(broken|wrong|not working|crashing|doesn'?t work))/i,
+    /\b(need|want)\s+(help|support|assistance)\b/i,
+    /\b(having|got|have)\s+(a\s+)?(problem|issue|trouble|error)/i,
+    /\bhelp\s+me\s+(with|fix|resolve)/i,
+    /\b(feature\s+request|request\s+a?\s*feature)/i,
+    /\b(billing|payment)\s+(issue|problem|question)/i,
+];
+
+const CATEGORY_OPTIONS: { value: TicketCategory; label: string; icon: React.ReactNode; desc: string }[] = [
+    { value: 'bug_report', label: 'Bug Report', icon: <Bug size={16} />, desc: 'Something is broken' },
+    { value: 'feature_request', label: 'Feature Request', icon: <Sparkles size={16} />, desc: 'Suggest an improvement' },
+    { value: 'general', label: 'General Inquiry', icon: <HelpCircle size={16} />, desc: 'General question' },
+    { value: 'billing', label: 'Billing', icon: <CreditCard size={16} />, desc: 'Payment or subscription' },
+    { value: 'account_issue', label: 'Account Issue', icon: <UserCog size={16} />, desc: 'Login or access problem' },
+    { value: 'technical', label: 'Technical', icon: <AlertTriangle size={16} />, desc: 'Technical assistance' },
+];
+
+const PRIORITY_OPTIONS: { value: TicketPriority; label: string; color: string }[] = [
+    { value: 'low', label: 'Low', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
+    { value: 'normal', label: 'Normal', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+    { value: 'high', label: 'High', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+    { value: 'urgent', label: 'Urgent', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+];
 
 
 // Read auth token from localStorage (AbortController workaround)
@@ -172,6 +226,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
     const [showSmsSuggestions, setShowSmsSuggestions] = useState(false);
     const [lastInboundSmsText, setLastInboundSmsText] = useState('');
     const [smsSuggestionKey, setSmsSuggestionKey] = useState(0);
+
+    // Ticket Intake state
+    const [ticketIntakeActive, setTicketIntakeActive] = useState(false);
+    const [ticketIntakeStep, setTicketIntakeStep] = useState<TicketIntakeStep>('idle');
+    const [ticketDraft, setTicketDraft] = useState<TicketDraft>({ ...INITIAL_TICKET_DRAFT });
+    const [ticketDescriptionExchanges, setTicketDescriptionExchanges] = useState(0);
+    const [ticketDraftId] = useState(() => `draft_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -447,19 +509,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     }
 
                     if (!accessToken) {
-                        const aiMsg: Message = {
-                            id: `ai-${Date.now()}`,
-                            content: "I need you to be signed in to use AI features. Please refresh the page and try again.",
-                            sender_id: 'sparky-ai',
-                            created_at: new Date().toISOString(),
-                            sender: { full_name: 'Sparky AI' },
-                            reactions: [],
-                        };
-                        setMessages(prev => [...prev, aiMsg]);
+                        addSparkyMessage("I need you to be signed in to use AI features. Please refresh the page and try again.");
                         setIsTyping(false);
                         return;
                     }
 
+                    // =====================================================
+                    // TICKET INTAKE FLOW (handled before normal AI chat)
+                    // =====================================================
+                    if (ticketIntakeActive) {
+                        await handleTicketIntakeMessage(messageContent, accessToken);
+                        return;
+                    }
+
+                    // Check for ticket intent BEFORE sending to normal AI
+                    if (TICKET_INTENT_PATTERNS.some(p => p.test(messageContent))) {
+                        activateTicketIntake(messageContent);
+                        return;
+                    }
+
+                    // =====================================================
+                    // NORMAL AI CHAT (existing copilot-chat flow)
+                    // =====================================================
                     // Build conversation history from recent messages
                     const recentMessages = messages.slice(-10).map(m => ({
                         role: m.sender_id === 'sparky-ai' ? 'assistant' as const : 'user' as const,
@@ -536,21 +607,343 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                     setMessages(prev => [...prev, aiMsg]);
                 } catch (err) {
                     console.error('Sparky AI error:', err);
-                    const aiMsg: Message = {
-                        id: `ai-${Date.now()}`,
-                        content: "Sorry, I encountered an error. Please try again.",
-                        sender_id: 'sparky-ai',
-                        created_at: new Date().toISOString(),
-                        sender: { full_name: 'Sparky AI' },
-                        reactions: [],
-                    };
-                    setMessages(prev => [...prev, aiMsg]);
+                    addSparkyMessage("Sorry, I encountered an error. Please try again.");
                 } finally {
                     setIsTyping(false);
                 }
             })();
         }
     };
+
+    // =====================================================
+    // TICKET INTAKE HELPERS
+    // =====================================================
+
+    /** Add a Sparky AI message to the chat */
+    const addSparkyMessage = useCallback((content: string) => {
+        const aiMsg: Message = {
+            id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            content,
+            sender_id: 'sparky-ai',
+            created_at: new Date().toISOString(),
+            sender: { full_name: 'Sparky AI' },
+            reactions: [],
+        };
+        setMessages(prev => [...prev, aiMsg]);
+    }, []);
+
+    /** Activate ticket intake mode */
+    const activateTicketIntake = useCallback((initialMessage: string) => {
+        setTicketIntakeActive(true);
+        setTicketIntakeStep('describing');
+        setTicketDescriptionExchanges(1);
+
+        // Log user's initial message
+        const now = new Date().toISOString();
+        setTicketDraft(prev => ({
+            ...prev,
+            aiIntakeLog: [
+                { role: 'user', content: initialMessage, timestamp: now },
+            ],
+        }));
+
+        addSparkyMessage(
+            "I'll help you submit a support ticket. Tell me more about the issue you're experiencing:\n\n" +
+            "\u2022 What happened?\n" +
+            "\u2022 What were you trying to do?\n" +
+            "\u2022 Any error messages you saw?\n\n" +
+            "The more detail you provide, the faster our team can help."
+        );
+
+        // Also log Sparky's response
+        setTicketDraft(prev => ({
+            ...prev,
+            aiIntakeLog: [
+                ...prev.aiIntakeLog,
+                { role: 'assistant', content: "I'll help you submit a support ticket. Tell me more about the issue.", timestamp: new Date().toISOString() },
+            ],
+        }));
+        setIsTyping(false);
+    }, [addSparkyMessage]);
+
+    /** Handle messages during ticket intake */
+    const handleTicketIntakeMessage = useCallback(async (content: string, accessToken: string) => {
+        const now = new Date().toISOString();
+
+        // Log to intake log
+        setTicketDraft(prev => ({
+            ...prev,
+            aiIntakeLog: [...prev.aiIntakeLog, { role: 'user', content, timestamp: now }],
+        }));
+
+        switch (ticketIntakeStep) {
+            case 'describing': {
+                const exchanges = ticketDescriptionExchanges + 1;
+                setTicketDescriptionExchanges(exchanges);
+
+                // After 2+ exchanges, attempt to summarize; otherwise ask a follow-up
+                if (exchanges >= 2) {
+                    // Try to summarize with AI
+                    try {
+                        const intakeHistory = [
+                            ...ticketDraft.aiIntakeLog,
+                            { role: 'user', content, timestamp: now },
+                        ];
+
+                        const response = await fetch(`${supabaseUrl}/functions/v1/copilot-chat`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                message: `[TICKET_INTAKE_SUMMARIZE]\n\nConversation:\n${intakeHistory.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+                                context: {
+                                    page: 'Ticket Intake',
+                                    orgName: useOrganizationStore.getState().currentOrganization?.name || 'Your Organization',
+                                },
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.response) {
+                            // Try to parse the TICKET_SUMMARY JSON from response
+                            const summaryMatch = data.response.match(/\{[\s\S]*?"subject"[\s\S]*?"description"[\s\S]*?\}/);
+                            if (summaryMatch) {
+                                try {
+                                    const summary = JSON.parse(summaryMatch[0]);
+                                    setTicketDraft(prev => ({
+                                        ...prev,
+                                        subject: summary.subject || prev.subject,
+                                        description: summary.description || content,
+                                        category: summary.suggestedCategory || 'general',
+                                        priority: summary.suggestedPriority || 'normal',
+                                    }));
+                                } catch {
+                                    // Fallback: use the conversation as description
+                                    setTicketDraft(prev => ({
+                                        ...prev,
+                                        subject: content.substring(0, 80),
+                                        description: intakeHistory.filter(m => m.role === 'user').map(m => m.content).join('\n\n'),
+                                    }));
+                                }
+                            } else {
+                                setTicketDraft(prev => ({
+                                    ...prev,
+                                    subject: content.substring(0, 80),
+                                    description: intakeHistory.filter(m => m.role === 'user').map(m => m.content).join('\n\n'),
+                                }));
+                            }
+                        } else {
+                            // Fallback without AI
+                            setTicketDraft(prev => ({
+                                ...prev,
+                                subject: content.substring(0, 80),
+                                description: ticketDraft.aiIntakeLog.filter(m => m.role === 'user').map(m => m.content).join('\n\n') + '\n\n' + content,
+                            }));
+                        }
+                    } catch {
+                        setTicketDraft(prev => ({
+                            ...prev,
+                            subject: content.substring(0, 80),
+                            description: ticketDraft.aiIntakeLog.filter(m => m.role === 'user').map(m => m.content).join('\n\n') + '\n\n' + content,
+                        }));
+                    }
+
+                    setTicketIntakeStep('uploading');
+                    addSparkyMessage(
+                        "Got it, I have a good picture of the issue. Would you like to attach any screenshots or files?\n\n" +
+                        "Use the attachment button below to upload files, or type \"skip\" to continue without attachments."
+                    );
+                } else {
+                    // Ask for more detail
+                    addSparkyMessage(
+                        "Thanks for that context. Can you provide any additional details? For example:\n\n" +
+                        "\u2022 Steps to reproduce the issue\n" +
+                        "\u2022 What browser/device you're using\n" +
+                        "\u2022 How often this happens\n\n" +
+                        "Or type \"that's all\" if you've covered everything."
+                    );
+
+                    // Handle "that's all" type responses
+                    if (/^(that'?s?\s*(all|it|everything)|no\s*more|done|nothing\s*(else|more))/i.test(content)) {
+                        setTicketDraft(prev => ({
+                            ...prev,
+                            subject: prev.aiIntakeLog.filter(m => m.role === 'user')[0]?.content.substring(0, 80) || content.substring(0, 80),
+                            description: prev.aiIntakeLog.filter(m => m.role === 'user').map(m => m.content).join('\n\n'),
+                        }));
+                        setTicketIntakeStep('uploading');
+                        addSparkyMessage(
+                            "Got it. Would you like to attach any screenshots or files?\n\n" +
+                            "Use the attachment button below, or type \"skip\" to continue."
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'uploading': {
+                // User says they're done uploading or want to skip
+                if (/^(skip|no|done|no\s*(files?|attachments?|screenshots?)|continue|next)/i.test(content)) {
+                    setTicketIntakeStep('categorizing');
+                    addSparkyMessage("Now let's categorize your ticket. Please select a category from the options below.");
+                } else {
+                    addSparkyMessage(
+                        "Use the attachment button (paperclip icon) to upload files. When you're done, type \"done\" to continue."
+                    );
+                }
+                break;
+            }
+
+            case 'categorizing': {
+                // This step is handled via chip clicks, but handle text too
+                const categoryMap: Record<string, TicketCategory> = {
+                    'bug': 'bug_report', 'bug report': 'bug_report',
+                    'feature': 'feature_request', 'feature request': 'feature_request',
+                    'general': 'general', 'general inquiry': 'general',
+                    'billing': 'billing', 'payment': 'billing',
+                    'account': 'account_issue', 'account issue': 'account_issue',
+                    'technical': 'technical', 'tech': 'technical',
+                };
+                const matched = Object.entries(categoryMap).find(([key]) => content.toLowerCase().includes(key));
+                if (matched) {
+                    setTicketDraft(prev => ({ ...prev, category: matched[1] }));
+                    addSparkyMessage(`Category set to "${CATEGORY_OPTIONS.find(c => c.value === matched[1])?.label}". Now select a priority level.`);
+                } else {
+                    addSparkyMessage("Please select a category from the options shown above, or type one: Bug Report, Feature Request, General, Billing, Account Issue, Technical.");
+                }
+                break;
+            }
+
+            case 'confirming': {
+                const lower = content.toLowerCase().trim();
+                if (lower === 'submit' || lower === 'yes' || lower === 'confirm' || lower === 'send' || lower === 'looks good') {
+                    await submitTicketFromIntake();
+                } else if (lower === 'edit' || lower === 'change' || lower === 'modify') {
+                    setTicketIntakeStep('describing');
+                    setTicketDescriptionExchanges(0);
+                    addSparkyMessage("Sure, let's start over. Tell me about the issue again.");
+                } else if (lower === 'cancel' || lower === 'nevermind' || lower === 'never mind') {
+                    resetTicketIntake();
+                    addSparkyMessage("Ticket cancelled. Is there anything else I can help with?");
+                } else {
+                    addSparkyMessage('Type "submit" to send the ticket, "edit" to start over, or "cancel" to discard.');
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+
+        // Log Sparky's response to intake log
+        setTicketDraft(prev => ({
+            ...prev,
+            aiIntakeLog: [...prev.aiIntakeLog, { role: 'assistant', content: '[step transition]', timestamp: new Date().toISOString() }],
+        }));
+
+        setIsTyping(false);
+    }, [ticketIntakeStep, ticketDescriptionExchanges, ticketDraft, addSparkyMessage]);
+
+    /** Handle category chip click */
+    const handleCategorySelect = useCallback((category: TicketCategory) => {
+        setTicketDraft(prev => ({ ...prev, category }));
+        const label = CATEGORY_OPTIONS.find(c => c.value === category)?.label || category;
+        addSparkyMessage(`Category: ${label}. Now select a priority level:`);
+        // We stay in categorizing step -- priority selection will advance to confirming
+    }, [addSparkyMessage]);
+
+    /** Handle priority chip click */
+    const handlePrioritySelect = useCallback((priority: TicketPriority) => {
+        setTicketDraft(prev => ({ ...prev, priority }));
+        const label = PRIORITY_OPTIONS.find(p => p.value === priority)?.label || priority;
+        setTicketIntakeStep('confirming');
+
+        // Build summary
+        setTicketDraft(prev => {
+            const summary = `Here's a summary of your ticket:\n\n` +
+                `**Subject:** ${prev.subject || '(auto-generated)'}\n` +
+                `**Category:** ${CATEGORY_OPTIONS.find(c => c.value === prev.category)?.label || prev.category}\n` +
+                `**Priority:** ${label}\n` +
+                `**Attachments:** ${prev.attachments.length} file(s)\n\n` +
+                `**Description:**\n${prev.description.substring(0, 300)}${prev.description.length > 300 ? '...' : ''}\n\n` +
+                `Type "submit" to send, "edit" to start over, or "cancel" to discard.`;
+            addSparkyMessage(summary);
+            return { ...prev, priority };
+        });
+    }, [addSparkyMessage]);
+
+    /** Handle file upload during ticket intake */
+    const handleTicketFileUpload = useCallback(async (file: File) => {
+        const orgId = useOrganizationStore.getState().currentOrganization?.id;
+        if (!orgId) {
+            toast.error('No organization selected');
+            return;
+        }
+        try {
+            const meta = await uploadTicketAttachment(file, orgId, ticketDraftId);
+            setTicketDraft(prev => ({
+                ...prev,
+                attachments: [...prev.attachments, meta],
+            }));
+            addSparkyMessage(`Uploaded "${file.name}" successfully. Upload more files or type "done" to continue.`);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Upload failed';
+            toast.error(msg);
+        }
+    }, [ticketDraftId, addSparkyMessage]);
+
+    /** Handle attachments from TicketAttachmentUploader */
+    const handleTicketAttachmentChange = useCallback((attachments: AttachmentMeta[]) => {
+        setTicketDraft(prev => ({ ...prev, attachments }));
+    }, []);
+
+    /** Submit the ticket */
+    const submitTicketFromIntake = useCallback(async () => {
+        setIsTyping(true);
+        try {
+            const ticket = await useTicketStore.getState().createTicketFromSparky({
+                subject: ticketDraft.subject || 'Support Request',
+                description: ticketDraft.description,
+                category: ticketDraft.category as string,
+                priority: ticketDraft.priority as string,
+                attachments: ticketDraft.attachments,
+                aiIntakeLog: ticketDraft.aiIntakeLog,
+            });
+
+            setTicketIntakeStep('submitted');
+            addSparkyMessage(
+                `Your ticket has been submitted successfully!\n\n` +
+                `**Ticket ID:** ${ticket.id.substring(0, 8)}...\n` +
+                `**Subject:** ${ticket.subject}\n` +
+                `**Status:** Open\n\n` +
+                `You can track it and reply to admin responses in **Settings > Help Center > My Tickets**.\n\n` +
+                `Is there anything else I can help with?`
+            );
+
+            // Reset intake state
+            setTimeout(() => {
+                setTicketIntakeActive(false);
+                setTicketIntakeStep('idle');
+                setTicketDraft({ ...INITIAL_TICKET_DRAFT });
+                setTicketDescriptionExchanges(0);
+            }, 500);
+        } catch (err) {
+            console.error('Failed to submit ticket:', err);
+            addSparkyMessage("Sorry, I encountered an error submitting the ticket. Please try again or use the Help Center form.");
+        } finally {
+            setIsTyping(false);
+        }
+    }, [ticketDraft, addSparkyMessage]);
+
+    /** Reset ticket intake state */
+    const resetTicketIntake = useCallback(() => {
+        setTicketIntakeActive(false);
+        setTicketIntakeStep('idle');
+        setTicketDraft({ ...INITIAL_TICKET_DRAFT });
+        setTicketDescriptionExchanges(0);
+    }, []);
 
     // Confirm an action proposed by Sparky AI
     const handleConfirmAction = useCallback(async (messageId: string, editedFields: Record<string, any>) => {
@@ -857,10 +1250,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                                     participants: [{ user: { full_name: 'Sparky AI' } }]
                                                 };
                                                 setActiveConversation(aiConv);
+                                                // Reset ticket intake state
+                                                setTicketIntakeActive(false);
+                                                setTicketIntakeStep('idle');
+                                                setTicketDraft({ ...INITIAL_TICKET_DRAFT });
+                                                setTicketDescriptionExchanges(0);
                                                 setMessages([
                                                     {
                                                         id: 'ai-welcome',
-                                                        content: "Hello! I'm Sparky, your AI business assistant. How can I help you today?",
+                                                        content: "Hey! I'm Sparky, your AI assistant. I can help you with:\n\n\u2022 Submit a support ticket (with screenshots)\n\u2022 Report a bug or issue\n\u2022 Ask questions about CxTrack features\n\u2022 Create records (customers, deals, tasks)\n\nWhat can I help with?",
                                                         sender_id: 'sparky-ai',
                                                         created_at: new Date().toISOString(),
                                                         sender: { full_name: 'Sparky AI' },
@@ -1099,6 +1497,135 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                 />
                             )}
 
+                            {/* Ticket Intake: Category Selection Chips */}
+                            {ticketIntakeActive && ticketIntakeStep === 'categorizing' && !ticketDraft.category && (
+                                <div className="px-4 py-3 border-t border-gray-200/50 dark:border-gray-700/50 bg-purple-50/50 dark:bg-purple-900/10">
+                                    <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1.5">
+                                        <TicketCheck size={12} /> Select a category:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {CATEGORY_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => handleCategorySelect(opt.value)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                                            >
+                                                {opt.icon}
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Ticket Intake: Priority Selection Chips */}
+                            {ticketIntakeActive && ticketIntakeStep === 'categorizing' && ticketDraft.category && (
+                                <div className="px-4 py-3 border-t border-gray-200/50 dark:border-gray-700/50 bg-purple-50/50 dark:bg-purple-900/10">
+                                    <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1.5">
+                                        <AlertTriangle size={12} /> Select priority:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {PRIORITY_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => handlePrioritySelect(opt.value)}
+                                                className={`px-3 py-1.5 text-xs font-medium rounded-full ${opt.color} hover:opacity-80 transition-opacity`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Ticket Intake: Confirmation Actions */}
+                            {ticketIntakeActive && ticketIntakeStep === 'confirming' && (
+                                <div className="px-4 py-3 border-t border-gray-200/50 dark:border-gray-700/50 bg-purple-50/50 dark:bg-purple-900/10">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={submitTicketFromIntake}
+                                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                        >
+                                            <CheckCircle2 size={14} />
+                                            Submit Ticket
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTicketIntakeStep('describing');
+                                                setTicketDescriptionExchanges(0);
+                                                addSparkyMessage("Let's start over. Tell me about the issue.");
+                                            }}
+                                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <Edit3 size={14} />
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                resetTicketIntake();
+                                                addSparkyMessage("Ticket cancelled. Is there anything else I can help with?");
+                                            }}
+                                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <XCircle size={14} />
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Ticket Intake: File Upload Area */}
+                            {ticketIntakeActive && ticketIntakeStep === 'uploading' && (
+                                <div className="px-4 py-3 border-t border-gray-200/50 dark:border-gray-700/50 bg-purple-50/50 dark:bg-purple-900/10">
+                                    <TicketAttachmentUploader
+                                        organizationId={useOrganizationStore.getState().currentOrganization?.id || ''}
+                                        ticketOrDraftId={ticketDraftId}
+                                        attachments={ticketDraft.attachments}
+                                        onAttachmentsChange={handleTicketAttachmentChange}
+                                        compact
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            setTicketIntakeStep('categorizing');
+                                            addSparkyMessage(
+                                                `${ticketDraft.attachments.length > 0 ? `${ticketDraft.attachments.length} file(s) attached. ` : ''}Now let's categorize your ticket. Select a category:`
+                                            );
+                                        }}
+                                        className="mt-2 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                                    >
+                                        {ticketDraft.attachments.length > 0 ? 'Done uploading, continue \u2192' : 'Skip attachments \u2192'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Ticket Intake Progress Indicator */}
+                            {ticketIntakeActive && ticketIntakeStep !== 'idle' && ticketIntakeStep !== 'submitted' && (
+                                <div className="px-4 py-1.5 bg-purple-600/10 dark:bg-purple-900/20 border-t border-purple-200/50 dark:border-purple-800/30">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <TicketCheck size={12} className="text-purple-600 dark:text-purple-400" />
+                                            <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                                                Ticket Intake
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            {['describing', 'uploading', 'categorizing', 'confirming'].map((step, i) => (
+                                                <div
+                                                    key={step}
+                                                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                                                        step === ticketIntakeStep
+                                                            ? 'bg-purple-600 dark:bg-purple-400'
+                                                            : ['describing', 'uploading', 'categorizing', 'confirming'].indexOf(ticketIntakeStep) > i
+                                                                ? 'bg-purple-400 dark:bg-purple-600'
+                                                                : 'bg-gray-300 dark:bg-gray-600'
+                                                    }`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Input Area */}
                             <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-2">
@@ -1119,17 +1646,29 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                                         )}
                                     </div>
 
-                                    {/* File Attachment */}
-                                    <FileAttachmentButton
-                                        onFileSelect={setAttachedFile}
-                                        disabled={!!attachedFile}
-                                    />
+                                    {/* File Attachment - during ticket intake uploading step, wire to ticket upload */}
+                                    {ticketIntakeActive && ticketIntakeStep === 'uploading' ? (
+                                        <FileAttachmentButton
+                                            onFileSelect={(file) => { if (file) handleTicketFileUpload(file); }}
+                                            disabled={ticketDraft.attachments.length >= 5}
+                                        />
+                                    ) : (
+                                        <FileAttachmentButton
+                                            onFileSelect={setAttachedFile}
+                                            disabled={!!attachedFile}
+                                        />
+                                    )}
 
                                     {/* Input */}
                                     <input
                                         ref={inputRef}
                                         className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-500"
-                                        placeholder="Type your message..."
+                                        placeholder={ticketIntakeActive
+                                            ? ticketIntakeStep === 'describing' ? "Describe the issue..."
+                                            : ticketIntakeStep === 'uploading' ? 'Type "done" when finished uploading...'
+                                            : ticketIntakeStep === 'confirming' ? 'Type "submit", "edit", or "cancel"...'
+                                            : "Type your message..."
+                                            : "Type your message..."}
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyPress={handleKeyPress}

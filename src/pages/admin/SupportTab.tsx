@@ -4,10 +4,13 @@ import {
     AlertTriangle, AlertCircle, CheckCircle, Circle, MoreVertical,
     Trash2, ExternalLink, LayoutGrid, List,
     RefreshCw, Globe, FileText, UserX, Check, Loader2,
-    Eye, EyeOff, ArrowRight, UserPlus
+    Eye, EyeOff, ArrowRight, UserPlus, Sparkles, Paperclip, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAdminStore, AdminTicket, DeletionRequest, TicketMessage, TicketActivity } from '@/stores/adminStore';
 import { supabaseUrl } from '@/lib/supabase';
+import TicketAttachmentViewer from '@/components/tickets/TicketAttachmentViewer';
+import TicketAttachmentUploader from '@/components/tickets/TicketAttachmentUploader';
+import type { AttachmentMeta } from '@/utils/ticketAttachments';
 import toast from 'react-hot-toast';
 
 // Read auth token from localStorage (AbortController workaround)
@@ -111,6 +114,7 @@ const TicketsSection = () => {
             case 'customer_profile': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">Customer</span>;
             case 'bug_report': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Bug Report</span>;
             case 'copilot_feedback': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">CoPilot</span>;
+            case 'sparky_ai': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 dark:from-purple-900/30 dark:to-blue-900/30 dark:text-purple-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Sparky AI</span>;
             default: return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">Direct</span>;
         }
     };
@@ -372,6 +376,8 @@ const TicketDetailModal = ({
     const [updating, setUpdating] = useState<string | null>(null);
     const [pendingChange, setPendingChange] = useState<{ field: string; value: string | null; label: string; oldValue: string | null } | null>(null);
     const [changeComment, setChangeComment] = useState('');
+    const [replyAttachments, setReplyAttachments] = useState<AttachmentMeta[]>([]);
+    const [showAiIntakeLog, setShowAiIntakeLog] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -436,8 +442,9 @@ const TicketDetailModal = ({
         setSending(true);
         try {
             const replyContent = replyText.trim();
-            await replyToTicket(ticket.id, replyContent, isInternal);
+            await replyToTicket(ticket.id, replyContent, isInternal, replyAttachments);
             setReplyText('');
+            setReplyAttachments([]);
             // Update local status if it was auto-transitioned
             if (localTicket.status === 'open' && !isInternal) {
                 setLocalTicket((prev) => ({ ...prev, status: 'in_progress' }));
@@ -476,6 +483,7 @@ const TicketDetailModal = ({
             case 'customer_profile': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">Customer Profile</span>;
             case 'bug_report': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Bug Report</span>;
             case 'copilot_feedback': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">CoPilot Feedback</span>;
+            case 'sparky_ai': return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 dark:from-purple-900/30 dark:to-blue-900/30 dark:text-purple-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Sparky AI</span>;
             default: return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">Direct</span>;
         }
     };
@@ -605,6 +613,54 @@ const TicketDetailModal = ({
                     {/* Left: Conversation Thread */}
                     <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 dark:border-gray-700">
                         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            {/* AI Intake Log (Sparky conversation) */}
+                            {ticket.ai_intake_log && Array.isArray(ticket.ai_intake_log) && ticket.ai_intake_log.length > 0 && (
+                                <div className="rounded-xl border border-purple-200 dark:border-purple-800 overflow-hidden">
+                                    <button
+                                        onClick={() => setShowAiIntakeLog(!showAiIntakeLog)}
+                                        className="w-full flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/30 dark:hover:to-blue-900/30 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">
+                                                Submitted via Sparky AI
+                                            </span>
+                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                ({ticket.ai_intake_log.length} messages)
+                                            </span>
+                                        </div>
+                                        {showAiIntakeLog ? (
+                                            <ChevronUp className="w-4 h-4 text-purple-500" />
+                                        ) : (
+                                            <ChevronDown className="w-4 h-4 text-purple-500" />
+                                        )}
+                                    </button>
+                                    {showAiIntakeLog && (
+                                        <div className="px-4 py-3 space-y-2 bg-white dark:bg-gray-900/50 border-t border-purple-100 dark:border-purple-800/50">
+                                            {ticket.ai_intake_log.map((entry: { role: string; content: string; timestamp: string }, idx: number) => (
+                                                <div key={idx} className="flex gap-2">
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 mt-0.5 ${
+                                                        entry.role === 'assistant' ? 'bg-purple-500' : 'bg-blue-500'
+                                                    }`}>
+                                                        {entry.role === 'assistant' ? 'S' : 'U'}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <span className={`text-[10px] font-semibold ${
+                                                            entry.role === 'assistant' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'
+                                                        }`}>
+                                                            {entry.role === 'assistant' ? 'Sparky' : 'User'}
+                                                        </span>
+                                                        <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                            {entry.content}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Original ticket description */}
                             <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">
@@ -653,6 +709,11 @@ const TicketDetailModal = ({
                                             <span className="text-xs text-gray-400">{timeAgo(msg.created_at)}</span>
                                         </div>
                                         <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{msg.message}</p>
+                                        {msg.attachments && msg.attachments.length > 0 && (
+                                            <div className="mt-2">
+                                                <TicketAttachmentViewer attachments={msg.attachments} />
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}
@@ -683,6 +744,19 @@ const TicketDetailModal = ({
                                     <EyeOff className="w-3 h-3" /> Internal Note
                                 </button>
                             </div>
+                            {/* Attachment uploader for replies */}
+                            {ticket.organization_id && (
+                                <div className="mb-2">
+                                    <TicketAttachmentUploader
+                                        organizationId={ticket.organization_id}
+                                        ticketOrDraftId={ticket.id}
+                                        attachments={replyAttachments}
+                                        onAttachmentsChange={setReplyAttachments}
+                                        maxFiles={5}
+                                        compact
+                                    />
+                                </div>
+                            )}
                             <div className="flex gap-2">
                                 <textarea
                                     value={replyText}

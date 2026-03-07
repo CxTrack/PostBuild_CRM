@@ -165,6 +165,8 @@ export interface AdminTicket {
   updated_at: string;
   organization_id: string;
   user_id?: string;
+  ai_intake_log?: Array<{ role: string; content: string; timestamp: string }>;
+  submission_method?: 'form' | 'sparky_ai' | 'api';
 }
 
 export interface TicketMessage {
@@ -175,6 +177,7 @@ export interface TicketMessage {
   user_avatar?: string;
   message: string;
   is_internal: boolean;
+  attachments?: Array<{ file_name: string; file_type: string; file_size: number; file_url: string }>;
   created_at: string;
 }
 
@@ -613,6 +616,19 @@ interface AdminState {
   setSelectedOrg: (orgId: string | null, context?: { title: string; alertType: string }) => void;
   fetchOrgDetail: (orgId: string) => Promise<void>;
   sendAdminNotification: (userIds: string[], title: string, message: string) => Promise<void>;
+  sendTargetedNotification: (params: {
+    targetType: 'all_users' | 'organization' | 'org_owners' | 'individual';
+    title: string;
+    message: string;
+    type?: string;
+    organizationId?: string;
+    userIds?: string[];
+    priority?: string;
+    expiresAt?: string;
+    actionUrl?: string;
+    metadata?: Record<string, any>;
+  }) => Promise<any>;
+  fetchNotificationHistory: (limit?: number, offset?: number, source?: string, type?: string) => Promise<any>;
   sendAdminEmail: (toEmail: string, subject: string, bodyHtml: string, bodyText: string, orgId?: string, userId?: string) => Promise<any>;
   sendAdminSms: (toPhone: string, body: string, orgId?: string, userId?: string) => Promise<any>;
   setDateRange: (days: number) => void;
@@ -633,7 +649,7 @@ interface AdminState {
   fetchAllTickets: () => Promise<void>;
   fetchTicketDetail: (ticketId: string) => Promise<void>;
   updateTicket: (ticketId: string, updates: { status?: string; priority?: string; category?: string; assigned_to?: string | null }, comment?: string) => Promise<void>;
-  replyToTicket: (ticketId: string, message: string, isInternal?: boolean) => Promise<void>;
+  replyToTicket: (ticketId: string, message: string, isInternal?: boolean, attachments?: Array<{ file_name: string; file_type: string; file_size: number; file_url: string }>) => Promise<void>;
   updateOrgStatus: (orgId: string, status: string, reason: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   updateOrgIndustryTemplate: (orgId: string, templateId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   fetchDeletionRequests: () => Promise<void>;
@@ -781,6 +797,30 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       p_title: title,
       p_message: message,
       p_type: 'admin_notification',
+    });
+  },
+
+  sendTargetedNotification: async (params) => {
+    return supabaseRpc('admin_send_targeted_notification', {
+      p_target_type: params.targetType,
+      p_title: params.title,
+      p_message: params.message,
+      p_type: params.type || 'admin_message',
+      p_organization_id: params.organizationId || null,
+      p_user_ids: params.userIds || null,
+      p_priority: params.priority || 'normal',
+      p_expires_at: params.expiresAt || null,
+      p_action_url: params.actionUrl || null,
+      p_metadata: params.metadata || {},
+    });
+  },
+
+  fetchNotificationHistory: async (limit = 50, offset = 0, source?: string, type?: string) => {
+    return supabaseRpc('admin_get_notification_history', {
+      p_limit: limit,
+      p_offset: offset,
+      p_source: source || null,
+      p_type: type || null,
     });
   },
 
@@ -1039,12 +1079,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     }
   },
 
-  replyToTicket: async (ticketId: string, message: string, isInternal: boolean = false) => {
+  replyToTicket: async (ticketId: string, message: string, isInternal: boolean = false, attachments?: Array<{ file_name: string; file_type: string; file_size: number; file_url: string }>) => {
     try {
       const newMsg = await supabaseRpc<TicketMessage>('admin_reply_ticket', {
         p_ticket_id: ticketId,
         p_message: message,
         p_is_internal: isInternal,
+        p_attachments: attachments || [],
       });
 
       // Append new message to current list
