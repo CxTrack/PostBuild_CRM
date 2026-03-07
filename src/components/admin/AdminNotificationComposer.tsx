@@ -353,12 +353,15 @@ export const AdminNotificationComposer = () => {
 
         {/* Action URL */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Action URL (optional)</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Link to Page (optional)</label>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1.5">
+            When clicked, the notification will navigate the user to this CRM page.
+          </p>
           <input
             type="text"
             value={actionUrl}
             onChange={(e) => setActionUrl(e.target.value)}
-            placeholder="/dashboard/settings"
+            placeholder="/dashboard/billing or /dashboard/settings"
             className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>

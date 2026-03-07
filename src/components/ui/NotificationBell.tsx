@@ -5,6 +5,9 @@ import {
 } from 'lucide-react';
 import { useNotificationStore, SystemNotification } from '@/stores/notificationStore';
 import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   sms_opt_out: <MessageSquare className="w-4 h-4 text-red-500" />,
@@ -32,13 +35,51 @@ export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuthContext();
 
+  // Initial fetch + polling fallback (real-time is primary)
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60_000);
+    const interval = setInterval(fetchNotifications, 120_000);
     return () => clearInterval(interval);
   }, []);
 
+  // Real-time: listen for new notifications targeted at this user
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('notification-bell-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Refetch to get the full notification with proper typing
+          fetchNotifications();
+
+          // Show a toast for high/urgent priority notifications
+          const newNotif = payload.new as Record<string, any>;
+          if (newNotif?.priority === 'urgent' || newNotif?.priority === 'high') {
+            toast(newNotif.title || 'New notification', {
+              icon: newNotif.priority === 'urgent' ? '🔴' : '🟠',
+              duration: 5000,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchNotifications]);
+
+  // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -68,7 +109,7 @@ export const NotificationBell: React.FC = () => {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
