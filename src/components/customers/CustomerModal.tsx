@@ -342,7 +342,7 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-xl w-full sm:max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[85vh] overflow-hidden flex flex-col"
