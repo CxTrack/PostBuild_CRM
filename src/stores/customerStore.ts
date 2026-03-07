@@ -139,12 +139,21 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
         assignedTo = user?.id || null;
       }
 
+      // Sanitize date fields: PostgreSQL date columns reject empty strings, must be null
+      const sanitizedCustomer = { ...customer };
+      const dateFields = ['date_of_birth', 'membership_start', 'membership_end'] as const;
+      for (const field of dateFields) {
+        if ((sanitizedCustomer as Record<string, unknown>)[field] === '') {
+          (sanitizedCustomer as Record<string, unknown>)[field] = null;
+        }
+      }
+
       const insertData: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { organization_id: string } = {
-        ...customer,
+        ...sanitizedCustomer,
         name: fullName,
         organization_id: organizationId,
-        country: customer.country || 'CA',
-        status: customer.status || 'Active',
+        country: sanitizedCustomer.country || 'CA',
+        status: sanitizedCustomer.status || 'Active',
         assigned_to: assignedTo,
       };
 
@@ -180,9 +189,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     }
 
     try {
+      // Sanitize date fields: PostgreSQL date columns reject empty strings, must be null
+      const sanitizedUpdates = { ...updates };
+      const dateFields = ['date_of_birth', 'membership_start', 'membership_end'] as const;
+      for (const field of dateFields) {
+        if ((sanitizedUpdates as Record<string, unknown>)[field] === '') {
+          (sanitizedUpdates as Record<string, unknown>)[field] = null;
+        }
+      }
+
       const { data, error } = await supabase
         .from('customers')
-        .update(updates)
+        .update(sanitizedUpdates)
         .eq('id', id)
         .eq('organization_id', organizationId)
         .select()

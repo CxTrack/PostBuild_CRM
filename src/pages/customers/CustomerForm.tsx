@@ -133,6 +133,9 @@ export default function CustomerForm() {
         ...formData,
         phone: formatPhoneForStorage(formData.phone),
         hours_per_week: formData.hours_per_week ? parseInt(formData.hours_per_week) : null,
+        date_of_birth: formData.date_of_birth || null,
+        membership_start: formData.membership_start || null,
+        membership_end: formData.membership_end || null,
       };
 
       if (id) {

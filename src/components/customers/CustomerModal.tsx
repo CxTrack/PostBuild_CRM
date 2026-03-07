@@ -260,6 +260,8 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           ...formData,
           phone: formatPhoneForStorage(formData.phone),
           title: formData.title || null,
+          membership_start: formData.membership_start || null,
+          membership_end: formData.membership_end || null,
         });
         toast.success('Customer updated successfully');
         onClose();
@@ -268,6 +270,8 @@ export default function CustomerModal({ isOpen, onClose, customer, prefill, navi
           ...formData,
           phone: formatPhoneForStorage(formData.phone),
           title: formData.title || null,
+          membership_start: formData.membership_start || null,
+          membership_end: formData.membership_end || null,
           assigned_to: assignedTo || undefined,
         });
 
