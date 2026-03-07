@@ -70,6 +70,8 @@ export function useChatUnreadCount() {
           // Only bump if the message isn't from the current user
           if (payload.new && payload.new.sender_id !== user?.id) {
             fetchUnreadCounts();
+            // Dispatch event so ChatPage can play sound/show notifications
+            window.dispatchEvent(new CustomEvent('chat-new-message', { detail: payload.new }));
           }
         }
       )
@@ -79,6 +81,13 @@ export function useChatUnreadCount() {
       supabase.removeChannel(channel);
     };
   }, [currentOrganization?.id, user?.id, fetchUnreadCounts]);
+
+  // Listen for mark-read events from ChatPage to refresh sidebar badge
+  useEffect(() => {
+    const handler = () => { fetchUnreadCounts(); };
+    window.addEventListener('chat-mark-read', handler);
+    return () => window.removeEventListener('chat-mark-read', handler);
+  }, [fetchUnreadCounts]);
 
   // Expose a refresh function so ChatPage can call it after marking read
   return { totalUnread, refreshUnreadCount: fetchUnreadCounts };

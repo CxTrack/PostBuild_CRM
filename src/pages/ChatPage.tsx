@@ -130,17 +130,16 @@ const MessageBubble = React.memo<{
                 <p className={`text-[10px] mt-1 ${displayOwn ? (isSms ? 'text-green-100' : 'text-blue-100') : 'text-gray-500 dark:text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
-                {msg.reactions && msg.reactions.length > 0 && (
-                    <MessageReactions
-                        messageId={msg.id}
-                        reactions={msg.reactions}
-                        currentUserId={currentUserId}
-                        onAddReaction={onAddReaction}
-                        onRemoveReaction={onRemoveReaction}
-                        isOwnMessage={displayOwn}
-                    />
-                )}
             </div>
+            {/* Reactions always rendered so + button appears on hover */}
+            <MessageReactions
+                messageId={msg.id}
+                reactions={msg.reactions || []}
+                currentUserId={currentUserId}
+                onAddReaction={onAddReaction}
+                onRemoveReaction={onRemoveReaction}
+                isOwnMessage={displayOwn}
+            />
             {msg.action && onConfirmAction && onCancelAction && (
                 <div className="max-w-[70%] w-full">
                     <ActionCard
@@ -223,6 +222,39 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         const saved = localStorage.getItem('cxtrack_chat_settings');
         return saved ? JSON.parse(saved) : DEFAULT_CHAT_SETTINGS;
     });
+    // Load chat settings from DB (syncs across devices, falls back to localStorage)
+    useEffect(() => {
+        const loadDbSettings = async () => {
+            if (!user?.id) return;
+            try {
+                const token = getAuthToken();
+                if (!token) return;
+                const res = await fetch(
+                    `${supabaseUrl}/rest/v1/chat_settings?user_id=eq.${user.id}&select=notifications_enabled,sound_enabled,desktop_notifications,show_read_receipts,show_typing_indicators,compact_mode,enter_to_send`,
+                    { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+                );
+                if (res.ok) {
+                    const rows = await res.json();
+                    if (rows.length > 0) {
+                        const dbSettings = rows[0];
+                        const merged: ChatSettings = {
+                            notifications_enabled: dbSettings.notifications_enabled ?? DEFAULT_CHAT_SETTINGS.notifications_enabled,
+                            sound_enabled: dbSettings.sound_enabled ?? DEFAULT_CHAT_SETTINGS.sound_enabled,
+                            desktop_notifications: dbSettings.desktop_notifications ?? DEFAULT_CHAT_SETTINGS.desktop_notifications,
+                            show_read_receipts: dbSettings.show_read_receipts ?? DEFAULT_CHAT_SETTINGS.show_read_receipts,
+                            show_typing_indicators: dbSettings.show_typing_indicators ?? DEFAULT_CHAT_SETTINGS.show_typing_indicators,
+                            compact_mode: dbSettings.compact_mode ?? DEFAULT_CHAT_SETTINGS.compact_mode,
+                            enter_to_send: dbSettings.enter_to_send ?? DEFAULT_CHAT_SETTINGS.enter_to_send,
+                        };
+                        setChatSettings(merged);
+                        localStorage.setItem('cxtrack_chat_settings', JSON.stringify(merged));
+                    }
+                }
+            } catch { /* use localStorage/defaults */ }
+        };
+        loadDbSettings();
+    }, [user?.id]);
+
     // SMS Agent Suggestions state
     const [showSmsSuggestions, setShowSmsSuggestions] = useState(false);
     const [lastInboundSmsText, setLastInboundSmsText] = useState('');
@@ -237,6 +269,49 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Pre-load notification sound
+    useEffect(() => {
+        notificationAudioRef.current = new Audio('/notification.mp3');
+        notificationAudioRef.current.volume = 0.5;
+    }, []);
+
+    // Request desktop notification permission if enabled
+    useEffect(() => {
+        if (chatSettings.desktop_notifications && 'Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, [chatSettings.desktop_notifications]);
+
+    // Listen for new messages in OTHER conversations (dispatched by useChatUnreadCount hook)
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const msg = (e as CustomEvent).detail;
+            if (!msg) return;
+            // Don't notify if we're actively viewing this conversation
+            if (msg.conversation_id === activeConversation?.id) return;
+
+            // Play notification sound
+            if (chatSettings.sound_enabled && notificationAudioRef.current) {
+                notificationAudioRef.current.currentTime = 0;
+                notificationAudioRef.current.play().catch(() => {});
+            }
+            // Show toast notification
+            if (chatSettings.notifications_enabled) {
+                toast('New message from a teammate', { icon: '💬', duration: 3000 });
+            }
+            // Show desktop notification
+            if (chatSettings.desktop_notifications && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('CxTrack - New Message', {
+                    body: 'You have a new chat message',
+                    icon: '/favicon.ico',
+                });
+            }
+        };
+        window.addEventListener('chat-new-message', handler);
+        return () => window.removeEventListener('chat-new-message', handler);
+    }, [activeConversation?.id, chatSettings]);
 
     useEffect(() => {
         fetchConversations();
@@ -259,6 +334,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
                         setMessages(prev => [...prev, newMsg as Message]);
                         // Auto-mark read since user is actively viewing this conversation
                         markConversationRead(activeConversation.id);
+                        // Play notification sound for active conversation
+                        if (chatSettings.sound_enabled && notificationAudioRef.current) {
+                            notificationAudioRef.current.currentTime = 0;
+                            notificationAudioRef.current.play().catch(() => {});
+                        }
                         // Trigger SMS suggestions for inbound SMS
                         if (newMsg.message_type === 'sms' && (newMsg.metadata as any)?.direction === 'inbound') {
                             setLastInboundSmsText(newMsg.content);
@@ -365,6 +445,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             });
             // Clear local unread count for this conversation
             setUnreadCounts(prev => ({ ...prev, [conversationId]: 0 }));
+            // Signal sidebar hook to refresh badge count
+            window.dispatchEvent(new CustomEvent('chat-mark-read'));
         } catch { /* non-critical */ }
     }, [user?.id]);
 
@@ -979,26 +1061,58 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         ));
     }, []);
 
-    const handleAddReaction = useCallback((messageId: string, emoji: string) => {
+    const handleAddReaction = useCallback(async (messageId: string, emoji: string) => {
+        if (!user?.id) return;
+        // Check if user already reacted with this emoji (toggle off)
+        const existingMsg = messages.find(m => m.id === messageId);
+        const existingReaction = existingMsg?.reactions?.find(
+            r => r.emoji === emoji && r.user_id === user.id
+        );
+        if (existingReaction) {
+            // Toggle off -- remove the reaction
+            handleRemoveReaction(messageId, existingReaction.id);
+            return;
+        }
+        // Optimistic UI update with temp ID
+        const tempId = `reaction-${Date.now()}`;
         setMessages(prev => prev.map(msg => {
             if (msg.id === messageId) {
-                const newReaction = {
-                    id: `reaction-${Date.now()}`,
-                    message_id: messageId,
-                    user_id: user?.id || 'user-me',
-                    emoji,
-                    created_at: new Date().toISOString(),
-                };
                 return {
                     ...msg,
-                    reactions: [...(msg.reactions || []), newReaction],
+                    reactions: [...(msg.reactions || []), { id: tempId, message_id: messageId, user_id: user.id, emoji }],
                 };
             }
             return msg;
         }));
-    }, [user?.id]);
+        // Persist to database
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            const res = await fetch(`${supabaseUrl}/rest/v1/message_reactions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                    'Prefer': 'return=representation',
+                },
+                body: JSON.stringify({ message_id: messageId, user_id: user.id, emoji }),
+            });
+            if (res.ok) {
+                const [inserted] = await res.json();
+                // Replace temp ID with real DB ID
+                setMessages(prev => prev.map(msg => {
+                    if (msg.id === messageId) {
+                        return { ...msg, reactions: (msg.reactions || []).map(r => r.id === tempId ? { ...r, id: inserted.id } : r) };
+                    }
+                    return msg;
+                }));
+            }
+        } catch { /* optimistic UI already showing */ }
+    }, [user?.id, messages]);
 
-    const handleRemoveReaction = useCallback((messageId: string, reactionId: string) => {
+    const handleRemoveReaction = useCallback(async (messageId: string, reactionId: string) => {
+        // Optimistic UI update
         setMessages(prev => prev.map(msg => {
             if (msg.id === messageId) {
                 return {
@@ -1008,6 +1122,19 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
             }
             return msg;
         }));
+        // Persist to database (skip temp IDs that never made it to DB)
+        if (reactionId.startsWith('reaction-')) return;
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            await fetch(`${supabaseUrl}/rest/v1/message_reactions?id=eq.${reactionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                },
+            });
+        } catch { /* optimistic UI already updated */ }
     }, []);
 
     const handleEmojiSelect = (emoji: string) => {
@@ -1145,9 +1272,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({ isPopup = false }) => {
         }
     };
 
-    const handleSaveSettings = (settings: ChatSettings) => {
+    const handleSaveSettings = async (settings: ChatSettings) => {
         setChatSettings(settings);
         localStorage.setItem('cxtrack_chat_settings', JSON.stringify(settings));
+        // Persist to chat_settings DB table
+        try {
+            const token = getAuthToken();
+            if (!token || !user?.id) return;
+            await fetch(`${supabaseUrl}/rest/v1/chat_settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': supabaseAnonKey,
+                    'Prefer': 'resolution=merge-duplicates,return=minimal',
+                },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    ...settings,
+                    updated_at: new Date().toISOString(),
+                }),
+            });
+        } catch { /* localStorage fallback is fine */ }
     };
 
     const handleOpenPopup = () => {
